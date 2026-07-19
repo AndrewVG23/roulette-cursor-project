@@ -196,7 +196,19 @@
     .scoreboard-stat { text-align: center; padding: var(--space-4) var(--space-3); border-radius: var(--radius-lg); background: rgba(0,0,0,.28); border: 1px solid rgba(239,187,73,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 0 24px rgba(239,187,73,.04); }
     .scoreboard-stat .label { color: var(--color-primary); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
     .scoreboard-stat .value { font-family: var(--font-display); font-size: clamp(1.85rem, 1.35rem + 1.1vw, 2.75rem); line-height: 1.05; margin-top: var(--space-2); font-variant-numeric: tabular-nums lining-nums; }
-    .wheel-area { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding: 0; width: 100%; }
+    .wheel-area {
+      position: absolute;
+      top: clamp(220px, 36vh, 380px);
+      right: var(--space-3);
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 0;
+      width: clamp(108px, 14vw, 136px);
+      pointer-events: none;
+    }
     .wheel-display {
       position: relative;
       width: clamp(96px, 12vw, 124px);
@@ -309,79 +321,111 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: var(--space-2);
-      width: clamp(108px, 14vw, 136px);
+      gap: 10px;
+      width: clamp(108px, 14vw, 168px);
       pointer-events: none;
-      filter: drop-shadow(0 14px 22px rgba(0,0,0,.52));
+      filter: drop-shadow(0 16px 24px rgba(0,0,0,.52));
+      transform: scale(var(--purse-scale, 1));
+      transform-origin: top right;
+      transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1), filter 360ms ease;
     }
     .purse-chip-stack {
       position: relative;
-      width: 82px;
-      height: 92px;
-      perspective: 520px;
-      transform: rotateX(10deg);
+      width: var(--chip-w, 72px);
+      height: var(--stack-h, 92px);
+      perspective: 680px;
+      transform: rotateX(16deg) rotateZ(-3deg);
       transform-origin: center bottom;
+      transition: width 360ms cubic-bezier(0.16, 1, 0.3, 1), height 360ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     .purse-chip-stack::before {
       content: '';
       position: absolute;
       left: 50%;
-      bottom: -2px;
-      width: 68px;
-      height: 14px;
+      bottom: -4px;
+      width: calc(var(--chip-w, 72px) * 0.88);
+      height: calc(var(--chip-w, 72px) * 0.16);
       transform: translateX(-50%);
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(0,0,0,.42) 0%, rgba(0,0,0,.18) 42%, transparent 72%);
-      filter: blur(1px);
+      background: radial-gradient(circle, rgba(0,0,0,.48) 0%, rgba(0,0,0,.2) 45%, transparent 72%);
+      filter: blur(1.5px);
       z-index: 0;
     }
     .purse-chip {
-      --chip-lift: calc(var(--chip-i) * -7px);
-      --chip-shift: calc((var(--chip-i) - 3.5) * 0.55px);
-      --chip-tilt: calc((var(--chip-i) - 3.5) * 0.45deg);
+      --chip-lift: calc(var(--chip-i) * var(--chip-pitch, 7px) * -1);
+      --chip-shift: calc((var(--chip-i) - var(--chip-mid, 3)) * 0.65px);
+      --chip-tilt: calc((var(--chip-i) - var(--chip-mid, 3)) * 0.35deg);
       position: absolute;
       left: 50%;
-      bottom: 6px;
-      width: 72px;
+      bottom: 8px;
+      width: var(--chip-w, 72px);
       transform: translate(calc(-50% + var(--chip-shift)), var(--chip-lift)) rotate(var(--chip-tilt));
       transform-origin: center bottom;
       z-index: calc(var(--chip-i) + 1);
-      filter: drop-shadow(0 3px 5px rgba(0,0,0,.28));
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,.32));
+      transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1), width 360ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     .purse-chip-edge {
       display: block;
       width: 100%;
-      height: 10px;
+      height: var(--chip-edge-h, 10px);
       border-radius: 50%;
       background-image: var(--chip-edge);
       background-size: 100% 100%;
       background-repeat: no-repeat;
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.18),
-        inset 0 -2px 3px rgba(0,0,0,.28),
-        0 1px 0 rgba(0,0,0,.35);
+        inset 0 1px 0 rgba(255,255,255,.22),
+        inset 0 -2px 4px rgba(0,0,0,.32),
+        0 1px 0 rgba(0,0,0,.4);
+    }
+    .purse-chip-cap {
+      display: block;
+      width: calc(var(--chip-w, 72px) - 10px);
+      height: calc(var(--chip-w, 72px) - 10px);
+      margin: -2px auto 0;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 34% 28%, #fffdf6 0%, #f3ead8 58%, #d8ccb4 100%);
+      box-shadow:
+        inset 0 0 0 2px var(--chip-primary),
+        inset 0 0 0 4px #f3ead8,
+        inset 0 0 0 6px var(--chip-primary),
+        0 2px 5px rgba(0,0,0,.26);
+      opacity: 0.9;
+    }
+    .purse-chip:not(.is-top) .purse-chip-cap {
+      width: calc(var(--chip-w, 72px) - 18px);
+      height: calc(var(--chip-w, 72px) - 18px);
+      margin-top: -4px;
+      opacity: 0.82;
+    }
+    .purse-chip.is-top .purse-chip-edge {
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.26),
+        inset 0 -2px 4px rgba(0,0,0,.34),
+        0 1px 0 rgba(0,0,0,.42);
     }
     .purse-chip-face {
       position: relative;
-      width: 72px;
-      height: 72px;
-      margin: -1px auto 0;
+      width: var(--chip-w, 72px);
+      height: var(--chip-w, 72px);
+      margin: -2px auto 0;
       border-radius: 50%;
       background-image: var(--chip-face);
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
       box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.35),
-        0 5px 10px rgba(0,0,0,.34),
-        0 0 0 1px rgba(0,0,0,.12);
+        inset 0 1px 0 rgba(255,255,255,.4),
+        0 6px 12px rgba(0,0,0,.36),
+        0 0 0 1px rgba(0,0,0,.14);
     }
     .purse-chip-face::after {
       content: '';
       position: absolute;
       inset: 0;
       border-radius: 50%;
-      background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.28), transparent 42%);
+      background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.32), transparent 44%);
       pointer-events: none;
     }
     .purse-stack-amount {
@@ -478,17 +522,17 @@
               <div class="purse-stack" aria-label="Your purse">
                 <div class="purse-chip-stack" id="purseChipStack" aria-hidden="true"></div>
                 <div class="purse-stack-amount" id="scorePurse">$100</div>
-                <div class="wheel-area" aria-label="Roulette wheel controls">
-                  <button id="wheelDisplay" class="wheel-display" type="button" aria-label="Spin wheel">
-                    <div class="wheel-frame" aria-hidden="true"></div>
-                    <div class="wheel-pointer" aria-hidden="true"></div>
-                    <div id="wheelBall" class="wheel-ball" aria-hidden="true"></div>
-                    <div class="wheel-canvas-wrap">
-                      <canvas id="wheelCanvas" width="768" height="768" aria-hidden="true"></canvas>
-                    </div>
-                    <span id="wheelResult" class="wheel-result idle" aria-live="polite">Spin</span>
-                  </button>
-                </div>
+              </div>
+              <div class="wheel-area" aria-label="Roulette wheel controls">
+                <button id="wheelDisplay" class="wheel-display" type="button" aria-label="Spin wheel">
+                  <div class="wheel-frame" aria-hidden="true"></div>
+                  <div class="wheel-pointer" aria-hidden="true"></div>
+                  <div id="wheelBall" class="wheel-ball" aria-hidden="true"></div>
+                  <div class="wheel-canvas-wrap">
+                    <canvas id="wheelCanvas" width="768" height="768" aria-hidden="true"></canvas>
+                  </div>
+                  <span id="wheelResult" class="wheel-result idle" aria-live="polite">Spin</span>
+                </button>
               </div>
               <div class="board-stage">
                 <div id="board3d" class="board-3d" aria-label="Roulette betting board"></div>
@@ -2775,21 +2819,54 @@
       return face;
     }
 
+    function getPurseStackMetrics(value) {
+      const base = Math.max(1, startingPurse);
+      const v = Math.max(0, Math.round(value));
+      const logV = Math.log10(v + 1);
+      const logMax = Math.log10(base * 5 + 1);
+      const t = Math.min(1, logV / Math.max(logMax, 1));
+
+      if (v === 0) {
+        return { scale: 0.72, count: 2, pitch: 5, chipW: 52, stackH: 48, edgeH: 7, mid: 0.5 };
+      }
+
+      const scale = 0.76 + t * 0.44;
+      const count = Math.min(12, Math.max(3, Math.round(2 + logV * 2.4)));
+      const chipW = Math.round(50 + scale * 28);
+      const pitch = Math.round(4 + scale * 4.2);
+      const edgeH = Math.max(7, Math.round(chipW * 0.125));
+      const stackH = Math.round(14 + pitch * (count - 1) + chipW * 0.36);
+      return { scale, count, pitch, chipW, stackH, edgeH, mid: (count - 1) / 2 };
+    }
+
     function renderPurseStack() {
       if (!purseChipStackEl) return;
       const value = Math.max(0, Math.round(purse));
+      const metrics = getPurseStackMetrics(value);
       const topStyle = getChipStyle(Math.max(1, value));
       const stackDenoms = [1, 5, 25, 100];
-      const count = value === 0 ? 2 : Math.min(7, Math.max(4, Math.ceil(Math.log10(value + 1)) + 2));
-      purseChipStackEl.innerHTML = Array.from({ length: count }, (_, i) => {
-        const isTop = i === count - 1;
+
+      if (purseStackEl) {
+        purseStackEl.style.setProperty('--purse-scale', metrics.scale.toFixed(3));
+      }
+      purseChipStackEl.style.setProperty('--chip-w', `${metrics.chipW}px`);
+      purseChipStackEl.style.setProperty('--chip-pitch', `${metrics.pitch}px`);
+      purseChipStackEl.style.setProperty('--chip-edge-h', `${metrics.edgeH}px`);
+      purseChipStackEl.style.setProperty('--stack-h', `${metrics.stackH}px`);
+      purseChipStackEl.style.setProperty('--chip-mid', metrics.mid.toFixed(2));
+
+      purseChipStackEl.innerHTML = Array.from({ length: metrics.count }, (_, i) => {
+        const isTop = i === metrics.count - 1;
         const layerStyle = isTop
           ? topStyle
-          : getChipStyle(stackDenoms[(count - 2 - i) % stackDenoms.length]);
+          : getChipStyle(stackDenoms[(metrics.count - 2 - i) % stackDenoms.length]);
         const edge = getPurseChipEdgeTexture(layerStyle);
         const face = isTop ? getPurseChipFaceTexture(layerStyle) : '';
         const topClass = isTop ? ' is-top' : '';
-        return `<div class="purse-chip${topClass}" style="--chip-i:${i};--chip-edge:url('${edge}')${face ? `;--chip-face:url('${face}')` : ''}"><span class="purse-chip-edge"></span>${isTop ? '<span class="purse-chip-face" aria-hidden="true"></span>' : ''}</div>`;
+        const topMarkup = isTop
+          ? '<span class="purse-chip-face" aria-hidden="true"></span>'
+          : '<span class="purse-chip-cap" aria-hidden="true"></span>';
+        return `<div class="purse-chip${topClass}" style="--chip-i:${i};--chip-primary:${layerStyle.primary};--chip-edge:url('${edge}')${face ? `;--chip-face:url('${face}')` : ''}"><span class="purse-chip-edge"></span>${topMarkup}</div>`;
       }).join('');
     }
 
