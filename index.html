@@ -1124,7 +1124,8 @@
       CHIP.radius = base * (CHIP.maxDiameterRatio / 2);
       CHIP.height = base * 0.084;
       CHIP.stackPitch = base * 0.087;
-      CHIP.segments = 48;
+      // 24 segments reads the same at table distance and cuts chip triangle cost ~2×.
+      CHIP.segments = 24;
     }
 
     function isInsideBet(target) {
@@ -2415,10 +2416,11 @@
 
     function getChipStyle(amount) {
       const value = Math.max(1, Math.round(amount));
-      if (value >= 100) return { primary: '#17130f', accent: '#d0a23a', label: `$${value}` };
-      if (value >= 25) return { primary: '#1f6b41', accent: '#f2e6cf', label: `$${value}` };
-      if (value >= 5) return { primary: '#b63a34', accent: '#f2e6cf', label: `$${value}` };
-      return { primary: '#244f8f', accent: '#f2e6cf', label: `$${value}` };
+      // Cache by denom band only — avoids minting unique textures for every dollar total.
+      if (value >= 100) return { primary: '#17130f', accent: '#d0a23a', label: '$100' };
+      if (value >= 25) return { primary: '#1f6b41', accent: '#f2e6cf', label: '$25' };
+      if (value >= 5) return { primary: '#b63a34', accent: '#f2e6cf', label: '$5' };
+      return { primary: '#244f8f', accent: '#f2e6cf', label: '$1' };
     }
 
     function drawClassicChipTop(ctx, size, primary, accent, label) {
@@ -2504,7 +2506,7 @@
       drawClassicChipTop(topCanvas.getContext('2d'), texSize, style.primary, style.accent, style.label);
       const topTex = new THREE.CanvasTexture(topCanvas);
       topTex.colorSpace = THREE.SRGBColorSpace;
-      topTex.anisotropy = renderer?.capabilities?.getMaxAnisotropy?.() ?? 4;
+      topTex.anisotropy = 4;
 
       const sideCanvas = document.createElement('canvas');
       sideCanvas.width = 512;
@@ -4038,6 +4040,8 @@
       if (!encoder) return null;
 
       let showPayout = false;
+      let lastCaptureAt = 0;
+      const captureIntervalMs = 1000 / 30;
 
       return {
         extras: { ...extras },
@@ -4046,6 +4050,11 @@
         },
         // Called from the render loop immediately after renderer.render().
         tick() {
+          const now = performance.now();
+          // Match the 30fps encoder — skip extra WebGL readbacks between samples.
+          if (now - lastCaptureAt < captureIntervalMs) return;
+          lastCaptureAt = now;
+
           // Never resize recordCanvas after encode starts.
           recordCtx.fillStyle = '#0a1210';
           recordCtx.fillRect(0, 0, outW, outH);
@@ -4149,9 +4158,34 @@
       updateShareButtons();
     }
 
+    function stakeToChipAmounts(total) {
+      let remaining = Math.max(0, Math.round(total));
+      const chips = [];
+      for (const denom of PURSE_DENOMS) {
+        while (remaining >= denom) {
+          chips.push(denom);
+          remaining -= denom;
+        }
+      }
+      return chips;
+    }
+
+    // One mesh per placed chip (history), not per dollar — stacks still grow without the old 12-cap.
+    function chipAmountsForKey(key) {
+      const fromHistory = [];
+      for (const entry of history) {
+        if (entry.key === key) fromHistory.push(entry.amount);
+      }
+      if (fromHistory.length) return fromHistory;
+      return stakeToChipAmounts(placements.get(key) || 0);
+    }
+
     function placeReplayStake(key, amount) {
       if (!allBetDefs.has(key) || amount <= 0) return;
       placements.set(key, amount);
+      for (const chip of stakeToChipAmounts(amount)) {
+        history.push({ key, amount: chip });
+      }
       renderChips(key);
       updateMetrics();
     }
@@ -4483,11 +4517,12 @@
         if (!target) return;
         const isWin = winKeys.has(key);
         const total = Math.max(1, Math.round(count));
-        const stackCount = total;
+        const chipAmounts = chipAmountsForKey(key);
+        const stackCount = Math.max(1, chipAmounts.length);
 
         if (isWin) {
           for (let i = 0; i < stackCount; i++) {
-            const chipAmount = i === stackCount - 1 ? total : 1;
+            const chipAmount = chipAmounts[i] || 1;
             const built = createChipMesh(key, target, i, stackCount, chipAmount);
             chipGroup.add(built.chip);
           }
@@ -4520,7 +4555,7 @@
           }
         } else {
           for (let i = 0; i < stackCount; i++) {
-            const chipAmount = i === stackCount - 1 ? total : 1;
+            const chipAmount = chipAmounts[i] || 1;
             const built = createChipMesh(key, target, i, stackCount, chipAmount, true);
             chipGroup.add(built.chip);
             const from = {
@@ -4638,17 +4673,19 @@
     // Landing bounce train: each hop keeps ~40% of the previous height and a
     // shrinking share of the landing window, like a real clay chip
     const CHIP_BOUNCES = [
-      { frac: 0.4, h: 9.5 },
-      { frac: 0.28, h: 3.8 },
-      { frac: 0.19, h: 1.4 },
-      { frac: 0.13, h: 0.45 }
+      { frac: 0.34, h: 11 },
+      { frac: 0.25, h: 4.6 },
+      { frac: 0.18, h: 2.0 },
+      { frac: 0.13, h: 0.9 },
+      { frac: 0.1, h: 0.35 }
     ];
     // Contact moments within the landing window and how hard each hit lands
     const CHIP_CONTACTS = [
       { at: 0, s: 1 },
-      { at: 0.4, s: 0.55 },
-      { at: 0.68, s: 0.32 },
-      { at: 0.87, s: 0.18 }
+      { at: 0.34, s: 0.62 },
+      { at: 0.59, s: 0.44 },
+      { at: 0.77, s: 0.3 },
+      { at: 0.9, s: 0.2 }
     ];
 
     function queueChipDrop(mesh) {
@@ -4663,8 +4700,8 @@
         from,
         to,
         start: performance.now(),
-        duration: Math.min(780, 420 + dist * 0.2),
-        arc: Math.min(95, 36 + dist * 0.06),
+        duration: Math.min(860, 460 + dist * 0.22),
+        arc: Math.min(135, 56 + dist * 0.085),
         spin: (Math.random() < 0.5 ? -1 : 1) * (1.6 + Math.random() * 1.4),
         tilt: 0.2 + Math.random() * 0.16,
         wobblePhase: Math.random() * Math.PI * 2,
@@ -4697,10 +4734,9 @@
           m.scale.set(1, 1, 1);
         } else {
           // Touchdown: a train of decaying parabolic hops. Each contact gets
-          // its own squash (softer every hit) and a tiny impact shudder
+          // its own squash (softer every hit), an impact shudder, and a
+          // little sideways skitter so the chip audibly "clatters" to rest
           const p = (t - CHIP_TOSS_FLIGHT) / (1 - CHIP_TOSS_FLIGHT);
-          m.position.x = a.to.x;
-          m.position.z = a.to.z;
 
           let y = 0;
           let acc = 0;
@@ -4721,11 +4757,17 @@
           m.scale.y = 1 - 0.34 * impact;
           m.scale.x = m.scale.z = 1 + 0.16 * impact;
 
+          // Sideways skitter around the seat point; the impact envelope is
+          // zero by the end so the chip still finishes exactly on its spot
+          const skit = 2.2 * impact;
+          m.position.x = a.to.x + skit * Math.sin(p * 52 + a.wobblePhase);
+          m.position.z = a.to.z + skit * Math.cos(p * 47 + a.wobblePhase * 1.7);
+
           // Impact shudder: a fast, fading rock that only shows near contacts
-          const sh = 0.055 * impact;
-          m.rotation.x = sh * Math.sin(p * 38 + a.wobblePhase);
-          m.rotation.z = sh * Math.cos(p * 31 + a.wobblePhase);
-          m.rotation.y = a.baseRotY + 0.05 * Math.sin(p * 24) * (1 - p) * Math.sign(a.spin);
+          const sh = 0.09 * impact;
+          m.rotation.x = sh * Math.sin(p * 44 + a.wobblePhase);
+          m.rotation.z = sh * Math.cos(p * 37 + a.wobblePhase);
+          m.rotation.y = a.baseRotY + 0.08 * Math.sin(p * 30) * (1 - p) * Math.sign(a.spin);
         }
         if (t >= 1) {
           m.position.copy(a.to);
@@ -4740,13 +4782,14 @@
     function renderChips3D(animateKey = null) {
       if (!chipGroup || settling) return;
       while (chipGroup.children.length) chipGroup.remove(chipGroup.children[0]);
-      placements.forEach((count, key) => {
+      placements.forEach((_count, key) => {
         const target = allTargets.find(t => t.key === key);
         if (!target) return;
-        const total = Math.max(1, Math.round(count));
-        const stackCount = total;
+        const chipAmounts = chipAmountsForKey(key);
+        const stackCount = chipAmounts.length;
+        if (!stackCount) return;
         for (let i = 0; i < stackCount; i++) {
-          const chipAmount = i === stackCount - 1 ? total : 1;
+          const chipAmount = chipAmounts[i];
           const built = createChipMesh(key, target, i, stackCount, chipAmount);
           chipGroup.add(built.chip);
           if (key === animateKey && i === stackCount - 1) queueChipDrop(built.chip);
@@ -4849,10 +4892,22 @@
       }).join('');
     }
 
+    let metricsUpdateTimer = null;
+
+    function scheduleUpdateMetrics() {
+      if (metricsUpdateTimer != null) return;
+      metricsUpdateTimer = window.setTimeout(() => {
+        metricsUpdateTimer = null;
+        updateMetrics();
+      }, 80);
+    }
+
     function updateMetrics() {
+      if (metricsUpdateTimer != null) {
+        clearTimeout(metricsUpdateTimer);
+        metricsUpdateTimer = null;
+      }
       const m = calcMetrics();
-      const bankroll = Math.max(1, Number(bankrollInput.value || 100));
-      const spins = Math.max(1, Number(spinsInput.value || 500));
       scoreEvEl.textContent = formatMoney(m.ev || 0);
       scoreEvEl.className = 'value ' + (m.ev > 0 ? 'positive' : m.ev < 0 ? 'negative' : 'neutral');
       scoreStakeEl.textContent = moneyFmt.format(m.totalStake || 0);
@@ -4872,7 +4927,6 @@
         ['Median payout', formatMoney(m.medianProfit || 0), 'Middle outcome when all 38 spin results are sorted by net payout.']
       ];
       statsEl.innerHTML = stats.map(([label, value, hint]) => `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div><div class="hint">${hint}</div></div>`).join('');
-      progressionBox.innerHTML = `<strong>Custom layout view</strong><br>The 3D table uses the courtesy line between 0 and 00 as the green bet, while the detailed chart and table show the exact dollar payout for every possible wheel outcome. [web:15][web:16]`;
       const chartProfits = settlementChartProfits ?? m.profits;
       payoutChart.data.labels = outcomes.map(String);
       payoutChart.data.datasets[0].data = chartProfits;
@@ -4881,7 +4935,7 @@
         syncShareChart(chartProfits, animateShare);
       }
       if (settlementOutcome !== null) applyChartSettlementHighlight(settlementOutcome);
-      else payoutChart.update();
+      else payoutChart.update(liveCapture || recordingReplay ? undefined : 'none');
       renderOutcomeTable(chartProfits, settlementOutcome);
     }
 
@@ -4896,7 +4950,7 @@
       clampSelectedChipDenom();
       updatePurseDisplay();
       renderChips(key);
-      updateMetrics();
+      scheduleUpdateMetrics();
     }
     function removeChip() {
       if (settling || awaitingAdvance || replayMode) return;
@@ -4910,7 +4964,7 @@
       clampSelectedChipDenom();
       updatePurseDisplay();
       renderChips();
-      updateMetrics();
+      scheduleUpdateMetrics();
     }
     function clearBoard() {
       if (settling || replayMode) return;
