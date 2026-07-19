@@ -198,7 +198,7 @@
     .scoreboard-stat .value { font-family: var(--font-display); font-size: clamp(1.85rem, 1.35rem + 1.1vw, 2.75rem); line-height: 1.05; margin-top: var(--space-2); font-variant-numeric: tabular-nums lining-nums; }
     .wheel-area {
       position: absolute;
-      top: clamp(220px, 36vh, 380px);
+      top: clamp(180px, 30vh, 340px);
       right: var(--space-3);
       z-index: 6;
       display: flex;
@@ -206,12 +206,12 @@
       align-items: center;
       gap: var(--space-1);
       padding: 0;
-      width: clamp(108px, 14vw, 136px);
+      width: clamp(216px, 28vw, 272px);
       pointer-events: none;
     }
     .wheel-display {
       position: relative;
-      width: clamp(96px, 12vw, 124px);
+      width: clamp(192px, 24vw, 248px);
       aspect-ratio: 1;
       flex-shrink: 0;
       padding: 0;
@@ -244,7 +244,7 @@
     .wheel-pointer { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 14px; height: 22px; z-index: 5; pointer-events: none; filter: drop-shadow(0 2px 5px rgba(0,0,0,.55)); }
     .wheel-pointer::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #fff8e8, #efbb49 38%, #8f5d18); clip-path: polygon(50% 100%, 8% 0, 92% 0); border-radius: 2px 2px 0 0; }
     .wheel-pointer::after { content: ''; position: absolute; top: 3px; left: 50%; transform: translateX(-50%); width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff8e8, #c28b2d 62%, #7a5018); box-shadow: inset 0 -1px 2px rgba(0,0,0,.35), 0 0 4px rgba(255,240,200,.4); }
-    .wheel-ball { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: 0; border-radius: 50%; background: radial-gradient(circle at 28% 24%, #ffffff 0%, #f7f9fb 24%, #d8dde3 52%, #8f969f 100%); box-shadow: 0 2px 5px rgba(0,0,0,.55), inset -1px -2px 3px rgba(0,0,0,.22), inset 1px 1px 2px rgba(255,255,255,.92); z-index: 4; pointer-events: none; transform: translate(-50%, -50%) rotate(0deg) translateY(calc(-1 * var(--ball-orbit, 46.5%))); transform-origin: center center; will-change: transform; }
+    .wheel-ball { position: absolute; left: 50%; top: 50%; width: 5.2%; height: 5.2%; margin: 0; border-radius: 50%; background: radial-gradient(circle at 28% 24%, #ffffff 0%, #f7f9fb 24%, #d8dde3 52%, #8f969f 100%); box-shadow: 0 2px 5px rgba(0,0,0,.55), inset -1px -2px 3px rgba(0,0,0,.22), inset 1px 1px 2px rgba(255,255,255,.92); z-index: 4; pointer-events: none; transform: translate(-50%, -50%) rotate(0deg) translateY(calc(-1 * var(--ball-orbit, 46.5%))); transform-origin: center center; will-change: transform; }
     .wheel-display.landed .wheel-ball { animation: wheelBallSettle 620ms cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes wheelBallSettle { 0% { filter: brightness(1.12); transform: translate(-50%, -50%) rotate(var(--ball-angle, 0deg)) translateY(calc(-1 * var(--ball-orbit, 38%))) scale(1.04); } 100% { filter: brightness(1); transform: translate(-50%, -50%) rotate(var(--ball-angle, 0deg)) translateY(calc(-1 * var(--ball-orbit, 38%))) scale(1); } }
     .controls .btn.success {
@@ -311,12 +311,9 @@
     .wheel-result.red { color: #f26e89; }
     .wheel-result.black { color: var(--color-text); }
     .wheel-result.green { color: var(--color-success); }
-    .wheel-caption { margin: 0; color: var(--color-text-faint); font-size: var(--text-xs); max-width: 28ch; }
-    .wheel-caption { display: none; }
     .board-stage { position: absolute; inset: 0; z-index: 1; min-height: 200px; }
     .board-3d { width: 100%; height: 100%; min-height: 200px; position: relative; border-radius: 18px; overflow: hidden; cursor: grab; touch-action: none; }
     .board-3d canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 18px; outline: none; }
-    .board-hint { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; margin: 0; padding: var(--space-1) var(--space-2); color: var(--color-text-faint); font-size: 0.65rem; text-align: center; background: linear-gradient(transparent, rgba(4,10,8,.92)); pointer-events: none; }
     .purse-stack {
       position: absolute;
       top: var(--space-3);
@@ -325,8 +322,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
-      width: clamp(108px, 14vw, 136px);
+      gap: 8px;
+      width: clamp(148px, 18vw, 196px);
       pointer-events: none;
       filter: drop-shadow(0 14px 22px rgba(0,0,0,.52));
     }
@@ -334,45 +331,96 @@
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      gap: 6px;
-      height: 72px;
+      gap: 7px;
+      min-height: 108px;
+      padding: 0 2px 2px;
     }
-    .purse-cylinder {
-      --stack-h: 48px;
+    .purse-column {
+      --chip-primary: #244f8f;
+      --chip-accent: #f2e6cf;
+      --shown: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      width: 40px;
+    }
+    .purse-column-count {
+      font-family: var(--font-display);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #f3ead8;
+      text-shadow: 0 1px 2px rgba(0,0,0,.85);
+      font-variant-numeric: tabular-nums lining-nums;
+      line-height: 1;
+      min-height: 0.85rem;
+    }
+    .purse-stack-stage {
       position: relative;
-      width: 34px;
-      height: var(--stack-h);
-      border-radius: 17px;
-      background: repeating-linear-gradient(
-        180deg,
-        var(--chip-primary) 0 5px,
-        var(--chip-accent) 5px 10px
-      );
+      width: 42px;
+      height: calc(36px + (var(--shown) - 1) * 5.5px + 16px);
+      perspective: 260px;
+      perspective-origin: 50% 8%;
+      overflow: visible;
+    }
+    .purse-stack-body {
+      position: absolute;
+      left: 1px;
+      right: 1px;
+      bottom: 11px;
+      height: 40px;
+      transform-style: preserve-3d;
+      transform: rotateX(60deg) rotateZ(-16deg);
+    }
+    .purse-disk {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      transform: translateZ(calc(var(--i) * 5.4px));
+      background:
+        radial-gradient(circle at 50% 42%, #f4ecda 0 34%, transparent 35%),
+        repeating-conic-gradient(
+          from 8deg,
+          var(--chip-primary) 0deg 22.5deg,
+          var(--chip-accent) 22.5deg 45deg
+        );
       box-shadow:
-        inset 1px 0 0 rgba(255,255,255,.12),
-        inset -1px 0 0 rgba(0,0,0,.18),
-        0 4px 10px rgba(0,0,0,.35);
+        0 1.5px 0 rgba(0,0,0,.5),
+        inset 0 0 0 1.5px color-mix(in srgb, var(--chip-primary) 72%, black),
+        inset 0 -2px 3px rgba(0,0,0,.22);
+      backface-visibility: hidden;
     }
-    .purse-cylinder::before {
-      content: '';
-      position: absolute;
-      top: -3px;
-      left: 2px;
-      right: 2px;
-      height: 9px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 50% 35%, #fffdf6, #e8dcc4);
-      box-shadow: inset 0 0 0 2px var(--chip-primary);
+    .purse-disk.is-top {
+      background:
+        var(--chip-face) center / cover no-repeat,
+        radial-gradient(circle at 50% 35%, #fffdf6, #e8dcc4);
+      box-shadow:
+        0 2px 4px rgba(0,0,0,.42),
+        inset 0 0 0 1.5px color-mix(in srgb, var(--chip-primary) 78%, black);
     }
-    .purse-cylinder::after {
-      content: '';
+    .purse-stack-shadow {
       position: absolute;
-      bottom: -2px;
-      left: 3px;
-      right: 3px;
-      height: 7px;
+      left: 5px;
+      right: 5px;
+      bottom: 1px;
+      height: 11px;
       border-radius: 50%;
-      background: color-mix(in srgb, var(--chip-primary) 88%, black);
+      background: radial-gradient(ellipse at center, rgba(0,0,0,.46), transparent 74%);
+      transform: rotateZ(-16deg) scaleX(1.08);
+    }
+    .purse-column-denom {
+      font-family: var(--font-display);
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: color-mix(in srgb, var(--chip-accent) 82%, #fff);
+      text-shadow: 0 1px 2px rgba(0,0,0,.8);
+      font-variant-numeric: tabular-nums lining-nums;
+      line-height: 1;
+      opacity: 0.92;
     }
     .purse-stack-amount {
       font-family: var(--font-display);
@@ -386,8 +434,10 @@
       min-width: 6ch;
     }
     .purse-stack.low .purse-stack-amount { color: #ffd2a0; }
-    .purse-stack.empty .purse-chip-stacks { opacity: 0.45; filter: saturate(0.65); }
+    .purse-stack.empty .purse-chip-stacks { opacity: 0.4; filter: saturate(0.55); }
     .purse-stack.empty .purse-stack-amount { color: #f26e89; }
+    .purse-stack.empty .purse-column-count,
+    .purse-stack.empty .purse-column-denom { opacity: 0.55; }
     .hero-card, .stat, .formula, .progression-box, .chart-card, .table-card, .metrics-details { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
     .stat .label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; }
     .stat .hint { margin-top: var(--space-2); color: var(--color-text-muted); font-size: var(--text-xs); max-width: 28ch; }
@@ -421,6 +471,8 @@
     .outcome-table tr.outcome-landed { background: rgba(208, 162, 58, 0.16); box-shadow: inset 3px 0 0 var(--color-primary); }
     .outcome-table tr.outcome-landed td { font-weight: 700; }
     .footer-note { margin-top: var(--space-4); font-size: var(--text-xs); color: var(--color-text-muted); }
+    .mobile-stats-nav { display: none; }
+    #gameView, #analyticsDock { scroll-margin-top: 52px; }
     @media (max-width: 1260px) {
       body { overflow: auto; height: auto; min-height: 100dvh; }
       .app { height: auto; min-height: 100dvh; }
@@ -428,35 +480,40 @@
       .board-shell { min-height: 70vh; }
     }
     @media (max-width: 900px) {
-      body { overflow: hidden; height: 100dvh; }
-      .app { height: 100dvh; overflow: hidden; }
+      body { overflow: auto; height: auto; min-height: 100dvh; }
+      .app { height: auto; min-height: 100dvh; overflow: visible; padding: 0; }
+      .layout { gap: 0; min-height: 0; }
+      .panel {
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        overflow: visible;
+      }
       .panel-inner.board-panel {
         position: relative;
-        display: grid;
-        grid-template: minmax(0, 1fr) / minmax(0, 1fr);
-        padding: var(--space-2);
+        display: flex;
+        flex-direction: column;
+        padding: 0;
         gap: 0;
+        overflow: visible;
       }
       .panel-inner.board-panel > .controls {
-        grid-area: 1 / 1;
-        align-self: start;
-        justify-self: stretch;
+        position: sticky;
+        top: 0;
         z-index: 12;
-        margin: var(--space-2);
-        padding: var(--space-1) var(--space-2);
-        pointer-events: none;
-        background: linear-gradient(180deg, rgba(20,53,40,.94), rgba(12,26,21,.96));
-        border-radius: var(--radius-md);
+        margin: 0;
+        padding: max(var(--space-1), env(safe-area-inset-top, 0px)) var(--space-2) var(--space-1);
+        border: none;
+        border-bottom: 1px solid rgba(238,194,97,.18);
+        border-radius: 0;
         box-shadow: 0 8px 24px rgba(0,0,0,.34);
-      }
-      .panel-inner.board-panel > .controls .control-row,
-      .panel-inner.board-panel > .controls .btn,
-      .panel-inner.board-panel > .controls .icon-btn,
-      .panel-inner.board-panel > .controls .camera-menu-wrap {
         pointer-events: auto;
+        background: linear-gradient(180deg, rgba(20,53,40,.98), rgba(12,26,21,.99));
       }
       .panel-inner.board-panel > .roulette-wrap {
-        grid-area: 1 / 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
         min-height: 0;
       }
       .controls .control-row {
@@ -475,17 +532,52 @@
         width: 44px;
         min-width: 44px;
       }
-      .controls .metrics-toggle,
-      .controls .stats-toggle { display: none; }
-      .roulette-wrap .analytics-dock { display: none; }
+      .controls .metrics-toggle { display: none; }
+      .controls .stats-toggle { display: inline-flex; min-width: 64px; }
+      .roulette-wrap .analytics-dock,
+      .roulette-wrap.stats-collapsed .analytics-dock {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        width: 100%;
+        padding: var(--space-2);
+        background: linear-gradient(180deg, rgba(8,18,14,.98), rgba(4,10,8,.99));
+      }
+      .analytics-dock .mobile-stats-nav { order: 0; }
+      .analytics-dock .chart-dock { order: 1; }
+      .analytics-dock .bottom-dock { order: 2; }
+      .mobile-stats-nav {
+        display: flex;
+        position: sticky;
+        top: 52px;
+        z-index: 11;
+        padding-bottom: var(--space-1);
+        background: linear-gradient(180deg, rgba(8,18,14,.98), rgba(8,18,14,.92));
+      }
+      .mobile-stats-nav .btn {
+        width: 100%;
+        min-height: 44px;
+        border-radius: 3px;
+        font-size: var(--text-xs);
+        font-weight: 700;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+      }
+      #gameView, #analyticsDock { scroll-margin-top: 52px; }
       .board-shell {
-        min-height: calc(100dvh - var(--space-4));
-        border-radius: var(--radius-lg);
+        min-height: 100dvh;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: linear-gradient(180deg, rgba(8,20,16,.95), rgba(7,16,13,.98));
+      }
+      .board-hint {
+        padding-right: clamp(96px, 24vw, 120px);
       }
       .purse-stack {
-        top: calc(var(--space-2) + 56px);
+        top: calc(52px + var(--space-2));
         right: var(--space-2);
-        width: clamp(108px, 28vw, 148px);
+        width: clamp(148px, 40vw, 196px);
       }
       .wheel-area {
         position: fixed;
@@ -493,17 +585,24 @@
         bottom: max(var(--space-3), env(safe-area-inset-bottom, 0px));
         right: max(var(--space-3), env(safe-area-inset-right, 0px));
         left: auto;
-        width: clamp(92px, 22vw, 112px);
+        width: clamp(184px, 44vw, 224px);
         z-index: 20;
       }
       .wheel-display {
-        width: clamp(84px, 20vw, 104px);
-      }
-      .board-hint {
-        padding-right: clamp(96px, 24vw, 120px);
+        width: clamp(168px, 40vw, 208px);
       }
       .bottom-dock { width: 100%; max-width: none; }
-      .chart-dock { position: relative; width: 100%; min-width: 0; height: 260px; margin-top: var(--space-2); }
+      .scoreboard { border-radius: var(--radius-lg); }
+      .chart-dock {
+        position: relative;
+        right: auto;
+        bottom: auto;
+        width: 100%;
+        min-width: 0;
+        height: min(320px, 42vh);
+        margin-top: 0;
+        pointer-events: auto;
+      }
       .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 560px) { .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: 1fr; } }
@@ -520,7 +619,7 @@
               <button class="btn subtle" id="undoBtn" type="button" title="Undo last chip">Undo</button>
               <button class="btn warning" id="clearBtn" type="button" title="Clear board">Clear</button>
               <span class="spacer" aria-hidden="true"></span>
-              <button class="btn subtle stats-toggle active" id="statsToggle" type="button" aria-expanded="true" aria-controls="analyticsDock">Hide stats</button>
+              <button class="btn subtle stats-toggle active" id="statsToggle" type="button" aria-expanded="false" aria-controls="analyticsDock">Stats</button>
               <div class="camera-menu-wrap">
                 <button type="button" class="icon-btn compact camera-toggle" id="cameraToggle" aria-haspopup="menu" aria-expanded="false" aria-controls="cameraMenu" aria-label="Choose camera view">
                   <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -538,7 +637,7 @@
             </div>
           </div>
           <div class="roulette-wrap" id="rouletteWrap">
-            <div class="board-shell">
+            <div class="board-shell" id="gameView">
               <div class="purse-stack" aria-label="Your purse">
                 <div class="purse-chip-stacks" id="purseChipStack" aria-hidden="true"></div>
                 <div class="purse-stack-amount" id="scorePurse">$100</div>
@@ -557,9 +656,11 @@
               <div class="board-stage">
                 <div id="board3d" class="board-3d" aria-label="Roulette betting board"></div>
               </div>
-              <p class="board-hint">Click a bet to place chips · Click result to continue · Drag to look · Pinch or scroll to zoom · Space to spin</p>
             </div>
             <div class="analytics-dock" id="analyticsDock">
+            <div class="mobile-stats-nav">
+              <button class="btn subtle" id="mobileBackToGame" type="button">Back to game</button>
+            </div>
             <div class="bottom-dock">
               <div class="scoreboard" aria-label="Live stats scoreboard">
                 <div class="scoreboard-grid">
@@ -786,7 +887,7 @@
     let wheelBallAngle = 0;
     let wheelBallOrbit = 38.2;
     let wheelBallLockOffset = 0;
-    let wheelCoastVel = 3.5;
+    let wheelCoastVel = 2.2;
     let wheelSpinning = false;
     let wheelLandTimer = null;
     let wheelIdleLoop = null;
@@ -812,7 +913,7 @@
       deflectorOrbit: 43.4,
       pocketOrbit: 38.2,
       gravity: 640,
-      idleWheelVel: 3.5
+      idleWheelVel: 2.2
     };
     const Y_AXIS = new THREE.Vector3(0, 1, 0);
     const _lookForward = new THREE.Vector3();
@@ -1034,11 +1135,14 @@
       wheelBallAngle = angleDeg;
       wheelBallOrbit = orbitPct;
       if (wheelBallEl) {
+        // Orbit must be in px of the wheel display: translateY percentages
+        // resolve against the ball's own tiny box, not the wheel
+        const orbitPx = (wheelDisplayEl?.clientWidth || 0) * orbitPct / 100;
         // Fake height in the 2D HUD by scaling the ball up while it is airborne
         const scale = 1 + Math.min(1, bounce / 14) * 0.4;
         wheelBallEl.style.setProperty('--ball-angle', `${angleDeg}deg`);
-        wheelBallEl.style.setProperty('--ball-orbit', `${orbitPct}%`);
-        wheelBallEl.style.transform = `translate(-50%, -50%) rotate(${angleDeg}deg) translateY(calc(-1 * ${orbitPct}%)) scale(${scale.toFixed(3)})`;
+        wheelBallEl.style.setProperty('--ball-orbit', `${orbitPx.toFixed(1)}px`);
+        wheelBallEl.style.transform = `translate(-50%, -50%) rotate(${angleDeg}deg) translateY(${(-orbitPx).toFixed(1)}px) scale(${scale.toFixed(3)})`;
       }
       syncWheelBall3D(angleDeg, orbitPct, bounce);
     }
@@ -1317,7 +1421,7 @@
       if (!p) return;
 
       // The rotor spins the whole time, bleeding speed toward a slow coast
-      p.wheelVel = Math.max(18, p.wheelVel - p.wheelFriction * dt);
+      p.wheelVel = Math.max(9, p.wheelVel - p.wheelFriction * dt);
       wheelRotation += p.wheelVel * dt;
 
       if (p.phase === 'rim') {
@@ -1327,7 +1431,7 @@
         p.ballVel = Math.sign(p.ballVel) * next;
         p.ballAngle += p.ballVel * dt;
         p.orbit = WHEEL_PHYS.rimOrbit;
-        p.height = Math.abs(Math.sin(p.ballAngle * 0.09)) * 1.4;
+        p.height = Math.abs(Math.sin(p.ballAngle * 0.09)) * 0.9;
         if (next < p.dropSpeed) {
           p.phase = 'drop';
           p.orbitVel = 2 + Math.random() * 3;
@@ -1344,7 +1448,7 @@
 
         p.vy -= WHEEL_PHYS.gravity * dt;
         p.height = Math.max(0, p.height + p.vy * dt);
-        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.42;
+        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.32;
 
         if (!p.deflectorChecked && p.orbit <= WHEEL_PHYS.deflectorOrbit) {
           p.deflectorChecked = true;
@@ -1355,7 +1459,7 @@
           if (dist < 8) {
             const dir = Math.random() < 0.15 ? -1 : 1;
             p.ballVel *= (0.25 + Math.random() * 0.3) * dir;
-            p.vy = 150 + Math.random() * 160;
+            p.vy = 110 + Math.random() * 110;
             p.orbit += 0.6 + Math.random() * 1.2;
             p.orbitVel *= 0.3;
           }
@@ -1365,7 +1469,7 @@
           p.orbit = WHEEL_PHYS.pocketOrbit;
           p.phase = 'pockets';
           p.lastFretIdx = null;
-          p.vy = Math.max(p.vy, 70 + Math.random() * 90);
+          p.vy = Math.max(p.vy, 50 + Math.random() * 60);
         }
       } else if (p.phase === 'pockets') {
         // The ball now lives in the rotating pocket ring: what matters is its
@@ -1377,18 +1481,18 @@
 
         p.vy -= WHEEL_PHYS.gravity * dt;
         p.height = Math.max(0, p.height + p.vy * dt);
-        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.42;
+        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.32;
 
         const fretIdx = Math.floor((p.ballAngle - wheelRotation + 90) / WHEEL_PHYS.seg);
         if (p.lastFretIdx === null) p.lastFretIdx = fretIdx;
         if (fretIdx !== p.lastFretIdx) {
           p.lastFretIdx = fretIdx;
           if (p.height < 2.5 && Math.abs(rel) > p.settleSpeed * 1.4) {
-            // Clipped a fret: deep pockets kill most of the energy per hit
-            const rest = 0.24 + Math.random() * 0.2;
+            // Clipped a fret: a heavy ball thuds instead of ricocheting
+            const rest = 0.16 + Math.random() * 0.14;
             const dir = Math.random() < 0.18 ? -1 : 1;
             p.ballVel = p.wheelVel + rel * rest * dir;
-            p.vy = Math.max(p.vy, 60 + Math.random() * 120);
+            p.vy = Math.max(p.vy, 40 + Math.random() * 70);
           }
         }
 
@@ -1399,13 +1503,14 @@
           p.settleT = 0;
         }
       } else if (p.phase === 'settle') {
-        // Ease into the pocket center and ride the rotor
+        // Ease into the pocket center and ride the rotor; a heavy ball
+        // slumps in rather than snapping
         p.settleT += dt;
         p.ballVel = p.wheelVel;
         const target = wheelRotation + p.lockOffset;
-        p.ballAngle += (target - p.ballAngle) * Math.min(1, dt * 16);
-        p.height = Math.max(0, p.height - 30 * dt);
-        if (p.settleT >= 0.3) {
+        p.ballAngle += (target - p.ballAngle) * Math.min(1, dt * 10);
+        p.height = Math.max(0, p.height - 22 * dt);
+        if (p.settleT >= 0.45) {
           applyWheelRotation(wheelRotation);
           applyWheelBall(wheelRotation + p.lockOffset, WHEEL_PHYS.pocketOrbit, 0);
           finishWheelSpin(p);
@@ -1425,8 +1530,9 @@
         stepWheelPhysics(dt);
         return;
       }
-      // Idle: the rotor coasts and the ball rides along, locked in its pocket
-      wheelCoastVel += (WHEEL_PHYS.idleWheelVel - wheelCoastVel) * Math.min(1, dt * 0.4);
+      // Idle: the rotor coasts and the ball rides along, locked in its pocket.
+      // Slow blend toward idle speed keeps the heavy-flywheel feel after a spin
+      wheelCoastVel += (WHEEL_PHYS.idleWheelVel - wheelCoastVel) * Math.min(1, dt * 0.2);
       wheelRotation += wheelCoastVel * dt;
       applyWheelRotation(wheelRotation);
       applyWheelBall(wheelRotation + wheelBallLockOffset, WHEEL_PHYS.pocketOrbit, 0);
@@ -1628,16 +1734,18 @@
       // way around the rim; everything after that is emergent physics
       wheelPhysics = {
         phase: 'rim',
-        wheelVel: rand(120, 200),
-        wheelFriction: rand(9, 14),
+        // Heavy rotor: slower push, much slower spin-down
+        wheelVel: rand(85, 135),
+        wheelFriction: rand(4.5, 7.5),
         ballAngle: wheelBallAngle,
-        ballVel: -rand(520, 760),
-        ballDragK: rand(0.28, 0.4),
-        ballDragC: rand(26, 40),
-        dropSpeed: rand(150, 210),
+        // Heavy ball: gentler launch, more momentum (less drag)
+        ballVel: -rand(430, 590),
+        ballDragK: rand(0.2, 0.28),
+        ballDragC: rand(18, 28),
+        dropSpeed: rand(135, 180),
         orbit: WHEEL_PHYS.rimOrbit,
         orbitVel: 0,
-        orbitAccel: rand(9, 15),
+        orbitAccel: rand(7, 11),
         pocketFriction: rand(460, 620),
         settleSpeed: rand(55, 85),
         deflectorChecked: false,
@@ -2436,8 +2544,42 @@
       }
     }
 
+    function isMobileViewport() {
+      return window.matchMedia('(max-width: 900px)').matches;
+    }
+
     function getDefaultCameraView() {
-      return window.matchMedia('(max-width: 900px)').matches ? 'player' : 'side';
+      return isMobileViewport() ? 'player' : 'side';
+    }
+
+    function scrollToMobileStats() {
+      const dock = document.getElementById('analyticsDock');
+      if (!dock) return;
+      dock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      requestAnimationFrame(() => payoutChart?.resize());
+    }
+
+    function scrollToMobileGame() {
+      const game = document.getElementById('gameView');
+      if (!game) return;
+      game.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      scheduleBoardViewportSync();
+    }
+
+    function syncMobileStatsToggle() {
+      const btn = document.getElementById('statsToggle');
+      const wrap = document.getElementById('rouletteWrap');
+      if (!btn || !wrap) return;
+      if (isMobileViewport()) {
+        btn.textContent = 'Stats';
+        btn.classList.remove('active');
+        btn.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      const open = !wrap.classList.contains('stats-collapsed');
+      btn.classList.toggle('active', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      btn.textContent = open ? 'Hide stats' : 'Stats';
     }
 
     function initCameraRig() {
@@ -2901,36 +3043,123 @@
       return Math.max(1, Number(bankrollInput.value || 100));
     }
 
-    function getPurseCylinderHeights(value) {
-      const v = Math.max(0, Math.round(value));
-      if (v === 0) return [30, 38, 32];
-      const boost = Math.min(Math.log10(v + 1) * 8, 22);
-      return [
-        Math.round(38 + boost * 0.75),
-        Math.round(52 + boost),
-        Math.round(44 + boost * 0.85)
-      ];
+    const PURSE_DENOMS = [100, 25, 5, 1];
+    const PURSE_STACK_MAX = 20;
+    const PURSE_VISIBLE_MAX = 12;
+    const purseChipFaceCache = new Map();
+
+    function getPurseChipFaceUrl(denom) {
+      const key = String(denom);
+      if (purseChipFaceCache.has(key)) return purseChipFaceCache.get(key);
+      const style = getChipStyle(denom);
+      const size = 96;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      drawClassicChipTop(canvas.getContext('2d'), size, style.primary, style.accent, `$${denom}`);
+      const url = canvas.toDataURL('image/png');
+      purseChipFaceCache.set(key, url);
+      return url;
+    }
+
+    function countPurseChips(value) {
+      let remaining = Math.max(0, Math.round(value));
+      const counts = [];
+      for (const denom of PURSE_DENOMS) {
+        const count = Math.floor(remaining / denom);
+        remaining -= count * denom;
+        if (count > 0) counts.push({ denom, count });
+      }
+      return counts;
+    }
+
+    function buildPurseDisplayStacks(counts) {
+      // Casino-style racks of 20; keep at most 4 columns, merging extras by denom.
+      const racks = [];
+      for (const { denom, count } of counts) {
+        let left = count;
+        while (left > 0) {
+          const n = Math.min(left, PURSE_STACK_MAX);
+          racks.push({ denom, count: n });
+          left -= n;
+        }
+      }
+      if (racks.length <= 4) return racks;
+
+      const merged = new Map();
+      for (const { denom, count } of counts) merged.set(denom, count);
+      return PURSE_DENOMS
+        .filter((denom) => merged.has(denom))
+        .map((denom) => ({ denom, count: merged.get(denom) }));
+    }
+
+    function getVisibleChipCount(count) {
+      if (count <= 0) return 0;
+      // Full rack reads as a tall stack; over-rack still caps visually.
+      const capped = Math.min(count, PURSE_STACK_MAX);
+      return Math.min(PURSE_VISIBLE_MAX, capped);
+    }
+
+    function formatPurseBreakdown(counts) {
+      if (!counts.length) return 'empty';
+      return counts.map(({ denom, count }) => `${count} × $${denom}`).join(', ');
     }
 
     function renderPurseStack() {
       if (!purseChipStackEl) return;
       const value = Math.max(0, Math.round(purse));
-      const denoms = [1, 5, value >= 100 ? 100 : 25];
-      const heights = getPurseCylinderHeights(value);
-      purseChipStackEl.innerHTML = heights.map((height, i) => {
-        const style = getChipStyle(denoms[i]);
-        return `<div class="purse-cylinder" style="--chip-primary:${style.primary};--chip-accent:${style.accent};--stack-h:${height}px"></div>`;
+      const counts = countPurseChips(value);
+      const stacks = buildPurseDisplayStacks(counts);
+
+      if (!stacks.length) {
+        const style = getChipStyle(1);
+        purseChipStackEl.innerHTML = `
+          <div class="purse-column" style="--chip-primary:${style.primary};--chip-accent:${style.accent};--chip-face:url('${getPurseChipFaceUrl(1)}');--shown:1">
+            <div class="purse-column-count">0×</div>
+            <div class="purse-stack-stage">
+              <div class="purse-stack-shadow"></div>
+              <div class="purse-stack-body">
+                <div class="purse-disk is-top" style="--i:0"></div>
+              </div>
+            </div>
+            <div class="purse-column-denom">$1</div>
+          </div>`;
+        return;
+      }
+
+      purseChipStackEl.innerHTML = stacks.map(({ denom, count }) => {
+        const style = getChipStyle(denom);
+        const shown = Math.max(1, getVisibleChipCount(count));
+        const face = getPurseChipFaceUrl(denom);
+        const disks = Array.from({ length: shown }, (_, i) => {
+          const isTop = i === shown - 1;
+          return `<div class="purse-disk${isTop ? ' is-top' : ''}" style="--i:${i}"></div>`;
+        }).join('');
+        return `
+          <div class="purse-column" style="--chip-primary:${style.primary};--chip-accent:${style.accent};--chip-face:url('${face}');--shown:${shown}">
+            <div class="purse-column-count">${count}×</div>
+            <div class="purse-stack-stage">
+              <div class="purse-stack-shadow"></div>
+              <div class="purse-stack-body">${disks}</div>
+            </div>
+            <div class="purse-column-denom">$${denom}</div>
+          </div>`;
       }).join('');
     }
 
     function updatePurseDisplay() {
       if (!scorePurseEl) return;
-      scorePurseEl.textContent = purseFmt.format(Math.round(purse));
+      const value = Math.max(0, Math.round(purse));
+      const counts = countPurseChips(value);
+      scorePurseEl.textContent = purseFmt.format(value);
       renderPurseStack();
       if (purseStackEl) {
-        purseStackEl.classList.toggle('empty', purse <= 0);
-        purseStackEl.classList.toggle('low', purse > 0 && purse < startingPurse * 0.25);
-        purseStackEl.setAttribute('aria-label', `Your purse: ${purseFmt.format(Math.round(purse))}`);
+        purseStackEl.classList.toggle('empty', value <= 0);
+        purseStackEl.classList.toggle('low', value > 0 && value < startingPurse * 0.25);
+        purseStackEl.setAttribute(
+          'aria-label',
+          `Your purse: ${purseFmt.format(value)}${counts.length ? ` — ${formatPurseBreakdown(counts)}` : ''}`
+        );
       }
     }
 
@@ -3430,8 +3659,13 @@
     document.getElementById('undoBtn').addEventListener('click', removeChip);
     document.getElementById('clearBtn').addEventListener('click', clearBoard);
     document.getElementById('statsToggle').addEventListener('click', () => {
+      if (isMobileViewport()) {
+        scrollToMobileStats();
+        return;
+      }
       setStatsDockOpen(document.getElementById('rouletteWrap').classList.contains('stats-collapsed'));
     });
+    document.getElementById('mobileBackToGame').addEventListener('click', scrollToMobileGame);
     document.getElementById('cameraToggle').addEventListener('click', (event) => {
       event.stopPropagation();
       const menu = document.getElementById('cameraMenu');
@@ -3452,6 +3686,8 @@
     bankrollInput.addEventListener('input', updateMetrics);
     spinsInput.addEventListener('input', updateMetrics);
 
+    window.addEventListener('resize', syncMobileStatsToggle, { passive: true });
+
     buildTargets();
     initWheelControls();
     initThree();
@@ -3461,6 +3697,7 @@
     renderChips();
     updateMetrics();
     updateControlStates();
+    syncMobileStatsToggle();
   </script>
 </body>
 </html>
