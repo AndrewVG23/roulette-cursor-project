@@ -198,7 +198,7 @@
     .scoreboard-stat .value { font-family: var(--font-display); font-size: clamp(1.85rem, 1.35rem + 1.1vw, 2.75rem); line-height: 1.05; margin-top: var(--space-2); font-variant-numeric: tabular-nums lining-nums; }
     .wheel-area {
       position: absolute;
-      top: clamp(180px, 30vh, 340px);
+      top: clamp(220px, 36vh, 380px);
       right: var(--space-3);
       z-index: 6;
       display: flex;
@@ -206,12 +206,12 @@
       align-items: center;
       gap: var(--space-1);
       padding: 0;
-      width: clamp(216px, 28vw, 272px);
+      width: clamp(108px, 14vw, 136px);
       pointer-events: none;
     }
     .wheel-display {
       position: relative;
-      width: clamp(192px, 24vw, 248px);
+      width: clamp(96px, 12vw, 124px);
       aspect-ratio: 1;
       flex-shrink: 0;
       padding: 0;
@@ -342,19 +342,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 3px;
       width: 40px;
-    }
-    .purse-column-count {
-      font-family: var(--font-display);
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      color: #f3ead8;
-      text-shadow: 0 1px 2px rgba(0,0,0,.85);
-      font-variant-numeric: tabular-nums lining-nums;
-      line-height: 1;
-      min-height: 0.85rem;
     }
     .purse-stack-stage {
       position: relative;
@@ -412,32 +400,18 @@
       background: radial-gradient(ellipse at center, rgba(0,0,0,.46), transparent 74%);
       transform: rotateZ(-16deg) scaleX(1.08);
     }
-    .purse-column-denom {
-      font-family: var(--font-display);
-      font-size: 0.62rem;
-      font-weight: 700;
-      color: color-mix(in srgb, var(--chip-accent) 82%, #fff);
-      text-shadow: 0 1px 2px rgba(0,0,0,.8);
-      font-variant-numeric: tabular-nums lining-nums;
-      line-height: 1;
-      opacity: 0.92;
-    }
     .purse-stack-amount {
-      font-family: var(--font-display);
-      font-size: clamp(1.15rem, 1rem + 0.55vw, 1.55rem);
-      font-weight: 700;
-      color: #efbb49;
-      text-shadow: 0 1px 3px rgba(0,0,0,.88), 0 0 14px rgba(239,187,73,.16);
-      text-align: center;
-      font-variant-numeric: tabular-nums lining-nums;
-      line-height: 1;
-      min-width: 6ch;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
-    .purse-stack.low .purse-stack-amount { color: #ffd2a0; }
     .purse-stack.empty .purse-chip-stacks { opacity: 0.4; filter: saturate(0.55); }
-    .purse-stack.empty .purse-stack-amount { color: #f26e89; }
-    .purse-stack.empty .purse-column-count,
-    .purse-stack.empty .purse-column-denom { opacity: 0.55; }
     .hero-card, .stat, .formula, .progression-box, .chart-card, .table-card, .metrics-details { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
     .stat .label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; }
     .stat .hint { margin-top: var(--space-2); color: var(--color-text-muted); font-size: var(--text-xs); max-width: 28ch; }
@@ -585,11 +559,11 @@
         bottom: max(var(--space-3), env(safe-area-inset-bottom, 0px));
         right: max(var(--space-3), env(safe-area-inset-right, 0px));
         left: auto;
-        width: clamp(184px, 44vw, 224px);
+        width: clamp(92px, 22vw, 112px);
         z-index: 20;
       }
       .wheel-display {
-        width: clamp(168px, 40vw, 208px);
+        width: clamp(84px, 20vw, 104px);
       }
       .bottom-dock { width: 100%; max-width: none; }
       .scoreboard { border-radius: var(--radius-lg); }
@@ -1548,9 +1522,11 @@
       wheelTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
       const wheelAssembly = new THREE.Group();
-      wheelAssembly.position.set(0, 78, -(BOARD_H / 2 + 175));
+      // Doubled scale needs the assembly pushed further back so the plinth
+      // (base radius 160 * 2.9 = ~464 units) clears the far edge of the table
+      wheelAssembly.position.set(0, 88, -(BOARD_H / 2 + 490));
       wheelAssembly.rotation.x = THREE.MathUtils.degToRad(12);
-      wheelAssembly.scale.setScalar(1.45);
+      wheelAssembly.scale.setScalar(2.9);
       parentScene.add(wheelAssembly);
 
       const woodMat = new THREE.MeshStandardMaterial({ color: 0x3a1c12, roughness: 0.9, metalness: 0.04 });
@@ -3056,7 +3032,7 @@
       const canvas = document.createElement('canvas');
       canvas.width = size;
       canvas.height = size;
-      drawClassicChipTop(canvas.getContext('2d'), size, style.primary, style.accent, `$${denom}`);
+      drawClassicChipTop(canvas.getContext('2d'), size, style.primary, style.accent, '');
       const url = canvas.toDataURL('image/png');
       purseChipFaceCache.set(key, url);
       return url;
@@ -3074,9 +3050,9 @@
     }
 
     function buildPurseDisplayStacks(counts) {
-      // Casino-style racks of 20; keep at most 4 columns, merging extras by denom.
+      // Casino-style racks of 20; cheapest → most expensive, left to right.
       const racks = [];
-      for (const { denom, count } of counts) {
+      for (const { denom, count } of [...counts].reverse()) {
         let left = count;
         while (left > 0) {
           const n = Math.min(left, PURSE_STACK_MAX);
@@ -3088,7 +3064,8 @@
 
       const merged = new Map();
       for (const { denom, count } of counts) merged.set(denom, count);
-      return PURSE_DENOMS
+      return [...PURSE_DENOMS]
+        .reverse()
         .filter((denom) => merged.has(denom))
         .map((denom) => ({ denom, count: merged.get(denom) }));
     }
@@ -3115,14 +3092,12 @@
         const style = getChipStyle(1);
         purseChipStackEl.innerHTML = `
           <div class="purse-column" style="--chip-primary:${style.primary};--chip-accent:${style.accent};--chip-face:url('${getPurseChipFaceUrl(1)}');--shown:1">
-            <div class="purse-column-count">0×</div>
             <div class="purse-stack-stage">
               <div class="purse-stack-shadow"></div>
               <div class="purse-stack-body">
                 <div class="purse-disk is-top" style="--i:0"></div>
               </div>
             </div>
-            <div class="purse-column-denom">$1</div>
           </div>`;
         return;
       }
@@ -3137,12 +3112,10 @@
         }).join('');
         return `
           <div class="purse-column" style="--chip-primary:${style.primary};--chip-accent:${style.accent};--chip-face:url('${face}');--shown:${shown}">
-            <div class="purse-column-count">${count}×</div>
             <div class="purse-stack-stage">
               <div class="purse-stack-shadow"></div>
               <div class="purse-stack-body">${disks}</div>
             </div>
-            <div class="purse-column-denom">$${denom}</div>
           </div>`;
       }).join('');
     }
