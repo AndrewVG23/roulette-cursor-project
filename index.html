@@ -492,10 +492,83 @@
       .board-shell { min-height: 70vh; }
     }
     @media (max-width: 900px) {
+      body { overflow: hidden; height: 100dvh; }
+      .app { height: 100dvh; overflow: hidden; }
+      .panel-inner.board-panel {
+        position: relative;
+        display: grid;
+        grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+        padding: var(--space-2);
+        gap: 0;
+      }
+      .panel-inner.board-panel > .controls {
+        grid-area: 1 / 1;
+        align-self: start;
+        justify-self: stretch;
+        z-index: 12;
+        margin: var(--space-2);
+        padding: var(--space-1) var(--space-2);
+        pointer-events: none;
+        background: linear-gradient(180deg, rgba(20,53,40,.94), rgba(12,26,21,.96));
+        border-radius: var(--radius-md);
+        box-shadow: 0 8px 24px rgba(0,0,0,.34);
+      }
+      .panel-inner.board-panel > .controls .control-row,
+      .panel-inner.board-panel > .controls .btn,
+      .panel-inner.board-panel > .controls .icon-btn,
+      .panel-inner.board-panel > .controls .camera-menu-wrap {
+        pointer-events: auto;
+      }
+      .panel-inner.board-panel > .roulette-wrap {
+        grid-area: 1 / 1;
+        min-height: 0;
+      }
+      .controls .control-row {
+        flex-wrap: nowrap;
+        gap: var(--space-1);
+      }
+      .controls .btn,
+      .controls .icon-btn {
+        min-height: 44px;
+        min-width: 0;
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--text-xs);
+      }
+      .controls .icon-btn.compact,
+      .controls .camera-toggle {
+        width: 44px;
+        min-width: 44px;
+      }
+      .controls .metrics-toggle,
+      .controls .stats-toggle { display: none; }
+      .roulette-wrap .analytics-dock { display: none; }
+      .board-shell {
+        min-height: calc(100dvh - var(--space-4));
+        border-radius: var(--radius-lg);
+      }
+      .purse-stack {
+        top: calc(var(--space-2) + 56px);
+        right: var(--space-2);
+        width: clamp(108px, 28vw, 148px);
+      }
+      .wheel-area {
+        position: fixed;
+        top: auto;
+        bottom: max(var(--space-3), env(safe-area-inset-bottom, 0px));
+        right: max(var(--space-3), env(safe-area-inset-right, 0px));
+        left: auto;
+        width: clamp(92px, 22vw, 112px);
+        z-index: 20;
+      }
+      .wheel-display {
+        width: clamp(84px, 20vw, 104px);
+      }
+      .board-hint {
+        padding-right: clamp(96px, 24vw, 120px);
+      }
       .bottom-dock { width: 100%; max-width: none; }
       .chart-dock { position: relative; width: 100%; min-width: 0; height: 260px; margin-top: var(--space-2); }
       .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .controls .metrics-toggle { display: none; }
     }
     @media (max-width: 560px) { .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: 1fr; } }
   </style>
@@ -743,6 +816,7 @@
     let settlementState = null;
     let settlementWinKeys = new Set();
     let settlementOutcome = null;
+    let settlementChartProfits = null;
     let settling = false;
     let awaitingAdvance = false;
     let lastSpinNet = 0;
@@ -2492,7 +2566,7 @@
       if (pinchZoom.startDist <= 0) return false;
       const ratio = dist / pinchZoom.startDist;
       cameraRig.targetFov = THREE.MathUtils.clamp(
-        pinchZoom.startFov * ratio,
+        pinchZoom.startFov / ratio,
         CAMERA_LIMITS.minFov,
         CAMERA_LIMITS.maxFov
       );
@@ -3042,6 +3116,7 @@
       settlementState = null;
       settlementWinKeys = new Set();
       settlementOutcome = null;
+      settlementChartProfits = null;
       settling = false;
       awaitingAdvance = false;
       clearSettlementHighlights3D();
@@ -3104,13 +3179,14 @@
         else loseKeys.add(key);
       });
       settlementWinKeys = winKeys;
+      settlementChartProfits = calcMetrics().profits;
       let lostTotal = 0;
       loseKeys.forEach((key) => { lostTotal += placements.get(key) || 0; });
       lastSpinNet = computeSettlementWinnings() - lostTotal;
       drawBoard();
       buildSettlementHighlights3D(winKeys, outcome);
       applyChartSettlementHighlight(outcome);
-      renderOutcomeTable(calcMetrics().profits, outcome);
+      renderOutcomeTable(settlementChartProfits, outcome);
 
       if (!placements.size) {
         awaitingAdvance = true;
@@ -3414,11 +3490,12 @@
       ];
       statsEl.innerHTML = stats.map(([label, value, hint]) => `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div><div class="hint">${hint}</div></div>`).join('');
       progressionBox.innerHTML = `<strong>Custom layout view</strong><br>The 3D table uses the courtesy line between 0 and 00 as the green bet, while the detailed chart and table show the exact dollar payout for every possible wheel outcome. [web:15][web:16]`;
+      const chartProfits = settlementChartProfits ?? m.profits;
       payoutChart.data.labels = outcomes.map(String);
-      payoutChart.data.datasets[0].data = m.profits;
+      payoutChart.data.datasets[0].data = chartProfits;
       if (settlementOutcome !== null) applyChartSettlementHighlight(settlementOutcome);
       else payoutChart.update();
-      renderOutcomeTable(m.profits, settlementOutcome);
+      renderOutcomeTable(chartProfits, settlementOutcome);
     }
 
     function addChip(key, amount = 1, track = true) {
