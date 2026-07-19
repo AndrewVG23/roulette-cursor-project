@@ -1425,7 +1425,7 @@
 
         p.vy -= WHEEL_PHYS.gravity * dt;
         p.height = Math.max(0, p.height + p.vy * dt);
-        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * (0.35 + Math.random() * 0.3);
+        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * (0.26 + Math.random() * 0.2);
 
         if (!p.deflectorChecked && p.orbit <= WHEEL_PHYS.deflectorOrbit) {
           p.deflectorChecked = true;
@@ -1436,7 +1436,7 @@
           if (dist < 8) {
             const dir = Math.random() < 0.15 ? -1 : 1;
             p.ballVel *= (0.25 + Math.random() * 0.3) * dir;
-            p.vy = 280 + Math.random() * 240;
+            p.vy = 220 + Math.random() * 180;
             p.orbit += 0.6 + Math.random() * 1.2;
             p.orbitVel *= 0.3;
           }
@@ -1446,7 +1446,7 @@
           p.orbit = WHEEL_PHYS.pocketOrbit;
           p.phase = 'pockets';
           p.lastFretIdx = null;
-          p.vy = Math.max(p.vy, 160 + Math.random() * 160);
+          p.vy = Math.max(p.vy, 130 + Math.random() * 120);
         }
       } else if (p.phase === 'pockets') {
         // The ball now lives in the rotating pocket ring: what matters is its
@@ -1464,9 +1464,10 @@
         // hops look alike
         if (p.height === 0 && p.vy < 0) {
           const spent = Math.abs(rel) < p.settleSpeed;
-          p.vy = -p.vy * (spent ? 0.2 : 0.26 + Math.random() * 0.34);
+          // Heavy ball: it can pop, but the floor eats most of each landing
+          p.vy = -p.vy * (spent ? 0.16 : 0.2 + Math.random() * 0.22);
           if (!spent && p.vy > 25) {
-            rel += (Math.random() - 0.5) * 110;
+            rel += (Math.random() - 0.5) * 70;
             p.ballVel = p.wheelVel + rel;
           }
         }
@@ -1476,12 +1477,12 @@
         if (fretIdx !== p.lastFretIdx) {
           p.lastFretIdx = fretIdx;
           if (p.height < 2.5 && Math.abs(rel) > p.settleSpeed * 1.4) {
-            // Clipped a fret: big theatrical hop with a wide range of
-            // outcomes, including the occasional kick backwards
-            const rest = 0.2 + Math.random() * 0.38;
+            // Clipped a fret: it still pops, but the mass soaks up most of
+            // the rolling energy on every hit
+            const rest = 0.16 + Math.random() * 0.24;
             const dir = Math.random() < 0.25 ? -1 : 1;
             p.ballVel = p.wheelVel + rel * rest * dir;
-            p.vy = Math.max(p.vy, 110 + Math.random() * 210);
+            p.vy = Math.max(p.vy, 100 + Math.random() * 160);
           }
         }
 
@@ -1730,15 +1731,15 @@
         wheelVel: rand(85, 135),
         wheelFriction: rand(4.5, 7.5),
         ballAngle: wheelBallAngle,
-        // Heavy ball: easy launch, more momentum (less drag)
-        ballVel: -rand(310, 430),
-        ballDragK: rand(0.14, 0.2),
-        ballDragC: rand(14, 22),
-        dropSpeed: rand(115, 150),
+        // Heavy ball: lazy launch, firmer drag so the run stays short
+        ballVel: -rand(240, 330),
+        ballDragK: rand(0.18, 0.26),
+        ballDragC: rand(18, 26),
+        dropSpeed: rand(110, 140),
         orbit: WHEEL_PHYS.rimOrbit,
         orbitVel: 0,
         orbitAccel: rand(7, 11),
-        pocketFriction: rand(520, 700),
+        pocketFriction: rand(620, 800),
         settleSpeed: rand(70, 100),
         deflectorChecked: false,
         lastFretIdx: null,
