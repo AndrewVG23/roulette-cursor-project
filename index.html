@@ -837,12 +837,19 @@
   {
     "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "mediabunny": "https://cdn.jsdelivr.net/npm/mediabunny@1.50.9/+esm"
     }
   }
   </script>
   <script type="module">
     import * as THREE from 'three';
+    import {
+      Output,
+      Mp4OutputFormat,
+      BufferTarget,
+      CanvasSource
+    } from 'mediabunny';
 
     const BOARD_W = 680;
     const BOARD_H = 1360;
@@ -936,7 +943,8 @@
     let replayPlaybackToken = 0;
     let recordingInProgress = false;
     let recordingReplay = false;
-    let liveCapture = null; // active MediaRecorder session for the live spin
+    let liveCapture = null; // active MP4 capture session for the live spin
+    let liveCaptureStarting = false;
     const CHIP_DENOMS = [1, 5, 25, 100];
     let selectedChipDenom = 1;
     let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelBall3D, wheelPhysics = null, wheelLastAnimTime = 0;
@@ -1879,7 +1887,7 @@
       drawWheelFace();
       if (!replayMode) {
         lastReplayVideo = null;
-        beginLiveReplayCapture();
+        void beginLiveReplayCapture();
       }
       updateShareButtons();
 
@@ -2921,7 +2929,9 @@
       renderer = new THREE.WebGLRenderer({
         antialias: true,
         alpha: false,
-        powerPreference: 'high-performance'
+        powerPreference: 'high-performance',
+        // Needed so MP4 frame grabs can read the WebGL canvas after render.
+        preserveDrawingBuffer: true
       });
       renderer.setClearColor(0x0a1210, 1);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -3017,6 +3027,7 @@
       updateSettlementAnimation(frameTime);
       if (viewButtonsDirty) syncViewButtons();
       renderer.render(scene, camera);
+      liveCapture?.tick?.();
     }
 
     function setPointerFromEvent(event) {
@@ -3408,7 +3419,8 @@
         && !wheelSpinning
         && !settling
         && !recordingInProgress
-        && !liveCapture;
+        && !liveCapture
+        && !liveCaptureStarting;
       if (shareReplayBtn) {
         shareReplayBtn.disabled = !canShare || (replayMode && !recordingReplay);
         if (!shareReplayBtn.classList.contains('is-shared')) {
@@ -3518,25 +3530,6 @@
       });
     }
 
-    function pickRecorderMimeType() {
-      // Prefer faster encoders first — VP9/high-bit-rate MP4 can hitch the main thread.
-      const types = [
-        'video/webm;codecs=vp8',
-        'video/webm',
-        'video/mp4',
-        'video/webm;codecs=vp9'
-      ];
-      for (const type of types) {
-        if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) return type;
-      }
-      return '';
-    }
-
-    function extensionForMime(mimeType) {
-      if (mimeType.includes('mp4')) return 'mp4';
-      return 'webm';
-    }
-
     function cycleCacheKey(cycle) {
       return JSON.stringify({
         p: cycle?.p || [],
@@ -3553,69 +3546,102 @@
 
     function setCachedReplayVideo(cycle, blob) {
       if (!cycle || !blob || blob.size < 32) return;
+      // Only cache real MP4 — never keep a WebM stand-in around.
+      if (!(blob.type || '').includes('mp4')) return;
       lastReplayVideo = {
         key: cycleCacheKey(cycle),
         blob,
-        mimeType: blob.type || 'video/webm'
+        mimeType: 'video/mp4'
       };
     }
 
     function canCaptureReplayVideo() {
-      return !!(
-        renderer?.domElement
-        && typeof renderer.domElement.captureStream === 'function'
-        && window.MediaRecorder
-      );
+      return !!(renderer?.domElement && typeof VideoEncoder !== 'undefined');
     }
 
-    function createReplayRecorderSession() {
+    async function createMp4RecorderSession() {
       if (!canCaptureReplayVideo()) return null;
-      const mimeType = pickRecorderMimeType();
-      // Capture the WebGL canvas directly — no per-frame CPU compositing.
-      const stream = renderer.domElement.captureStream(60);
-      const chunks = [];
-      const recorderOpts = { videoBitsPerSecond: 6_000_000 };
-      if (mimeType) recorderOpts.mimeType = mimeType;
-      let recorder;
-      try {
-        recorder = new MediaRecorder(stream, recorderOpts);
-      } catch {
-        recorder = new MediaRecorder(stream);
-      }
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) chunks.push(event.data);
-      };
-      const stopped = new Promise((resolve, reject) => {
-        recorder.onerror = () => reject(new Error('Recording failed'));
-        recorder.onstop = () => {
-          const type = recorder.mimeType || mimeType || 'video/webm';
-          resolve(new Blob(chunks, { type }));
-        };
+      const canvas = renderer.domElement;
+      if ((canvas.width || 0) < 2 || (canvas.height || 0) < 2) return null;
+
+      const output = new Output({
+        format: new Mp4OutputFormat({ fastStart: 'in-memory' }),
+        target: new BufferTarget()
       });
-      return { recorder, stream, stopped, mimeType };
+      const videoSource = new CanvasSource(canvas, {
+        codec: 'avc',
+        bitrate: 6_000_000
+      });
+      output.addVideoTrack(videoSource, { frameRate: 60 });
+      await output.start();
+
+      const frameDuration = 1 / 60;
+      let framesAdded = 0;
+      let running = true;
+      let encoding = false;
+      let pumpError = null;
+      let idleWaiters = [];
+
+      const notifyIdle = () => {
+        const waiters = idleWaiters;
+        idleWaiters = [];
+        waiters.forEach((resolve) => resolve());
+      };
+
+      return {
+        // Called from the render loop immediately after renderer.render().
+        tick() {
+          if (!running || encoding || pumpError) return;
+          encoding = true;
+          const timestamp = framesAdded * frameDuration;
+          videoSource.add(timestamp, frameDuration).then(() => {
+            framesAdded += 1;
+            encoding = false;
+            notifyIdle();
+          }).catch((err) => {
+            encoding = false;
+            if (running) pumpError = err;
+            notifyIdle();
+          });
+        },
+        async stop() {
+          running = false;
+          if (encoding) {
+            await new Promise((resolve) => { idleWaiters.push(resolve); });
+          }
+          if (pumpError) throw pumpError;
+          if (framesAdded < 2) throw new Error('Recording was too short');
+          await output.finalize();
+          const buffer = output.target.buffer;
+          if (!buffer || buffer.byteLength < 32) throw new Error('MP4 encoding failed');
+          return new Blob([buffer], { type: 'video/mp4' });
+        },
+        abort() {
+          running = false;
+          try { output.cancel?.(); } catch { /* ignore */ }
+          notifyIdle();
+        }
+      };
     }
 
-    function teardownReplayRecorderSession(session) {
-      if (!session) return;
+    async function beginLiveReplayCapture() {
+      if (replayMode || liveCapture || liveCaptureStarting || !canCaptureReplayVideo()) return;
+      liveCaptureStarting = true;
+      updateShareButtons();
       try {
-        if (session.recorder.state !== 'inactive') session.recorder.stop();
-      } catch { /* ignore */ }
-      session.stream?.getTracks?.().forEach((track) => track.stop());
-    }
-
-    function beginLiveReplayCapture() {
-      if (replayMode || liveCapture || !canCaptureReplayVideo()) return;
-      const session = createReplayRecorderSession();
-      if (!session) return;
-      liveCapture = session;
-      try {
-        session.recorder.start(100);
+        const session = await createMp4RecorderSession();
+        if (!session || replayMode) {
+          session?.abort?.();
+          return;
+        }
+        liveCapture = session;
       } catch (err) {
         console.error(err);
-        teardownReplayRecorderSession(session);
         liveCapture = null;
+      } finally {
+        liveCaptureStarting = false;
+        updateShareButtons();
       }
-      updateShareButtons();
     }
 
     async function finalizeLiveReplayCapture() {
@@ -3623,15 +3649,12 @@
       if (!session || replayMode) return;
       const cycle = lastReplayCycle;
       try {
-        // Short tail so the settled board is in the last frames — no overlay compositing.
         await delay(450);
-        if (session.recorder.state !== 'inactive') session.recorder.stop();
-        const blob = await session.stopped;
-        session.stream.getTracks().forEach((track) => track.stop());
+        const blob = await session.stop();
         if (cycle) setCachedReplayVideo(cycle, blob);
       } catch (err) {
         console.error(err);
-        teardownReplayRecorderSession(session);
+        session.abort?.();
       } finally {
         if (liveCapture === session) liveCapture = null;
         updateShareButtons();
@@ -3640,8 +3663,9 @@
 
     function abortLiveReplayCapture() {
       if (!liveCapture) return;
-      teardownReplayRecorderSession(liveCapture);
+      liveCapture.abort?.();
       liveCapture = null;
+      liveCaptureStarting = false;
       updateShareButtons();
     }
 
@@ -3719,21 +3743,18 @@
 
     async function recordReplayVideo(cycle) {
       abortLiveReplayCapture();
-      const session = createReplayRecorderSession();
-      if (!session) throw new Error('Video recording is not supported in this browser');
+      const session = await createMp4RecorderSession();
+      if (!session) throw new Error('MP4 recording is not supported in this browser');
 
       try {
-        session.recorder.start(100);
         const played = await playReplay(cycle, { forRecording: true });
         if (!played) throw new Error('Replay was interrupted');
         await delay(450);
-        if (session.recorder.state !== 'inactive') session.recorder.stop();
-        const blob = await session.stopped;
-        session.stream.getTracks().forEach((track) => track.stop());
+        const blob = await session.stop();
         setCachedReplayVideo(cycle, blob);
         return blob;
       } catch (err) {
-        teardownReplayRecorderSession(session);
+        session.abort?.();
         throw err;
       }
     }
@@ -3766,8 +3787,8 @@
       if (cached) return cached;
 
       // Live capture may still be wrapping up the short settle tail.
-      if (liveCapture) {
-        await waitUntil(() => !liveCapture, 20000);
+      if (liveCapture || liveCaptureStarting) {
+        await waitUntil(() => !liveCapture && !liveCaptureStarting, 20000);
         const ready = getCachedReplayVideo(cycle);
         if (ready) return ready;
       }
@@ -3798,10 +3819,10 @@
       try {
         const blob = await ensureReplayVideoBlob(cycle);
         if (!blob || blob.size < 32) throw new Error('Recording produced an empty video');
-        const ext = extensionForMime(blob.type || lastReplayVideo?.mimeType || 'video/webm');
-        const file = new File([blob], `roulette-replay-${cycle.o}.${ext}`, {
-          type: blob.type || lastReplayVideo?.mimeType || 'video/webm'
-        });
+        if (!(blob.type || '').includes('mp4')) {
+          throw new Error('Share requires an MP4 recording');
+        }
+        const file = new File([blob], `roulette-replay-${cycle.o}.mp4`, { type: 'video/mp4' });
         shareResult = await shareOrDownloadVideo(file, cycle);
       } catch (err) {
         console.error(err);
