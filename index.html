@@ -3156,22 +3156,42 @@
       return Math.min(PURSE_VISIBLE_MAX, capped);
     }
 
-    function normalizeSelectedChipDenom() {
-      if (purse >= selectedChipDenom) return;
-      const affordable = CHIP_DENOMS.filter((denom) => denom <= purse);
-      selectedChipDenom = affordable.length ? affordable[affordable.length - 1] : CHIP_DENOMS[0];
+    function getAffordableChipDenoms() {
+      return CHIP_DENOMS.filter((denom) => purse >= denom);
     }
 
-    function cycleSelectedChipDenom() {
-      const startIdx = CHIP_DENOMS.indexOf(selectedChipDenom);
-      for (let step = 1; step <= CHIP_DENOMS.length; step++) {
-        const next = CHIP_DENOMS[(startIdx + step) % CHIP_DENOMS.length];
-        if (purse >= next) {
-          selectedChipDenom = next;
-          updatePurseDisplay();
-          return;
-        }
+    function clampSelectedChipDenom() {
+      const affordable = getAffordableChipDenoms();
+      if (!affordable.length) {
+        selectedChipDenom = CHIP_DENOMS[0];
+        return;
       }
+      if (affordable.includes(selectedChipDenom)) return;
+      selectedChipDenom = affordable[affordable.length - 1];
+    }
+
+    let lastPurseCycleAt = 0;
+
+    function cycleSelectedChipDenom(event) {
+      event?.preventDefault?.();
+      event?.stopPropagation?.();
+      const now = performance.now();
+      if (now - lastPurseCycleAt < 450) return;
+      lastPurseCycleAt = now;
+
+      const affordable = getAffordableChipDenoms();
+      if (!affordable.length) return;
+
+      const idx = affordable.indexOf(selectedChipDenom);
+      const nextIdx = idx < 0 ? 0 : (idx + 1) % affordable.length;
+      selectedChipDenom = affordable[nextIdx];
+      refreshPurseSelection();
+    }
+
+    function refreshPurseSelection() {
+      if (purseSelectedDenomEl) purseSelectedDenomEl.textContent = `$${selectedChipDenom} chip`;
+      if (purseStackEl) purseStackEl.dataset.selectedDenom = String(selectedChipDenom);
+      renderPurseStack();
     }
 
     function formatPurseBreakdown(counts) {
@@ -3186,9 +3206,9 @@
       const stacks = buildPurseDisplayStacks(counts);
 
       if (!stacks.length) {
-        const style = getChipStyle(1);
+        const style = getChipStyle(selectedChipDenom);
         purseChipStackEl.innerHTML = `
-          <div class="purse-column" style="--chip-primary:${style.primary};--chip-accent:${style.accent};--chip-face:url('${getPurseChipFaceUrl(1)}');--shown:1">
+          <div class="purse-column is-selected" style="--chip-primary:${style.primary};--chip-accent:${style.accent};--chip-face:url('${getPurseChipFaceUrl(selectedChipDenom)}');--shown:1">
             <div class="purse-stack-stage">
               <div class="purse-stack-shadow"></div>
               <div class="purse-stack-body">
@@ -3221,14 +3241,11 @@
       if (!scorePurseEl) return;
       const value = Math.max(0, Math.round(purse));
       const counts = countPurseChips(value);
-      normalizeSelectedChipDenom();
       scorePurseEl.textContent = purseFmt.format(value);
-      if (purseSelectedDenomEl) purseSelectedDenomEl.textContent = `$${selectedChipDenom} chip`;
-      renderPurseStack();
+      refreshPurseSelection();
       if (purseStackEl) {
         purseStackEl.classList.toggle('empty', value <= 0);
         purseStackEl.classList.toggle('low', value > 0 && value < startingPurse * 0.25);
-        purseStackEl.dataset.selectedDenom = String(selectedChipDenom);
         purseStackEl.setAttribute(
           'aria-label',
           `Your purse: ${purseFmt.format(value)}${counts.length ? ` — ${formatPurseBreakdown(counts)}` : ''}. Tap to change chip size. Currently placing $${selectedChipDenom} chips.`
@@ -3316,6 +3333,7 @@
       if (!awaitingAdvance) return;
       hidePayoutOverlay();
       purse += computeAdvanceTotal();
+      clampSelectedChipDenom();
       placements.clear();
       history.length = 0;
       updatePurseDisplay();
@@ -3688,6 +3706,7 @@
       purse -= amount;
       placements.set(key, (placements.get(key) || 0) + amount);
       if (track) history.push({ key, amount });
+      clampSelectedChipDenom();
       updatePurseDisplay();
       renderChips();
       updateMetrics();
@@ -3701,6 +3720,7 @@
       if (next <= 0) placements.delete(last.key);
       else placements.set(last.key, next);
       purse += last.amount;
+      clampSelectedChipDenom();
       updatePurseDisplay();
       renderChips();
       updateMetrics();
@@ -3718,6 +3738,7 @@
       clearSettlementVisuals();
       placements.clear();
       history.length = 0;
+      clampSelectedChipDenom();
       updatePurseDisplay();
       renderChips();
       updateMetrics();
@@ -3740,7 +3761,14 @@
 
     document.getElementById('undoBtn').addEventListener('click', removeChip);
     document.getElementById('clearBtn').addEventListener('click', clearBoard);
-    purseStackEl?.addEventListener('click', cycleSelectedChipDenom);
+    purseStackEl?.addEventListener('pointerdown', (event) => {
+      event.stopPropagation();
+    });
+    purseStackEl?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      cycleSelectedChipDenom(event);
+    });
     document.getElementById('statsToggle').addEventListener('click', () => {
       if (isMobileViewport()) {
         scrollToMobileStats();
