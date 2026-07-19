@@ -321,19 +321,20 @@
       z-index: 6;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      width: clamp(148px, 18vw, 196px);
+      align-items: flex-end;
+      gap: 6px;
+      width: auto;
+      max-width: calc(100% - var(--space-3) * 2);
       pointer-events: none;
       filter: drop-shadow(0 14px 22px rgba(0,0,0,.52));
     }
     .purse-chip-stacks {
       display: flex;
       align-items: flex-end;
-      justify-content: center;
+      justify-content: flex-end;
       gap: 7px;
-      min-height: 108px;
-      padding: 0 2px 2px;
+      min-height: 0;
+      padding: 0;
     }
     .purse-column {
       --chip-primary: #244f8f;
@@ -401,17 +402,18 @@
       transform: rotateZ(-16deg) scaleX(1.08);
     }
     .purse-stack-amount {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
+      font-family: var(--font-display);
+      font-size: clamp(1.15rem, 1rem + 0.55vw, 1.55rem);
+      font-weight: 700;
+      color: #efbb49;
+      text-shadow: 0 1px 3px rgba(0,0,0,.88), 0 0 14px rgba(239,187,73,.16);
+      text-align: right;
+      font-variant-numeric: tabular-nums lining-nums;
+      line-height: 1;
     }
+    .purse-stack.low .purse-stack-amount { color: #ffd2a0; }
     .purse-stack.empty .purse-chip-stacks { opacity: 0.4; filter: saturate(0.55); }
+    .purse-stack.empty .purse-stack-amount { color: #f26e89; }
     .hero-card, .stat, .formula, .progression-box, .chart-card, .table-card, .metrics-details { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
     .stat .label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; }
     .stat .hint { margin-top: var(--space-2); color: var(--color-text-muted); font-size: var(--text-xs); max-width: 28ch; }
@@ -551,7 +553,8 @@
       .purse-stack {
         top: calc(52px + var(--space-2));
         right: var(--space-2);
-        width: clamp(148px, 40vw, 196px);
+        width: auto;
+        max-width: calc(100% - var(--space-2) * 2);
       }
       .wheel-area {
         position: fixed;
@@ -1092,7 +1095,7 @@
       const span = THREE.MathUtils.clamp(
         (orbitPct - WHEEL_PHYS.pocketOrbit) / (WHEEL_PHYS.rimOrbit - WHEEL_PHYS.pocketOrbit), 0, 1);
       if (bounce > 0.01) {
-        trackR += Math.sin(angleDeg * 0.17) * bounce * 0.22;
+        trackR += Math.sin(angleDeg * 0.17) * bounce * 0.3;
       }
       // Sink the ball a little when it is down in a pocket so it reads as
       // resting inside the bucket rather than floating on the face
@@ -1405,7 +1408,7 @@
         p.ballVel = Math.sign(p.ballVel) * next;
         p.ballAngle += p.ballVel * dt;
         p.orbit = WHEEL_PHYS.rimOrbit;
-        p.height = Math.abs(Math.sin(p.ballAngle * 0.09)) * 0.9;
+        p.height = Math.abs(Math.sin(p.ballAngle * 0.09)) * 1.8;
         if (next < p.dropSpeed) {
           p.phase = 'drop';
           p.orbitVel = 2 + Math.random() * 3;
@@ -1422,7 +1425,7 @@
 
         p.vy -= WHEEL_PHYS.gravity * dt;
         p.height = Math.max(0, p.height + p.vy * dt);
-        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.32;
+        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.5;
 
         if (!p.deflectorChecked && p.orbit <= WHEEL_PHYS.deflectorOrbit) {
           p.deflectorChecked = true;
@@ -1433,7 +1436,7 @@
           if (dist < 8) {
             const dir = Math.random() < 0.15 ? -1 : 1;
             p.ballVel *= (0.25 + Math.random() * 0.3) * dir;
-            p.vy = 110 + Math.random() * 110;
+            p.vy = 190 + Math.random() * 180;
             p.orbit += 0.6 + Math.random() * 1.2;
             p.orbitVel *= 0.3;
           }
@@ -1443,7 +1446,7 @@
           p.orbit = WHEEL_PHYS.pocketOrbit;
           p.phase = 'pockets';
           p.lastFretIdx = null;
-          p.vy = Math.max(p.vy, 50 + Math.random() * 60);
+          p.vy = Math.max(p.vy, 100 + Math.random() * 110);
         }
       } else if (p.phase === 'pockets') {
         // The ball now lives in the rotating pocket ring: what matters is its
@@ -1455,18 +1458,18 @@
 
         p.vy -= WHEEL_PHYS.gravity * dt;
         p.height = Math.max(0, p.height + p.vy * dt);
-        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.32;
+        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.5;
 
         const fretIdx = Math.floor((p.ballAngle - wheelRotation + 90) / WHEEL_PHYS.seg);
         if (p.lastFretIdx === null) p.lastFretIdx = fretIdx;
         if (fretIdx !== p.lastFretIdx) {
           p.lastFretIdx = fretIdx;
           if (p.height < 2.5 && Math.abs(rel) > p.settleSpeed * 1.4) {
-            // Clipped a fret: a heavy ball thuds instead of ricocheting
-            const rest = 0.16 + Math.random() * 0.14;
+            // Clipped a fret: lively hop, but momentum still bleeds each hit
+            const rest = 0.3 + Math.random() * 0.22;
             const dir = Math.random() < 0.18 ? -1 : 1;
             p.ballVel = p.wheelVel + rel * rest * dir;
-            p.vy = Math.max(p.vy, 40 + Math.random() * 70);
+            p.vy = Math.max(p.vy, 90 + Math.random() * 130);
           }
         }
 
@@ -1722,7 +1725,7 @@
         orbit: WHEEL_PHYS.rimOrbit,
         orbitVel: 0,
         orbitAccel: rand(7, 11),
-        pocketFriction: rand(460, 620),
+        pocketFriction: rand(380, 520),
         settleSpeed: rand(55, 85),
         deflectorChecked: false,
         lastFretIdx: null,
