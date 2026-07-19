@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Roulette</title>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -31,8 +31,33 @@
       --color-success: #7fe29a; --color-warning: #f0a46a; --color-error: #ff7c97;
     }
     * { box-sizing: border-box; }
+    html {
+      height: 100%;
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
     html, body { height: 100%; }
-    body { margin: 0; min-height: 100dvh; height: 100dvh; overflow: hidden; font-family: var(--font-body); color: var(--color-text); background: radial-gradient(circle at top, rgba(208,162,58,.08), transparent 26%), linear-gradient(180deg, #0d1512, #07100d 60%); }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: var(--font-body);
+      color: var(--color-text);
+      background: radial-gradient(circle at top, rgba(208,162,58,.08), transparent 26%), linear-gradient(180deg, #0d1512, #07100d 60%);
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+    input, textarea, select {
+      user-select: text;
+      -webkit-user-select: text;
+      touch-action: auto;
+    }
+    button, .btn, .icon-btn {
+      -webkit-tap-highlight-color: transparent;
+    }
     button, input { font: inherit; }
     button { cursor: pointer; }
     .app { max-width: none; height: 100dvh; margin: 0; padding: var(--space-2); display: flex; flex-direction: column; min-height: 0; }
@@ -316,15 +341,15 @@
     .board-3d canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 18px; outline: none; }
     .purse-stack {
       position: absolute;
-      top: var(--space-3);
-      right: var(--space-3);
+      top: 0;
+      right: 0;
       z-index: 6;
       display: flex;
       flex-direction: column;
       align-items: flex-end;
       gap: 6px;
       width: auto;
-      max-width: calc(100% - var(--space-3) * 2);
+      max-width: 100%;
       pointer-events: auto;
       cursor: pointer;
       border: none;
@@ -482,8 +507,8 @@
       .board-shell { min-height: 70vh; }
     }
     @media (max-width: 900px) {
-      body { overflow: auto; height: auto; min-height: 100dvh; }
-      .app { height: auto; min-height: 100dvh; overflow: visible; padding: 0; }
+      body { overflow: auto; height: auto; min-height: 100dvh; touch-action: manipulation; }
+      .app { height: auto; min-height: 100dvh; overflow: visible; padding: 0; touch-action: manipulation; }
       .layout { gap: 0; min-height: 0; }
       .panel {
         border: none;
@@ -575,12 +600,6 @@
       }
       .board-hint {
         padding-right: clamp(96px, 24vw, 120px);
-      }
-      .purse-stack {
-        top: calc(52px + var(--space-2));
-        right: var(--space-2);
-        width: auto;
-        max-width: calc(100% - var(--space-2) * 2);
       }
       .wheel-area {
         position: fixed;
@@ -3687,10 +3706,19 @@
       updateMetrics();
     }
     function clearBoard() {
+      if (settling) return;
+      if (awaitingAdvance) {
+        hidePayoutOverlay();
+        purse += computeAdvanceTotal();
+      } else {
+        let refund = 0;
+        placements.forEach((stake) => { refund += stake; });
+        purse += refund;
+      }
       clearSettlementVisuals();
       placements.clear();
       history.length = 0;
-      resetPurse();
+      updatePurseDisplay();
       renderChips();
       updateMetrics();
     }
