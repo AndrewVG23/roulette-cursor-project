@@ -1879,16 +1879,14 @@
       if (replayMode && !options.forced) return;
       purseBeforeSpin = purse;
       forcedOutcome = options.forcedOutcome != null ? options.forcedOutcome : null;
+      // Start before arming wheelSpinning so empty-board spins still get a clip.
+      if (!replayMode) ensureLiveReplayCapture();
       wheelSpinning = true;
       wheelDisplayEl.disabled = true;
       wheelDisplayEl?.classList.remove('landed', 'has-result');
       wheelDisplayEl?.classList.add('spinning');
       wheelHighlightIndex = null;
       drawWheelFace();
-      if (!replayMode) {
-        lastReplayVideo = null;
-        void beginLiveReplayCapture();
-      }
       updateShareButtons();
 
       const rand = (a, b) => a + Math.random() * (b - a);
@@ -3559,16 +3557,54 @@
       return !!(renderer?.domElement && typeof VideoEncoder !== 'undefined');
     }
 
+    function drawReplayResultCard(ctx, width, height, netValue, outcome) {
+      const net = Math.round(netValue || 0);
+      const label = net > 0
+        ? `+${purseFmt.format(net)}`
+        : net < 0
+          ? `−${purseFmt.format(Math.abs(net))}`
+          : purseFmt.format(0);
+      const sub = outcome == null ? 'Result' : `Hit ${outcome}`;
+      const cardW = Math.min(width * 0.46, 420);
+      const cardH = Math.min(height * 0.24, 168);
+      const x = (width - cardW) / 2;
+      const y = (height - cardH) / 2;
+      ctx.save();
+      ctx.fillStyle = 'rgba(10, 20, 16, 0.9)';
+      ctx.strokeStyle = 'rgba(239, 187, 73, 0.5)';
+      ctx.lineWidth = Math.max(2, Math.round(width * 0.003));
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, cardW, cardH, 18);
+      else ctx.rect(x, y, cardW, cardH);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = net > 0 ? '#8fd9a4' : net < 0 ? '#f26e89' : '#f4ecda';
+      ctx.font = `700 ${Math.round(cardH * 0.42)}px Zodiak, Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, width / 2, height / 2 - cardH * 0.08);
+      ctx.fillStyle = 'rgba(244, 236, 218, 0.78)';
+      ctx.font = `700 ${Math.round(cardH * 0.14)}px "General Sans", sans-serif`;
+      ctx.fillText(sub, width / 2, height / 2 + cardH * 0.28);
+      ctx.restore();
+    }
+
     async function createMp4RecorderSession() {
       if (!canCaptureReplayVideo()) return null;
-      const canvas = renderer.domElement;
-      if ((canvas.width || 0) < 2 || (canvas.height || 0) < 2) return null;
+      const gl = renderer.domElement;
+      if ((gl.width || 0) < 2 || (gl.height || 0) < 2) return null;
+
+      // Encode from a lightweight composite canvas so we can burn in the payout card.
+      const recordCanvas = document.createElement('canvas');
+      recordCanvas.width = gl.width;
+      recordCanvas.height = gl.height;
+      const recordCtx = recordCanvas.getContext('2d', { alpha: false });
 
       const output = new Output({
         format: new Mp4OutputFormat({ fastStart: 'in-memory' }),
         target: new BufferTarget()
       });
-      const videoSource = new CanvasSource(canvas, {
+      const videoSource = new CanvasSource(recordCanvas, {
         codec: 'avc',
         bitrate: 6_000_000
       });
@@ -3579,6 +3615,7 @@
       let framesAdded = 0;
       let running = true;
       let encoding = false;
+      let showPayout = false;
       let pumpError = null;
       let idleWaiters = [];
 
@@ -3589,9 +3626,30 @@
       };
 
       return {
+        setShowPayout(on) {
+          showPayout = !!on;
+        },
         // Called from the render loop immediately after renderer.render().
         tick() {
           if (!running || encoding || pumpError) return;
+          if (recordCanvas.width !== gl.width || recordCanvas.height !== gl.height) {
+            recordCanvas.width = gl.width;
+            recordCanvas.height = gl.height;
+          }
+          try {
+            recordCtx.drawImage(gl, 0, 0);
+          } catch {
+            return;
+          }
+          if (showPayout && awaitingAdvance) {
+            drawReplayResultCard(
+              recordCtx,
+              recordCanvas.width,
+              recordCanvas.height,
+              lastSpinNet,
+              settlementOutcome
+            );
+          }
           encoding = true;
           const timestamp = framesAdded * frameDuration;
           videoSource.add(timestamp, frameDuration).then(() => {
@@ -3618,10 +3676,18 @@
         },
         abort() {
           running = false;
+          showPayout = false;
           try { output.cancel?.(); } catch { /* ignore */ }
           notifyIdle();
         }
       };
+    }
+
+    function ensureLiveReplayCapture() {
+      if (replayMode || liveCapture || liveCaptureStarting) return;
+      if (wheelSpinning || settling || awaitingAdvance) return;
+      lastReplayVideo = null;
+      void beginLiveReplayCapture();
     }
 
     async function beginLiveReplayCapture() {
@@ -3649,21 +3715,24 @@
       if (!session || replayMode) return;
       const cycle = lastReplayCycle;
       try {
-        await delay(450);
+        session.setShowPayout?.(true);
+        // Hold on the settled board with the payout card burned into the clip.
+        await delay(1800);
         const blob = await session.stop();
         if (cycle) setCachedReplayVideo(cycle, blob);
       } catch (err) {
         console.error(err);
         session.abort?.();
       } finally {
+        session.setShowPayout?.(false);
         if (liveCapture === session) liveCapture = null;
         updateShareButtons();
       }
     }
 
     function abortLiveReplayCapture() {
-      if (!liveCapture) return;
-      liveCapture.abort?.();
+      if (!liveCapture && !liveCaptureStarting) return;
+      liveCapture?.abort?.();
       liveCapture = null;
       liveCaptureStarting = false;
       updateShareButtons();
@@ -3745,17 +3814,23 @@
       abortLiveReplayCapture();
       const session = await createMp4RecorderSession();
       if (!session) throw new Error('MP4 recording is not supported in this browser');
+      liveCapture = session;
 
       try {
+        // Staggered chip placement + forced spin are captured via the render-loop tick.
         const played = await playReplay(cycle, { forRecording: true });
         if (!played) throw new Error('Replay was interrupted');
-        await delay(450);
+        session.setShowPayout?.(true);
+        await delay(1800);
         const blob = await session.stop();
         setCachedReplayVideo(cycle, blob);
         return blob;
       } catch (err) {
         session.abort?.();
         throw err;
+      } finally {
+        session.setShowPayout?.(false);
+        if (liveCapture === session) liveCapture = null;
       }
     }
 
@@ -4287,6 +4362,8 @@
     function addChip(key, amount = 1, track = true) {
       if (settling || awaitingAdvance || replayMode) return;
       if (purse < amount) return;
+      // Start the shareable clip when the first bet lands so placement is in the video.
+      ensureLiveReplayCapture();
       purse -= amount;
       placements.set(key, (placements.get(key) || 0) + amount);
       if (track) history.push({ key, amount });
@@ -4318,6 +4395,9 @@
         let refund = 0;
         placements.forEach((stake) => { refund += stake; });
         purse += refund;
+        // Mid-round clear discards an in-progress placement recording.
+        abortLiveReplayCapture();
+        lastReplayVideo = null;
       }
       clearSettlementVisuals();
       placements.clear();
