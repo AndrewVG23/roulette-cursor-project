@@ -342,13 +342,17 @@
       flex-shrink: 0;
     }
     .share-opts-inline {
-      display: none;
+      display: inline-flex;
       align-items: center;
       gap: 10px;
       margin-left: 2px;
+      flex: 0 0 auto;
     }
-    .share-opts-inline:not([hidden]) { display: inline-flex; }
     .share-opts-inline .share-opt { color: #d8c9a8; }
+    .share-replay-btn {
+      min-width: 6.5rem;
+      flex: 0 0 auto;
+    }
     @keyframes payoutOverlayIn {
       from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
       to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
@@ -710,7 +714,7 @@
               <button class="btn subtle" id="undoBtn" type="button" title="Undo last chip">Undo</button>
               <button class="btn warning" id="clearBtn" type="button" title="Clear board">Clear</button>
               <button class="btn subtle share-replay-btn" id="shareReplayBtn" type="button" title="Share last spin replay" disabled>Share</button>
-              <span class="share-opts-inline" id="shareOptsInline" hidden>
+              <span class="share-opts-inline" id="shareOptsInline" title="Include in shared video">
                 <label class="share-opt"><input type="checkbox" data-share-opt="stats" /> Stats</label>
                 <label class="share-opt"><input type="checkbox" data-share-opt="chart" /> Curve</label>
               </span>
@@ -3635,11 +3639,8 @@
           shareReplayBtn.textContent = recordingInProgress ? 'Sharing…' : 'Share';
         }
       }
-      const optsInline = document.getElementById('shareOptsInline');
-      if (optsInline) {
-        const showOpts = canShare && !(replayMode && !recordingReplay);
-        optsInline.hidden = !showOpts;
-      }
+      // Keep Stats/Curve opts mounted always — toggling [hidden] reflowed the toolbar
+      // and resized the WebGL board after every spin.
       if (shareReplayOverlayBtn) {
         shareReplayOverlayBtn.disabled = !canShare;
         if (!shareReplayOverlayBtn.classList.contains('is-shared')) {
@@ -4030,26 +4031,21 @@
       if ((gl.width || 0) < 2 || (gl.height || 0) < 2) return null;
 
       const hasStrip = !!(extras.includeStats || extras.includeChart);
-      const stripHeightFor = (boardH) => (hasStrip
-        ? Math.round(Math.min(Math.max(boardH * 0.38, 200), 320))
-        : 0);
+      // Lock output size for the whole session — WebCodecs/MP4 reject mid-stream size changes
+      // when the WebGL canvas or layout shifts (e.g. 750x2042 → 750x1666).
+      const boardAreaW = gl.width + (gl.width % 2);
+      const boardAreaH = gl.height + (gl.height % 2);
+      const stripH = hasStrip
+        ? Math.round(Math.min(Math.max(boardAreaH * 0.38, 200), 320))
+        : 0;
+      const stripHEven = stripH + (stripH % 2);
+      const outW = boardAreaW;
+      const outH = boardAreaH + stripHEven;
 
-      // Composite canvas: WebGL board + optional live stats/curve strip + payout card.
       const recordCanvas = document.createElement('canvas');
+      recordCanvas.width = outW;
+      recordCanvas.height = outH;
       const recordCtx = recordCanvas.getContext('2d', { alpha: false });
-      const syncSize = () => {
-        const boardW = gl.width;
-        const boardH = gl.height;
-        const stripH = stripHeightFor(boardH);
-        const outW = boardW + (boardW % 2);
-        const outH = boardH + stripH + ((boardH + stripH) % 2);
-        if (recordCanvas.width !== outW || recordCanvas.height !== outH) {
-          recordCanvas.width = outW;
-          recordCanvas.height = outH;
-        }
-        return { boardW, boardH, stripH, outW, outH };
-      };
-      syncSize();
 
       const encoder = await createMp4EncoderSession(recordCanvas);
       if (!encoder) return null;
@@ -4063,25 +4059,36 @@
         },
         // Called from the render loop immediately after renderer.render().
         tick() {
-          const { boardW, boardH, stripH, outW, outH } = syncSize();
+          // Never resize recordCanvas after encode starts.
           recordCtx.fillStyle = '#0a1210';
           recordCtx.fillRect(0, 0, outW, outH);
+
+          const srcW = gl.width || 0;
+          const srcH = gl.height || 0;
+          if (srcW < 2 || srcH < 2) return;
+
+          // Letterbox the live WebGL frame into the locked board region.
+          const scale = Math.min(boardAreaW / srcW, boardAreaH / srcH);
+          const drawW = Math.max(1, Math.round(srcW * scale));
+          const drawH = Math.max(1, Math.round(srcH * scale));
+          const dx = Math.floor((boardAreaW - drawW) / 2);
+          const dy = Math.floor((boardAreaH - drawH) / 2);
           try {
-            recordCtx.drawImage(gl, 0, 0, boardW, boardH);
+            recordCtx.drawImage(gl, dx, dy, drawW, drawH);
           } catch {
             return;
           }
           if (showPayout && awaitingAdvance) {
             drawReplayResultCard(
               recordCtx,
-              boardW,
-              boardH,
+              boardAreaW,
+              boardAreaH,
               lastSpinNet,
               settlementOutcome
             );
           }
           if (hasStrip) {
-            drawShareAnalyticsStrip(recordCtx, 0, boardH, outW, stripH, extras);
+            drawShareAnalyticsStrip(recordCtx, 0, boardAreaH, outW, stripHEven, extras);
           }
           encoder.tick();
         },
