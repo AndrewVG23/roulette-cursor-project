@@ -45,21 +45,149 @@
     .btn.primary { background: linear-gradient(180deg, #f0c869, #c28b2d); color: #1a1307; border-color: rgba(255,225,156,.45); }
     .btn.subtle { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); }
     .btn.warning { background: linear-gradient(180deg, #d88a54, #9d5427); color: #fff3e9; border-color: rgba(255,220,198,.24); }
+    .btn.success { background: linear-gradient(180deg, #8fd9a4, #3f9a5d); color: #0b1a10; border-color: rgba(180,255,210,.28); }
     .icon-btn:hover, .btn:hover { transform: translateY(-1px); }
     .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); gap: var(--space-2); align-items: stretch; }
+    .layout.metrics-collapsed { grid-template-columns: minmax(0, 1fr); }
+    .layout.metrics-collapsed .metrics-panel { display: none; }
+    .metrics-panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+    .metrics-panel-head h2 { margin: 0; }
     .panel { background: linear-gradient(180deg, rgba(23,48,39,.92), rgba(15,27,23,.96)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
     .panel-inner { padding: var(--space-4); flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
     .panel-inner.board-panel { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
     .panel h2, .panel h3 { margin: 0 0 var(--space-3); }
     .panel h2 { font-family: var(--font-display); font-size: var(--text-lg); }
     .lede { margin: 0 0 var(--space-4); color: var(--color-text-muted); font-size: var(--text-sm); max-width: 64ch; }
-    .controls { display: grid; gap: var(--space-2); flex-shrink: 0; }
+    .controls { display: grid; gap: var(--space-2); flex-shrink: 0; padding: var(--space-2); background: linear-gradient(180deg, rgba(20,53,40,.78), rgba(12,26,21,.92)); border: 1px solid rgba(238,194,97,.18); border-radius: 4px; box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 4px 14px rgba(0,0,0,.22); }
     .control-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+    .controls .btn,
+    .controls .icon-btn {
+      min-height: 60px;
+      height: auto;
+      min-width: 84px;
+      width: auto;
+      padding: var(--space-2) var(--space-5);
+      line-height: 1.1;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border-radius: 3px;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #f7ead0;
+      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
+      border: 1px solid rgba(255,238,198,.22);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.24);
+    }
+    .controls .btn.primary {
+      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
+      color: #fff6e3;
+      border-color: rgba(255,210,200,.28);
+    }
+    .controls .btn.warning {
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)), linear-gradient(180deg, #434850, #15181c);
+      color: #f7ead0;
+      border-color: rgba(255,238,198,.18);
+    }
+    .controls .btn.subtle {
+      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
+    }
+    .controls .btn[hidden] { display: none; }
+    .controls .btn:hover,
+    .controls .icon-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(239,187,73,.42);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 3px 8px rgba(0,0,0,.28);
+    }
+    .controls .btn:active,
+    .controls .icon-btn:active {
+      transform: translateY(0);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,.28);
+    }
+    .controls .view-btn.active,
+    .controls .metrics-toggle.active {
+      background: linear-gradient(180deg, rgba(239,187,73,.34), rgba(208,162,58,.14)), linear-gradient(180deg, #2f8850, #1a5031);
+      color: #fff8e8;
+      border-color: rgba(239,187,73,.58);
+      box-shadow: inset 0 0 0 1px rgba(255,225,156,.2), 0 0 12px rgba(239,187,73,.14);
+    }
+    .controls .metrics-toggle {
+      min-width: 96px;
+      padding: var(--space-2) var(--space-5);
+    }
+    .controls .icon-btn.compact {
+      width: 60px;
+      min-width: 60px;
+      padding: 0;
+      font-size: 1.2rem;
+      color: #efbb49;
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)), linear-gradient(180deg, #434850, #15181c);
+    }
     .view-toggle { gap: var(--space-2); }
-    .view-label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; margin-right: var(--space-1); }
-    .view-btn.active { background: linear-gradient(180deg, rgba(239,187,73,.28), rgba(208,162,58,.12)); border-color: rgba(239,187,73,.45); color: var(--color-primary); box-shadow: 0 0 18px rgba(239,187,73,.12); }
+    .controls .view-label {
+      color: #d0a23a;
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      margin-right: var(--space-1);
+      font-weight: 700;
+    }
+    .camera-menu-wrap { position: relative; flex-shrink: 0; }
+    .controls .camera-toggle {
+      min-width: 60px;
+      width: 60px;
+      padding: 0;
+      color: #efbb49;
+    }
+    .camera-toggle svg { display: block; }
+    .camera-menu {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      z-index: 30;
+      min-width: 148px;
+      padding: var(--space-2);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+      background: linear-gradient(180deg, rgba(20,53,40,.98), rgba(10,22,18,.99));
+      border: 1px solid rgba(239,187,73,.28);
+      border-radius: var(--radius-md);
+      box-shadow: 0 12px 32px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .camera-menu[hidden] { display: none; }
+    .camera-option {
+      min-height: 44px;
+      padding: 0 var(--space-4);
+      border-radius: 3px;
+      border: 1px solid rgba(255,238,198,.14);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)), linear-gradient(180deg, #1f5d39, #143528);
+      color: #f7ead0;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      text-align: left;
+      cursor: pointer;
+    }
+    .camera-option:hover { border-color: rgba(239,187,73,.42); }
+    .camera-option.active {
+      background: linear-gradient(180deg, rgba(239,187,73,.34), rgba(208,162,58,.14)), linear-gradient(180deg, #2f8850, #1a5031);
+      color: #fff8e8;
+      border-color: rgba(239,187,73,.58);
+    }
+    .controls .stats-toggle.active {
+      background: linear-gradient(180deg, rgba(239,187,73,.34), rgba(208,162,58,.14)), linear-gradient(180deg, #2f8850, #1a5031);
+      color: #fff8e8;
+      border-color: rgba(239,187,73,.58);
+    }
+    .roulette-wrap.stats-collapsed .analytics-dock { display: none; }
     .roulette-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); position: relative; }
-    .board-shell { position: relative; flex: 1 1 0; min-height: 220px; overflow: hidden; border-radius: 24px; border: 1px solid rgba(242,214,143,.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 16px 50px rgba(0,0,0,.34); background: linear-gradient(180deg, rgba(8,20,16,.85), rgba(7,16,13,.98)); padding-top: min(168px, 34vw); }
+    .board-shell { position: relative; flex: 1 1 0; min-height: 220px; overflow: hidden; border-radius: 24px; border: 1px solid rgba(242,214,143,.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 16px 50px rgba(0,0,0,.34); background: linear-gradient(180deg, rgba(8,20,16,.85), rgba(7,16,13,.98)); padding-top: 0; }
     .bottom-dock { flex: 0 0 auto; width: calc(100% * 2 / 3 - var(--space-1)); max-width: 66.666%; position: relative; z-index: 4; }
     .scoreboard { min-width: 0; position: relative; z-index: 0; padding: var(--space-4) var(--space-5); background: linear-gradient(180deg, rgba(8,18,14,.96), rgba(4,10,8,.98)); border-radius: var(--radius-xl); border: 1px solid rgba(239,187,73,.18); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.22); }
     .scoreboard::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(239,187,73,.03) 0, rgba(239,187,73,.03) 1px, transparent 1px, transparent 24px); pointer-events: none; border-radius: inherit; }
@@ -68,22 +196,100 @@
     .scoreboard-stat { text-align: center; padding: var(--space-4) var(--space-3); border-radius: var(--radius-lg); background: rgba(0,0,0,.28); border: 1px solid rgba(239,187,73,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 0 24px rgba(239,187,73,.04); }
     .scoreboard-stat .label { color: var(--color-primary); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
     .scoreboard-stat .value { font-family: var(--font-display); font-size: clamp(1.85rem, 1.35rem + 1.1vw, 2.75rem); line-height: 1.05; margin-top: var(--space-2); font-variant-numeric: tabular-nums lining-nums; }
-    .wheel-area { position: absolute; top: var(--space-3); left: 50%; z-index: 4; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: 0; pointer-events: none; width: min(100%, 320px); }
-    .wheel-display { position: relative; width: min(156px, 34vw); aspect-ratio: 1; flex-shrink: 0; pointer-events: none; }
-    .wheel-canvas-wrap { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 38%, rgba(255,230,170,.08), transparent 58%), #120a08; box-shadow: 0 0 0 3px rgba(217,170,66,.36), 0 0 0 7px rgba(18,10,8,.92), 0 10px 28px rgba(0,0,0,.45), inset 0 0 18px rgba(0,0,0,.35); transition: box-shadow 280ms ease, filter 280ms ease; }
-    .wheel-display.spinning .wheel-canvas-wrap { box-shadow: 0 0 0 3px rgba(239,187,73,.55), 0 0 0 7px rgba(18,10,8,.92), 0 0 28px rgba(239,187,73,.24), 0 10px 28px rgba(0,0,0,.45); filter: saturate(1.08); }
-    .wheel-display.landed .wheel-canvas-wrap { box-shadow: 0 0 0 3px rgba(239,187,73,.65), 0 0 0 7px rgba(18,10,8,.92), 0 0 32px rgba(239,187,73,.28), 0 10px 28px rgba(0,0,0,.45); }
+    .wheel-area { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding: 0; width: 100%; }
+    .wheel-display {
+      position: relative;
+      width: clamp(96px, 12vw, 124px);
+      aspect-ratio: 1;
+      flex-shrink: 0;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      pointer-events: auto;
+      border-radius: 50%;
+      transition: transform var(--transition), filter var(--transition);
+    }
+    .wheel-display:hover:not(:disabled):not(.spinning) { transform: scale(1.03); filter: brightness(1.06); }
+    .wheel-display:active:not(:disabled):not(.spinning) { transform: scale(0.98); }
+    .wheel-display:disabled:not(.has-result) { cursor: default; opacity: 0.72; }
+    .wheel-display:disabled.has-result { cursor: default; }
+    .wheel-frame { position: absolute; inset: -8px; border-radius: 50%; pointer-events: none; z-index: 0; background: radial-gradient(circle at 50% 34%, rgba(255,230,170,.16), transparent 60%), conic-gradient(from 210deg, #6b4516, #d9aa42 12%, #7a5018 26%, #f3cf73 38%, #8f5d18 52%, #d9aa42 66%, #6b4516 80%, #efbb49 92%, #6b4516); box-shadow: 0 0 0 1px #3a230c, 0 0 0 3px rgba(255,225,156,.28), 0 0 0 7px #16090494, 0 12px 28px rgba(0,0,0,.55), inset 0 0 10px rgba(0,0,0,.5); }
+    .wheel-frame::before { content: ''; position: absolute; inset: 6px; border-radius: 50%; border: 1px solid rgba(255,235,180,.3); box-shadow: inset 0 0 22px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,248,222,.25); background: repeating-conic-gradient(from 0deg, rgba(20,10,4,.5) 0 1.2deg, transparent 1.2deg 7.5deg); }
+    .wheel-frame::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(243,207,115,.85) 0 1.4deg, transparent 1.4deg 45deg); mask: radial-gradient(circle, transparent 78%, #000 79%); -webkit-mask: radial-gradient(circle, transparent 78%, #000 79%); animation: bezelSpin 40s linear infinite; opacity: .8; }
+    @keyframes bezelSpin { to { transform: rotate(360deg); } }
+    .wheel-display.spinning .wheel-frame { animation: frameGlow 900ms ease-in-out infinite alternate; }
+    @keyframes frameGlow { from { filter: brightness(1); } to { filter: brightness(1.18) drop-shadow(0 0 18px rgba(239,187,73,.35)); } }
+    .wheel-canvas-wrap { position: relative; z-index: 1; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 38%, rgba(255,230,170,.1), transparent 58%), #120a08; box-shadow: inset 0 0 30px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,225,156,.14); transition: box-shadow 280ms ease, filter 280ms ease; }
+    .wheel-canvas-wrap::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 3; background: radial-gradient(ellipse 62% 42% at 50% 18%, rgba(255,255,255,.14), rgba(255,255,255,.04) 48%, transparent 62%), radial-gradient(circle at 50% 115%, rgba(0,0,0,.32), transparent 55%); }
+    .wheel-display.spinning .wheel-canvas-wrap { box-shadow: inset 0 0 32px rgba(0,0,0,.55), inset 0 0 0 2px rgba(239,187,73,.4), 0 0 30px rgba(239,187,73,.22); filter: saturate(1.1); }
+    .wheel-display.landed .wheel-canvas-wrap { box-shadow: inset 0 0 30px rgba(0,0,0,.5), inset 0 0 0 2px rgba(239,187,73,.5), 0 0 34px rgba(239,187,73,.26); }
     .wheel-canvas-wrap canvas { display: block; width: 100%; height: 100%; will-change: transform; transform-origin: 50% 50%; }
-    .wheel-pointer { position: absolute; top: -3px; left: 50%; transform: translateX(-50%); width: 14px; height: 22px; z-index: 3; pointer-events: none; filter: drop-shadow(0 2px 5px rgba(0,0,0,.5)); }
-    .wheel-pointer::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #fff0c8, #efbb49 42%, #a8741f); clip-path: polygon(50% 100%, 0 0, 100% 0); border-radius: 2px 2px 0 0; }
-    .wheel-pointer::after { content: ''; position: absolute; top: 2px; left: 50%; transform: translateX(-50%); width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff8e8, #c28b2d); box-shadow: inset 0 -1px 2px rgba(0,0,0,.25); }
-    .wheel-ball { position: absolute; top: 7%; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 32% 28%, #ffffff, #d8dde3 38%, #8a9199); box-shadow: 0 1px 3px rgba(0,0,0,.55), inset 0 -1px 1px rgba(0,0,0,.2); z-index: 2; pointer-events: none; opacity: 0.95; }
-    .wheel-display.spinning .wheel-ball { animation: wheelBallPulse 420ms ease-in-out infinite alternate; }
-    .wheel-display.landed .wheel-ball { animation: wheelBallSettle 520ms cubic-bezier(0.16, 1, 0.3, 1); }
-    @keyframes wheelBallPulse { from { transform: scale(0.92) translateY(0); } to { transform: scale(1.08) translateY(-1px); } }
-    @keyframes wheelBallSettle { 0% { transform: scale(1.15) translateY(-2px); } 55% { transform: scale(0.94) translateY(1px); } 100% { transform: scale(1) translateY(0); } }
-    .wheel-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2); min-width: 0; padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); background: rgba(4,10,8,.82); backdrop-filter: blur(10px); border: 1px solid rgba(239,187,73,.16); pointer-events: auto; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
-    .wheel-result { font-family: var(--font-display); font-size: clamp(1.25rem, 1.05rem + 0.6vw, 1.65rem); line-height: 1; font-variant-numeric: tabular-nums lining-nums; min-height: 1.1em; min-width: 1.5ch; text-align: center; }
+    .wheel-pointer { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 14px; height: 22px; z-index: 5; pointer-events: none; filter: drop-shadow(0 2px 5px rgba(0,0,0,.55)); }
+    .wheel-pointer::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #fff8e8, #efbb49 38%, #8f5d18); clip-path: polygon(50% 100%, 8% 0, 92% 0); border-radius: 2px 2px 0 0; }
+    .wheel-pointer::after { content: ''; position: absolute; top: 3px; left: 50%; transform: translateX(-50%); width: 8px; height: 8px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff8e8, #c28b2d 62%, #7a5018); box-shadow: inset 0 -1px 2px rgba(0,0,0,.35), 0 0 4px rgba(255,240,200,.4); }
+    .wheel-ball { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: 0; border-radius: 50%; background: radial-gradient(circle at 28% 24%, #ffffff 0%, #f7f9fb 24%, #d8dde3 52%, #8f969f 100%); box-shadow: 0 2px 5px rgba(0,0,0,.55), inset -1px -2px 3px rgba(0,0,0,.22), inset 1px 1px 2px rgba(255,255,255,.92); z-index: 4; pointer-events: none; transform: translate(-50%, -50%) rotate(0deg) translateY(calc(-1 * var(--ball-orbit, 46.5%))); transform-origin: center center; will-change: transform; }
+    .wheel-display.landed .wheel-ball { animation: wheelBallSettle 620ms cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes wheelBallSettle { 0% { filter: brightness(1.12); transform: translate(-50%, -50%) rotate(var(--ball-angle, 0deg)) translateY(calc(-1 * var(--ball-orbit, 38%))) scale(1.04); } 100% { filter: brightness(1); transform: translate(-50%, -50%) rotate(var(--ball-angle, 0deg)) translateY(calc(-1 * var(--ball-orbit, 38%))) scale(1); } }
+    .controls .btn.success {
+      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #3f9a5d, #1d5a35);
+      color: #eafff0;
+      border-color: rgba(180,255,210,.32);
+    }
+    .payout-overlay {
+      position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 60;
+      display: flex; align-items: center; justify-content: center;
+      padding: var(--space-5) var(--space-10);
+      min-width: min(240px, 72vw);
+      border-radius: var(--radius-xl); border: 1px solid rgba(239,187,73,.4);
+      background: linear-gradient(180deg, rgba(23,48,39,.97), rgba(10,20,16,.97));
+      box-shadow: 0 24px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
+      color: var(--color-text); text-align: center; cursor: pointer;
+      animation: payoutOverlayIn 420ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .payout-overlay[hidden] {
+      display: none !important;
+      pointer-events: none;
+    }
+    .payout-overlay:hover { transform: translate(-50%, -50%) scale(1.03); border-color: rgba(239,187,73,.7); }
+    .payout-overlay-amount { font-family: var(--font-display); font-size: clamp(3rem, 2.4rem + 3vw, 5rem); line-height: 1; font-variant-numeric: tabular-nums lining-nums; }
+    .payout-overlay.win .payout-overlay-amount { color: var(--color-success); }
+    .payout-overlay.lose .payout-overlay-amount { color: var(--color-error); }
+    .payout-overlay.even .payout-overlay-amount { color: var(--color-text); }
+    @keyframes payoutOverlayIn {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    .wheel-result {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      pointer-events: none;
+      font-family: var(--font-display);
+      line-height: 1;
+      font-variant-numeric: tabular-nums lining-nums;
+      text-align: center;
+      transition: opacity 180ms ease, background 180ms ease;
+    }
+    .wheel-display.spinning .wheel-result { opacity: 0; }
+    .wheel-result.idle {
+      background: rgba(4,10,8,.52);
+      color: #efbb49;
+      font-size: clamp(0.72rem, 0.65rem + 0.25vw, 0.82rem);
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .wheel-result:not(.idle) {
+      background: rgba(4,10,8,.68);
+      font-size: clamp(1.85rem, 1.5rem + 1.1vw, 2.35rem);
+      font-weight: 700;
+      text-shadow: 0 2px 10px rgba(0,0,0,.55);
+    }
     .wheel-result.landed { animation: wheelResultPop 520ms cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes wheelResultPop { 0% { transform: scale(0.82); opacity: 0.55; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
     .wheel-result.red { color: #f26e89; }
@@ -92,10 +298,106 @@
     .wheel-caption { margin: 0; color: var(--color-text-faint); font-size: var(--text-xs); max-width: 28ch; }
     .wheel-caption { display: none; }
     .board-stage { position: absolute; inset: 0; z-index: 1; min-height: 200px; }
-    canvas#rouletteCanvas { position: fixed; left: -10000px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; visibility: hidden; }
     .board-3d { width: 100%; height: 100%; min-height: 200px; position: relative; border-radius: 18px; overflow: hidden; cursor: grab; touch-action: none; }
     .board-3d canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 18px; outline: none; }
     .board-hint { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; margin: 0; padding: var(--space-1) var(--space-2); color: var(--color-text-faint); font-size: 0.65rem; text-align: center; background: linear-gradient(transparent, rgba(4,10,8,.92)); pointer-events: none; }
+    .purse-stack {
+      position: absolute;
+      top: var(--space-3);
+      right: var(--space-3);
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-2);
+      width: clamp(108px, 14vw, 136px);
+      pointer-events: none;
+      filter: drop-shadow(0 14px 22px rgba(0,0,0,.52));
+    }
+    .purse-chip-stack {
+      position: relative;
+      width: 82px;
+      height: 92px;
+      perspective: 520px;
+      transform: rotateX(10deg);
+      transform-origin: center bottom;
+    }
+    .purse-chip-stack::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: -2px;
+      width: 68px;
+      height: 14px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,0,0,.42) 0%, rgba(0,0,0,.18) 42%, transparent 72%);
+      filter: blur(1px);
+      z-index: 0;
+    }
+    .purse-chip {
+      --chip-lift: calc(var(--chip-i) * -7px);
+      --chip-shift: calc((var(--chip-i) - 3.5) * 0.55px);
+      --chip-tilt: calc((var(--chip-i) - 3.5) * 0.45deg);
+      position: absolute;
+      left: 50%;
+      bottom: 6px;
+      width: 72px;
+      transform: translate(calc(-50% + var(--chip-shift)), var(--chip-lift)) rotate(var(--chip-tilt));
+      transform-origin: center bottom;
+      z-index: calc(var(--chip-i) + 1);
+      filter: drop-shadow(0 3px 5px rgba(0,0,0,.28));
+    }
+    .purse-chip-edge {
+      display: block;
+      width: 100%;
+      height: 10px;
+      border-radius: 50%;
+      background-image: var(--chip-edge);
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.18),
+        inset 0 -2px 3px rgba(0,0,0,.28),
+        0 1px 0 rgba(0,0,0,.35);
+    }
+    .purse-chip-face {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      margin: -1px auto 0;
+      border-radius: 50%;
+      background-image: var(--chip-face);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.35),
+        0 5px 10px rgba(0,0,0,.34),
+        0 0 0 1px rgba(0,0,0,.12);
+    }
+    .purse-chip-face::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.28), transparent 42%);
+      pointer-events: none;
+    }
+    .purse-stack-amount {
+      font-family: var(--font-display);
+      font-size: clamp(1.15rem, 1rem + 0.55vw, 1.55rem);
+      font-weight: 700;
+      color: #efbb49;
+      text-shadow: 0 1px 3px rgba(0,0,0,.88), 0 0 14px rgba(239,187,73,.16);
+      text-align: center;
+      font-variant-numeric: tabular-nums lining-nums;
+      line-height: 1;
+      min-width: 6ch;
+    }
+    .purse-stack.low .purse-stack-amount { color: #ffd2a0; }
+    .purse-stack.empty .purse-chip-stack { opacity: 0.45; filter: saturate(0.65); }
+    .purse-stack.empty .purse-stack-amount { color: #f26e89; }
     .hero-card, .stat, .formula, .progression-box, .chart-card, .table-card, .metrics-details { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
     .stat .label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; }
     .stat .hint { margin-top: var(--space-2); color: var(--color-text-muted); font-size: var(--text-xs); max-width: 28ch; }
@@ -126,6 +428,8 @@
     .positive { color: var(--color-success); font-weight: 700; }
     .negative { color: var(--color-error); font-weight: 700; }
     .neutral { color: var(--color-text-muted); }
+    .outcome-table tr.outcome-landed { background: rgba(208, 162, 58, 0.16); box-shadow: inset 3px 0 0 var(--color-primary); }
+    .outcome-table tr.outcome-landed td { font-weight: 700; }
     .footer-note { margin-top: var(--space-4); font-size: var(--text-xs); color: var(--color-text-muted); }
     @media (max-width: 1260px) {
       body { overflow: auto; height: auto; min-height: 100dvh; }
@@ -138,53 +442,60 @@
       .chart-dock { position: relative; width: 100%; min-width: 0; height: 260px; margin-top: var(--space-2); }
       .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-    @media (max-width: 560px) { .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: 1fr; } .wheel-meta { flex-direction: column; } }
+    @media (max-width: 560px) { .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <div class="app">
-    <main id="main" class="layout">
+    <main id="main" class="layout metrics-collapsed">
       <section class="panel">
         <div class="panel-inner board-panel">
           <div class="controls" aria-label="Chip controls">
             <div class="control-row">
-              <button class="btn subtle" id="undoBtn" type="button">Undo last chip</button>
-              <button class="btn warning" id="clearBtn" type="button">Clear board</button>
-              <button class="btn primary" id="flatEvenBtn" type="button">Demo: flat on red</button>
-              <button class="btn subtle" id="martingaleBtn" type="button">Demo: Martingale path</button>
-            </div>
-            <div class="control-row view-toggle" role="group" aria-label="Camera angle">
-              <span class="view-label">Angle</span>
-              <button type="button" class="btn subtle view-btn active" data-view="dealer" aria-pressed="true">Dealer</button>
-              <button type="button" class="btn subtle view-btn" data-view="player" aria-pressed="false">Player</button>
-              <button type="button" class="btn subtle view-btn" data-view="side" aria-pressed="false">Side</button>
+              <button class="btn subtle" id="undoBtn" type="button" title="Undo last chip">Undo</button>
+              <button class="btn warning" id="clearBtn" type="button" title="Clear board">Clear</button>
               <span class="spacer" aria-hidden="true"></span>
-              <button class="icon-btn compact" type="button" data-theme-toggle aria-label="Switch to dark mode">◐</button>
+              <button class="btn subtle stats-toggle active" id="statsToggle" type="button" aria-expanded="true" aria-controls="analyticsDock">Hide stats</button>
+              <div class="camera-menu-wrap">
+                <button type="button" class="icon-btn compact camera-toggle" id="cameraToggle" aria-haspopup="menu" aria-expanded="false" aria-controls="cameraMenu" aria-label="Choose camera view">
+                  <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 8h2l2-3h6l2 3h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2z"/>
+                    <circle cx="12" cy="13" r="3.5"/>
+                  </svg>
+                </button>
+                <div class="camera-menu" id="cameraMenu" role="menu" hidden>
+                  <button type="button" class="camera-option view-btn" data-view="dealer" role="menuitemradio" aria-checked="false">Dealer</button>
+                  <button type="button" class="camera-option view-btn" data-view="player" role="menuitemradio" aria-checked="false">Player</button>
+                  <button type="button" class="camera-option view-btn active" data-view="side" role="menuitemradio" aria-checked="true">Side</button>
+                </div>
+              </div>
+              <button class="btn subtle metrics-toggle" id="metricsToggle" type="button" aria-expanded="false" aria-controls="metricsPanel">Metrics</button>
             </div>
           </div>
-          <div class="roulette-wrap">
+          <div class="roulette-wrap" id="rouletteWrap">
             <div class="board-shell">
-              <div class="wheel-area" aria-label="Roulette wheel controls">
-                <div id="wheelDisplay" class="wheel-display">
-                  <div class="wheel-pointer" aria-hidden="true"></div>
-                  <div class="wheel-ball" aria-hidden="true"></div>
-                  <div class="wheel-canvas-wrap">
-                    <canvas id="wheelCanvas" width="640" height="640" aria-hidden="true"></canvas>
-                  </div>
-                </div>
-                <div class="wheel-meta">
-                  <div id="wheelResult" class="wheel-result neutral" aria-live="polite">—</div>
-                  <button class="btn primary" id="spinBtn" type="button">Spin wheel</button>
-                  <p class="wheel-caption">3D wheel on dealer rail · use Dealer angle to view</p>
+              <div class="purse-stack" aria-label="Your purse">
+                <div class="purse-chip-stack" id="purseChipStack" aria-hidden="true"></div>
+                <div class="purse-stack-amount" id="scorePurse">$100</div>
+                <div class="wheel-area" aria-label="Roulette wheel controls">
+                  <button id="wheelDisplay" class="wheel-display" type="button" aria-label="Spin wheel">
+                    <div class="wheel-frame" aria-hidden="true"></div>
+                    <div class="wheel-pointer" aria-hidden="true"></div>
+                    <div id="wheelBall" class="wheel-ball" aria-hidden="true"></div>
+                    <div class="wheel-canvas-wrap">
+                      <canvas id="wheelCanvas" width="768" height="768" aria-hidden="true"></canvas>
+                    </div>
+                    <span id="wheelResult" class="wheel-result idle" aria-live="polite">Spin</span>
+                  </button>
                 </div>
               </div>
               <div class="board-stage">
-                <canvas id="rouletteCanvas" width="680" height="1360" aria-hidden="true"></canvas>
                 <div id="board3d" class="board-3d" aria-label="Roulette betting board"></div>
               </div>
-              <p class="board-hint">Click to place chips · Drag empty felt or right-drag to pan · Scroll to zoom · Space to spin</p>
+              <p class="board-hint">Click a bet to place chips · Click result to continue · Drag to look · Scroll to zoom · Space to spin</p>
             </div>
+            <div class="analytics-dock" id="analyticsDock">
             <div class="bottom-dock">
               <div class="scoreboard" aria-label="Live stats scoreboard">
                 <div class="scoreboard-grid">
@@ -211,7 +522,7 @@
                     <div class="value positive" id="scoreWin">0.0%</div>
                   </div>
                   <div class="scoreboard-stat">
-                    <div class="label">Even</div>
+                    <div class="label">Even (0 payout)</div>
                     <div class="value neutral" id="scoreEven">0.0%</div>
                   </div>
                   <div class="scoreboard-stat">
@@ -225,13 +536,17 @@
               <h3>Payout curve</h3>
               <div class="chart-wrap"><canvas id="payoutChart"></canvas></div>
             </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <aside class="panel" style="overflow: auto;">
+      <aside id="metricsPanel" class="panel metrics-panel" style="overflow: auto;">
         <div class="panel-inner">
-          <h2>Metrics</h2>
+          <div class="metrics-panel-head">
+            <h2>Metrics</h2>
+            <button class="btn subtle" id="metricsClose" type="button" aria-label="Hide metrics">Hide</button>
+          </div>
           <p class="lede">American roulette adds both 0 and 00, and a chip on the line between them acts as a green bet on either green outcome; split bets on 0 and 00 conventionally pay 17:1, while dozens and columns pay 2:1. [web:12][web:16][web:18]</p>
           <details class="metrics-details" style="margin-top: 0;">
             <summary>Current placements</summary>
@@ -249,7 +564,7 @@
               <div>
                 <h3>Scenario lens</h3>
                 <div class="scenario">
-                  <label>Bankroll ($)
+                  <label>Starting purse ($)
                     <input id="bankrollInput" type="number" min="1" step="1" value="100" />
                   </label>
                   <label>Spins to simulate for path metrics
@@ -277,6 +592,20 @@
     </main>
   </div>
 
+  <button id="payoutOverlay" class="payout-overlay" type="button" hidden aria-live="assertive">
+    <span class="payout-overlay-amount" id="payoutOverlayAmount">$0</span>
+  </button>
+
+  <script>
+    if (location.protocol === 'file:') {
+      document.addEventListener('DOMContentLoaded', () => {
+        const note = document.createElement('div');
+        note.textContent = 'Run a local server to play: npm run dev, then open http://localhost:8000';
+        note.style.cssText = 'position:fixed;inset:0 auto auto 0;right:0;z-index:9999;padding:12px 16px;background:#8f2420;color:#fff6e3;font:600 14px/1.4 sans-serif;text-align:center';
+        document.body.prepend(note);
+      });
+    }
+  </script>
   <script type="importmap">
   {
     "imports": {
@@ -293,7 +622,11 @@
     const TEXTURE_SCALE = 2;
     const redNumbers = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
     const wheelOrder = [0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1,'00',27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2];
-    const boardNumbers = [[3,2,1],[6,5,4],[9,8,7],[12,11,10],[15,14,13],[18,17,16],[21,20,19],[24,23,22],[27,26,25],[30,29,28],[33,32,31],[36,35,34]];
+    const boardNumbers = [
+      [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
+      [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
+      [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34]
+    ];
     const numberPos = new Map();
     boardNumbers.forEach((row, rowIndex) => row.forEach((num, colIndex) => numberPos.set(num, { row: rowIndex, col: colIndex })));
     const outsideDefinitions = [
@@ -309,23 +642,33 @@
       { key:'dozen-2', label:'2nd 12', payout:2, numbers:Array.from({length:12},(_,i)=>i+13) },
       { key:'dozen-3', label:'3rd 12', payout:2, numbers:Array.from({length:12},(_,i)=>i+25) }
     ];
+    const evenMoneyGroups = [
+      ['low', 'even'],
+      ['red', 'black'],
+      ['odd', 'high']
+    ];
     const columnDefinitions = [
-      { key:'col-1', label:'1 to 1', payout:2, numbers:[1,4,7,10,13,16,19,22,25,28,31,34] },
+      { key:'col-1', label:'2 to 1', payout:2, numbers:[1,4,7,10,13,16,19,22,25,28,31,34] },
       { key:'col-2', label:'2 to 1', payout:2, numbers:[2,5,8,11,14,17,20,23,26,29,32,35] },
-      { key:'col-3', label:'3 to 1', payout:2, numbers:[3,6,9,12,15,18,21,24,27,30,33,36] }
+      { key:'col-3', label:'2 to 1', payout:2, numbers:[3,6,9,12,15,18,21,24,27,30,33,36] }
     ];
 
-    const canvas = document.getElementById('rouletteCanvas');
+    const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const wheelResultEl = document.getElementById('wheelResult');
     const wheelDisplayEl = document.getElementById('wheelDisplay');
-    const spinBtn = document.getElementById('spinBtn');
+    const wheelBallEl = document.getElementById('wheelBall');
+    const payoutOverlayEl = document.getElementById('payoutOverlay');
+    const payoutOverlayAmountEl = document.getElementById('payoutOverlayAmount');
     const board3dEl = document.getElementById('board3d');
     const betListEl = document.getElementById('betList');
     const statsEl = document.getElementById('stats');
     const progressionBox = document.getElementById('progressionBox');
     const bankrollInput = document.getElementById('bankrollInput');
     const spinsInput = document.getElementById('spinsInput');
+    const scorePurseEl = document.getElementById('scorePurse');
+    const purseStackEl = document.querySelector('.purse-stack');
+    const purseChipStackEl = document.getElementById('purseChipStack');
     const scoreEvEl = document.getElementById('scoreEv');
     const scoreStakeEl = document.getElementById('scoreStake');
     const scoreWinEl = document.getElementById('scoreWin');
@@ -341,12 +684,23 @@
     const outcomes = [0, '00', ...Array.from({length:36}, (_,i)=>i+1)];
     const allBetDefs = new Map();
     let payoutChart;
-    let lastDemo = null;
-    let hoverTargetKey = null;
-    let scene, camera, renderer, boardTexture, chipGroup, hoverMesh, raycaster, pointer;
-    let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelSpinAnim, wheelLastAnimTime = 0;
+    let scene, camera, renderer, boardTexture, chipGroup, settlementChipGroup, dealerStackGroup, tableGroup, settlementHighlightGroup, raycaster, pointer;
+    let settlementState = null;
+    let settlementWinKeys = new Set();
+    let settlementOutcome = null;
+    let settling = false;
+    let awaitingAdvance = false;
+    let lastSpinNet = 0;
+    let dealerStackCount = 0;
+    let startingPurse = 100;
+    let purse = 100;
+    let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelBall3D, wheelPhysics = null, wheelLastAnimTime = 0;
+    let wheelHighlightIndex = null;
     let chipMaterialCache = null;
-    let feltNoiseCanvas = null;
+    let purseChipTextureCache = null;
+    let feltFiberCanvas = null;
+    let feltNormalTexture = null;
+    let feltRoughnessTexture = null;
     const feltPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1);
     const planeHit = new THREE.Vector3();
     let leftPointer = { active: false, x: 0, y: 0, moved: false };
@@ -358,16 +712,27 @@
     let pendingWheelDelta = 0;
     let viewButtonsDirty = false;
     let cameraReady = false;
-    let activeViewId = 'dealer';
+    let activeViewId = 'side';
     let viewTween = null;
     let cameraDrag = null;
     let cameraDragMoved = false;
     let wheelRotation = 0;
+    let wheelBallAngle = 0;
+    let wheelBallOrbit = 38.2;
+    let wheelBallLockOffset = 0;
+    let wheelCoastVel = 3.5;
     let wheelSpinning = false;
     let wheelLandTimer = null;
     let wheelIdleLoop = null;
-    const WHEEL_SIZE = 640;
-    const WHEEL_3D_Y_OFFSET = Math.PI;
+    const WHEEL_SIZE = 768;
+    // Phase offset that registers the painted wheel face with ball angles in
+    // 3D. The texture chain (CircleGeometry UVs + flipY + a PI/2 uv rotation +
+    // the rotator yaw) shifts the painted pockets a quarter turn from where
+    // syncWheelBall3D places the ball; PI/2 here cancels that so pocket i sits
+    // exactly under a ball at HUD angle (wheelRotation + i * seg). With the
+    // old PI value everything was off by 90deg = exactly 9.5 pockets, which
+    // parked the settled ball on the fret between two numbers.
+    const WHEEL_3D_Y_OFFSET = Math.PI / 2;
 
     function pocketFill(kind) {
       if (kind === 'green') return ['#45b56a', '#1a6840'];
@@ -375,59 +740,151 @@
       return ['#434850', '#15181c'];
     }
 
-    function rotationForIndex(index, jitterDeg = 0) {
-      const segmentDeg = 360 / wheelOrder.length;
-      return (360 - index * segmentDeg + jitterDeg + 360) % 360;
-    }
-
-    function spinEase(t) {
-      if (t < 0.78) {
-        const p = t / 0.78;
-        return (1 - Math.pow(1 - p, 2.65)) * 0.92;
-      }
-      const tail = (t - 0.78) / 0.22;
-      return 0.92 + (1 - Math.pow(1 - tail, 4)) * 0.08;
-    }
+    const WHEEL_PHYS = {
+      seg: 360 / wheelOrder.length,
+      rimOrbit: 46.5,
+      deflectorOrbit: 43.4,
+      pocketOrbit: 38.2,
+      gravity: 640,
+      idleWheelVel: 3.5
+    };
+    const Y_AXIS = new THREE.Vector3(0, 1, 0);
+    const _lookForward = new THREE.Vector3();
+    const _lookRight = new THREE.Vector3();
+    const _lookResult = new THREE.Vector3();
+    const _yawQuat = new THREE.Quaternion();
+    const _pitchQuat = new THREE.Quaternion();
     const CAMERA_LIMITS = {
-      minPhi: THREE.MathUtils.degToRad(52),
-      maxPhi: THREE.MathUtils.degToRad(82),
-      minRadius: 420,
-      maxRadius: 1300,
-      damp: 0.16
+      minYaw: THREE.MathUtils.degToRad(-38),
+      maxYaw: THREE.MathUtils.degToRad(38),
+      minPitch: THREE.MathUtils.degToRad(-18),
+      maxPitch: THREE.MathUtils.degToRad(18),
+      minFov: 20,
+      maxFov: 46,
+      damp: 0.16,
+      panYaw: 0.0012,
+      panPitch: 0.00085
     };
     const cameraRig = {
-      pivot: new THREE.Vector3(),
-      spherical: new THREE.Spherical(),
-      fov: 34,
-      targetPivot: new THREE.Vector3(),
-      targetSpherical: new THREE.Spherical(),
-      targetFov: 34
+      position: new THREE.Vector3(),
+      baseLookAt: new THREE.Vector3(),
+      yaw: 0,
+      pitch: 0,
+      targetYaw: 0,
+      targetPitch: 0,
+      fov: 28,
+      targetFov: 28
     };
     const cameraViews = [
-      { id: 'dealer', label: 'Dealer', position: new THREE.Vector3(0, 580, -930), target: new THREE.Vector3(0, 40, 90), fov: 34 },
-      { id: 'player', label: 'Player', position: new THREE.Vector3(0, 610, 920), target: new THREE.Vector3(0, 28, -80), fov: 34 },
-      { id: 'side', label: 'Side', position: new THREE.Vector3(-760, 520, 40), target: new THREE.Vector3(0, 28, -80), fov: 36 }
+      { id: 'dealer', label: 'Dealer', position: new THREE.Vector3(0, 700, -1160), lookAt: new THREE.Vector3(0, 40, 90), fov: 28 },
+      { id: 'player', label: 'Player', position: new THREE.Vector3(0, 740, 1145), lookAt: new THREE.Vector3(0, 28, -80), fov: 28 },
+      { id: 'side', label: 'Side', position: new THREE.Vector3(-990, 665, 75), lookAt: new THREE.Vector3(0, 28, -80), fov: 28 }
     ];
 
     const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 });
     const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+    const purseFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0, minimumFractionDigits: 0 });
     const pct = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 2 });
     const board = {
-      pad: 16, topW: 366, leftW: 150, rightW: 136, topH: 164,
-      cellW: 122, cellH: 76, gap: 4, dozenW: 132, colH: 58
+      pad: 16, gap: 4, gridGap: 0, zeroW: 100, cellW: 90, cellH: 144, colW: 90, dozenH: 100, evenMoneyH: 100, gridRows: 3, gridCols: 12
     };
-    board.gridX = board.leftW + board.pad;
-    board.gridY = board.topH + board.pad + 10;
-    board.gridW = board.cellW * 3 + board.gap * 2;
-    board.gridH = board.cellH * 12 + board.gap * 11;
+    board.gridW = board.cellW * board.gridCols + board.gridGap * (board.gridCols - 1);
+    board.gridH = board.cellH * board.gridRows + board.gridGap * (board.gridRows - 1);
+    board.dozenSectionW = (board.gridW - board.gap * 2) / 3;
+    board.evenMoneyCellW = (board.dozenSectionW - board.gap) / 2;
+    board.playW = board.zeroW + board.gridW + board.colW;
+    board.playH = board.gridH + board.gap + board.dozenH + board.gap + board.evenMoneyH;
+    board.zeroX = 0;
+    board.gridX = board.zeroW;
+    board.gridY = 0;
+    board.colX = board.gridX + board.gridW;
+    board.dozenY = board.gridY + board.gridH + board.gap;
+    board.evenMoneyY = board.dozenY + board.dozenH + board.gap;
+    board.zeroRowH = (board.gridH - board.gap) / 2;
+    board.canvasOffsetX = Math.round((BOARD_W - board.playH) / 2);
+    board.canvasOffsetY = board.pad + 44;
     board.totalW = BOARD_W;
     board.totalH = BOARD_H;
-    board.outsideLeftX = board.pad;
-    board.outsideLeftW = board.leftW - board.pad;
-    board.outsideRowH = board.gridH / outsideDefinitions.length;
-    board.columnsY = board.gridY + board.gridH + 16;
-    board.dozenX = board.gridX + board.gridW + 14;
-    board.stageHeight = board.columnsY + board.colH + board.pad;
+    board.stageHeight = board.canvasOffsetY + board.playW + board.pad;
+
+    const FELT_Y = 1;
+    const CHIP = {
+      maxDiameterRatio: 0.62,
+      outsideScale: 0.84
+    };
+    let chipGeometryCache = null;
+
+    function computeChipMetrics() {
+      const base = Math.min(board.cellW, board.cellH);
+      CHIP.base = base;
+      CHIP.radius = base * (CHIP.maxDiameterRatio / 2);
+      CHIP.height = base * 0.084;
+      CHIP.stackPitch = base * 0.087;
+      CHIP.segments = 48;
+    }
+
+    function isInsideBet(target) {
+      return target.kind === 'number' || target.kind === 'split' || target.kind === 'corner' || target.kind === 'special';
+    }
+
+    function getChipSpec(target) {
+      if (isInsideBet(target)) {
+        const lineBet = target.kind === 'split' || target.kind === 'corner';
+        return {
+          radius: CHIP.radius,
+          height: CHIP.height,
+          stackPitch: CHIP.stackPitch,
+          scatter: lineBet ? CHIP.radius * 0.08 : CHIP.radius * 0.18
+        };
+      }
+
+      const minDim = Math.min(target.width, target.height);
+      const maxRadius = minDim * (CHIP.maxDiameterRatio / 2);
+      const radius = Math.min(CHIP.radius * CHIP.outsideScale, maxRadius);
+      const height = CHIP.height * (radius / CHIP.radius);
+      return {
+        radius,
+        height,
+        stackPitch: height * 1.04,
+        scatter: radius * 0.16
+      };
+    }
+
+    function getChipGeometry(radius, height) {
+      if (!chipGeometryCache) chipGeometryCache = new Map();
+      const key = `${radius.toFixed(2)}:${height.toFixed(2)}`;
+      if (!chipGeometryCache.has(key)) {
+        chipGeometryCache.set(
+          key,
+          new THREE.CylinderGeometry(radius, radius * 0.964, height, CHIP.segments, 1, false)
+        );
+      }
+      return chipGeometryCache.get(key);
+    }
+
+    computeChipMetrics();
+
+    function logicalPointToBoard(lx, ly) {
+      return {
+        x: board.canvasOffsetX + board.playH - ly,
+        y: board.canvasOffsetY + lx
+      };
+    }
+
+    function boardPointToLogical(bx, bz) {
+      const dx = bx - (board.canvasOffsetX + board.playH / 2);
+      const dy = bz - (board.canvasOffsetY + board.playW / 2);
+      return {
+        x: dy + board.playW / 2,
+        y: board.playH / 2 - dx
+      };
+    }
+
+    function applyBoardDrawTransform() {
+      ctx.translate(board.canvasOffsetX + board.playH / 2, board.canvasOffsetY + board.playW / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.translate(-board.playW / 2, -board.playH / 2);
+    }
 
     function formatMoney(value) {
       const n = Number(value || 0);
@@ -450,20 +907,13 @@
       wheelCtx = wheelCanvas.getContext('2d');
     }
 
-    function getIndexAtPointer(rotationDeg) {
-      const segmentDeg = 360 / wheelOrder.length;
-      const normalized = ((rotationDeg % 360) + 360) % 360;
-      let index = Math.floor((360 - normalized) / segmentDeg + 0.0001) % wheelOrder.length;
-      if (index < 0) index += wheelOrder.length;
-      return index;
-    }
-
-    function drawWheelNumber(value, mid, cx, cy, labelR, segment) {
+    function drawWheelNumber(value, mid, cx, cy, labelR, segment, highlighted = false) {
       const label = String(value);
       const arcLen = segment * labelR;
-      const fontSize = label === '00'
-        ? Math.max(12, Math.min(17, arcLen * 0.48))
-        : Math.max(13, Math.min(20, arcLen * 0.56));
+      let fontSize = label === '00'
+        ? Math.max(18, Math.min(30, arcLen * 0.68))
+        : Math.max(20, Math.min(36, arcLen * 0.78));
+      if (highlighted) fontSize *= 1.24;
 
       wheelCtx.save();
       wheelCtx.translate(cx + Math.cos(mid) * labelR, cy + Math.sin(mid) * labelR);
@@ -471,12 +921,60 @@
       wheelCtx.font = `700 ${fontSize}px "General Sans", sans-serif`;
       wheelCtx.textAlign = 'center';
       wheelCtx.textBaseline = 'middle';
-      wheelCtx.lineWidth = Math.max(1.2, fontSize * 0.11);
-      wheelCtx.strokeStyle = 'rgba(0,0,0,.62)';
+      wheelCtx.lineWidth = Math.max(1.4, fontSize * 0.12);
+      wheelCtx.strokeStyle = highlighted ? 'rgba(0,0,0,.78)' : 'rgba(0,0,0,.62)';
+      if (highlighted) {
+        wheelCtx.shadowColor = 'rgba(239,187,73,.92)';
+        wheelCtx.shadowBlur = 18;
+      }
       wheelCtx.strokeText(label, 0, 0.6);
-      wheelCtx.fillStyle = '#fff6e3';
+      wheelCtx.fillStyle = highlighted ? '#fff9e8' : '#fff6e3';
       wheelCtx.fillText(label, 0, 0);
       wheelCtx.restore();
+    }
+
+    function orbitPctToTrackRadius(orbitPct) {
+      // Disc radius is 118 units for a 384px canvas radius, so the painted
+      // pocket band (268-336px) spans ~82-103 units and the ball track
+      // (342-366px) spans ~105-112. Rest the ball inside the pocket cell,
+      // just outside the number, and ride the rim in the painted track.
+      const span = (orbitPct - WHEEL_PHYS.pocketOrbit) / (WHEEL_PHYS.rimOrbit - WHEEL_PHYS.pocketOrbit);
+      return THREE.MathUtils.lerp(96, 109, THREE.MathUtils.clamp(span, 0, 1));
+    }
+
+    function syncWheelBall3D(angleDeg, orbitPct, bounce = 0) {
+      if (!wheelBall3D) return;
+      // Negated so the 3D ball circulates the same way as the 2D HUD ball
+      // (three.js yaw is CCW-positive while the HUD rotate() is CW-positive)
+      const rad = THREE.MathUtils.degToRad(-angleDeg);
+      let trackR = orbitPctToTrackRadius(orbitPct);
+      const span = THREE.MathUtils.clamp(
+        (orbitPct - WHEEL_PHYS.pocketOrbit) / (WHEEL_PHYS.rimOrbit - WHEEL_PHYS.pocketOrbit), 0, 1);
+      if (bounce > 0.01) {
+        trackR += Math.sin(angleDeg * 0.17) * bounce * 0.22;
+      }
+      // Sink the ball a little when it is down in a pocket so it reads as
+      // resting inside the bucket rather than floating on the face
+      const restY = THREE.MathUtils.lerp(39, 42.5, span);
+      wheelBall3D.position.set(
+        Math.sin(rad) * trackR,
+        restY + bounce,
+        Math.cos(rad) * trackR
+      );
+      wheelBall3D.visible = true;
+    }
+
+    function applyWheelBall(angleDeg = wheelBallAngle, orbitPct = wheelBallOrbit, bounce = 0) {
+      wheelBallAngle = angleDeg;
+      wheelBallOrbit = orbitPct;
+      if (wheelBallEl) {
+        // Fake height in the 2D HUD by scaling the ball up while it is airborne
+        const scale = 1 + Math.min(1, bounce / 14) * 0.4;
+        wheelBallEl.style.setProperty('--ball-angle', `${angleDeg}deg`);
+        wheelBallEl.style.setProperty('--ball-orbit', `${orbitPct}%`);
+        wheelBallEl.style.transform = `translate(-50%, -50%) rotate(${angleDeg}deg) translateY(calc(-1 * ${orbitPct}%)) scale(${scale.toFixed(3)})`;
+      }
+      syncWheelBall3D(angleDeg, orbitPct, bounce);
     }
 
     function drawWheelFace() {
@@ -487,26 +985,44 @@
       }
       const cx = WHEEL_SIZE / 2;
       const cy = WHEEL_SIZE / 2;
-      const outerR = WHEEL_SIZE / 2 - 12;
-      const pocketOuter = outerR - 10;
-      const pocketInner = outerR - 88;
+      const outerR = WHEEL_SIZE / 2 - 14;
+      const trackOuter = outerR - 4;
+      const trackInner = outerR - 28;
+      const pocketOuter = trackInner - 6;
+      const pocketInner = outerR - 102;
       const segment = (Math.PI * 2) / wheelOrder.length;
 
       wheelCtx.clearRect(0, 0, WHEEL_SIZE, WHEEL_SIZE);
 
-      const wood = wheelCtx.createRadialGradient(cx, cy, pocketInner * 0.2, cx, cy, outerR + 6);
-      wood.addColorStop(0, '#4a2818');
-      wood.addColorStop(0.55, '#32180f');
-      wood.addColorStop(1, '#1a0c08');
+      const wood = wheelCtx.createRadialGradient(cx, cy, pocketInner * 0.15, cx, cy, outerR + 8);
+      wood.addColorStop(0, '#5a3020');
+      wood.addColorStop(0.45, '#3a1c12');
+      wood.addColorStop(1, '#140804');
       wheelCtx.fillStyle = wood;
       wheelCtx.beginPath();
-      wheelCtx.arc(cx, cy, outerR + 6, 0, Math.PI * 2);
+      wheelCtx.arc(cx, cy, outerR + 8, 0, Math.PI * 2);
       wheelCtx.fill();
 
-      wheelCtx.strokeStyle = 'rgba(255,225,156,.48)';
-      wheelCtx.lineWidth = 7;
+      const trackGrad = wheelCtx.createRadialGradient(cx, cy, trackInner, cx, cy, trackOuter);
+      trackGrad.addColorStop(0, '#6b4a2c');
+      trackGrad.addColorStop(0.55, '#9a7448');
+      trackGrad.addColorStop(1, '#4a3018');
+      wheelCtx.fillStyle = trackGrad;
       wheelCtx.beginPath();
-      wheelCtx.arc(cx, cy, pocketOuter + 5, 0, Math.PI * 2);
+      wheelCtx.arc(cx, cy, trackOuter, 0, Math.PI * 2);
+      wheelCtx.arc(cx, cy, trackInner, 0, Math.PI * 2, true);
+      wheelCtx.fill();
+
+      wheelCtx.strokeStyle = 'rgba(255,225,156,.55)';
+      wheelCtx.lineWidth = 8;
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, trackOuter + 2, 0, Math.PI * 2);
+      wheelCtx.stroke();
+
+      wheelCtx.strokeStyle = 'rgba(255,225,156,.28)';
+      wheelCtx.lineWidth = 2;
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, trackInner + 1, 0, Math.PI * 2);
       wheelCtx.stroke();
 
       wheelOrder.forEach((value, index) => {
@@ -533,48 +1049,320 @@
         wheelCtx.fillStyle = pocketGrad;
         wheelCtx.fill();
 
-        wheelCtx.strokeStyle = 'rgba(255,220,150,.28)';
-        wheelCtx.lineWidth = 1.4;
+        if (index === wheelHighlightIndex) {
+          wheelCtx.save();
+          wheelCtx.globalCompositeOperation = 'screen';
+          wheelCtx.fillStyle = 'rgba(255,228,160,.42)';
+          wheelCtx.beginPath();
+          wheelCtx.arc(cx, cy, pocketOuter, start, end);
+          wheelCtx.arc(cx, cy, pocketInner, end, start, true);
+          wheelCtx.closePath();
+          wheelCtx.fill();
+          wheelCtx.restore();
+        }
+
+        const fretX1 = cx + Math.cos(start) * pocketInner;
+        const fretY1 = cy + Math.sin(start) * pocketInner;
+        const fretX2 = cx + Math.cos(start) * (trackOuter + 2);
+        const fretY2 = cy + Math.sin(start) * (trackOuter + 2);
+        wheelCtx.strokeStyle = 'rgba(255,225,156,.42)';
+        wheelCtx.lineWidth = 2.2;
         wheelCtx.beginPath();
-        wheelCtx.moveTo(cx + Math.cos(start) * pocketInner, cy + Math.sin(start) * pocketInner);
-        wheelCtx.lineTo(cx + Math.cos(start) * pocketOuter, cy + Math.sin(start) * pocketOuter);
+        wheelCtx.moveTo(fretX1, fretY1);
+        wheelCtx.lineTo(fretX2, fretY2);
         wheelCtx.stroke();
 
-        drawWheelNumber(value, mid, cx, cy, labelR, segment);
+        wheelCtx.fillStyle = 'rgba(255,238,198,.82)';
+        wheelCtx.beginPath();
+        wheelCtx.arc(fretX2, fretY2, 2.6, 0, Math.PI * 2);
+        wheelCtx.fill();
+
+        drawWheelNumber(value, mid, cx, cy, labelR, segment, index === wheelHighlightIndex);
       });
 
-      wheelCtx.strokeStyle = 'rgba(0,0,0,.4)';
+      for (let i = 0; i < 8; i++) {
+        const a = (Math.PI * 2 * i) / 8 - Math.PI / 2;
+        const diamondR = pocketInner - 10;
+        const dx = cx + Math.cos(a) * diamondR;
+        const dy = cy + Math.sin(a) * diamondR;
+        wheelCtx.save();
+        wheelCtx.translate(dx, dy);
+        wheelCtx.rotate(a + Math.PI / 4);
+        wheelCtx.fillStyle = 'rgba(255,225,156,.78)';
+        wheelCtx.fillRect(-5, -5, 10, 10);
+        wheelCtx.strokeStyle = 'rgba(120,80,20,.55)';
+        wheelCtx.lineWidth = 1;
+        wheelCtx.strokeRect(-5, -5, 10, 10);
+        wheelCtx.restore();
+      }
+
+      wheelCtx.strokeStyle = 'rgba(0,0,0,.45)';
       wheelCtx.lineWidth = 2;
       wheelCtx.beginPath();
       wheelCtx.arc(cx, cy, pocketInner, 0, Math.PI * 2);
       wheelCtx.stroke();
 
       wheelCtx.beginPath();
-      wheelCtx.arc(cx, cy, pocketInner - 8, 0, Math.PI * 2);
+      wheelCtx.arc(cx, cy, pocketInner - 10, 0, Math.PI * 2);
       wheelCtx.fillStyle = '#0e0806';
       wheelCtx.fill();
 
-      const hub = wheelCtx.createRadialGradient(cx - 16, cy - 20, 4, cx, cy, pocketInner - 16);
+      const hubR = pocketInner - 18;
+      const hub = wheelCtx.createRadialGradient(cx - 18, cy - 22, 4, cx, cy, hubR);
       hub.addColorStop(0, '#f3cf73');
-      hub.addColorStop(0.42, '#c28b2d');
+      hub.addColorStop(0.38, '#c28b2d');
+      hub.addColorStop(0.72, '#7a5018');
       hub.addColorStop(1, '#4a2810');
       wheelCtx.beginPath();
-      wheelCtx.arc(cx, cy, pocketInner - 16, 0, Math.PI * 2);
+      wheelCtx.arc(cx, cy, hubR, 0, Math.PI * 2);
       wheelCtx.fillStyle = hub;
       wheelCtx.fill();
 
-      wheelCtx.strokeStyle = 'rgba(255,225,156,.5)';
-      wheelCtx.lineWidth = 4;
+      // Engine-turned sunburst on the hub plate
+      wheelCtx.save();
+      wheelCtx.globalAlpha = 0.22;
+      for (let i = 0; i < 48; i++) {
+        const a = (Math.PI * 2 * i) / 48;
+        wheelCtx.strokeStyle = i % 2 ? 'rgba(255,240,200,.8)' : 'rgba(70,40,10,.9)';
+        wheelCtx.lineWidth = 3;
+        wheelCtx.beginPath();
+        wheelCtx.moveTo(cx + Math.cos(a) * hubR * 0.4, cy + Math.sin(a) * hubR * 0.4);
+        wheelCtx.lineTo(cx + Math.cos(a) * hubR * 0.94, cy + Math.sin(a) * hubR * 0.94);
+        wheelCtx.stroke();
+      }
+      wheelCtx.restore();
+
+      wheelCtx.strokeStyle = 'rgba(60,32,8,.7)';
+      wheelCtx.lineWidth = 2;
       wheelCtx.beginPath();
-      wheelCtx.arc(cx, cy, outerR - 2, 0, Math.PI * 2);
+      wheelCtx.arc(cx, cy, hubR * 0.95, 0, Math.PI * 2);
       wheelCtx.stroke();
+
+      // Classic cross-handle turret: four tapered arms with ball tips
+      const armLen = hubR * 0.82;
+      for (let i = 0; i < 4; i++) {
+        const a = (Math.PI / 2) * i + Math.PI / 4;
+        const tipX = cx + Math.cos(a) * armLen;
+        const tipY = cy + Math.sin(a) * armLen;
+        const armGrad = wheelCtx.createLinearGradient(cx, cy, tipX, tipY);
+        armGrad.addColorStop(0, '#f3cf73');
+        armGrad.addColorStop(0.6, '#c28b2d');
+        armGrad.addColorStop(1, '#8a5c1a');
+        wheelCtx.strokeStyle = armGrad;
+        wheelCtx.lineCap = 'round';
+        wheelCtx.lineWidth = 11;
+        wheelCtx.beginPath();
+        wheelCtx.moveTo(cx + Math.cos(a) * hubR * 0.16, cy + Math.sin(a) * hubR * 0.16);
+        wheelCtx.lineTo(tipX, tipY);
+        wheelCtx.stroke();
+        wheelCtx.strokeStyle = 'rgba(255,248,222,.45)';
+        wheelCtx.lineWidth = 3;
+        wheelCtx.beginPath();
+        wheelCtx.moveTo(cx + Math.cos(a) * hubR * 0.2, cy + Math.sin(a) * hubR * 0.2);
+        wheelCtx.lineTo(cx + Math.cos(a) * armLen * 0.9, cy + Math.sin(a) * armLen * 0.9);
+        wheelCtx.stroke();
+        const tip = wheelCtx.createRadialGradient(tipX - 3, tipY - 4, 1, tipX, tipY, 10);
+        tip.addColorStop(0, '#fff4d6');
+        tip.addColorStop(0.5, '#d9aa42');
+        tip.addColorStop(1, '#6b4516');
+        wheelCtx.fillStyle = tip;
+        wheelCtx.beginPath();
+        wheelCtx.arc(tipX, tipY, 9, 0, Math.PI * 2);
+        wheelCtx.fill();
+      }
+
+      // Polished center cap with jewel highlight
+      const cap = wheelCtx.createRadialGradient(cx - 8, cy - 10, 2, cx, cy, hubR * 0.3);
+      cap.addColorStop(0, '#fff8e8');
+      cap.addColorStop(0.35, '#f3cf73');
+      cap.addColorStop(0.7, '#b07f24');
+      cap.addColorStop(1, '#5a3812');
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, hubR * 0.3, 0, Math.PI * 2);
+      wheelCtx.fillStyle = cap;
+      wheelCtx.fill();
+      wheelCtx.strokeStyle = 'rgba(50,28,6,.8)';
+      wheelCtx.lineWidth = 2;
+      wheelCtx.stroke();
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, hubR * 0.12, 0, Math.PI * 2);
+      wheelCtx.fillStyle = '#2a1606';
+      wheelCtx.fill();
+
+      wheelCtx.strokeStyle = 'rgba(255,225,156,.62)';
+      wheelCtx.lineWidth = 5;
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, outerR - 1, 0, Math.PI * 2);
+      wheelCtx.stroke();
+
+      wheelCtx.fillStyle = 'rgba(255,238,198,.75)';
+      for (let i = 0; i < 36; i++) {
+        const a = (Math.PI * 2 * i) / 36;
+        wheelCtx.beginPath();
+        wheelCtx.arc(cx + Math.cos(a) * (outerR + 4), cy + Math.sin(a) * (outerR + 4), 2.2, 0, Math.PI * 2);
+        wheelCtx.fill();
+      }
 
       if (wheelTexture) wheelTexture.needsUpdate = true;
     }
 
     function applyWheelRotation(deg) {
-      if (wheelCanvas) wheelCanvas.style.transform = `rotate(${deg}deg)`;
       if (wheelRotator) wheelRotator.rotation.y = THREE.MathUtils.degToRad(-deg) + WHEEL_3D_Y_OFFSET;
+    }
+
+    function normalizeDeg(deg) {
+      return ((deg % 360) + 360) % 360;
+    }
+
+    // Pocket i is painted with its center i*seg clockwise from the top, so a
+    // ball at HUD angle a sits over pocket round((a - wheelRotation) / seg)
+    function normalizePocketIndex(offsetDeg) {
+      const n = wheelOrder.length;
+      let idx = Math.round(offsetDeg / WHEEL_PHYS.seg) % n;
+      if (idx < 0) idx += n;
+      return idx;
+    }
+
+    function finishWheelSpin(p) {
+      const pocketIdx = normalizePocketIndex(p.lockOffset);
+      wheelBallLockOffset = pocketIdx * WHEEL_PHYS.seg;
+      wheelCoastVel = Math.max(WHEEL_PHYS.idleWheelVel, p.wheelVel);
+      wheelPhysics = null;
+      wheelSpinning = false;
+      wheelHighlightIndex = pocketIdx;
+      drawWheelFace();
+      wheelDisplayEl?.classList.remove('spinning');
+      wheelDisplayEl?.classList.add('landed');
+      if (wheelLandTimer) clearTimeout(wheelLandTimer);
+      wheelLandTimer = setTimeout(() => {
+        wheelDisplayEl?.classList.remove('landed');
+        wheelHighlightIndex = null;
+        drawWheelFace();
+      }, 2600);
+      const outcome = wheelOrder[pocketIdx];
+      setWheelResult(outcome, true);
+      beginSettlement(outcome);
+      updateControlStates();
+    }
+
+    function stepWheelPhysics(dt) {
+      const p = wheelPhysics;
+      if (!p) return;
+
+      // The rotor spins the whole time, bleeding speed toward a slow coast
+      p.wheelVel = Math.max(18, p.wheelVel - p.wheelFriction * dt);
+      wheelRotation += p.wheelVel * dt;
+
+      if (p.phase === 'rim') {
+        // Rolling friction + aero drag proportional to speed
+        const speed = Math.abs(p.ballVel);
+        const next = Math.max(0, speed - (p.ballDragK * speed + p.ballDragC) * dt);
+        p.ballVel = Math.sign(p.ballVel) * next;
+        p.ballAngle += p.ballVel * dt;
+        p.orbit = WHEEL_PHYS.rimOrbit;
+        p.height = Math.abs(Math.sin(p.ballAngle * 0.09)) * 1.4;
+        if (next < p.dropSpeed) {
+          p.phase = 'drop';
+          p.orbitVel = 2 + Math.random() * 3;
+          p.height = 0;
+          p.vy = 0;
+        }
+      } else if (p.phase === 'drop') {
+        // Spiral inward off the rim toward the pocket ring
+        const speed = Math.abs(p.ballVel);
+        p.ballVel = Math.sign(p.ballVel) * Math.max(0, speed - p.ballDragC * 0.9 * dt);
+        p.ballAngle += p.ballVel * dt;
+        p.orbitVel += p.orbitAccel * dt;
+        p.orbit -= p.orbitVel * dt;
+
+        p.vy -= WHEEL_PHYS.gravity * dt;
+        p.height = Math.max(0, p.height + p.vy * dt);
+        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.42;
+
+        if (!p.deflectorChecked && p.orbit <= WHEEL_PHYS.deflectorOrbit) {
+          p.deflectorChecked = true;
+          // Deflector diamonds sit every 45deg (HUD angle 45k - 67.5, matching
+          // the 3D hardware); a near pass scatters the ball
+          const m = normalizeDeg(p.ballAngle + 67.5) % 45;
+          const dist = Math.min(m, 45 - m);
+          if (dist < 8) {
+            const dir = Math.random() < 0.15 ? -1 : 1;
+            p.ballVel *= (0.25 + Math.random() * 0.3) * dir;
+            p.vy = 150 + Math.random() * 160;
+            p.orbit += 0.6 + Math.random() * 1.2;
+            p.orbitVel *= 0.3;
+          }
+        }
+
+        if (p.orbit <= WHEEL_PHYS.pocketOrbit) {
+          p.orbit = WHEEL_PHYS.pocketOrbit;
+          p.phase = 'pockets';
+          p.lastFretIdx = null;
+          p.vy = Math.max(p.vy, 70 + Math.random() * 90);
+        }
+      } else if (p.phase === 'pockets') {
+        // The ball now lives in the rotating pocket ring: what matters is its
+        // velocity relative to the wheel, killed off by pocket friction
+        let rel = p.ballVel - p.wheelVel;
+        rel = Math.sign(rel) * Math.max(0, Math.abs(rel) - p.pocketFriction * dt);
+        p.ballVel = p.wheelVel + rel;
+        p.ballAngle += p.ballVel * dt;
+
+        p.vy -= WHEEL_PHYS.gravity * dt;
+        p.height = Math.max(0, p.height + p.vy * dt);
+        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.42;
+
+        const fretIdx = Math.floor((p.ballAngle - wheelRotation + 90) / WHEEL_PHYS.seg);
+        if (p.lastFretIdx === null) p.lastFretIdx = fretIdx;
+        if (fretIdx !== p.lastFretIdx) {
+          p.lastFretIdx = fretIdx;
+          if (p.height < 2.5 && Math.abs(rel) > p.settleSpeed * 1.4) {
+            // Clipped a fret: deep pockets kill most of the energy per hit
+            const rest = 0.24 + Math.random() * 0.2;
+            const dir = Math.random() < 0.18 ? -1 : 1;
+            p.ballVel = p.wheelVel + rel * rest * dir;
+            p.vy = Math.max(p.vy, 60 + Math.random() * 120);
+          }
+        }
+
+        if (Math.abs(rel) < p.settleSpeed && p.height === 0 && Math.abs(p.vy) < 25) {
+          p.phase = 'settle';
+          // Keep the offset unnormalized so the settle ease stays continuous
+          p.lockOffset = Math.round((p.ballAngle - wheelRotation) / WHEEL_PHYS.seg) * WHEEL_PHYS.seg;
+          p.settleT = 0;
+        }
+      } else if (p.phase === 'settle') {
+        // Ease into the pocket center and ride the rotor
+        p.settleT += dt;
+        p.ballVel = p.wheelVel;
+        const target = wheelRotation + p.lockOffset;
+        p.ballAngle += (target - p.ballAngle) * Math.min(1, dt * 16);
+        p.height = Math.max(0, p.height - 30 * dt);
+        if (p.settleT >= 0.3) {
+          applyWheelRotation(wheelRotation);
+          applyWheelBall(wheelRotation + p.lockOffset, WHEEL_PHYS.pocketOrbit, 0);
+          finishWheelSpin(p);
+          return;
+        }
+      }
+
+      applyWheelRotation(wheelRotation);
+      applyWheelBall(p.ballAngle, p.orbit, p.height);
+    }
+
+    function updateWheelAnimation(now) {
+      const dtMs = wheelLastAnimTime ? Math.min(48, now - wheelLastAnimTime) : 0;
+      if (dtMs <= 0) return;
+      const dt = dtMs / 1000;
+      if (wheelPhysics) {
+        stepWheelPhysics(dt);
+        return;
+      }
+      // Idle: the rotor coasts and the ball rides along, locked in its pocket
+      wheelCoastVel += (WHEEL_PHYS.idleWheelVel - wheelCoastVel) * Math.min(1, dt * 0.4);
+      wheelRotation += wheelCoastVel * dt;
+      applyWheelRotation(wheelRotation);
+      applyWheelBall(wheelRotation + wheelBallLockOffset, WHEEL_PHYS.pocketOrbit, 0);
     }
 
     function buildWheel3D(parentScene) {
@@ -587,30 +1375,52 @@
       wheelTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
 
       const wheelAssembly = new THREE.Group();
-      wheelAssembly.position.set(0, 78, -(BOARD_H / 2 + 108));
+      wheelAssembly.position.set(0, 78, -(BOARD_H / 2 + 175));
       wheelAssembly.rotation.x = THREE.MathUtils.degToRad(12);
+      wheelAssembly.scale.setScalar(1.45);
       parentScene.add(wheelAssembly);
 
       const woodMat = new THREE.MeshStandardMaterial({ color: 0x3a1c12, roughness: 0.9, metalness: 0.04 });
+      const richWoodMat = new THREE.MeshStandardMaterial({ color: 0x53291a, roughness: 0.72, metalness: 0.06 });
       const brassMat = new THREE.MeshStandardMaterial({ color: 0xd9aa42, roughness: 0.24, metalness: 0.84 });
+      const polishedBrassMat = new THREE.MeshStandardMaterial({ color: 0xf0c964, roughness: 0.14, metalness: 0.92 });
 
-      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(132, 148, 32, 32), woodMat);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(132, 152, 32, 48), richWoodMat);
       bowl.position.y = 16;
       bowl.castShadow = true;
       bowl.receiveShadow = true;
       wheelAssembly.add(bowl);
 
-      const lip = new THREE.Mesh(new THREE.TorusGeometry(138, 5, 8, 40), brassMat);
+      const basePlinth = new THREE.Mesh(new THREE.CylinderGeometry(154, 160, 6, 48), woodMat);
+      basePlinth.position.y = 3;
+      basePlinth.receiveShadow = true;
+      wheelAssembly.add(basePlinth);
+
+      const baseTrim = new THREE.Mesh(new THREE.TorusGeometry(155, 2.4, 8, 56), brassMat);
+      baseTrim.rotation.x = Math.PI / 2;
+      baseTrim.position.y = 6.5;
+      wheelAssembly.add(baseTrim);
+
+      const lip = new THREE.Mesh(new THREE.TorusGeometry(138, 5.5, 10, 56), polishedBrassMat);
       lip.rotation.x = Math.PI / 2;
-      lip.position.y = 30;
+      lip.position.y = 31;
       wheelAssembly.add(lip);
+
+      // Brass studs around the bowl rim
+      const studGeo = new THREE.SphereGeometry(2.2, 10, 10);
+      for (let i = 0; i < 24; i++) {
+        const a = (Math.PI * 2 * i) / 24;
+        const stud = new THREE.Mesh(studGeo, polishedBrassMat);
+        stud.position.set(Math.cos(a) * 128, 33.5, Math.sin(a) * 128);
+        wheelAssembly.add(stud);
+      }
 
       wheelRotator = new THREE.Group();
       wheelRotator.position.y = 34;
       wheelAssembly.add(wheelRotator);
 
       const disc = new THREE.Mesh(
-        new THREE.CylinderGeometry(118, 118, 7, 48),
+        new THREE.CylinderGeometry(118, 118, 7, 64),
         new THREE.MeshStandardMaterial({ color: 0x241008, roughness: 0.92, metalness: 0.02 })
       );
       disc.castShadow = true;
@@ -618,101 +1428,157 @@
       wheelRotator.add(disc);
 
       const topCap = new THREE.Mesh(
-        new THREE.CircleGeometry(118, 48),
+        new THREE.CircleGeometry(118, 64),
         new THREE.MeshStandardMaterial({ map: wheelTexture, roughness: 0.86, metalness: 0.03 })
       );
       topCap.rotation.x = -Math.PI / 2;
       topCap.position.y = 3.6;
       wheelRotator.add(topCap);
 
-      const outerRing = new THREE.Mesh(new THREE.TorusGeometry(118, 4.5, 8, 48), brassMat);
+      const outerRing = new THREE.Mesh(new THREE.TorusGeometry(118, 4.5, 10, 64), brassMat);
       outerRing.rotation.x = Math.PI / 2;
       outerRing.position.y = 3.2;
       wheelRotator.add(outerRing);
 
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(34, 34, 10, 24), brassMat);
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(34, 36, 10, 32), brassMat);
       hub.position.y = 4;
       wheelRotator.add(hub);
 
-      const deflector = new THREE.Mesh(new THREE.BoxGeometry(10, 22, 28), brassMat);
-      deflector.position.set(0, 46, 126);
-      wheelAssembly.add(deflector);
+      // Three-dimensional turret: column, cross handles with ball finials, and
+      // a domed cap. It sits directly over the turret painted on the canvas
+      // face (arms at 45deg + k*90deg survive the texture rotation/mirroring,
+      // so the 3D arms stay registered with the painted ones).
+      const turretColumn = new THREE.Mesh(new THREE.CylinderGeometry(8.5, 12, 15, 24), polishedBrassMat);
+      turretColumn.position.y = 15;
+      turretColumn.castShadow = true;
+      wheelRotator.add(turretColumn);
 
-      const marker = new THREE.Mesh(new THREE.ConeGeometry(7, 14, 8), brassMat);
+      const turretCap = new THREE.Mesh(new THREE.SphereGeometry(7, 20, 16), polishedBrassMat);
+      turretCap.position.y = 25;
+      turretCap.castShadow = true;
+      wheelRotator.add(turretCap);
+
+      const armGeo = new THREE.CylinderGeometry(2.6, 3.2, 54, 12);
+      const tipGeo = new THREE.SphereGeometry(4.6, 14, 12);
+      for (let i = 0; i < 4; i++) {
+        const pivot = new THREE.Group();
+        pivot.rotation.y = Math.PI / 4 + (Math.PI / 2) * i;
+        const arm = new THREE.Mesh(armGeo, brassMat);
+        arm.rotation.z = Math.PI / 2;
+        arm.position.set(31, 11, 0);
+        arm.castShadow = true;
+        pivot.add(arm);
+        const tip = new THREE.Mesh(tipGeo, polishedBrassMat);
+        tip.position.set(60, 11, 0);
+        tip.castShadow = true;
+        pivot.add(tip);
+        wheelRotator.add(pivot);
+      }
+
+      // Eight static deflector diamonds around the apron, like a real wheel.
+      // Each box is long along X (radial), spun 45deg on that axis for the
+      // diamond profile, then the pivot yaws it into place around the bowl.
+      const diamondGeo = new THREE.BoxGeometry(15, 5.5, 5.5);
+      for (let i = 0; i < 8; i++) {
+        const a = (Math.PI * 2 * i) / 8 + Math.PI / 8;
+        const pivot = new THREE.Group();
+        pivot.rotation.y = -a;
+        const diamond = new THREE.Mesh(diamondGeo, polishedBrassMat);
+        diamond.rotation.x = Math.PI / 4;
+        // Hover just above the painted ball track (deflectorOrbit maps to
+        // roughly radius 104) so drop-phase deflector hits line up visually
+        diamond.position.set(106, 42, 0);
+        diamond.castShadow = true;
+        pivot.add(diamond);
+        wheelAssembly.add(pivot);
+      }
+
+      const marker = new THREE.Mesh(new THREE.ConeGeometry(7, 14, 8), polishedBrassMat);
       marker.rotation.x = Math.PI;
       marker.position.set(0, 58, 118);
       wheelAssembly.add(marker);
 
+      wheelBall3D = new THREE.Mesh(
+        new THREE.SphereGeometry(5.6, 32, 32),
+        new THREE.MeshStandardMaterial({
+          color: 0xffffff,
+          roughness: 0.18,
+          metalness: 0.06,
+          emissive: 0xffffff,
+          emissiveIntensity: 0.04
+        })
+      );
+      wheelBall3D.castShadow = true;
+      wheelBall3D.receiveShadow = true;
+      wheelAssembly.add(wheelBall3D);
+
       applyWheelRotation(wheelRotation);
-    }
-
-    function updateWheelAnimation(now) {
-      if (wheelSpinAnim) {
-        const t = Math.min(1, (now - wheelSpinAnim.startTime) / wheelSpinAnim.duration);
-        const eased = spinEase(t);
-        let angle = wheelSpinAnim.start + (wheelSpinAnim.end - wheelSpinAnim.start) * eased;
-        if (t > 0.9) {
-          const wobble = Math.sin((t - 0.9) / 0.1 * Math.PI * 2.4) * (1 - t) * 1.6;
-          angle += wobble;
-        }
-        wheelRotation = angle;
-        applyWheelRotation(wheelRotation);
-        if (t < 1) return;
-
-        const finalIndex = wheelSpinAnim.targetIndex;
-        wheelRotation = rotationForIndex(finalIndex, wheelSpinAnim.jitterDeg);
-        applyWheelRotation(wheelRotation);
-        setWheelResult(wheelOrder[finalIndex], true);
-        wheelSpinning = false;
-        spinBtn.disabled = false;
-        wheelDisplayEl?.classList.remove('spinning');
-        wheelDisplayEl?.classList.add('landed');
-        if (wheelLandTimer) clearTimeout(wheelLandTimer);
-        wheelLandTimer = setTimeout(() => wheelDisplayEl?.classList.remove('landed'), 700);
-        wheelSpinAnim = null;
-        return;
-      }
-
-      if (!wheelSpinning) {
-        const dt = wheelLastAnimTime ? Math.min(48, now - wheelLastAnimTime) : 0;
-        wheelRotation = (wheelRotation + dt * 0.0035) % 360;
-        applyWheelRotation(wheelRotation);
-      }
+      syncWheelBall3D(wheelBallAngle, wheelBallOrbit);
     }
 
     function setWheelResult(value, landed = false) {
-      const kind = value === '—' ? 'neutral' : pocketColor(value);
+      if (value === '—' || value === null || value === undefined) {
+        wheelResultEl.textContent = 'Spin';
+        wheelResultEl.className = 'wheel-result idle';
+        wheelDisplayEl?.classList.remove('has-result');
+        return;
+      }
+      const kind = pocketColor(value);
       wheelResultEl.textContent = String(value);
       wheelResultEl.className = `wheel-result ${kind}${landed ? ' landed' : ''}`;
+      wheelDisplayEl?.classList.add('has-result');
       if (landed) {
         wheelResultEl.addEventListener('animationend', () => wheelResultEl.classList.remove('landed'), { once: true });
       }
     }
 
+    function updateWheelButtonState() {
+      if (!wheelDisplayEl) return;
+      const canSpin = !wheelSpinning && !settling && !awaitingAdvance;
+      wheelDisplayEl.disabled = !canSpin;
+      if (canSpin) {
+        wheelDisplayEl.setAttribute('aria-label', 'Spin wheel');
+      } else if (awaitingAdvance) {
+        wheelDisplayEl.setAttribute('aria-label', `Result ${wheelResultEl.textContent}. Collect payout to continue.`);
+      } else {
+        wheelDisplayEl.setAttribute('aria-label', 'Wheel spinning');
+      }
+    }
+
     function spinWheel() {
-      if (wheelSpinning) return;
+      if (wheelSpinning || settling || awaitingAdvance) return;
       wheelSpinning = true;
-      spinBtn.disabled = true;
-      wheelDisplayEl?.classList.remove('landed');
+      wheelDisplayEl.disabled = true;
+      wheelDisplayEl?.classList.remove('landed', 'has-result');
       wheelDisplayEl?.classList.add('spinning');
+      wheelHighlightIndex = null;
+      drawWheelFace();
 
-      const targetIndex = Math.floor(Math.random() * wheelOrder.length);
-      const segmentDeg = 360 / wheelOrder.length;
-      const jitterDeg = (Math.random() - 0.5) * segmentDeg * 0.28;
-      const targetAngle = rotationForIndex(targetIndex, jitterDeg);
-      const extraTurns = 5 + Math.floor(Math.random() * 3);
-      const start = wheelRotation;
-      const delta = ((targetAngle - (start % 360) + 360) % 360);
-      const end = start + extraTurns * 360 + delta;
-
-      wheelSpinAnim = {
-        start,
-        end,
-        targetIndex,
-        jitterDeg,
-        duration: 4800 + Math.random() * 1200,
-        startTime: performance.now()
+      const rand = (a, b) => a + Math.random() * (b - a);
+      // The croupier gives the rotor a push and launches the ball the other
+      // way around the rim; everything after that is emergent physics
+      wheelPhysics = {
+        phase: 'rim',
+        wheelVel: rand(120, 200),
+        wheelFriction: rand(9, 14),
+        ballAngle: wheelBallAngle,
+        ballVel: -rand(520, 760),
+        ballDragK: rand(0.28, 0.4),
+        ballDragC: rand(26, 40),
+        dropSpeed: rand(150, 210),
+        orbit: WHEEL_PHYS.rimOrbit,
+        orbitVel: 0,
+        orbitAccel: rand(9, 15),
+        pocketFriction: rand(460, 620),
+        settleSpeed: rand(55, 85),
+        deflectorChecked: false,
+        lastFretIdx: null,
+        height: 0,
+        vy: 0,
+        lockOffset: 0,
+        settleT: 0
       };
+      applyWheelBall(wheelBallAngle, WHEEL_PHYS.rimOrbit, 0);
     }
 
     function startWheelIdleLoop() {
@@ -731,9 +1597,11 @@
       ensureWheelCanvas();
       drawWheelFace();
       applyWheelRotation(wheelRotation);
+      applyWheelBall(wheelRotation + wheelBallLockOffset, WHEEL_PHYS.pocketOrbit, 0);
       wheelLastAnimTime = performance.now();
       setWheelResult('—');
-      spinBtn.addEventListener('click', spinWheel);
+      wheelDisplayEl.addEventListener('click', spinWheel);
+      payoutOverlayEl.addEventListener('click', advanceRound);
       document.addEventListener('keydown', (event) => {
         if (event.code !== 'Space' || event.target.closest('input, textarea, select')) return;
         event.preventDefault();
@@ -743,24 +1611,8 @@
     }
 
     function themeInit() {
-      const root = document.documentElement;
-      let mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      root.setAttribute('data-theme', mode);
-      const btn = document.querySelector('[data-theme-toggle]');
-      const sync = () => {
-        btn.textContent = mode === 'dark' ? '☀︎' : '◐';
-        btn.setAttribute('aria-label', `Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`);
-      };
-      sync();
-      btn.addEventListener('click', () => {
-        mode = mode === 'dark' ? 'light' : 'dark';
-        root.setAttribute('data-theme', mode);
-        feltNoiseCanvas = null;
-        prepareBoardTextureCanvas();
-        drawBoard();
-        drawWheelFace();
-        updateChartTheme();
-      });
+      const mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', mode);
     }
 
     function buildSplitKey(numbers) { return `split-${[...numbers].sort((a,b)=>String(a).localeCompare(String(b), undefined, {numeric:true})).join('-')}`; }
@@ -792,71 +1644,116 @@
     }
 
     function buildTargets() {
-      pushTarget({ key:'n-0', x: board.gridX, y: board.pad, width: board.topW / 2 - 2, height: 78, kind:'special' });
-      pushTarget({ key:'n-00', x: board.gridX + board.topW / 2 + 2, y: board.pad, width: board.topW / 2 - 2, height: 78, kind:'special' });
-      pushTarget({ key:'green', x: board.gridX + 86, y: board.pad + 86, width: board.topW - 172, height: 56, kind:'special' });
+      pushTarget({ key:'n-00', x: board.zeroX, y: board.gridY, width: board.zeroW, height: board.zeroRowH, kind:'special' });
+      pushTarget({ key:'n-0', x: board.zeroX, y: board.gridY + board.zeroRowH + board.gap, width: board.zeroW, height: board.zeroRowH, kind:'special' });
+      pushTarget({ key:'green', x: board.zeroX + 6, y: board.gridY + board.zeroRowH - 14, width: board.zeroW - 12, height: 28, kind:'special' });
 
-      for (let row = 0; row < 12; row++) {
-        for (let col = 0; col < 3; col++) {
+      for (let row = 0; row < board.gridRows; row++) {
+        for (let col = 0; col < board.gridCols; col++) {
           const num = boardNumbers[row][col];
-          const x = board.gridX + col * (board.cellW + board.gap);
-          const y = board.gridY + row * (board.cellH + board.gap);
+          const x = board.gridX + col * (board.cellW + board.gridGap);
+          const y = board.gridY + row * (board.cellH + board.gridGap);
           pushTarget({ key:`n-${num}`, x, y, width: board.cellW, height: board.cellH, kind:'number' });
         }
       }
 
-      for (let num = 1; num <= 36; num++) {
-        const pos = numberPos.get(num);
-        const baseX = board.gridX + pos.col * (board.cellW + board.gap);
-        const baseY = board.gridY + pos.row * (board.cellH + board.gap);
-        if (pos.col < 2) {
-          const right = boardNumbers[pos.row][pos.col + 1];
-          pushTarget({
-            key: registerSplit([num, right]),
-            x: baseX + board.cellW - 18,
-            y: baseY + 8,
-            width: 36,
-            height: board.cellH + board.gap - 16,
-            kind: 'split'
-          });
-        }
-        if (pos.row < 11) {
-          const below = boardNumbers[pos.row + 1][pos.col];
-          pushTarget({
-            key: registerSplit([num, below]),
-            x: baseX + 8,
-            y: baseY + board.cellH - 18,
-            width: board.cellW + board.gap - 16,
-            height: 36,
-            kind: 'split'
-          });
-        }
-        if (pos.row < 11 && pos.col < 2) {
-          const set = [num, boardNumbers[pos.row][pos.col + 1], boardNumbers[pos.row + 1][pos.col], boardNumbers[pos.row + 1][pos.col + 1]];
-          pushTarget({
-            key: registerCorner(set),
-            x: baseX + board.cellW - 20,
-            y: baseY + board.cellH - 20,
-            width: 40,
-            height: 40,
-            kind: 'corner'
-          });
+      const splitBand = Math.max(10, Math.round(Math.min(board.cellW, board.cellH) * 0.16));
+      const cornerSize = splitBand * 2;
+
+      for (let row = 0; row < board.gridRows; row++) {
+        for (let col = 0; col < board.gridCols; col++) {
+          const num = boardNumbers[row][col];
+          const baseX = board.gridX + col * (board.cellW + board.gridGap);
+          const baseY = board.gridY + row * (board.cellH + board.gridGap);
+          if (col < board.gridCols - 1) {
+            const right = boardNumbers[row][col + 1];
+            pushTarget({
+              key: registerSplit([num, right]),
+              x: baseX + board.cellW - splitBand,
+              y: baseY,
+              width: splitBand * 2,
+              height: board.cellH,
+              kind: 'split'
+            });
+          }
+          if (row < board.gridRows - 1) {
+            const below = boardNumbers[row + 1][col];
+            pushTarget({
+              key: registerSplit([num, below]),
+              x: baseX,
+              y: baseY + board.cellH - splitBand,
+              width: board.cellW,
+              height: splitBand * 2,
+              kind: 'split'
+            });
+          }
+          if (row < board.gridRows - 1 && col < board.gridCols - 1) {
+            const set = [num, boardNumbers[row][col + 1], boardNumbers[row + 1][col], boardNumbers[row + 1][col + 1]];
+            pushTarget({
+              key: registerCorner(set),
+              x: baseX + board.cellW - cornerSize / 2,
+              y: baseY + board.cellH - cornerSize / 2,
+              width: cornerSize,
+              height: cornerSize,
+              kind: 'corner'
+            });
+          }
         }
       }
 
+      const zeroSplitX = board.gridX;
+      const topStreet = boardNumbers[0][0];
+      const bottomStreet = boardNumbers[board.gridRows - 1][0];
+      pushTarget({
+        key: registerSplit(['00', topStreet]),
+        x: zeroSplitX - splitBand,
+        y: board.gridY,
+        width: splitBand * 2,
+        height: board.cellH,
+        kind: 'split'
+      });
+      pushTarget({
+        key: registerSplit([0, bottomStreet]),
+        x: zeroSplitX - splitBand,
+        y: board.gridY + (board.gridRows - 1) * (board.cellH + board.gridGap),
+        width: splitBand * 2,
+        height: board.cellH,
+        kind: 'split'
+      });
+
       dozenDefinitions.forEach((def, i) => {
-        pushTarget({ key:def.key, x:board.dozenX, y:board.gridY + i * (board.gridH / 3), width:board.dozenW, height:(board.gridH / 3) - (i < 2 ? board.gap : 0), kind:'outside' }, false);
-      });
-      columnDefinitions.forEach((def, i) => {
-        pushTarget({ key:def.key, x:board.gridX + i * (board.cellW + board.gap), y:board.columnsY, width:board.cellW, height:board.colH, kind:'outside' }, false);
-      });
-      outsideDefinitions.forEach((def, i) => {
         pushTarget({
           key: def.key,
-          x: board.outsideLeftX,
-          y: board.gridY + i * board.outsideRowH,
-          width: board.outsideLeftW,
-          height: board.outsideRowH - (i < outsideDefinitions.length - 1 ? board.gap : 0),
+          x: board.gridX + i * (board.dozenSectionW + board.gap),
+          y: board.dozenY,
+          width: board.dozenSectionW,
+          height: board.dozenH,
+          kind: 'outside'
+        }, false);
+      });
+
+      evenMoneyGroups.forEach((keys, groupIndex) => {
+        const baseX = board.gridX + groupIndex * (board.dozenSectionW + board.gap);
+        keys.forEach((key, i) => {
+          pushTarget({
+            key,
+            x: baseX + i * (board.evenMoneyCellW + board.gap),
+            y: board.evenMoneyY,
+            width: board.evenMoneyCellW,
+            height: board.evenMoneyH,
+            kind: 'outside'
+          }, false);
+        });
+      });
+
+      columnDefinitions.forEach((def) => {
+        const rowIndex = def.key === 'col-1' ? 2 : def.key === 'col-2' ? 1 : 0;
+        pushTarget({
+          key: def.key,
+          x: board.colX,
+          y: board.gridY + rowIndex * (board.cellH + board.gridGap),
+          width: board.colW,
+          height: board.cellH,
           kind: 'outside'
         }, false);
       });
@@ -870,31 +1767,181 @@
       ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
     }
 
-    function drawFeltNoise() {
-      if (!feltNoiseCanvas) {
-        feltNoiseCanvas = document.createElement('canvas');
-        feltNoiseCanvas.width = BOARD_W;
-        feltNoiseCanvas.height = BOARD_H;
-        const nctx = feltNoiseCanvas.getContext('2d');
-        for (let i = 0; i < 2200; i++) {
-          nctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
-          nctx.fillRect(Math.random() * BOARD_W, Math.random() * BOARD_H, 1, 1);
+    function feltHash(x, y) {
+      const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+      return n - Math.floor(n);
+    }
+
+    function createFeltSurfaceMaps() {
+      if (feltFiberCanvas && feltNormalTexture && feltRoughnessTexture) {
+        return { normal: feltNormalTexture, roughness: feltRoughnessTexture };
+      }
+
+      const size = 512;
+      const heights = new Float32Array(size * size);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const i = y * size + x;
+          let h = 0;
+          h += Math.sin(x * 0.31 + y * 0.17) * 0.22;
+          h += Math.sin(x * 0.73 - y * 0.58 + 1.2) * 0.14;
+          h += Math.sin(x * 0.11 + y * 0.045) * 0.34;
+          h += (feltHash(x, y) - 0.5) * 0.2;
+          h += (feltHash(x * 3.7, y * 3.7) - 0.5) * 0.1;
+          heights[i] = h;
         }
       }
+
+      feltFiberCanvas = document.createElement('canvas');
+      feltFiberCanvas.width = size;
+      feltFiberCanvas.height = size;
+      const fctx = feltFiberCanvas.getContext('2d');
+      const fiberImg = fctx.createImageData(size, size);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const h = heights[y * size + x];
+          const i = (y * size + x) * 4;
+          const tone = 0.5 + h * 0.22;
+          fiberImg.data[i] = Math.round(18 + tone * 34);
+          fiberImg.data[i + 1] = Math.round(82 + tone * 58);
+          fiberImg.data[i + 2] = Math.round(48 + tone * 36);
+          fiberImg.data[i + 3] = 255;
+        }
+      }
+      fctx.putImageData(fiberImg, 0, 0);
+
+      fctx.globalCompositeOperation = 'overlay';
+      for (let n = 0; n < 14000; n++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const angle = 0.18 + Math.random() * 0.55;
+        const len = 1.5 + Math.random() * 3.5;
+        fctx.strokeStyle = Math.random() > 0.52
+          ? `rgba(255,255,255,${0.015 + Math.random() * 0.04})`
+          : `rgba(0,0,0,${0.02 + Math.random() * 0.05})`;
+        fctx.lineWidth = 0.4 + Math.random() * 0.8;
+        fctx.beginPath();
+        fctx.moveTo(x, y);
+        fctx.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
+        fctx.stroke();
+      }
+      fctx.globalCompositeOperation = 'source-over';
+
+      const normalCanvas = document.createElement('canvas');
+      normalCanvas.width = size;
+      normalCanvas.height = size;
+      const nctx = normalCanvas.getContext('2d');
+      const normalImg = nctx.createImageData(size, size);
+      const strength = 3.8;
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const left = heights[y * size + Math.max(0, x - 1)];
+          const right = heights[y * size + Math.min(size - 1, x + 1)];
+          const up = heights[Math.max(0, y - 1) * size + x];
+          const down = heights[Math.min(size - 1, y + 1) * size + x];
+          let nx = -(right - left) * strength;
+          let ny = -(down - up) * strength;
+          let nz = 1;
+          const invLen = 1 / Math.hypot(nx, ny, nz);
+          nx *= invLen;
+          ny *= invLen;
+          nz *= invLen;
+          const i = (y * size + x) * 4;
+          normalImg.data[i] = Math.round((nx * 0.5 + 0.5) * 255);
+          normalImg.data[i + 1] = Math.round((ny * 0.5 + 0.5) * 255);
+          normalImg.data[i + 2] = Math.round((nz * 0.5 + 0.5) * 255);
+          normalImg.data[i + 3] = 255;
+        }
+      }
+      nctx.putImageData(normalImg, 0, 0);
+
+      const roughCanvas = document.createElement('canvas');
+      roughCanvas.width = size;
+      roughCanvas.height = size;
+      const rctx = roughCanvas.getContext('2d');
+      const roughImg = rctx.createImageData(size, size);
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const h = heights[y * size + x];
+          const i = (y * size + x) * 4;
+          const rough = Math.min(255, Math.max(0, Math.round((0.9 + h * 0.08 + (feltHash(x * 2.3, y * 2.3) - 0.5) * 0.06) * 255)));
+          roughImg.data[i] = rough;
+          roughImg.data[i + 1] = rough;
+          roughImg.data[i + 2] = rough;
+          roughImg.data[i + 3] = 255;
+        }
+      }
+      rctx.putImageData(roughImg, 0, 0);
+
+      feltNormalTexture = new THREE.CanvasTexture(normalCanvas);
+      feltNormalTexture.colorSpace = THREE.NoColorSpace;
+      feltNormalTexture.wrapS = THREE.RepeatWrapping;
+      feltNormalTexture.wrapT = THREE.RepeatWrapping;
+      feltNormalTexture.repeat.set(BOARD_W / size, BOARD_H / size);
+      feltNormalTexture.anisotropy = renderer?.capabilities?.getMaxAnisotropy?.() ?? 4;
+
+      feltRoughnessTexture = new THREE.CanvasTexture(roughCanvas);
+      feltRoughnessTexture.colorSpace = THREE.NoColorSpace;
+      feltRoughnessTexture.wrapS = THREE.RepeatWrapping;
+      feltRoughnessTexture.wrapT = THREE.RepeatWrapping;
+      feltRoughnessTexture.repeat.set(BOARD_W / size, BOARD_H / size);
+      feltRoughnessTexture.anisotropy = feltNormalTexture.anisotropy;
+
+      return { normal: feltNormalTexture, roughness: feltRoughnessTexture };
+    }
+
+    function paintFeltBase() {
+      createFeltSurfaceMaps();
+      const cx = BOARD_W / 2;
+      const cy = BOARD_H / 2;
+      const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(BOARD_W, BOARD_H) * 0.72);
+      bg.addColorStop(0, '#1b643f');
+      bg.addColorStop(0.45, '#165236');
+      bg.addColorStop(1, '#0e3824');
+      ctx.fillStyle = bg;
+      roundedRect(0, 0, BOARD_W, BOARD_H, 28);
+      ctx.fill();
+
       ctx.save();
-      ctx.globalAlpha = 0.08;
-      ctx.drawImage(feltNoiseCanvas, 0, 0);
+      ctx.globalAlpha = 0.92;
+      const pattern = ctx.createPattern(feltFiberCanvas, 'repeat');
+      ctx.fillStyle = pattern;
+      roundedRect(0, 0, BOARD_W, BOARD_H, 28);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = 0.18;
+      const vignette = ctx.createRadialGradient(cx, cy, Math.max(BOARD_W, BOARD_H) * 0.18, cx, cy, Math.max(BOARD_W, BOARD_H) * 0.78);
+      vignette.addColorStop(0, 'rgba(255,255,255,0)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
+      ctx.fillStyle = vignette;
+      roundedRect(0, 0, BOARD_W, BOARD_H, 28);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function applyFeltNapOverlay() {
+      createFeltSurfaceMaps();
+      ctx.save();
+      ctx.globalCompositeOperation = 'soft-light';
+      ctx.globalAlpha = 0.28;
+      ctx.fillStyle = ctx.createPattern(feltFiberCanvas, 'repeat');
+      ctx.fillRect(0, 0, BOARD_W, BOARD_H);
       ctx.restore();
     }
 
     function drawText(text, x, y, opts = {}) {
       ctx.save();
+      ctx.translate(x, y);
+      if (opts.rotate) ctx.rotate(opts.rotate);
       ctx.textAlign = opts.align || 'center';
       ctx.textBaseline = opts.baseline || 'middle';
       ctx.fillStyle = opts.color || '#f7ead0';
       ctx.font = opts.font || '700 26px Zodiak';
       if (opts.shadow) { ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 10; }
-      ctx.fillText(text, x, y);
+      ctx.fillText(text, 0, 0);
       ctx.restore();
     }
 
@@ -915,18 +1962,28 @@
     function drawClassicChipTop(ctx, size, primary, accent, label) {
       const cx = size / 2;
       const cy = size / 2;
-      const r = size / 2 - 6;
+      const r = size / 2 - size * 0.05;
       ctx.clearRect(0, 0, size, size);
 
-      ctx.fillStyle = '#f2e6cf';
+      const shadow = ctx.createRadialGradient(cx, cy + size * 0.04, r * 0.2, cx, cy, r);
+      shadow.addColorStop(0, '#fffdf6');
+      shadow.addColorStop(0.72, '#f3ead8');
+      shadow.addColorStop(1, '#ddd1b8');
+      ctx.fillStyle = shadow;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = primary;
-      ctx.lineWidth = size * 0.075;
+      ctx.strokeStyle = 'rgba(0,0,0,.16)';
+      ctx.lineWidth = Math.max(1.5, size * 0.012);
       ctx.beginPath();
-      ctx.arc(cx, cy, r - size * 0.04, 0, Math.PI * 2);
+      ctx.arc(cx, cy, r - size * 0.008, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = primary;
+      ctx.lineWidth = size * 0.07;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - size * 0.045, 0, Math.PI * 2);
       ctx.stroke();
 
       const spots = 8;
@@ -935,17 +1992,20 @@
         ctx.translate(cx, cy);
         ctx.rotate((i / spots) * Math.PI * 2);
         ctx.fillStyle = i % 2 ? primary : accent;
-        ctx.fillRect(-size * 0.055, -r + size * 0.015, size * 0.11, size * 0.13);
+        ctx.fillRect(-size * 0.052, -r + size * 0.018, size * 0.104, size * 0.125);
         ctx.restore();
       }
 
-      ctx.fillStyle = '#faf6eb';
+      const inlay = ctx.createRadialGradient(cx - size * 0.06, cy - size * 0.08, size * 0.04, cx, cy, r * 0.44);
+      inlay.addColorStop(0, '#fffdf8');
+      inlay.addColorStop(1, '#f5edd9');
+      ctx.fillStyle = inlay;
       ctx.beginPath();
       ctx.arc(cx, cy, r * 0.44, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.strokeStyle = primary;
-      ctx.lineWidth = Math.max(2, size * 0.018);
+      ctx.lineWidth = Math.max(2, size * 0.016);
       ctx.beginPath();
       ctx.arc(cx, cy, r * 0.44, 0, Math.PI * 2);
       ctx.stroke();
@@ -953,9 +2013,9 @@
       ctx.fillStyle = primary;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      const fontSize = label.length > 3 ? size * 0.16 : size * 0.22;
+      const fontSize = label.length > 3 ? size * 0.155 : size * 0.21;
       ctx.font = `700 ${fontSize}px General Sans`;
-      ctx.fillText(label, cx, cy + 1);
+      ctx.fillText(label, cx, cy + size * 0.008);
     }
 
     function drawClassicChipSide(ctx, width, height, primary, accent) {
@@ -969,31 +2029,44 @@
       }
     }
 
-    function getClassicChipMaterials(amount) {
+    function getClassicChipMaterials(amount, radius = CHIP.radius) {
       if (!chipMaterialCache) chipMaterialCache = new Map();
       const style = getChipStyle(amount);
-      const key = `${style.primary}-${style.label}`;
+      const key = `${style.primary}-${style.label}-${Math.round(radius)}`;
       if (chipMaterialCache.has(key)) return chipMaterialCache.get(key);
 
+      const texSize = 192;
       const topCanvas = document.createElement('canvas');
-      topCanvas.width = 128;
-      topCanvas.height = 128;
-      drawClassicChipTop(topCanvas.getContext('2d'), 128, style.primary, style.accent, style.label);
+      topCanvas.width = texSize;
+      topCanvas.height = texSize;
+      drawClassicChipTop(topCanvas.getContext('2d'), texSize, style.primary, style.accent, style.label);
       const topTex = new THREE.CanvasTexture(topCanvas);
       topTex.colorSpace = THREE.SRGBColorSpace;
+      topTex.anisotropy = renderer?.capabilities?.getMaxAnisotropy?.() ?? 4;
 
       const sideCanvas = document.createElement('canvas');
-      sideCanvas.width = 256;
-      sideCanvas.height = 64;
-      drawClassicChipSide(sideCanvas.getContext('2d'), 256, 64, style.primary, style.accent);
+      sideCanvas.width = 512;
+      sideCanvas.height = 72;
+      drawClassicChipSide(sideCanvas.getContext('2d'), 512, 72, style.primary, style.accent);
       const sideTex = new THREE.CanvasTexture(sideCanvas);
       sideTex.colorSpace = THREE.SRGBColorSpace;
       sideTex.wrapS = THREE.RepeatWrapping;
       sideTex.wrapT = THREE.ClampToEdgeWrapping;
-      sideTex.repeat.set(1, 1);
+      const edgeRepeats = Math.max(2, Math.round((Math.PI * 2 * radius) / 22));
+      sideTex.repeat.set(edgeRepeats, 1);
+      sideTex.anisotropy = topTex.anisotropy;
 
-      const faceMat = new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.72, metalness: 0.03 });
-      const sideMat = new THREE.MeshStandardMaterial({ map: sideTex, roughness: 0.78, metalness: 0.02 });
+      const faceMat = new THREE.MeshStandardMaterial({
+        map: topTex,
+        roughness: 0.48,
+        metalness: 0.08,
+        envMapIntensity: 0.35
+      });
+      const sideMat = new THREE.MeshStandardMaterial({
+        map: sideTex,
+        roughness: 0.58,
+        metalness: 0.05
+      });
       const materials = [sideMat, faceMat, faceMat];
       chipMaterialCache.set(key, materials);
       return materials;
@@ -1006,40 +2079,56 @@
       return hash;
     }
 
-    function drawBoard() {
-      const styles = getComputedStyle(document.documentElement);
-      ctx.clearRect(0, 0, BOARD_W, BOARD_H);
-      const bg = ctx.createLinearGradient(0, 0, 0, BOARD_H);
-      bg.addColorStop(0, '#143528'); bg.addColorStop(1, '#0c1a15');
-      ctx.fillStyle = bg;
-      roundedRect(0, 0, BOARD_W, BOARD_H, 28);
+    function drawDiamond(cx, cy, size, fill, stroke = '#fff') {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - size);
+      ctx.lineTo(cx + size * 0.72, cy);
+      ctx.lineTo(cx, cy + size);
+      ctx.lineTo(cx - size * 0.72, cy);
+      ctx.closePath();
+      ctx.fillStyle = fill;
       ctx.fill();
-      drawFeltNoise();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, BOARD_W, BOARD_H);
+      paintFeltBase();
 
       const rail = ctx.createLinearGradient(0, 0, BOARD_W, 0);
-      rail.addColorStop(0, 'rgba(238,194,97,.22)'); rail.addColorStop(.5, 'rgba(255,233,180,.08)'); rail.addColorStop(1, 'rgba(238,194,97,.22)');
+      rail.addColorStop(0, 'rgba(238,194,97,.18)'); rail.addColorStop(.5, 'rgba(255,233,180,.06)'); rail.addColorStop(1, 'rgba(238,194,97,.18)');
       ctx.strokeStyle = rail;
       ctx.lineWidth = 2;
       roundedRect(8, 8, BOARD_W - 16, BOARD_H - 16, 24);
       ctx.stroke();
 
-      const brass = '#d0a23a';
       const cream = '#f7ead0';
-      const muted = styles.getPropertyValue('--color-text-muted').trim();
-      const divider = 'rgba(255,238,198,0.18)';
+      const tableLine = 'rgba(255,255,255,0.88)';
 
-      const specialTargets = ['n-0','n-00','green'].map(k => insideTargets.find(t => t.key === k));
-      specialTargets.forEach((t, idx) => {
-        const g = ctx.createLinearGradient(0, t.y, 0, t.y + t.height);
-        g.addColorStop(0, idx < 2 ? '#3f9a5d' : '#2f8850'); g.addColorStop(1, idx < 2 ? '#1f5d39' : '#1a5031');
-        ctx.fillStyle = g;
-        roundedRect(t.x, t.y, t.width, t.height, 20);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1; ctx.stroke();
-      });
-      drawText('0', specialTargets[0].x + specialTargets[0].width / 2, specialTargets[0].y + specialTargets[0].height / 2 + 2, { font:'700 42px Zodiak', shadow:true });
-      drawText('00', specialTargets[1].x + specialTargets[1].width / 2, specialTargets[1].y + specialTargets[1].height / 2 + 2, { font:'700 42px Zodiak', shadow:true });
-      drawText('GREEN', specialTargets[2].x + specialTargets[2].width / 2, specialTargets[2].y + specialTargets[2].height / 2 + 1, { font:'700 22px General Sans', shadow:true });
+      ctx.save();
+      applyBoardDrawTransform();
+
+      const specialTargets = ['n-00','n-0','green'].map(k => insideTargets.find(t => t.key === k));
+      const zeroTop = specialTargets[0];
+      const zeroBottom = specialTargets[1];
+      const zeroGroupH = zeroTop.height + board.gap + zeroBottom.height;
+      const zeroGrad = ctx.createLinearGradient(0, zeroTop.y, 0, zeroTop.y + zeroGroupH);
+      zeroGrad.addColorStop(0, '#3f9a5d'); zeroGrad.addColorStop(1, '#1f5d39');
+      ctx.fillStyle = zeroGrad;
+      ctx.fillRect(zeroTop.x, zeroTop.y, zeroTop.width, zeroGroupH);
+      ctx.strokeStyle = tableLine;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(zeroTop.x + 0.75, zeroTop.y + 0.75, zeroTop.width - 1.5, zeroGroupH - 1.5);
+      ctx.beginPath();
+      ctx.moveTo(zeroTop.x, zeroTop.y + zeroTop.height + board.gap / 2);
+      ctx.lineTo(zeroTop.x + zeroTop.width, zeroTop.y + zeroTop.height + board.gap / 2);
+      ctx.stroke();
+      drawText('00', zeroTop.x + zeroTop.width / 2, zeroTop.y + zeroTop.height / 2 + 1, { font:'700 40px Zodiak', shadow:true, rotate: -Math.PI / 2 });
+      drawText('0', zeroBottom.x + zeroBottom.width / 2, zeroBottom.y + zeroBottom.height / 2 + 1, { font:'700 40px Zodiak', shadow:true, rotate: -Math.PI / 2 });
 
       insideTargets.filter(t => t.kind === 'number').forEach(t => {
         const num = Number(t.key.replace('n-',''));
@@ -1047,40 +2136,91 @@
         const g = ctx.createLinearGradient(0, t.y, 0, t.y + t.height);
         g.addColorStop(0, top); g.addColorStop(1, bottom);
         ctx.fillStyle = g;
-        roundedRect(t.x, t.y, t.width, t.height, 14); ctx.fill();
-        ctx.strokeStyle = divider; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillRect(t.x, t.y, t.width, t.height);
+      });
+
+      ctx.strokeStyle = tableLine;
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = 'miter';
+      for (let col = 0; col <= board.gridCols; col++) {
+        const x = board.gridX + col * board.cellW;
+        ctx.beginPath();
+        ctx.moveTo(x, board.gridY);
+        ctx.lineTo(x, board.gridY + board.gridH);
+        ctx.stroke();
+      }
+      for (let row = 0; row <= board.gridRows; row++) {
+        const y = board.gridY + row * board.cellH;
+        ctx.beginPath();
+        ctx.moveTo(board.gridX, y);
+        ctx.lineTo(board.gridX + board.gridW, y);
+        ctx.stroke();
+      }
+
+      insideTargets.filter(t => t.kind === 'number').forEach(t => {
+        const num = Number(t.key.replace('n-',''));
         ctx.save();
-        ctx.translate(t.x + t.width / 2, t.y + t.height / 2 + 3);
-        ctx.rotate(-0.045);
+        ctx.translate(t.x + t.width / 2, t.y + t.height / 2 + 2);
+        ctx.rotate(-Math.PI / 2);
         drawText(String(num), 0, 0, { font:'700 34px Zodiak', color:cream, shadow:true });
         ctx.restore();
       });
 
-      allTargets.filter(t => ['split','corner'].includes(t.kind)).forEach(t => {
-        ctx.fillStyle = 'rgba(255,245,214,.10)';
-        roundedRect(t.x, t.y, t.width, t.height, 10); ctx.fill();
-      });
-
       allTargets.filter(t => t.kind === 'outside').forEach((t) => {
-        const g = ctx.createLinearGradient(0, t.y, 0, t.y + t.height);
-        g.addColorStop(0, 'rgba(255,255,255,.08)'); g.addColorStop(1, 'rgba(255,255,255,.03)');
-        ctx.fillStyle = g;
-        roundedRect(t.x, t.y, t.width, t.height, 16); ctx.fill();
-        ctx.strokeStyle = divider; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = 'rgba(26, 104, 64, 0.78)';
+        ctx.fillRect(t.x, t.y, t.width, t.height);
+        ctx.strokeStyle = tableLine;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(t.x + 0.75, t.y + 0.75, t.width - 1.5, t.height - 1.5);
         const def = allBetDefs.get(t.key);
-        drawText(def.label.toUpperCase(), t.x + t.width / 2, t.y + t.height / 2 + 1, { font: t.height > 60 ? '700 22px General Sans' : '700 18px General Sans', color: cream });
+        const cx = t.x + t.width / 2;
+        const cy = t.y + t.height / 2 + 1;
+        if (t.key === 'red') {
+          drawDiamond(cx, cy, Math.min(t.width, t.height) * 0.18, '#d44a45');
+        } else if (t.key === 'black') {
+          drawDiamond(cx, cy, Math.min(t.width, t.height) * 0.18, '#1a1d22', '#d8d2c4');
+        } else if (def.key.startsWith('col-')) {
+          drawText('2 TO 1', cx, cy, { font:'700 20px General Sans', color: cream, rotate: -Math.PI / 2 });
+        } else {
+          drawText(def.label.toUpperCase(), cx, cy, { font: t.height > 70 ? '700 24px General Sans' : '700 20px General Sans', color: cream });
+        }
       });
 
-      ctx.fillStyle = 'rgba(255,255,255,.05)';
-      ctx.fillRect(board.gridX - 6, board.gridY - 6, board.gridW + 12, board.gridH + 12);
-      drawText('AMERICAN TABLE', BOARD_W / 2, BOARD_H - 24, { font:'600 14px General Sans', color: muted });
+      ctx.restore();
+      drawSettlementHighlights();
+      applyFeltNapOverlay();
       updateBoardTexture();
     }
 
+    function outcomeBetKey(outcome) {
+      if (outcome === 0) return 'n-0';
+      if (outcome === '00') return 'n-00';
+      return `n-${outcome}`;
+    }
+
+    function drawSettlementHighlights() {
+      if (!settlementOutcome && !settlementWinKeys.size) return;
+      ctx.save();
+      applyBoardDrawTransform();
+      const keys = new Set(settlementWinKeys);
+      if (settlementOutcome !== null) keys.add(outcomeBetKey(settlementOutcome));
+      keys.forEach((key) => {
+        const target = allTargets.find(t => t.key === key);
+        if (!target) return;
+        ctx.fillStyle = 'rgba(208, 162, 58, 0.42)';
+        ctx.strokeStyle = 'rgba(255, 235, 160, 0.95)';
+        ctx.lineWidth = 3;
+        ctx.fillRect(target.x, target.y, target.width, target.height);
+        ctx.strokeRect(target.x + 1.5, target.y + 1.5, target.width - 3, target.height - 3);
+      });
+      ctx.restore();
+    }
+
     function targetCenter(target) {
+      const center = logicalPointToBoard(target.x + target.width / 2, target.y + target.height / 2);
       return {
-        x: target.x + target.width / 2 - BOARD_W / 2,
-        z: target.y + target.height / 2 - BOARD_H / 2
+        x: center.x - BOARD_W / 2,
+        z: center.y - BOARD_H / 2
       };
     }
 
@@ -1095,332 +2235,8 @@
       boardTexture.needsUpdate = true;
     }
 
-    function makeProcTexture(width, height, drawFn, repeatX = 1, repeatY = 1) {
-      const c = document.createElement('canvas');
-      c.width = width;
-      c.height = height;
-      drawFn(c.getContext('2d'), width, height);
-      const tex = new THREE.CanvasTexture(c);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(repeatX, repeatY);
-      return tex;
-    }
-
-    function makeCarpetTexture() {
-      return makeProcTexture(128, 128, (ctx, w, h) => {
-        ctx.fillStyle = '#162820';
-        ctx.fillRect(0, 0, w, h);
-        const step = 16;
-        for (let x = 0; x < w; x += step) {
-          for (let y = 0; y < h; y += step) {
-            ctx.fillStyle = (x / step + y / step) % 2 ? '#1a3028' : '#14261f';
-            ctx.fillRect(x, y, step, step);
-          }
-        }
-        ctx.strokeStyle = 'rgba(208,162,58,.08)';
-        ctx.lineWidth = 1;
-        for (let x = 0; x <= w; x += step) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, h);
-          ctx.stroke();
-        }
-        for (let y = 0; y <= h; y += step) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.lineTo(w, y);
-          ctx.stroke();
-        }
-      }, 8, 8);
-    }
-
-    function makeWallTexture() {
-      return makeProcTexture(128, 256, (ctx, w, h) => {
-        const grad = ctx.createLinearGradient(0, 0, w, 0);
-        grad.addColorStop(0, '#2a1418');
-        grad.addColorStop(0.5, '#3a1c22');
-        grad.addColorStop(1, '#241016');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h);
-        const panelW = 32;
-        for (let x = 0; x < w; x += panelW) {
-          ctx.strokeStyle = 'rgba(0,0,0,.35)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.lineTo(x, h);
-          ctx.stroke();
-          ctx.fillStyle = 'rgba(255,220,160,.03)';
-          ctx.fillRect(x + 2, 0, panelW / 2, h);
-        }
-      }, 4, 2);
-    }
-
-    function addPendantLight(group, x, z) {
-      const mountY = 430;
-      const chain = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.8, 1.8, 72, 6),
-        new THREE.MeshStandardMaterial({ color: 0x2a2418, metalness: 0.75, roughness: 0.35 })
-      );
-      chain.position.set(x, mountY - 36, z);
-      group.add(chain);
-
-      const shade = new THREE.Mesh(
-        new THREE.ConeGeometry(26, 34, 10, 1, true),
-        new THREE.MeshStandardMaterial({
-          color: 0x4a3210,
-          emissive: 0xffc866,
-          emissiveIntensity: 0.42,
-          roughness: 0.55,
-          side: THREE.DoubleSide
-        })
-      );
-      shade.position.set(x, mountY - 82, z);
-      group.add(shade);
-
-      const glow = new THREE.Mesh(
-        new THREE.SphereGeometry(8, 8, 8),
-        new THREE.MeshBasicMaterial({ color: 0xffe8b8 })
-      );
-      glow.position.set(x, mountY - 92, z);
-      group.add(glow);
-
-      const bulb = new THREE.PointLight(0xffddb0, 0.95, 720, 1.7);
-      bulb.position.set(x, mountY - 92, z);
-      group.add(bulb);
-    }
-
-    function buildCasinoEnvironment(scene) {
+    function buildSceneBackground(scene) {
       scene.background = new THREE.Color(0x0a1210);
-      scene.fog = new THREE.FogExp2(0x0a1210, 0.00038);
-
-      const envGroup = new THREE.Group();
-      scene.add(envGroup);
-
-      const carpetTex = makeCarpetTexture();
-      const wallTex = makeWallTexture();
-      const floorMat = new THREE.MeshStandardMaterial({ map: carpetTex, roughness: 0.96, metalness: 0 });
-      const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.9, metalness: 0.03 });
-
-      const floor = new THREE.Mesh(new THREE.PlaneGeometry(2200, 2200), floorMat);
-      floor.rotation.x = -Math.PI / 2;
-      floor.position.y = -36;
-      floor.receiveShadow = true;
-      envGroup.add(floor);
-
-      const backWall = new THREE.Mesh(new THREE.PlaneGeometry(1700, 480), wallMat);
-      backWall.position.set(0, 210, -860);
-      envGroup.add(backWall);
-
-      const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(1200, 480), wallMat);
-      leftWall.position.set(-820, 210, -120);
-      leftWall.rotation.y = Math.PI / 2;
-      envGroup.add(leftWall);
-
-      const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(1200, 480), wallMat);
-      rightWall.position.set(820, 210, -120);
-      rightWall.rotation.y = -Math.PI / 2;
-      envGroup.add(rightWall);
-
-      const ceiling = new THREE.Mesh(
-        new THREE.PlaneGeometry(1900, 1900),
-        new THREE.MeshStandardMaterial({ color: 0x100e0c, roughness: 1, metalness: 0 })
-      );
-      ceiling.rotation.x = Math.PI / 2;
-      ceiling.position.y = 470;
-      envGroup.add(ceiling);
-
-      [[-200, -40], [200, -40], [0, -260]].forEach(([x, z]) => addPendantLight(envGroup, x, z));
-
-      const sconceMat = new THREE.MeshStandardMaterial({ color: 0x5a3018, emissive: 0xffb84a, emissiveIntensity: 0.55, roughness: 0.5 });
-      [-420, 0, 420].forEach((x) => {
-        const sconce = new THREE.Mesh(new THREE.BoxGeometry(36, 56, 8), sconceMat);
-        sconce.position.set(x, 250, -852);
-        envGroup.add(sconce);
-      });
-
-      const railBackdrop = new THREE.Mesh(
-        new THREE.BoxGeometry(BOARD_W + 120, 48, 18),
-        new THREE.MeshStandardMaterial({ color: 0x1a0f0c, roughness: 0.82, metalness: 0.04 })
-      );
-      railBackdrop.position.set(0, 26, -(BOARD_H / 2 + 36));
-      railBackdrop.receiveShadow = true;
-      envGroup.add(railBackdrop);
-
-      const tray = new THREE.Mesh(
-        new THREE.BoxGeometry(BOARD_W * 0.55, 10, 28),
-        new THREE.MeshStandardMaterial({ color: 0x24140e, roughness: 0.7, metalness: 0.08 })
-      );
-      tray.position.set(0, 8, -(BOARD_H / 2 + 52));
-      envGroup.add(tray);
-
-      for (let i = -3; i <= 3; i++) {
-        const slot = new THREE.Mesh(
-          new THREE.BoxGeometry(BOARD_W * 0.07, 8, 22),
-          new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 0.85, metalness: 0.02 })
-        );
-        slot.position.set(i * (BOARD_W * 0.075), 8, -(BOARD_H / 2 + 52));
-        envGroup.add(slot);
-      }
-
-      addKitschyBackgroundDecor(envGroup);
-    }
-
-    function neonMaterial(color, intensity = 0.75) {
-      return new THREE.MeshStandardMaterial({
-        color,
-        emissive: color,
-        emissiveIntensity: intensity,
-        roughness: 0.38,
-        metalness: 0.08
-      });
-    }
-
-    function addKitschyBackgroundDecor(group) {
-      const decorMat = (color, intensity = 0.72) => neonMaterial(color, intensity);
-
-      const jackpot = new THREE.Group();
-      jackpot.position.set(0, 390, -835);
-      'JACKPOT'.split('').forEach((_, i) => {
-        const letter = new THREE.Mesh(new THREE.BoxGeometry(44, 68, 14), decorMat(i % 2 ? 0xff44aa : 0x44ddff, 0.68));
-        letter.position.set((i - 3) * 54, 0, 0);
-        jackpot.add(letter);
-      });
-      group.add(jackpot);
-
-      const sevens = new THREE.Group();
-      sevens.position.set(-300, 300, -815);
-      for (let i = 0; i < 3; i++) {
-        const block = new THREE.Mesh(new THREE.BoxGeometry(72, 118, 16), decorMat(0xff2244, 0.82));
-        block.position.set(i * 90, 0, 0);
-        sevens.add(block);
-      }
-      group.add(sevens);
-
-      const sevensRight = sevens.clone();
-      sevensRight.position.set(300, 300, -815);
-      group.add(sevensRight);
-
-      function addGiantDie(x, z, scale, rotY = 0.4) {
-        const die = new THREE.Group();
-        die.position.set(x, 0, z);
-        die.scale.setScalar(scale);
-        const body = new THREE.Mesh(
-          new THREE.BoxGeometry(84, 84, 84),
-          new THREE.MeshStandardMaterial({ color: 0xfff8ef, roughness: 0.42, metalness: 0.04 })
-        );
-        body.position.y = 42;
-        die.add(body);
-        const pipMat = decorMat(0xcc1122, 0.35);
-        [[-22, -22], [22, 22], [0, 0]].forEach(([px, pz]) => {
-          const pip = new THREE.Mesh(new THREE.SphereGeometry(9, 10, 10), pipMat);
-          pip.position.set(px, 84, pz);
-          die.add(pip);
-        });
-        die.rotation.y = rotY;
-        die.rotation.z = 0.22;
-        group.add(die);
-      }
-      addGiantDie(-640, -430, 1.7, 0.55);
-      addGiantDie(660, -390, 1.45, -0.35);
-
-      function addChipStack(x, z, count, color) {
-        const stack = new THREE.Group();
-        stack.position.set(x, 0, z);
-        const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.52, emissive: color, emissiveIntensity: 0.1 });
-        for (let i = 0; i < count; i++) {
-          const chip = new THREE.Mesh(new THREE.CylinderGeometry(52, 52, 16, 28), mat);
-          chip.position.y = 24 + i * 13;
-          stack.add(chip);
-          const rim = new THREE.Mesh(new THREE.TorusGeometry(52, 4, 8, 28), new THREE.MeshStandardMaterial({ color: 0x4a2808, roughness: 0.55, metalness: 0.25 }));
-          rim.rotation.x = Math.PI / 2;
-          rim.position.y = 32 + i * 13;
-          stack.add(rim);
-        }
-        group.add(stack);
-      }
-      addChipStack(-700, 220, 7, 0xefc14f);
-      addChipStack(740, 190, 6, 0xe84a5f);
-      addChipStack(-660, 540, 5, 0x3b9bdb);
-
-      function addSlotMachine(x, z) {
-        const slot = new THREE.Group();
-        slot.position.set(x, 0, z);
-        const cabinet = new THREE.Mesh(
-          new THREE.BoxGeometry(130, 280, 96),
-          new THREE.MeshStandardMaterial({ color: 0x6b1018, roughness: 0.72, metalness: 0.12 })
-        );
-        cabinet.position.y = 140;
-        slot.add(cabinet);
-        const screen = new THREE.Mesh(new THREE.BoxGeometry(92, 76, 8), decorMat(0x33ff99, 0.5));
-        screen.position.set(0, 188, 50);
-        slot.add(screen);
-        const marquee = new THREE.Mesh(new THREE.BoxGeometry(108, 24, 10), decorMat(0xffcc44, 0.7));
-        marquee.position.set(0, 262, 50);
-        slot.add(marquee);
-        const arm = new THREE.Mesh(
-          new THREE.CylinderGeometry(7, 7, 110, 8),
-          new THREE.MeshStandardMaterial({ color: 0xd9aa42, metalness: 0.82, roughness: 0.22 })
-        );
-        arm.rotation.z = -0.72;
-        arm.position.set(78, 198, 24);
-        slot.add(arm);
-        group.add(slot);
-      }
-      addSlotMachine(-840, -690);
-      addSlotMachine(860, -660);
-
-      const martini = new THREE.Group();
-      martini.position.set(760, 0, -710);
-      martini.scale.setScalar(1.65);
-      const stem = new THREE.Mesh(
-        new THREE.CylinderGeometry(9, 13, 190, 10),
-        new THREE.MeshStandardMaterial({ color: 0xd9aa42, metalness: 0.86, roughness: 0.18 })
-      );
-      stem.position.y = 95;
-      martini.add(stem);
-      const bowl = new THREE.Mesh(
-        new THREE.ConeGeometry(74, 54, 16, 1, true),
-        new THREE.MeshStandardMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.42, roughness: 0.08, side: THREE.DoubleSide })
-      );
-      bowl.position.y = 196;
-      martini.add(bowl);
-      const olive = new THREE.Mesh(new THREE.SphereGeometry(18, 12, 12), decorMat(0x66cc44, 0.38));
-      olive.position.set(0, 222, 0);
-      martini.add(olive);
-      group.add(martini);
-
-      const starburst = new THREE.Group();
-      starburst.position.set(-780, 410, -520);
-      for (let i = 0; i < 8; i++) {
-        const ray = new THREE.Mesh(new THREE.BoxGeometry(22, 150, 8), decorMat(0xffee55, 0.58));
-        ray.position.y = 75;
-        ray.rotation.z = (i / 8) * Math.PI;
-        starburst.add(ray);
-      }
-      const starCore = new THREE.Mesh(new THREE.CylinderGeometry(44, 44, 18, 14), decorMat(0xff6622, 0.75));
-      starCore.rotation.x = Math.PI / 2;
-      starCore.position.y = 10;
-      starburst.add(starCore);
-      group.add(starburst);
-
-      const luckyWheel = new THREE.Group();
-      luckyWheel.position.set(820, 260, -560);
-      const wheel = new THREE.Mesh(
-        new THREE.TorusGeometry(110, 18, 12, 36),
-        decorMat(0xff3344, 0.55)
-      );
-      wheel.rotation.x = Math.PI / 2;
-      luckyWheel.add(wheel);
-      const wheelInner = new THREE.Mesh(
-        new THREE.CylinderGeometry(72, 72, 12, 24),
-        decorMat(0xffcc44, 0.62)
-      );
-      wheelInner.rotation.x = Math.PI / 2;
-      luckyWheel.add(wheelInner);
-      group.add(luckyWheel);
     }
 
     function lerpAngle(from, to, t) {
@@ -1430,66 +2246,48 @@
       return from + delta * t;
     }
 
-    function viewToRigState(view) {
-      const pivot = view.target.clone();
-      const offset = view.position.clone().sub(pivot);
-      const spherical = new THREE.Spherical().setFromVector3(offset);
-      return { pivot, spherical, fov: view.fov };
-    }
-
-    function clampSpherical(spherical) {
-      spherical.phi = THREE.MathUtils.clamp(spherical.phi, CAMERA_LIMITS.minPhi, CAMERA_LIMITS.maxPhi);
-      spherical.radius = THREE.MathUtils.clamp(spherical.radius, CAMERA_LIMITS.minRadius, CAMERA_LIMITS.maxRadius);
+    function lookPointFromRig(position, baseLookAt, yaw, pitch, target = _lookResult) {
+      const dist = position.distanceTo(baseLookAt);
+      _lookForward.copy(baseLookAt).sub(position).normalize();
+      _yawQuat.setFromAxisAngle(Y_AXIS, yaw);
+      target.copy(_lookForward).applyQuaternion(_yawQuat);
+      _lookRight.crossVectors(Y_AXIS, target);
+      if (_lookRight.lengthSq() < 1e-8) _lookRight.set(1, 0, 0);
+      else _lookRight.normalize();
+      _pitchQuat.setFromAxisAngle(_lookRight, pitch);
+      target.applyQuaternion(_pitchQuat);
+      return target.multiplyScalar(dist).add(position);
     }
 
     function snapToView(view) {
       if (!view || !camera) return;
-      const state = viewToRigState(view);
-      cameraRig.targetPivot.copy(state.pivot);
-      cameraRig.targetSpherical.copy(state.spherical);
-      cameraRig.targetFov = state.fov;
-      cameraRig.pivot.copy(state.pivot);
-      cameraRig.spherical.copy(state.spherical);
-      cameraRig.fov = state.fov;
-      camera.position.copy(view.position);
-      camera.fov = view.fov;
-      camera.updateProjectionMatrix();
-      camera.lookAt(view.target);
+      cameraRig.position.copy(view.position);
+      cameraRig.baseLookAt.copy(view.lookAt);
+      cameraRig.yaw = 0;
+      cameraRig.pitch = 0;
+      cameraRig.targetYaw = 0;
+      cameraRig.targetPitch = 0;
+      cameraRig.fov = view.fov;
+      cameraRig.targetFov = view.fov;
+      applyCameraRig(true);
     }
 
     function applyCameraRig(force = false) {
       if (!camera) return;
       const k = force ? 1 : CAMERA_LIMITS.damp;
-      cameraRig.targetSpherical.radius = THREE.MathUtils.clamp(
-        cameraRig.targetSpherical.radius,
-        CAMERA_LIMITS.minRadius,
-        CAMERA_LIMITS.maxRadius
-      );
-      cameraRig.targetSpherical.phi = THREE.MathUtils.clamp(
-        cameraRig.targetSpherical.phi,
-        CAMERA_LIMITS.minPhi,
-        CAMERA_LIMITS.maxPhi
-      );
-      cameraRig.spherical.theta = lerpAngle(cameraRig.spherical.theta, cameraRig.targetSpherical.theta, k);
-      cameraRig.spherical.phi += (cameraRig.targetSpherical.phi - cameraRig.spherical.phi) * k;
-      cameraRig.spherical.radius += (cameraRig.targetSpherical.radius - cameraRig.spherical.radius) * k;
-      cameraRig.pivot.lerp(cameraRig.targetPivot, k);
+      cameraRig.targetYaw = THREE.MathUtils.clamp(cameraRig.targetYaw, CAMERA_LIMITS.minYaw, CAMERA_LIMITS.maxYaw);
+      cameraRig.targetPitch = THREE.MathUtils.clamp(cameraRig.targetPitch, CAMERA_LIMITS.minPitch, CAMERA_LIMITS.maxPitch);
+      cameraRig.targetFov = THREE.MathUtils.clamp(cameraRig.targetFov, CAMERA_LIMITS.minFov, CAMERA_LIMITS.maxFov);
+      cameraRig.yaw = lerpAngle(cameraRig.yaw, cameraRig.targetYaw, k);
+      cameraRig.pitch += (cameraRig.targetPitch - cameraRig.pitch) * k;
       cameraRig.fov += (cameraRig.targetFov - cameraRig.fov) * k;
-      const offset = new THREE.Vector3().setFromSpherical(cameraRig.spherical);
-      camera.position.copy(cameraRig.pivot).add(offset);
-      camera.lookAt(cameraRig.pivot);
+      camera.position.copy(cameraRig.position);
+      camera.lookAt(lookPointFromRig(cameraRig.position, cameraRig.baseLookAt, cameraRig.yaw, cameraRig.pitch));
       const prevFov = camera.fov;
       camera.fov = cameraRig.fov;
       if (force || Math.abs(prevFov - cameraRig.fov) > 0.01) {
         camera.updateProjectionMatrix();
       }
-    }
-
-    function snapRigToTargets() {
-      cameraRig.pivot.copy(cameraRig.targetPivot);
-      cameraRig.spherical.copy(cameraRig.targetSpherical);
-      cameraRig.fov = cameraRig.targetFov;
-      applyCameraRig(true);
     }
 
     function syncViewButtons(force = false) {
@@ -1498,8 +2296,32 @@
       document.querySelectorAll('[data-view]').forEach((btn) => {
         const active = btn.dataset.view === activeViewId;
         btn.classList.toggle('active', active);
-        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        if (btn.classList.contains('camera-option')) {
+          btn.setAttribute('aria-checked', active ? 'true' : 'false');
+        } else {
+          btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+        }
       });
+    }
+
+    function setCameraMenuOpen(open) {
+      const menu = document.getElementById('cameraMenu');
+      const toggle = document.getElementById('cameraToggle');
+      if (!menu || !toggle) return;
+      menu.hidden = !open;
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function setStatsDockOpen(open) {
+      const wrap = document.getElementById('rouletteWrap');
+      const toggleBtn = document.getElementById('statsToggle');
+      if (!wrap || !toggleBtn) return;
+      wrap.classList.toggle('stats-collapsed', !open);
+      toggleBtn.classList.toggle('active', open);
+      toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggleBtn.textContent = open ? 'Hide stats' : 'Stats';
+      scheduleBoardViewportSync();
+      payoutChart?.resize();
     }
 
     function applyCameraView(viewId, animate = true) {
@@ -1509,7 +2331,6 @@
       viewButtonsDirty = true;
       syncViewButtons(true);
       viewTween = null;
-      const state = viewToRigState(view);
       if (!animate) {
         snapToView(view);
         return;
@@ -1518,12 +2339,16 @@
         start: performance.now(),
         duration: 780,
         view,
-        fromPivot: cameraRig.targetPivot.clone(),
-        toPivot: state.pivot.clone(),
-        fromSph: cameraRig.targetSpherical.clone(),
-        toSph: state.spherical.clone(),
+        fromPos: cameraRig.position.clone(),
+        toPos: view.position.clone(),
+        fromLook: cameraRig.baseLookAt.clone(),
+        toLook: view.lookAt.clone(),
+        fromYaw: cameraRig.targetYaw,
+        toYaw: 0,
+        fromPitch: cameraRig.targetPitch,
+        toPitch: 0,
         fromFov: cameraRig.targetFov,
-        toFov: state.fov
+        toFov: view.fov
       };
     }
 
@@ -1531,10 +2356,10 @@
       if (!viewTween || !camera) return;
       const t = Math.min(1, (performance.now() - viewTween.start) / viewTween.duration);
       const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-      cameraRig.targetPivot.lerpVectors(viewTween.fromPivot, viewTween.toPivot, ease);
-      cameraRig.targetSpherical.radius = THREE.MathUtils.lerp(viewTween.fromSph.radius, viewTween.toSph.radius, ease);
-      cameraRig.targetSpherical.theta = lerpAngle(viewTween.fromSph.theta, viewTween.toSph.theta, ease);
-      cameraRig.targetSpherical.phi = THREE.MathUtils.lerp(viewTween.fromSph.phi, viewTween.toSph.phi, ease);
+      cameraRig.position.lerpVectors(viewTween.fromPos, viewTween.toPos, ease);
+      cameraRig.baseLookAt.lerpVectors(viewTween.fromLook, viewTween.toLook, ease);
+      cameraRig.targetYaw = lerpAngle(viewTween.fromYaw, viewTween.toYaw, ease);
+      cameraRig.targetPitch = THREE.MathUtils.lerp(viewTween.fromPitch, viewTween.toPitch, ease);
       cameraRig.targetFov = THREE.MathUtils.lerp(viewTween.fromFov, viewTween.toFov, ease);
       if (t >= 1) {
         snapToView(viewTween.view);
@@ -1543,7 +2368,7 @@
     }
 
     function initCameraRig() {
-      applyCameraView('dealer', false);
+      applyCameraView('side', false);
     }
 
     function shouldOrbitDrag(event) {
@@ -1573,6 +2398,11 @@
       board3dEl.style.cursor = 'grab';
     }
 
+    function panDragScale() {
+      const refFov = 28;
+      return THREE.MathUtils.clamp(cameraRig.fov / refFov, 0.38, 1);
+    }
+
     function moveCameraDrag(event) {
       if (!cameraDrag || event.pointerId !== cameraDrag.pointerId) return;
       const dx = event.clientX - cameraDrag.x;
@@ -1580,14 +2410,19 @@
       if (dx || dy) cameraDragMoved = true;
       cameraDrag.x = event.clientX;
       cameraDrag.y = event.clientY;
-      cameraRig.targetSpherical.theta += dx * 0.0046;
-      cameraRig.targetSpherical.phi = THREE.MathUtils.clamp(
-        cameraRig.targetSpherical.phi + dy * 0.0034,
-        CAMERA_LIMITS.minPhi,
-        CAMERA_LIMITS.maxPhi
+      const panScale = panDragScale();
+      cameraRig.targetYaw = THREE.MathUtils.clamp(
+        cameraRig.targetYaw + dx * CAMERA_LIMITS.panYaw * panScale,
+        CAMERA_LIMITS.minYaw,
+        CAMERA_LIMITS.maxYaw
       );
-      clampSpherical(cameraRig.targetSpherical);
-      cameraRig.spherical.copy(cameraRig.targetSpherical);
+      cameraRig.targetPitch = THREE.MathUtils.clamp(
+        cameraRig.targetPitch - dy * CAMERA_LIMITS.panPitch * panScale,
+        CAMERA_LIMITS.minPitch,
+        CAMERA_LIMITS.maxPitch
+      );
+      cameraRig.yaw = cameraRig.targetYaw;
+      cameraRig.pitch = cameraRig.targetPitch;
       applyCameraRig(true);
     }
 
@@ -1601,11 +2436,11 @@
 
     function applyWheelZoom() {
       if (!pendingWheelDelta) return;
-      const factor = Math.pow(1.0016, pendingWheelDelta);
-      cameraRig.targetSpherical.radius = THREE.MathUtils.clamp(
-        cameraRig.targetSpherical.radius * factor,
-        CAMERA_LIMITS.minRadius,
-        CAMERA_LIMITS.maxRadius
+      const factor = Math.pow(1.0018, pendingWheelDelta);
+      cameraRig.targetFov = THREE.MathUtils.clamp(
+        cameraRig.targetFov * factor,
+        CAMERA_LIMITS.minFov,
+        CAMERA_LIMITS.maxFov
       );
       pendingWheelDelta = 0;
     }
@@ -1615,11 +2450,7 @@
       const width = Math.max(1, Math.round(board3dEl.clientWidth));
       const height = Math.max(1, Math.round(board3dEl.clientHeight));
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const sizeStable = lastViewportW > 0
-        && Math.abs(width - lastViewportW) < 2
-        && Math.abs(height - lastViewportH) < 2
-        && dpr === lastViewportDpr;
-      if (sizeStable) return;
+      if (width === lastViewportW && height === lastViewportH && dpr === lastViewportDpr) return;
       lastViewportW = width;
       lastViewportH = height;
       lastViewportDpr = dpr;
@@ -1629,7 +2460,6 @@
       renderer.setSize(width, height, false);
       if (!cameraReady && width > 10 && height > 10) {
         cameraReady = true;
-        initCameraRig();
       }
     }
 
@@ -1646,9 +2476,9 @@
       pointer = new THREE.Vector2();
 
       scene = new THREE.Scene();
-      buildCasinoEnvironment(scene);
+      buildSceneBackground(scene);
 
-      camera = new THREE.PerspectiveCamera(34, 1, 1, 3000);
+      camera = new THREE.PerspectiveCamera(28, 1, 1, 3000);
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
       renderer.setClearColor(0x0a1210, 1);
@@ -1658,74 +2488,43 @@
       renderer.shadowMap.enabled = false;
       board3dEl.appendChild(renderer.domElement);
 
-      scene.add(new THREE.HemisphereLight(0xdde8e0, 0x1a1008, 0.26));
-      scene.add(new THREE.AmbientLight(0xfff0d0, 0.14));
+      scene.add(new THREE.HemisphereLight(0xdde8e0, 0x1a1008, 0.48));
+      scene.add(new THREE.AmbientLight(0xfff0d0, 0.22));
 
-      const tableSpot = new THREE.SpotLight(0xfff4d6, 0.95, 1900, Math.PI / 4.8, 0.38, 1.1);
-      tableSpot.position.set(0, 760, 360);
-      tableSpot.target.position.set(0, 0, -40);
-      tableSpot.castShadow = false;
-      scene.add(tableSpot);
-      scene.add(tableSpot.target);
-
-      const keyLight = new THREE.DirectionalLight(0xffe8b8, 1.28);
-      keyLight.position.set(120, 520, 180);
-      keyLight.castShadow = false;
+      const keyLight = new THREE.DirectionalLight(0xfff0d4, 1.18);
+      keyLight.position.set(140, 620, 220);
       scene.add(keyLight);
 
-      const fillLight = new THREE.DirectionalLight(0x89b39a, 0.42);
-      fillLight.position.set(-260, 260, -180);
+      const fillLight = new THREE.DirectionalLight(0xa8c4b0, 0.38);
+      fillLight.position.set(-220, 380, -120);
       scene.add(fillLight);
 
-      const rimLight = new THREE.DirectionalLight(0xc9973f, 0.28);
-      rimLight.position.set(40, 180, -360);
-      scene.add(rimLight);
-
-      const tableGroup = new THREE.Group();
-      scene.add(tableGroup);
-
-      const base = new THREE.Mesh(
-        new THREE.BoxGeometry(BOARD_W + 44, 36, BOARD_H + 44),
-        new THREE.MeshStandardMaterial({ color: 0x24140e, roughness: 0.78, metalness: 0.06 })
-      );
-      base.position.set(0, -20, 0);
-      base.receiveShadow = false;
-      tableGroup.add(base);
-
-      const legMat = new THREE.MeshStandardMaterial({ color: 0x1a0f0c, roughness: 0.82, metalness: 0.05 });
-      [[-(BOARD_W + 20) / 2, -(BOARD_H + 20) / 2], [(BOARD_W + 20) / 2, -(BOARD_H + 20) / 2], [-(BOARD_W + 20) / 2, (BOARD_H + 20) / 2], [(BOARD_W + 20) / 2, (BOARD_H + 20) / 2]].forEach(([x, z]) => {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(14, 16, 52, 8), legMat);
-        leg.position.set(x, -62, z);
-        leg.castShadow = false;
-        leg.receiveShadow = false;
-        tableGroup.add(leg);
-      });
-
-      const apron = new THREE.Mesh(
-        new THREE.BoxGeometry(BOARD_W + 16, 8, BOARD_H + 16),
-        new THREE.MeshStandardMaterial({ color: 0x0f241c, roughness: 0.88, metalness: 0.03 })
-      );
-      apron.position.set(0, -6, 0);
-      apron.receiveShadow = false;
-      tableGroup.add(apron);
+      const tableGroupLocal = new THREE.Group();
+      scene.add(tableGroupLocal);
+      tableGroup = tableGroupLocal;
 
       prepareBoardTextureCanvas();
+      createFeltSurfaceMaps();
       drawBoard();
       boardTexture = new THREE.CanvasTexture(canvas);
       boardTexture.colorSpace = THREE.SRGBColorSpace;
       boardTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      boardTexture.generateMipmaps = false;
-      boardTexture.minFilter = THREE.LinearFilter;
+      boardTexture.generateMipmaps = true;
+      boardTexture.minFilter = THREE.LinearMipmapLinearFilter;
       boardTexture.magFilter = THREE.LinearFilter;
       boardTexture.needsUpdate = true;
 
+      const feltMaps = createFeltSurfaceMaps();
       const felt = new THREE.Mesh(
-        new THREE.PlaneGeometry(BOARD_W, BOARD_H),
-        new THREE.MeshBasicMaterial({
+        new THREE.PlaneGeometry(BOARD_W, BOARD_H, 1, 1),
+        new THREE.MeshStandardMaterial({
           map: boardTexture,
-          polygonOffset: true,
-          polygonOffsetFactor: -2,
-          polygonOffsetUnits: -2
+          normalMap: feltMaps.normal,
+          normalScale: new THREE.Vector2(0.42, 0.42),
+          roughnessMap: feltMaps.roughness,
+          roughness: 0.96,
+          metalness: 0,
+          envMapIntensity: 0.12
         })
       );
       felt.rotation.x = -Math.PI / 2;
@@ -1735,40 +2534,16 @@
       felt.renderOrder = 2;
       tableGroup.add(felt);
 
-      const railMaterial = new THREE.MeshStandardMaterial({ color: 0xd9aa42, roughness: 0.22, metalness: 0.82 });
-      const railHeight = 10;
-      const railDepth = 12;
-      const railWidth = BOARD_W + 28;
-      const railLength = BOARD_H + 28;
-      [
-        [railWidth, railHeight, railDepth, 0, 4, -(BOARD_H + railDepth) / 2],
-        [railWidth, railHeight, railDepth, 0, 4, (BOARD_H + railDepth) / 2],
-        [railDepth, railHeight, railLength, -(BOARD_W + railDepth) / 2, 4, 0],
-        [railDepth, railHeight, railLength, (BOARD_W + railDepth) / 2, 4, 0]
-      ].forEach(([w, h, d, x, y, z]) => {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), railMaterial);
-        rail.position.set(x, y, z);
-        rail.castShadow = false;
-        rail.receiveShadow = false;
-        tableGroup.add(rail);
-      });
-
       chipGroup = new THREE.Group();
       tableGroup.add(chipGroup);
+      settlementChipGroup = new THREE.Group();
+      tableGroup.add(settlementChipGroup);
+      dealerStackGroup = new THREE.Group();
+      tableGroup.add(dealerStackGroup);
+      settlementHighlightGroup = new THREE.Group();
+      tableGroup.add(settlementHighlightGroup);
       chipMaterialCache = new Map();
-
-      hoverMesh = new THREE.Mesh(
-        new THREE.BoxGeometry(1, 3, 1),
-        new THREE.MeshBasicMaterial({
-          color: 0xffe4a8,
-          transparent: true,
-          opacity: 0.55,
-          depthWrite: false,
-          depthTest: false
-        })
-      );
-      hoverMesh.visible = false;
-      tableGroup.add(hoverMesh);
+      chipGeometryCache = new Map();
 
       buildWheel3D(scene);
 
@@ -1784,7 +2559,6 @@
       renderer.domElement.addEventListener('pointerup', onBoardPointerUp);
       renderer.domElement.addEventListener('pointercancel', onBoardPointerUp);
       renderer.domElement.addEventListener('pointerleave', onBoardPointerLeave);
-      renderer.domElement.addEventListener('click', onBoardClick);
       renderer.domElement.addEventListener('wheel', onBoardWheel, { passive: false });
       animateThree();
     }
@@ -1798,6 +2572,7 @@
       applyCameraRig(false);
       updateWheelAnimation(frameTime);
       wheelLastAnimTime = frameTime;
+      updateSettlementAnimation(frameTime);
       if (viewButtonsDirty) syncViewButtons();
       renderer.render(scene, camera);
     }
@@ -1808,19 +2583,23 @@
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     }
 
+    const targetKindPriority = { corner: 0, split: 1, special: 2, green: 2, number: 3, outside: 4 };
+
     function raycastTarget() {
       raycaster.setFromCamera(pointer, camera);
       if (!raycaster.ray.intersectPlane(feltPlane, planeHit)) return null;
       const boardX = planeHit.x + BOARD_W / 2;
       const boardZ = planeHit.z + BOARD_H / 2;
+      const logical = boardPointToLogical(boardX, boardZ);
       let best = null;
-      let bestArea = Infinity;
+      let bestScore = Infinity;
       for (const target of allTargets) {
-        if (boardX < target.x || boardX > target.x + target.width) continue;
-        if (boardZ < target.y || boardZ > target.y + target.height) continue;
+        if (logical.x < target.x || logical.x > target.x + target.width) continue;
+        if (logical.y < target.y || logical.y > target.y + target.height) continue;
         const area = target.width * target.height;
-        if (area < bestArea) {
-          bestArea = area;
+        const score = (targetKindPriority[target.kind] ?? 5) * 1e6 + area;
+        if (score < bestScore) {
+          bestScore = score;
           best = target;
         }
       }
@@ -1828,6 +2607,7 @@
     }
 
     function onBoardPointerDown(event) {
+      cameraDragMoved = false;
       if (shouldOrbitDrag(event)) {
         beginCameraDrag(event);
         event.preventDefault();
@@ -1835,25 +2615,28 @@
       }
       if (event.button !== 0) return;
       setPointerFromEvent(event);
-      const target = raycastTarget();
-      if (!target) {
-        beginCameraDrag(event);
-        event.preventDefault();
-        return;
-      }
-      leftPointer = { active: true, x: event.clientX, y: event.clientY, moved: false, targetKey: target.key };
-      updateHover(target);
+      leftPointer = { active: true, x: event.clientX, y: event.clientY, moved: false, targetKey: null };
     }
 
     function onBoardPointerUp(event) {
       endCameraDrag(event);
-      if (event.button === 0) leftPointer.active = false;
+      if (event.button !== 0) return;
+      const shouldPlace = leftPointer.active && !leftPointer.moved && !cameraDragMoved;
+      leftPointer.active = false;
+      leftPointer.moved = false;
+      cameraDragMoved = false;
+      if (!shouldPlace || settling || awaitingAdvance) return;
+      setPointerFromEvent(event);
+      const target = raycastTarget();
+      if (!target) return;
+      addChip(target.key, 1);
     }
 
     function onBoardPointerLeave(event) {
       endCameraDrag(event);
       leftPointer.active = false;
-      updateHover(null);
+      leftPointer.moved = false;
+      cameraDragMoved = false;
     }
 
     function onBoardPointerMove(event) {
@@ -1862,58 +2645,478 @@
         event.preventDefault();
         return;
       }
-      if (leftPointer.active && Math.hypot(event.clientX - leftPointer.x, event.clientY - leftPointer.y) > 6) {
-        leftPointer.moved = true;
-      }
-      if (!event.buttons || (event.buttons & 1)) {
-        setPointerFromEvent(event);
-        updateHover(raycastTarget());
+      if (leftPointer.active) {
+        const dx = event.clientX - leftPointer.x;
+        const dy = event.clientY - leftPointer.y;
+        if (Math.hypot(dx, dy) > 6) {
+          leftPointer.moved = true;
+          beginCameraDrag({ clientX: leftPointer.x, clientY: leftPointer.y, pointerId: event.pointerId });
+          moveCameraDrag(event);
+          event.preventDefault();
+          return;
+        }
       }
     }
 
-    function onBoardClick(event) {
-      if (event.button !== 0 || leftPointer.moved || cameraDragMoved) return;
-      setPointerFromEvent(event);
-      const target = raycastTarget();
-      if (!target) return;
-      lastDemo = null;
-      addChip(target.key, 1);
-      updateHover(target);
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
     }
 
-    function updateHover(target) {
-      const nextKey = target ? target.key : null;
-      if (nextKey === hoverTargetKey) return;
-      hoverTargetKey = nextKey;
-      if (!target) {
-        hoverMesh.visible = false;
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    function betWins(key, outcome) {
+      const def = allBetDefs.get(key);
+      return Boolean(def && def.numbers.includes(outcome));
+    }
+
+    function setMeshOpacity(mesh, opacity) {
+      mesh.traverse((child) => {
+        if (!child.material) return;
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        materials.forEach((material) => {
+          material.transparent = true;
+          material.opacity = opacity;
+        });
+      });
+    }
+
+    function resetChartPointStyles() {
+      if (!payoutChart) return;
+      payoutChart.data.datasets[0].pointBackgroundColor = undefined;
+      payoutChart.data.datasets[0].pointBorderColor = undefined;
+      payoutChart.data.datasets[0].pointBorderWidth = undefined;
+      payoutChart.data.datasets[0].pointRadius = 2;
+      payoutChart.data.datasets[0].pointHoverRadius = 5;
+    }
+
+    function applyChartSettlementHighlight(outcome) {
+      if (!payoutChart) return;
+      const idx = outcomes.indexOf(outcome);
+      if (idx < 0) return;
+      const s = getComputedStyle(document.documentElement);
+      const primary = s.getPropertyValue('--color-primary').trim() || '#efbb49';
+      const success = s.getPropertyValue('--color-success').trim() || '#71d189';
+      const m = calcMetrics();
+      payoutChart.data.datasets[0].pointBackgroundColor = outcomes.map((_, i) => {
+        if (i === idx) return primary;
+        return (m.profits[i] || 0) > 0 ? `${success}88` : `${primary}22`;
+      });
+      payoutChart.data.datasets[0].pointRadius = outcomes.map((_, i) => {
+        if (i === idx) return 7;
+        return (m.profits[i] || 0) > 0 ? 4 : 2;
+      });
+      payoutChart.data.datasets[0].pointBorderColor = outcomes.map((_, i) => (i === idx ? '#fff6d0' : 'transparent'));
+      payoutChart.data.datasets[0].pointBorderWidth = outcomes.map((_, i) => (i === idx ? 2 : 0));
+      payoutChart.update('none');
+    }
+
+    function clearSettlementHighlights3D() {
+      if (!settlementHighlightGroup) return;
+      while (settlementHighlightGroup.children.length) {
+        settlementHighlightGroup.remove(settlementHighlightGroup.children[0]);
+      }
+    }
+
+    function buildSettlementHighlights3D(winKeys, outcome) {
+      clearSettlementHighlights3D();
+      if (!settlementHighlightGroup) return;
+      const keys = new Set(winKeys);
+      keys.add(outcomeBetKey(outcome));
+      keys.forEach((key) => {
+        const target = allTargets.find(t => t.key === key);
+        if (!target) return;
+        const center = targetCenter(target);
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(target.height, target.width),
+          new THREE.MeshBasicMaterial({
+            color: 0xd0a23a,
+            transparent: true,
+            opacity: 0.36,
+            depthWrite: false
+          })
+        );
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(center.x, FELT_Y + 0.85, center.z);
+        mesh.renderOrder = 4;
+        settlementHighlightGroup.add(mesh);
+      });
+    }
+
+    function getStartingPurse() {
+      return Math.max(1, Number(bankrollInput.value || 100));
+    }
+
+    function getPurseChipEdgeTexture(style) {
+      if (!purseChipTextureCache) purseChipTextureCache = new Map();
+      const key = `edge-${style.primary}-${style.accent}`;
+      if (purseChipTextureCache.has(key)) return purseChipTextureCache.get(key);
+      const edgeCanvas = document.createElement('canvas');
+      edgeCanvas.width = 256;
+      edgeCanvas.height = 32;
+      drawClassicChipSide(edgeCanvas.getContext('2d'), 256, 32, style.primary, style.accent);
+      const edge = edgeCanvas.toDataURL('image/png');
+      purseChipTextureCache.set(key, edge);
+      return edge;
+    }
+
+    function getPurseChipFaceTexture(style) {
+      if (!purseChipTextureCache) purseChipTextureCache = new Map();
+      const key = `face-${style.primary}-${style.accent}-${style.label}`;
+      if (purseChipTextureCache.has(key)) return purseChipTextureCache.get(key);
+      const faceCanvas = document.createElement('canvas');
+      const size = 160;
+      faceCanvas.width = size;
+      faceCanvas.height = size;
+      drawClassicChipTop(faceCanvas.getContext('2d'), size, style.primary, style.accent, style.label);
+      const face = faceCanvas.toDataURL('image/png');
+      purseChipTextureCache.set(key, face);
+      return face;
+    }
+
+    function renderPurseStack() {
+      if (!purseChipStackEl) return;
+      const value = Math.max(0, Math.round(purse));
+      const topStyle = getChipStyle(Math.max(1, value));
+      const stackDenoms = [1, 5, 25, 100];
+      const count = value === 0 ? 2 : Math.min(7, Math.max(4, Math.ceil(Math.log10(value + 1)) + 2));
+      purseChipStackEl.innerHTML = Array.from({ length: count }, (_, i) => {
+        const isTop = i === count - 1;
+        const layerStyle = isTop
+          ? topStyle
+          : getChipStyle(stackDenoms[(count - 2 - i) % stackDenoms.length]);
+        const edge = getPurseChipEdgeTexture(layerStyle);
+        const face = isTop ? getPurseChipFaceTexture(layerStyle) : '';
+        const topClass = isTop ? ' is-top' : '';
+        return `<div class="purse-chip${topClass}" style="--chip-i:${i};--chip-edge:url('${edge}')${face ? `;--chip-face:url('${face}')` : ''}"><span class="purse-chip-edge"></span>${isTop ? '<span class="purse-chip-face" aria-hidden="true"></span>' : ''}</div>`;
+      }).join('');
+    }
+
+    function updatePurseDisplay() {
+      if (!scorePurseEl) return;
+      scorePurseEl.textContent = purseFmt.format(Math.round(purse));
+      renderPurseStack();
+      if (purseStackEl) {
+        purseStackEl.classList.toggle('empty', purse <= 0);
+        purseStackEl.classList.toggle('low', purse > 0 && purse < startingPurse * 0.25);
+        purseStackEl.setAttribute('aria-label', `Your purse: ${purseFmt.format(Math.round(purse))}`);
+      }
+    }
+
+    function resetPurse() {
+      startingPurse = getStartingPurse();
+      purse = startingPurse;
+      updatePurseDisplay();
+    }
+
+    function hidePayoutOverlay() {
+      awaitingAdvance = false;
+      if (!payoutOverlayEl) return;
+      payoutOverlayEl.hidden = true;
+      payoutOverlayEl.classList.remove('win', 'lose', 'even');
+    }
+
+    function showPayoutOverlay() {
+      if (!payoutOverlayEl) return;
+      payoutOverlayEl.hidden = false;
+      const net = Math.round(lastSpinNet);
+      if (net > 0) payoutOverlayAmountEl.textContent = `+${purseFmt.format(net)}`;
+      else if (net < 0) payoutOverlayAmountEl.textContent = `−${purseFmt.format(Math.abs(net))}`;
+      else payoutOverlayAmountEl.textContent = purseFmt.format(0);
+      payoutOverlayEl.classList.toggle('win', net > 0);
+      payoutOverlayEl.classList.toggle('lose', net < 0);
+      payoutOverlayEl.classList.toggle('even', net === 0);
+      payoutOverlayEl.setAttribute('aria-label', net === 0
+        ? 'No net change. Click to continue.'
+        : `${net > 0 ? 'Won' : 'Lost'} ${purseFmt.format(Math.abs(net))}. Click to continue.`);
+    }
+
+    function updateControlStates() {
+      updateWheelButtonState();
+      if (awaitingAdvance) showPayoutOverlay();
+      else hidePayoutOverlay();
+    }
+
+    function computeAdvanceTotal() {
+      let total = computeSettlementWinnings();
+      placements.forEach((stake) => { total += stake; });
+      return total;
+    }
+
+    function computeSettlementWinnings() {
+      let total = 0;
+      settlementWinKeys.forEach((key) => {
+        const stake = placements.get(key);
+        const def = allBetDefs.get(key);
+        if (stake && def) total += stake * def.payout;
+      });
+      return total;
+    }
+
+    function clearSettlementStacks() {
+      if (settlementChipGroup) {
+        while (settlementChipGroup.children.length) settlementChipGroup.remove(settlementChipGroup.children[0]);
+      }
+      if (dealerStackGroup) {
+        while (dealerStackGroup.children.length) dealerStackGroup.remove(dealerStackGroup.children[0]);
+      }
+      dealerStackCount = 0;
+    }
+
+    function clearSettlementVisuals() {
+      settlementState = null;
+      settlementWinKeys = new Set();
+      settlementOutcome = null;
+      settling = false;
+      awaitingAdvance = false;
+      clearSettlementHighlights3D();
+      clearSettlementStacks();
+      resetChartPointStyles();
+      if (payoutChart) payoutChart.update('none');
+      drawBoard();
+      setWheelResult('—');
+      updateControlStates();
+    }
+
+    function advanceRound() {
+      if (!awaitingAdvance) return;
+      hidePayoutOverlay();
+      purse += computeAdvanceTotal();
+      placements.clear();
+      history.length = 0;
+      updatePurseDisplay();
+      clearSettlementVisuals();
+      renderChips();
+      updateMetrics();
+    }
+
+    function dealerStackSlot(spec) {
+      const i = dealerStackCount++;
+      return {
+        x: ((i % 5) - 2) * 34,
+        z: -BOARD_H / 2 + 92 + Math.floor(i / 5) * 6,
+        y: FELT_Y + spec.height / 2 + Math.floor(i / 5) * spec.stackPitch
+      };
+    }
+
+    function dealerPayoutOrigin() {
+      return { x: 0, z: -BOARD_H / 2 + 108, y: FELT_Y + CHIP.height * 2 };
+    }
+
+    function createChipMesh(key, target, stackIndex, stackCount, chipAmount, cloneMaterials = false) {
+      const center = targetCenter(target);
+      const spec = getChipSpec(target);
+      const hash = hashChipOffset(key, stackIndex);
+      const offsetX = ((hash % 100) / 100 - 0.5) * spec.scatter * 2;
+      const offsetZ = (((hash >> 8) % 100) / 100 - 0.5) * spec.scatter * 2;
+      const y = FELT_Y + spec.height / 2 + stackIndex * spec.stackPitch;
+      let materials = getClassicChipMaterials(chipAmount, spec.radius);
+      if (cloneMaterials) materials = materials.map(material => material.clone());
+      const chip = new THREE.Mesh(getChipGeometry(spec.radius, spec.height), materials);
+      chip.position.set(center.x + offsetX, y, center.z + offsetZ);
+      chip.rotation.y = ((hash >> 16) % 360) * (Math.PI / 180);
+      chip.castShadow = false;
+      chip.receiveShadow = false;
+      return { chip, center, spec, offsetX, offsetZ, y };
+    }
+
+    function beginSettlement(outcome) {
+      settlementOutcome = outcome;
+      const winKeys = new Set();
+      const loseKeys = new Set();
+      placements.forEach((stake, key) => {
+        if (betWins(key, outcome)) winKeys.add(key);
+        else loseKeys.add(key);
+      });
+      settlementWinKeys = winKeys;
+      let lostTotal = 0;
+      loseKeys.forEach((key) => { lostTotal += placements.get(key) || 0; });
+      lastSpinNet = computeSettlementWinnings() - lostTotal;
+      drawBoard();
+      buildSettlementHighlights3D(winKeys, outcome);
+      applyChartSettlementHighlight(outcome);
+      renderOutcomeTable(calcMetrics().profits, outcome);
+
+      if (!placements.size) {
+        awaitingAdvance = true;
+        updateControlStates();
         return;
       }
-      const center = targetCenter(target);
-      hoverMesh.scale.set(target.width, 1, target.height);
-      hoverMesh.position.set(center.x, 4, center.z);
-      hoverMesh.visible = true;
+
+      settling = true;
+      updateControlStates();
+      while (chipGroup.children.length) chipGroup.remove(chipGroup.children[0]);
+
+      const entries = [];
+      const dealerFrom = dealerPayoutOrigin();
+
+      placements.forEach((count, key) => {
+        const target = allTargets.find(t => t.key === key);
+        if (!target) return;
+        const isWin = winKeys.has(key);
+        const total = Math.max(1, Math.round(count));
+        const stackCount = Math.min(total, 12);
+
+        if (isWin) {
+          for (let i = 0; i < stackCount; i++) {
+            const chipAmount = i === stackCount - 1 ? total : 1;
+            const built = createChipMesh(key, target, i, stackCount, chipAmount);
+            chipGroup.add(built.chip);
+          }
+
+          const def = allBetDefs.get(key);
+          const payoutTotal = total * def.payout;
+          const payoutStacks = Math.min(4, Math.max(1, Math.ceil(Math.log10(payoutTotal + 1))));
+          for (let p = 0; p < payoutStacks; p++) {
+            const payoutAmount = p === payoutStacks - 1 ? payoutTotal : Math.min(25, payoutTotal);
+            const stackIndex = stackCount + p;
+            const built = createChipMesh(`${key}-pay-${p}`, target, stackIndex, stackCount + payoutStacks, payoutAmount, true);
+            built.chip.scale.set(0.01, 0.01, 0.01);
+            built.chip.position.set(dealerFrom.x, dealerFrom.y, dealerFrom.z);
+            chipGroup.add(built.chip);
+            const to = {
+              x: built.center.x + built.offsetX,
+              y: FELT_Y + built.spec.height / 2 + stackIndex * built.spec.stackPitch,
+              z: built.center.z + built.offsetZ
+            };
+            entries.push({
+              mesh: built.chip,
+              kind: 'win-payout',
+              stackAt: 160 + p * 75,
+              stackDuration: 340,
+              moveDelay: 420 + p * 75,
+              moveDuration: 780,
+              from: { ...dealerFrom },
+              to
+            });
+          }
+        } else {
+          for (let i = 0; i < stackCount; i++) {
+            const chipAmount = i === stackCount - 1 ? total : 1;
+            const built = createChipMesh(key, target, i, stackCount, chipAmount, true);
+            chipGroup.add(built.chip);
+            const from = {
+              x: built.center.x + built.offsetX,
+              y: built.y,
+              z: built.center.z + built.offsetZ
+            };
+            const dealerSlot = dealerStackSlot(built.spec);
+            entries.push({
+              mesh: built.chip,
+              kind: 'lose',
+              moveDelay: 100 + i * 28,
+              moveDuration: 820,
+              from,
+              to: { x: dealerSlot.x, y: dealerSlot.y + i * built.spec.stackPitch * 0.35, z: dealerSlot.z }
+            });
+          }
+        }
+      });
+
+      settlementState = {
+        outcome,
+        winKeys,
+        loseKeys,
+        entries,
+        startTime: performance.now(),
+        complete: false
+      };
+    }
+
+    function updateSettlementHighlights(now) {
+      if (!settlementHighlightGroup?.children.length) return;
+      settlementHighlightGroup.children.forEach((mesh, idx) => {
+        mesh.material.opacity = 0.28 + Math.sin(now * 0.004 + idx) * 0.12;
+      });
+    }
+
+    function updateSettlementAnimation(now) {
+      updateSettlementHighlights(now);
+      if (!settlementState || settlementState.complete) return;
+      const elapsed = now - settlementState.startTime;
+      let allDone = true;
+
+      for (const entry of settlementState.entries) {
+        const mesh = entry.mesh;
+
+        if (entry.kind === 'win-payout') {
+          if (elapsed < entry.stackAt) {
+            allDone = false;
+            continue;
+          }
+          const stackT = Math.min(1, (elapsed - entry.stackAt) / entry.stackDuration);
+          const scale = easeOutCubic(stackT);
+          mesh.scale.set(scale, scale, scale);
+          mesh.position.set(entry.from.x, entry.from.y, entry.from.z);
+          if (stackT < 1) {
+            allDone = false;
+            continue;
+          }
+        }
+
+        const moveDelay = entry.moveDelay ?? 0;
+        if (elapsed < moveDelay) {
+          allDone = false;
+          continue;
+        }
+
+        const moveT = Math.min(1, (elapsed - moveDelay) / entry.moveDuration);
+        const eased = easeInOutCubic(moveT);
+        mesh.position.x = entry.from.x + (entry.to.x - entry.from.x) * eased;
+        mesh.position.z = entry.from.z + (entry.to.z - entry.from.z) * eased;
+        mesh.position.y = entry.from.y + (entry.to.y - entry.from.y) * eased;
+
+        if (entry.kind === 'lose') {
+          setMeshOpacity(mesh, 0.92);
+        } else if (entry.kind === 'win-payout') {
+          mesh.scale.set(1, 1, 1);
+        }
+
+        if (moveT < 1) allDone = false;
+      }
+
+      if (allDone) completeSettlementAnimation();
+    }
+
+    function reparentChip(mesh, group) {
+      if (!mesh || !group) return;
+      chipGroup.remove(mesh);
+      group.add(mesh);
+    }
+
+    function completeSettlementAnimation() {
+      if (!settlementState || settlementState.complete) return;
+      settlementState.complete = true;
+      const { loseKeys, entries } = settlementState;
+
+      loseKeys.forEach((key) => placements.delete(key));
+      entries.forEach((entry) => {
+        if (entry.kind === 'lose') reparentChip(entry.mesh, dealerStackGroup);
+        else if (entry.kind === 'win-payout') reparentChip(entry.mesh, settlementChipGroup);
+      });
+      history.length = 0;
+
+      settlementState = null;
+      settling = false;
+      awaitingAdvance = true;
+      renderChips();
+      updateMetrics();
+      updateControlStates();
     }
 
     function renderChips3D() {
-      if (!chipGroup) return;
+      if (!chipGroup || settling) return;
       while (chipGroup.children.length) chipGroup.remove(chipGroup.children[0]);
       placements.forEach((count, key) => {
         const target = allTargets.find(t => t.key === key);
         if (!target) return;
-        const center = targetCenter(target);
-        for (let i = 0; i < count; i++) {
-          const hash = hashChipOffset(key, i);
-          const offsetX = ((hash % 100) / 100 - 0.5) * 2.4;
-          const offsetZ = (((hash >> 8) % 100) / 100 - 0.5) * 2.4;
-          const y = 8 + i * 3.5;
-          const materials = getClassicChipMaterials(1);
-          const chip = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 3.5, 32), materials);
-          chip.position.set(center.x + offsetX, y, center.z + offsetZ);
-          chip.rotation.y = ((hash >> 16) % 360) * (Math.PI / 180);
-          chip.castShadow = true;
-          chip.receiveShadow = true;
-          chipGroup.add(chip);
+        const total = Math.max(1, Math.round(count));
+        const stackCount = Math.min(total, 12);
+        for (let i = 0; i < stackCount; i++) {
+          const chipAmount = i === stackCount - 1 ? total : 1;
+          const built = createChipMesh(key, target, i, stackCount, chipAmount);
+          chipGroup.add(built.chip);
         }
       });
     }
@@ -1939,6 +3142,16 @@
       return { bets, totalStake, profits };
     }
 
+    function isZeroPayout(value) {
+      return Math.abs(value) < 1e-9;
+    }
+
+    function payoutResult(value) {
+      if (isZeroPayout(value)) return 'even';
+      if (value > 0) return 'win';
+      return 'loss';
+    }
+
     function medianProfit(profits) {
       if (!profits.length) return 0;
       const sorted = [...profits].sort((a, b) => a - b);
@@ -1953,23 +3166,14 @@
       const ev = profits.reduce((a,b)=>a+b,0) / n;
       const variance = profits.reduce((a,b)=>a + (b - ev) ** 2, 0) / n;
       const std = Math.sqrt(variance);
-      const winProb = profits.filter(v => v > 0).length / n;
-      const lossProb = profits.filter(v => v < 0).length / n;
-      const breakEvenProb = profits.filter(v => v === 0).length / n;
+      const winProb = profits.filter(v => payoutResult(v) === 'win').length / n;
+      const lossProb = profits.filter(v => payoutResult(v) === 'loss').length / n;
+      const breakEvenProb = profits.filter(v => payoutResult(v) === 'even').length / n;
       const roi = ev / totalStake;
       const sharpe = std ? ev / std : 0;
       const maxProfit = Math.max(...profits);
       const median = medianProfit(profits);
       return { totalStake, ev, variance, std, winProb, lossProb, breakEvenProb, sharpe, roi, maxProfit, medianProfit: median, profits, bets };
-    }
-
-    function martingalePath(bankroll, spins) {
-      let base = 1; const loseProb = 20 / 38; const maxLossStreak = Math.floor(Math.log2(bankroll / base + 1));
-      let cumulativeRisk = 0; if (maxLossStreak > 0) cumulativeRisk = 1 - Math.pow(1 - Math.pow(loseProb, maxLossStreak), Math.max(1, spins));
-      const sequence = []; let nextBet = base;
-      for (let i = 0; i < Math.min(8, spins); i++) { if (nextBet > bankroll) break; sequence.push(nextBet); nextBet *= 2; }
-      const cycleLoss = Math.pow(2, sequence.length) - 1;
-      return { maxLossStreak, cumulativeRisk, sequence, cycleLoss };
     }
 
     function ensureChart() {
@@ -2002,10 +3206,13 @@
       payoutChart.update();
     }
 
-    function renderOutcomeTable(profits) {
+    function renderOutcomeTable(profits, highlightOutcome = null) {
       outcomeTableBody.innerHTML = outcomes.map((outcome, idx) => {
-        const value = profits[idx] || 0; const cls = value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'; const result = value > 0 ? 'Win' : value < 0 ? 'Lose' : 'Push';
-        return `<tr><td>${outcome}</td><td class="${cls}">${formatMoney(value)}</td><td>${result}</td></tr>`;
+        const value = profits[idx] || 0;
+        const cls = payoutResult(value) === 'win' ? 'positive' : payoutResult(value) === 'loss' ? 'negative' : 'neutral';
+        const result = payoutResult(value) === 'win' ? 'Win' : payoutResult(value) === 'loss' ? 'Lose' : 'Even';
+        const landed = highlightOutcome !== null && outcome === highlightOutcome;
+        return `<tr class="${landed ? 'outcome-landed' : ''}"><td>${outcome}</td><td class="${cls}">${formatMoney(value)}</td><td>${result}</td></tr>`;
       }).join('');
     }
 
@@ -2027,37 +3234,87 @@
         ['Expected ROI / spin', `${m.roi >= 0 ? '+' : ''}${pct.format(m.roi || 0)}`, 'Expected profit divided by total dollars at risk.'],
         ['Std. dev. / spin', formatMoney(m.std), 'One-spin volatility of net profit.'],
         ['Sharpe-style ratio', `${m.sharpe >= 0 ? '+' : ''}${fmt.format(m.sharpe)}`, 'Expected profit per spin divided by volatility.'],
-        ['Win / even / lose', `${pct.format(m.winProb)} / ${pct.format(m.breakEvenProb)} / ${pct.format(m.lossProb)}`, 'Chance each spin ends net positive, flat, or negative.'],
+        ['Win / even / lose', `${pct.format(m.winProb)} / ${pct.format(m.breakEvenProb)} / ${pct.format(m.lossProb)}`, 'Chance each spin ends net positive, exactly $0, or negative.'],
         ['Highest payout', formatMoney(m.maxProfit || 0), 'Best single-spin net payout among all 38 outcomes.'],
         ['Median payout', formatMoney(m.medianProfit || 0), 'Middle outcome when all 38 spin results are sorted by net payout.']
       ];
       statsEl.innerHTML = stats.map(([label, value, hint]) => `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div><div class="hint">${hint}</div></div>`).join('');
-      if (lastDemo === 'martingale') {
-        const mg = martingalePath(bankroll, spins);
-        progressionBox.innerHTML = `<strong>Martingale path view</strong><br>With a ${moneyFmt.format(bankroll)} bankroll, the longest loss streak you can survive starting from $1 is about <strong>${mg.maxLossStreak - 1}</strong> consecutive losses before the next double becomes unaffordable.<br>First doubling sequence: <strong>${mg.sequence.map(v => moneyFmt.format(v)).join(', ')}</strong>. Full failed cycle loss: <strong>${moneyFmt.format(mg.cycleLoss)}</strong>.<br>Approximate chance of hitting at least one bankroll-breaking loss streak within ${fmt.format(spins)} spins: <strong>${pct.format(Math.min(Math.max(mg.cumulativeRisk,0),1))}</strong>.`;
-      } else if (lastDemo === 'flat-red') {
-        progressionBox.innerHTML = `<strong>Flat betting view</strong><br>A flat $1 bet on red keeps stake size constant, so volatility comes only from the game outcome, not bet escalation. Over ${fmt.format(spins)} spins, expected profit is roughly <strong>${formatMoney(m.ev * spins)}</strong> with standard deviation scaling near <strong>${formatMoney(m.std * Math.sqrt(spins))}</strong>.`;
-      } else {
-        progressionBox.innerHTML = `<strong>Custom layout view</strong><br>The 3D table uses the courtesy line between 0 and 00 as the green bet, while the detailed chart and table show the exact dollar payout for every possible wheel outcome. [web:15][web:16]`;
-      }
+      progressionBox.innerHTML = `<strong>Custom layout view</strong><br>The 3D table uses the courtesy line between 0 and 00 as the green bet, while the detailed chart and table show the exact dollar payout for every possible wheel outcome. [web:15][web:16]`;
       payoutChart.data.labels = outcomes.map(String);
       payoutChart.data.datasets[0].data = m.profits;
-      payoutChart.update();
-      renderOutcomeTable(m.profits);
+      if (settlementOutcome !== null) applyChartSettlementHighlight(settlementOutcome);
+      else payoutChart.update();
+      renderOutcomeTable(m.profits, settlementOutcome);
     }
 
-    function addChip(key, amount = 1, track = true) { placements.set(key, (placements.get(key) || 0) + amount); if (track) history.push({ key, amount }); renderChips(); updateMetrics(); }
-    function removeChip() { const last = history.pop(); if (!last) return; const current = placements.get(last.key) || 0; const next = current - last.amount; if (next <= 0) placements.delete(last.key); else placements.set(last.key, next); renderChips(); updateMetrics(); }
-    function clearBoard() { placements.clear(); history.length = 0; lastDemo = null; renderChips(); updateMetrics(); }
-    function demoFlatRed() { clearBoard(); addChip('red', 1, false); lastDemo = 'flat-red'; updateMetrics(); }
-    function demoMartingale() { clearBoard(); addChip('red', 1, false); lastDemo = 'martingale'; updateMetrics(); }
+    function addChip(key, amount = 1, track = true) {
+      if (settling || awaitingAdvance) return;
+      if (purse < amount) return;
+      purse -= amount;
+      placements.set(key, (placements.get(key) || 0) + amount);
+      if (track) history.push({ key, amount });
+      updatePurseDisplay();
+      renderChips();
+      updateMetrics();
+    }
+    function removeChip() {
+      if (settling || awaitingAdvance) return;
+      const last = history.pop();
+      if (!last) return;
+      const current = placements.get(last.key) || 0;
+      const next = current - last.amount;
+      if (next <= 0) placements.delete(last.key);
+      else placements.set(last.key, next);
+      purse += last.amount;
+      updatePurseDisplay();
+      renderChips();
+      updateMetrics();
+    }
+    function clearBoard() {
+      clearSettlementVisuals();
+      placements.clear();
+      history.length = 0;
+      resetPurse();
+      renderChips();
+      updateMetrics();
+    }
+
+    function setMetricsOpen(open) {
+      const layoutEl = document.getElementById('main');
+      const toggleBtn = document.getElementById('metricsToggle');
+      layoutEl.classList.toggle('metrics-collapsed', !open);
+      toggleBtn.classList.toggle('active', open);
+      toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggleBtn.textContent = open ? 'Hide metrics' : 'Metrics';
+      scheduleBoardViewportSync();
+    }
+
+    document.getElementById('metricsToggle').addEventListener('click', () => {
+      setMetricsOpen(document.getElementById('main').classList.contains('metrics-collapsed'));
+    });
+    document.getElementById('metricsClose').addEventListener('click', () => setMetricsOpen(false));
 
     document.getElementById('undoBtn').addEventListener('click', removeChip);
     document.getElementById('clearBtn').addEventListener('click', clearBoard);
-    document.getElementById('flatEvenBtn').addEventListener('click', demoFlatRed);
-    document.getElementById('martingaleBtn').addEventListener('click', demoMartingale);
-    document.querySelectorAll('[data-view]').forEach((btn) => {
-      btn.addEventListener('click', () => applyCameraView(btn.dataset.view));
+    document.getElementById('statsToggle').addEventListener('click', () => {
+      setStatsDockOpen(document.getElementById('rouletteWrap').classList.contains('stats-collapsed'));
+    });
+    document.getElementById('cameraToggle').addEventListener('click', (event) => {
+      event.stopPropagation();
+      const menu = document.getElementById('cameraMenu');
+      setCameraMenuOpen(menu.hidden);
+    });
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.camera-menu-wrap')) setCameraMenuOpen(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setCameraMenuOpen(false);
+    });
+    document.querySelectorAll('.camera-option[data-view]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        applyCameraView(btn.dataset.view);
+        setCameraMenuOpen(false);
+      });
     });
     bankrollInput.addEventListener('input', updateMetrics);
     spinsInput.addEventListener('input', updateMetrics);
@@ -2067,8 +3324,10 @@
     initThree();
     ensureChart();
     themeInit();
+    resetPurse();
     renderChips();
     updateMetrics();
+    updateControlStates();
   </script>
 </body>
 </html>
