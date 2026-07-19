@@ -1436,7 +1436,7 @@
           if (dist < 8) {
             const dir = Math.random() < 0.15 ? -1 : 1;
             p.ballVel *= (0.25 + Math.random() * 0.3) * dir;
-            p.vy = 190 + Math.random() * 180;
+            p.vy = 280 + Math.random() * 240;
             p.orbit += 0.6 + Math.random() * 1.2;
             p.orbitVel *= 0.3;
           }
@@ -1446,7 +1446,7 @@
           p.orbit = WHEEL_PHYS.pocketOrbit;
           p.phase = 'pockets';
           p.lastFretIdx = null;
-          p.vy = Math.max(p.vy, 100 + Math.random() * 110);
+          p.vy = Math.max(p.vy, 160 + Math.random() * 160);
         }
       } else if (p.phase === 'pockets') {
         // The ball now lives in the rotating pocket ring: what matters is its
@@ -1458,36 +1458,41 @@
 
         p.vy -= WHEEL_PHYS.gravity * dt;
         p.height = Math.max(0, p.height + p.vy * dt);
-        if (p.height === 0 && p.vy < 0) p.vy = -p.vy * 0.5;
+        // Tall rebounds while the ball still races the wheel, but once its
+        // rolling energy is spent the floor absorbs the hop almost entirely
+        if (p.height === 0 && p.vy < 0) {
+          p.vy = -p.vy * (Math.abs(rel) < p.settleSpeed ? 0.2 : 0.42);
+        }
 
         const fretIdx = Math.floor((p.ballAngle - wheelRotation + 90) / WHEEL_PHYS.seg);
         if (p.lastFretIdx === null) p.lastFretIdx = fretIdx;
         if (fretIdx !== p.lastFretIdx) {
           p.lastFretIdx = fretIdx;
           if (p.height < 2.5 && Math.abs(rel) > p.settleSpeed * 1.4) {
-            // Clipped a fret: lively hop, but momentum still bleeds each hit
+            // Clipped a fret: big theatrical hop, heavy energy loss per hit
             const rest = 0.3 + Math.random() * 0.22;
             const dir = Math.random() < 0.18 ? -1 : 1;
             p.ballVel = p.wheelVel + rel * rest * dir;
-            p.vy = Math.max(p.vy, 90 + Math.random() * 130);
+            p.vy = Math.max(p.vy, 140 + Math.random() * 180);
           }
         }
 
-        if (Math.abs(rel) < p.settleSpeed && p.height === 0 && Math.abs(p.vy) < 25) {
+        // Once the angular energy is spent, drop straight into the nearest
+        // pocket instead of waiting for the vertical bounce to fully die
+        if (Math.abs(rel) < p.settleSpeed && p.height < 4 && Math.abs(p.vy) < 130) {
           p.phase = 'settle';
           // Keep the offset unnormalized so the settle ease stays continuous
           p.lockOffset = Math.round((p.ballAngle - wheelRotation) / WHEEL_PHYS.seg) * WHEEL_PHYS.seg;
           p.settleT = 0;
         }
       } else if (p.phase === 'settle') {
-        // Ease into the pocket center and ride the rotor; a heavy ball
-        // slumps in rather than snapping
+        // Quick, decisive drop into the pocket center, then ride the rotor
         p.settleT += dt;
         p.ballVel = p.wheelVel;
         const target = wheelRotation + p.lockOffset;
-        p.ballAngle += (target - p.ballAngle) * Math.min(1, dt * 10);
-        p.height = Math.max(0, p.height - 22 * dt);
-        if (p.settleT >= 0.45) {
+        p.ballAngle += (target - p.ballAngle) * Math.min(1, dt * 15);
+        p.height = Math.max(0, p.height - 60 * dt);
+        if (p.settleT >= 0.3) {
           applyWheelRotation(wheelRotation);
           applyWheelBall(wheelRotation + p.lockOffset, WHEEL_PHYS.pocketOrbit, 0);
           finishWheelSpin(p);
@@ -1725,8 +1730,8 @@
         orbit: WHEEL_PHYS.rimOrbit,
         orbitVel: 0,
         orbitAccel: rand(7, 11),
-        pocketFriction: rand(380, 520),
-        settleSpeed: rand(55, 85),
+        pocketFriction: rand(520, 700),
+        settleSpeed: rand(70, 100),
         deflectorChecked: false,
         lastFretIdx: null,
         height: 0,
