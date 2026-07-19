@@ -4634,7 +4634,22 @@
     }
 
     let chipDropAnims = [];
-    const CHIP_TOSS_FLIGHT = 0.68;
+    const CHIP_TOSS_FLIGHT = 0.6;
+    // Landing bounce train: each hop keeps ~40% of the previous height and a
+    // shrinking share of the landing window, like a real clay chip
+    const CHIP_BOUNCES = [
+      { frac: 0.4, h: 9.5 },
+      { frac: 0.28, h: 3.8 },
+      { frac: 0.19, h: 1.4 },
+      { frac: 0.13, h: 0.45 }
+    ];
+    // Contact moments within the landing window and how hard each hit lands
+    const CHIP_CONTACTS = [
+      { at: 0, s: 1 },
+      { at: 0.4, s: 0.55 },
+      { at: 0.68, s: 0.32 },
+      { at: 0.87, s: 0.18 }
+    ];
 
     function queueChipDrop(mesh) {
       // Toss arc: the chip flies in from the player's edge of the table and
@@ -4648,10 +4663,12 @@
         from,
         to,
         start: performance.now(),
-        duration: Math.min(680, 360 + dist * 0.18),
+        duration: Math.min(780, 420 + dist * 0.2),
         arc: Math.min(95, 36 + dist * 0.06),
         spin: (Math.random() < 0.5 ? -1 : 1) * (1.6 + Math.random() * 1.4),
         tilt: 0.2 + Math.random() * 0.16,
+        wobblePhase: Math.random() * Math.PI * 2,
+        wobbleTurns: 1.4 + Math.random() * 1.1,
         baseRotY: mesh.rotation.y
       });
       mesh.position.copy(from);
@@ -4666,28 +4683,49 @@
         const t = Math.min(1, (now - a.start) / a.duration);
         if (t < CHIP_TOSS_FLIGHT) {
           // Ballistic flight: constant ground speed, parabolic height, a
-          // frisbee spin and a slight wobble that both flatten out by landing
+          // frisbee spin, and a precessing coin-flutter that flattens out
+          // exactly at touchdown
           const p = t / CHIP_TOSS_FLIGHT;
           m.position.x = a.from.x + (a.to.x - a.from.x) * p;
           m.position.z = a.from.z + (a.to.z - a.from.z) * p;
           m.position.y = a.from.y + (a.to.y - a.from.y) * p + a.arc * 4 * p * (1 - p);
+          const flutter = a.tilt * Math.sin(p * Math.PI);
+          const ph = a.wobblePhase + p * a.wobbleTurns * Math.PI * 2;
+          m.rotation.x = flutter * Math.cos(ph);
+          m.rotation.z = flutter * Math.sin(ph);
           m.rotation.y = a.baseRotY + a.spin * (1 - p) * (1 - p);
-          m.rotation.x = a.tilt * Math.sin(p * Math.PI);
           m.scale.set(1, 1, 1);
         } else {
-          // Touchdown: one springy rebound, squash on both contacts, then
-          // seat precisely at the stack position and resting rotation
+          // Touchdown: a train of decaying parabolic hops. Each contact gets
+          // its own squash (softer every hit) and a tiny impact shudder
           const p = (t - CHIP_TOSS_FLIGHT) / (1 - CHIP_TOSS_FLIGHT);
           m.position.x = a.to.x;
           m.position.z = a.to.z;
-          m.position.y = a.to.y + 9 * 4 * p * (1 - p);
-          m.rotation.set(0, a.baseRotY, 0);
-          const impact = Math.max(
-            Math.max(0, 1 - Math.abs(t - CHIP_TOSS_FLIGHT) * 9),
-            Math.max(0, 1 - (1 - t) * 11)
-          );
-          m.scale.y = 1 - 0.3 * impact;
-          m.scale.x = m.scale.z = 1 + 0.14 * impact;
+
+          let y = 0;
+          let acc = 0;
+          for (const seg of CHIP_BOUNCES) {
+            if (p <= acc + seg.frac) {
+              const q = (p - acc) / seg.frac;
+              y = seg.h * 4 * q * (1 - q);
+              break;
+            }
+            acc += seg.frac;
+          }
+          m.position.y = a.to.y + y;
+
+          let impact = 0;
+          for (const c of CHIP_CONTACTS) {
+            impact = Math.max(impact, Math.max(0, 1 - Math.abs(p - c.at) * 15) * c.s);
+          }
+          m.scale.y = 1 - 0.34 * impact;
+          m.scale.x = m.scale.z = 1 + 0.16 * impact;
+
+          // Impact shudder: a fast, fading rock that only shows near contacts
+          const sh = 0.055 * impact;
+          m.rotation.x = sh * Math.sin(p * 38 + a.wobblePhase);
+          m.rotation.z = sh * Math.cos(p * 31 + a.wobblePhase);
+          m.rotation.y = a.baseRotY + 0.05 * Math.sin(p * 24) * (1 - p) * Math.sign(a.spin);
         }
         if (t >= 1) {
           m.position.copy(a.to);
