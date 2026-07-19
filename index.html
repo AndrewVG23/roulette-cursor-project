@@ -993,13 +993,19 @@
     let recordingReplay = false;
     let liveCapture = null; // active MP4 capture session for the live spin
     let liveCaptureStarting = false;
-    let lastEnhancedReplayVideo = null; // { key, blob }
+    let shareChart = null; // offscreen chart used while compositing share videos
     const SHARE_OPTS_KEY = 'roulette-share-extras';
     const shareIncludeStats = { value: false };
     const shareIncludeChart = { value: false };
+    const REPLAY_PAYOUT_HOLD_MS = 1000;
+    const REPLAY_RECORD_CHIP_MS = 90;
+    const REPLAY_RECORD_PRESPIN_MS = 160;
     const CHIP_DENOMS = [1, 5, 25, 100];
     let selectedChipDenom = 1;
     let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelBall3D, wheelPhysics = null, wheelLastAnimTime = 0;
+    let wheelBallShadow = null;
+    let wheelBallTrail = [];
+    let wheelBallTrailPts = [];
     let wheelHighlightIndex = null;
     let chipMaterialCache = null;
     let feltFiberCanvas = null;
@@ -1262,12 +1268,36 @@
       // Sink the ball a little when it is down in a pocket so it reads as
       // resting inside the bucket rather than floating on the face
       const restY = THREE.MathUtils.lerp(40, 43.5, span);
-      wheelBall3D.position.set(
-        Math.sin(rad) * trackR,
-        restY + bounce,
-        Math.cos(rad) * trackR
-      );
+      const bx = Math.sin(rad) * trackR;
+      const bz = Math.cos(rad) * trackR;
+      wheelBall3D.position.set(bx, restY + bounce, bz);
       wheelBall3D.visible = true;
+
+      // Contact shadow: rides the face under the ball, shrinking and fading
+      // as the ball gains height so hops read clearly in 3D
+      if (wheelBallShadow) {
+        wheelBallShadow.position.set(bx, 39.4, bz);
+        const s = 1 / (1 + bounce * 0.045);
+        wheelBallShadow.scale.setScalar(Math.max(0.35, s));
+        wheelBallShadow.material.opacity = 0.5 * Math.max(0.25, s);
+      }
+
+      // Motion-blur trail: ghost spheres along recent positions, visible
+      // only while the ball is genuinely fast
+      if (wheelBallTrail.length) {
+        wheelBallTrailPts.unshift({ x: bx, y: restY + bounce, z: bz });
+        if (wheelBallTrailPts.length > 12) wheelBallTrailPts.length = 12;
+        const speed = Math.abs(wheelPhysics?.ballVel ?? 0);
+        const strength = THREE.MathUtils.clamp((speed - 150) / 320, 0, 1);
+        wheelBallTrail.forEach((ghost, i) => {
+          const pt = wheelBallTrailPts[(i + 1) * 2];
+          const on = strength > 0.06 && !!pt;
+          ghost.visible = on;
+          if (!on) return;
+          ghost.position.set(pt.x, pt.y, pt.z);
+          ghost.material.opacity = strength * (0.26 - i * 0.06);
+        });
+      }
     }
 
     function applyWheelBall(angleDeg = wheelBallAngle, orbitPct = wheelBallOrbit, bounce = 0) {
@@ -1628,7 +1658,7 @@
           // the 3D hardware); a near pass scatters the ball
           const m = normalizeDeg(p.ballAngle + 67.5) % 45;
           const dist = Math.min(m, 45 - m);
-          if (dist < 8) {
+          if (dist < 11) {
             const dir = Math.random() < 0.15 ? -1 : 1;
             p.ballVel *= (0.25 + Math.random() * 0.3) * dir;
             p.vy = 220 + Math.random() * 180;
@@ -1695,20 +1725,27 @@
             ? lockOffsetForForcedOutcome(forcedOutcome, approx)
             : approx;
           p.settleT = 0;
+          // Residual energy rocks the ball between the pocket walls
+          p.rockAmp = Math.min(3.2, 1.1 + Math.abs(rel) * 0.02 + Math.random() * 0.9);
         }
       } else if (p.phase === 'settle') {
-        // Quick, decisive drop into the pocket center, then ride the rotor
+        // Quick, decisive drop into the pocket center, with a damped rock
+        // against the pocket walls as the last of the energy dies
         p.settleT += dt;
         p.ballVel = p.wheelVel;
         const target = wheelRotation + p.lockOffset;
         p.ballAngle += (target - p.ballAngle) * Math.min(1, dt * 15);
         p.height = Math.max(0, p.height - 60 * dt);
-        if (p.settleT >= 0.3) {
+        if (p.settleT >= 0.38) {
           applyWheelRotation(wheelRotation);
           applyWheelBall(wheelRotation + p.lockOffset, WHEEL_PHYS.pocketOrbit, 0);
           finishWheelSpin(p);
           return;
         }
+        const rock = (p.rockAmp || 0) * Math.exp(-p.settleT * 6.5) * Math.sin(p.settleT * 30);
+        applyWheelRotation(wheelRotation);
+        applyWheelBall(p.ballAngle + rock, p.orbit, p.height);
+        return;
       }
 
       applyWheelRotation(wheelRotation);
@@ -1881,6 +1918,44 @@
       wheelBall3D.castShadow = true;
       wheelBall3D.receiveShadow = true;
       wheelAssembly.add(wheelBall3D);
+
+      // Soft blob shadow under the ball (shadow mapping is disabled, so this
+      // carries all the height cues during bounces)
+      const shadowCanvas = document.createElement('canvas');
+      shadowCanvas.width = shadowCanvas.height = 64;
+      const shCtx = shadowCanvas.getContext('2d');
+      const shGrad = shCtx.createRadialGradient(32, 32, 2, 32, 32, 30);
+      shGrad.addColorStop(0, 'rgba(0,0,0,0.7)');
+      shGrad.addColorStop(0.6, 'rgba(0,0,0,0.32)');
+      shGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      shCtx.fillStyle = shGrad;
+      shCtx.fillRect(0, 0, 64, 64);
+      wheelBallShadow = new THREE.Mesh(
+        new THREE.CircleGeometry(7.5, 24),
+        new THREE.MeshBasicMaterial({
+          map: new THREE.CanvasTexture(shadowCanvas),
+          transparent: true,
+          depthWrite: false,
+          opacity: 0.5
+        })
+      );
+      wheelBallShadow.rotation.x = -Math.PI / 2;
+      wheelBallShadow.renderOrder = 3;
+      wheelAssembly.add(wheelBallShadow);
+
+      // Ghost spheres reused each frame for the high-speed motion trail
+      wheelBallTrail = [];
+      wheelBallTrailPts = [];
+      for (let i = 0; i < 4; i++) {
+        const ghost = new THREE.Mesh(
+          new THREE.SphereGeometry(5.6 * (0.92 - i * 0.12), 16, 16),
+          new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })
+        );
+        ghost.visible = false;
+        ghost.renderOrder = 4;
+        wheelAssembly.add(ghost);
+        wheelBallTrail.push(ghost);
+      }
 
       applyWheelRotation(wheelRotation);
       syncWheelBall3D(wheelBallAngle, wheelBallOrbit);
@@ -3219,17 +3294,26 @@
       const primary = s.getPropertyValue('--color-primary').trim() || '#efbb49';
       const success = s.getPropertyValue('--color-success').trim() || '#71d189';
       const m = calcMetrics();
-      payoutChart.data.datasets[0].pointBackgroundColor = outcomes.map((_, i) => {
+      const pointBackgroundColor = outcomes.map((_, i) => {
         if (i === idx) return primary;
         return (m.profits[i] || 0) > 0 ? `${success}88` : `${primary}22`;
       });
-      payoutChart.data.datasets[0].pointRadius = outcomes.map((_, i) => {
+      const pointRadius = outcomes.map((_, i) => {
         if (i === idx) return 7;
         return (m.profits[i] || 0) > 0 ? 4 : 2;
       });
-      payoutChart.data.datasets[0].pointBorderColor = outcomes.map((_, i) => (i === idx ? '#fff6d0' : 'transparent'));
-      payoutChart.data.datasets[0].pointBorderWidth = outcomes.map((_, i) => (i === idx ? 2 : 0));
-      payoutChart.update('none');
+      const pointBorderColor = outcomes.map((_, i) => (i === idx ? '#fff6d0' : 'transparent'));
+      const pointBorderWidth = outcomes.map((_, i) => (i === idx ? 2 : 0));
+      const applyPoints = (chart) => {
+        if (!chart) return;
+        chart.data.datasets[0].pointBackgroundColor = pointBackgroundColor;
+        chart.data.datasets[0].pointRadius = pointRadius;
+        chart.data.datasets[0].pointBorderColor = pointBorderColor;
+        chart.data.datasets[0].pointBorderWidth = pointBorderWidth;
+        chart.update('none');
+      };
+      applyPoints(payoutChart);
+      applyPoints(shareChart);
     }
 
     function clearSettlementHighlights3D() {
@@ -3487,6 +3571,24 @@
       };
     }
 
+    // When any analytics panel is requested, bake both so Stats/Curve toggles
+    // don't force a slow re-record after the spin.
+    function captureExtrasForSession(extras = getShareExtras()) {
+      if (extras.includeStats || extras.includeChart) {
+        return { includeStats: true, includeChart: true };
+      }
+      return { includeStats: false, includeChart: false };
+    }
+
+    function cacheSatisfiesExtras(cachedExtras, wanted) {
+      if (!cachedExtras) return false;
+      const wantAny = !!(wanted.includeStats || wanted.includeChart);
+      const cachedAny = !!(cachedExtras.includeStats || cachedExtras.includeChart);
+      if (!wantAny) return !cachedAny;
+      return (!wanted.includeStats || cachedExtras.includeStats)
+        && (!wanted.includeChart || cachedExtras.includeChart);
+    }
+
     function syncShareOptionInputs() {
       document.querySelectorAll('[data-share-opt="stats"]').forEach((input) => {
         input.checked = shareIncludeStats.value;
@@ -3505,19 +3607,28 @@
           if (input.dataset.shareOpt === 'chart') shareIncludeChart.value = input.checked;
           syncShareOptionInputs();
           saveShareOptions();
-          lastEnhancedReplayVideo = null;
+          const wanted = getShareExtras();
+          if (lastReplayVideo && !cacheSatisfiesExtras(lastReplayVideo.extras, wanted)) {
+            lastReplayVideo = null;
+          }
+          // If extras change mid-betting, restart capture with the new strip layout.
+          if (liveCapture && !wheelSpinning && !settling && !awaitingAdvance && !replayMode) {
+            abortLiveReplayCapture();
+            void beginLiveReplayCapture();
+          }
         });
       });
     }
 
     function updateShareButtons() {
-      // Keep labels stable during live capture so the toolbar doesn't reflow.
+      // Allow Share during the payout-hold finalize, but not while a new round is still recording.
+      const finalizingCapture = !!(liveCapture && awaitingAdvance);
       const canShare = !!lastReplayCycle
         && !wheelSpinning
         && !settling
         && !recordingInProgress
-        && !liveCapture
-        && !liveCaptureStarting;
+        && !liveCaptureStarting
+        && (!liveCapture || finalizingCapture);
       if (shareReplayBtn) {
         shareReplayBtn.disabled = !canShare || (replayMode && !recordingReplay);
         if (!shareReplayBtn.classList.contains('is-shared')) {
@@ -3641,20 +3752,69 @@
       });
     }
 
-    function getCachedReplayVideo(cycle) {
-      if (!lastReplayVideo || !cycle) return null;
-      return lastReplayVideo.key === cycleCacheKey(cycle) ? lastReplayVideo.blob : null;
+    function extrasCacheKey(cycle, extras) {
+      return `${cycleCacheKey(cycle)}|s:${extras?.includeStats ? 1 : 0}|c:${extras?.includeChart ? 1 : 0}`;
     }
 
-    function setCachedReplayVideo(cycle, blob) {
+    function getCachedReplayVideo(cycle, extras = { includeStats: false, includeChart: false }) {
+      if (!lastReplayVideo || !cycle) return null;
+      const base = cycleCacheKey(cycle);
+      const key = String(lastReplayVideo.key || '');
+      if (key !== base && !key.startsWith(`${base}|`)) return null;
+      // Accept a cached clip whose panels are a superset of what was requested.
+      return cacheSatisfiesExtras(lastReplayVideo.extras, extras) ? lastReplayVideo.blob : null;
+    }
+
+    function setCachedReplayVideo(cycle, blob, extras = { includeStats: false, includeChart: false }) {
       if (!cycle || !blob || blob.size < 32) return;
       // Only cache real MP4 — never keep a WebM stand-in around.
       if (!(blob.type || '').includes('mp4')) return;
       lastReplayVideo = {
-        key: cycleCacheKey(cycle),
+        key: extrasCacheKey(cycle, extras),
         blob,
-        mimeType: 'video/mp4'
+        mimeType: 'video/mp4',
+        extras: { ...extras }
       };
+    }
+
+    function ensureShareChart() {
+      if (shareChart) return shareChart;
+      const canvas = document.createElement('canvas');
+      canvas.width = 720;
+      canvas.height = 280;
+      shareChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: outcomes.map(String),
+          datasets: [{
+            label: 'Net payout',
+            data: [],
+            borderColor: '#efbb49',
+            backgroundColor: 'rgba(239,187,73,0.12)',
+            fill: true,
+            tension: 0.22,
+            pointRadius: 2,
+            pointHoverRadius: 5
+          }]
+        },
+        options: {
+          responsive: false,
+          animation: { duration: 260 },
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 12 }, grid: { color: 'rgba(255,255,255,.06)' } },
+            y: { grid: { color: 'rgba(255,255,255,.06)' } }
+          }
+        }
+      });
+      return shareChart;
+    }
+
+    function syncShareChart(chartProfits, animate) {
+      const chart = ensureShareChart();
+      chart.data.labels = outcomes.map(String);
+      chart.data.datasets[0].data = chartProfits;
+      chart.update(animate ? undefined : 'none');
     }
 
     function canCaptureReplayVideo() {
@@ -3773,7 +3933,7 @@
       ctx.textBaseline = 'top';
       ctx.fillText('Payout curve', x + pad, y + pad);
 
-      const chartCanvas = payoutChart?.canvas;
+      const chartCanvas = ensureShareChart()?.canvas;
       const chartY = y + pad + 26;
       const chartH = h - pad * 2 - 26;
       const chartW = w - pad * 2;
@@ -3810,12 +3970,13 @@
       });
       const videoSource = new CanvasSource(sourceCanvas, {
         codec: 'avc',
-        bitrate: 6_000_000
+        bitrate: 4_500_000
       });
-      output.addVideoTrack(videoSource, { frameRate: 60 });
+      // 30fps keeps motion smooth for this content while finishing encodes faster.
+      output.addVideoTrack(videoSource, { frameRate: 30 });
       await output.start();
 
-      const frameDuration = 1 / 60;
+      const frameDuration = 1 / 30;
       let framesAdded = 0;
       let running = true;
       let encoding = false;
@@ -3863,44 +4024,64 @@
       };
     }
 
-    async function createMp4RecorderSession() {
+    async function createMp4RecorderSession(extras = { includeStats: false, includeChart: false }) {
       if (!canCaptureReplayVideo()) return null;
       const gl = renderer.domElement;
       if ((gl.width || 0) < 2 || (gl.height || 0) < 2) return null;
 
-      // Encode from a lightweight composite canvas so we can burn in the payout card.
+      const hasStrip = !!(extras.includeStats || extras.includeChart);
+      const stripHeightFor = (boardH) => (hasStrip
+        ? Math.round(Math.min(Math.max(boardH * 0.38, 200), 320))
+        : 0);
+
+      // Composite canvas: WebGL board + optional live stats/curve strip + payout card.
       const recordCanvas = document.createElement('canvas');
-      recordCanvas.width = gl.width;
-      recordCanvas.height = gl.height;
       const recordCtx = recordCanvas.getContext('2d', { alpha: false });
+      const syncSize = () => {
+        const boardW = gl.width;
+        const boardH = gl.height;
+        const stripH = stripHeightFor(boardH);
+        const outW = boardW + (boardW % 2);
+        const outH = boardH + stripH + ((boardH + stripH) % 2);
+        if (recordCanvas.width !== outW || recordCanvas.height !== outH) {
+          recordCanvas.width = outW;
+          recordCanvas.height = outH;
+        }
+        return { boardW, boardH, stripH, outW, outH };
+      };
+      syncSize();
+
       const encoder = await createMp4EncoderSession(recordCanvas);
       if (!encoder) return null;
 
       let showPayout = false;
 
       return {
+        extras: { ...extras },
         setShowPayout(on) {
           showPayout = !!on;
         },
         // Called from the render loop immediately after renderer.render().
         tick() {
-          if (recordCanvas.width !== gl.width || recordCanvas.height !== gl.height) {
-            recordCanvas.width = gl.width;
-            recordCanvas.height = gl.height;
-          }
+          const { boardW, boardH, stripH, outW, outH } = syncSize();
+          recordCtx.fillStyle = '#0a1210';
+          recordCtx.fillRect(0, 0, outW, outH);
           try {
-            recordCtx.drawImage(gl, 0, 0);
+            recordCtx.drawImage(gl, 0, 0, boardW, boardH);
           } catch {
             return;
           }
           if (showPayout && awaitingAdvance) {
             drawReplayResultCard(
               recordCtx,
-              recordCanvas.width,
-              recordCanvas.height,
+              boardW,
+              boardH,
               lastSpinNet,
               settlementOutcome
             );
+          }
+          if (hasStrip) {
+            drawShareAnalyticsStrip(recordCtx, 0, boardH, outW, stripH, extras);
           }
           encoder.tick();
         },
@@ -3912,107 +4093,10 @@
       };
     }
 
-    function extrasCacheKey(cycle, extras) {
-      return `${cycleCacheKey(cycle)}|s:${extras.includeStats ? 1 : 0}|c:${extras.includeChart ? 1 : 0}`;
-    }
-
-    async function enhanceReplayVideoWithExtras(baseBlob, extras) {
-      if (!extras.includeStats && !extras.includeChart) return baseBlob;
-
-      const wrap = document.getElementById('rouletteWrap');
-      const wasCollapsed = !!wrap?.classList.contains('stats-collapsed');
-      if (extras.includeChart && wasCollapsed) setStatsDockOpen(true);
-
-      updateMetrics();
-      try { payoutChart?.resize(); } catch { /* ignore */ }
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-      const video = document.createElement('video');
-      video.muted = true;
-      video.playsInline = true;
-      video.preload = 'auto';
-      const objectUrl = URL.createObjectURL(baseBlob);
-      video.src = objectUrl;
-
-      try {
-        await new Promise((resolve, reject) => {
-          video.onloadeddata = () => resolve();
-          video.onerror = () => reject(new Error('Could not read the replay video'));
-        });
-
-        const vw = video.videoWidth || 1280;
-        const vh = video.videoHeight || 720;
-        const stripH = Math.round(Math.min(Math.max(vh * 0.4, 220), 340));
-        const outW = vw + (vw % 2);
-        const outH = vh + stripH + ((vh + stripH) % 2);
-
-        const canvas = document.createElement('canvas');
-        canvas.width = outW;
-        canvas.height = outH;
-        const ctx = canvas.getContext('2d', { alpha: false });
-        const encoder = await createMp4EncoderSession(canvas);
-        if (!encoder) throw new Error('MP4 encoding is not supported in this browser');
-
-        const paint = () => {
-          ctx.fillStyle = '#0a1210';
-          ctx.fillRect(0, 0, outW, outH);
-          ctx.drawImage(video, 0, 0, vw, vh);
-          drawShareAnalyticsStrip(ctx, 0, vh, outW, stripH, extras);
-        };
-
-        await video.play();
-
-        await new Promise((resolve, reject) => {
-          let finished = false;
-          const finish = () => {
-            if (finished) return;
-            finished = true;
-            resolve();
-          };
-          const step = () => {
-            try {
-              if (video.ended) {
-                finish();
-                return;
-              }
-              paint();
-              encoder.tick();
-              if (typeof video.requestVideoFrameCallback === 'function') {
-                video.requestVideoFrameCallback(step);
-              } else {
-                requestAnimationFrame(step);
-              }
-            } catch (err) {
-              reject(err);
-            }
-          };
-          video.onended = finish;
-          if (typeof video.requestVideoFrameCallback === 'function') {
-            video.requestVideoFrameCallback(step);
-          } else {
-            requestAnimationFrame(step);
-          }
-        });
-
-        video.pause();
-        for (let i = 0; i < 90; i++) {
-          paint();
-          encoder.tick();
-          await delay(1000 / 60);
-        }
-
-        return encoder.stop();
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-        if (extras.includeChart && wasCollapsed) setStatsDockOpen(false);
-      }
-    }
-
     function ensureLiveReplayCapture() {
       if (replayMode || liveCapture || liveCaptureStarting) return;
       if (wheelSpinning || settling || awaitingAdvance) return;
       lastReplayVideo = null;
-      lastEnhancedReplayVideo = null;
       void beginLiveReplayCapture();
     }
 
@@ -4020,8 +4104,10 @@
       if (replayMode || liveCapture || liveCaptureStarting || !canCaptureReplayVideo()) return;
       liveCaptureStarting = true;
       updateShareButtons();
+      const extras = captureExtrasForSession();
       try {
-        const session = await createMp4RecorderSession();
+        if (extras.includeChart) ensureShareChart();
+        const session = await createMp4RecorderSession(extras);
         if (!session || replayMode) {
           session?.abort?.();
           return;
@@ -4040,12 +4126,17 @@
       const session = liveCapture;
       if (!session || replayMode) return;
       const cycle = lastReplayCycle;
+      const extras = session.extras || { includeStats: false, includeChart: false };
       try {
         session.setShowPayout?.(true);
-        // Hold on the settled board with the payout card burned into the clip.
-        await delay(1800);
+        // Hold the payout card; shorten if Share is already waiting on this clip.
+        const holdStarted = performance.now();
+        while (performance.now() - holdStarted < REPLAY_PAYOUT_HOLD_MS) {
+          if (recordingInProgress && performance.now() - holdStarted >= 400) break;
+          await delay(50);
+        }
         const blob = await session.stop();
-        if (cycle) setCachedReplayVideo(cycle, blob);
+        if (cycle) setCachedReplayVideo(cycle, blob, extras);
       } catch (err) {
         console.error(err);
         session.abort?.();
@@ -4091,14 +4182,16 @@
       updateShareButtons();
       updateWheelButtonState();
 
+      const chipDelay = forRecording ? REPLAY_RECORD_CHIP_MS : 180;
+      const preSpinDelay = forRecording ? REPLAY_RECORD_PRESPIN_MS : 360;
       for (const [key, stake] of cycle.p) {
         if (token !== replayPlaybackToken) return false;
-        await delay(180);
+        await delay(chipDelay);
         if (token !== replayPlaybackToken) return false;
         placeReplayStake(key, stake);
       }
 
-      await delay(360);
+      await delay(preSpinDelay);
       if (token !== replayPlaybackToken) return false;
       spinWheelForced(cycle.o);
 
@@ -4136,20 +4229,23 @@
       updateWheelButtonState();
     }
 
-    async function recordReplayVideo(cycle) {
+    async function recordReplayVideo(cycle, options = {}) {
+      const extras = captureExtrasForSession(options.extras || getShareExtras());
       abortLiveReplayCapture();
-      const session = await createMp4RecorderSession();
+      if (extras.includeChart) ensureShareChart();
+      const session = await createMp4RecorderSession(extras);
       if (!session) throw new Error('MP4 recording is not supported in this browser');
       liveCapture = session;
 
       try {
         // Staggered chip placement + forced spin are captured via the render-loop tick.
+        // Stats/curve panels are redrawn each frame from live metrics as bets land.
         const played = await playReplay(cycle, { forRecording: true });
         if (!played) throw new Error('Replay was interrupted');
         session.setShowPayout?.(true);
-        await delay(1800);
+        await delay(REPLAY_PAYOUT_HOLD_MS);
         const blob = await session.stop();
-        setCachedReplayVideo(cycle, blob);
+        setCachedReplayVideo(cycle, blob, extras);
         return blob;
       } catch (err) {
         session.abort?.();
@@ -4183,18 +4279,18 @@
       return 'downloaded';
     }
 
-    async function ensureReplayVideoBlob(cycle) {
-      const cached = getCachedReplayVideo(cycle);
+    async function ensureReplayVideoBlob(cycle, extras = { includeStats: false, includeChart: false }) {
+      const cached = getCachedReplayVideo(cycle, extras);
       if (cached) return cached;
 
-      // Live capture may still be wrapping up the short settle tail.
+      // Prefer the in-flight live capture (Share can click during payout-hold finalize).
       if (liveCapture || liveCaptureStarting) {
         await waitUntil(() => !liveCapture && !liveCaptureStarting, 20000);
-        const ready = getCachedReplayVideo(cycle);
+        const ready = getCachedReplayVideo(cycle, extras);
         if (ready) return ready;
       }
 
-      // Fallback: re-record only when the cache is missing.
+      // Fallback re-record only when the live clip is missing or has the wrong panels.
       if (awaitingAdvance && !replayMode) advanceRound();
       else if (replayMode) {
         replayPlaybackToken += 1;
@@ -4204,7 +4300,7 @@
         settlementState = null;
         hidePayoutOverlay();
       }
-      const blob = await recordReplayVideo(cycle);
+      const blob = await recordReplayVideo(cycle, { extras });
       if (replayMode) exitReplayMode();
       return blob;
     }
@@ -4219,25 +4315,11 @@
       let shareResult = null;
       try {
         const extras = getShareExtras();
-        let blob = null;
-        const enhancedKey = extrasCacheKey(cycle, extras);
-        if ((extras.includeStats || extras.includeChart)
-          && lastEnhancedReplayVideo?.key === enhancedKey) {
-          blob = lastEnhancedReplayVideo.blob;
-        } else {
-          const baseBlob = await ensureReplayVideoBlob(cycle);
-          if (!baseBlob || baseBlob.size < 32) throw new Error('Recording produced an empty video');
-          if (!(baseBlob.type || '').includes('mp4')) {
-            throw new Error('Share requires an MP4 recording');
-          }
-          blob = (extras.includeStats || extras.includeChart)
-            ? await enhanceReplayVideoWithExtras(baseBlob, extras)
-            : baseBlob;
-          if (extras.includeStats || extras.includeChart) {
-            lastEnhancedReplayVideo = { key: enhancedKey, blob };
-          }
-        }
+        const blob = await ensureReplayVideoBlob(cycle, extras);
         if (!blob || blob.size < 32) throw new Error('Recording produced an empty video');
+        if (!(blob.type || '').includes('mp4')) {
+          throw new Error('Share requires an MP4 recording');
+        }
         const file = new File([blob], `roulette-replay-${cycle.o}.mp4`, { type: 'video/mp4' });
         shareResult = await shareOrDownloadVideo(file, cycle);
       } catch (err) {
@@ -4695,6 +4777,10 @@
       const chartProfits = settlementChartProfits ?? m.profits;
       payoutChart.data.labels = outcomes.map(String);
       payoutChart.data.datasets[0].data = chartProfits;
+      if (shareChart || liveCapture || recordingReplay) {
+        const animateShare = !!(liveCapture || recordingReplay) && settlementOutcome === null;
+        syncShareChart(chartProfits, animateShare);
+      }
       if (settlementOutcome !== null) applyChartSettlementHighlight(settlementOutcome);
       else payoutChart.update();
       renderOutcomeTable(chartProfits, settlementOutcome);
@@ -4739,7 +4825,6 @@
         // Mid-round clear discards an in-progress placement recording.
         abortLiveReplayCapture();
         lastReplayVideo = null;
-        lastEnhancedReplayVideo = null;
       }
       clearSettlementVisuals();
       placements.clear();
