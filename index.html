@@ -279,28 +279,57 @@
     }
     .payout-overlay {
       position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 60;
-      display: flex; align-items: center; justify-content: center;
-      padding: var(--space-5) var(--space-10);
-      min-width: min(240px, 72vw);
+      display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: var(--space-3);
+      padding: var(--space-5) var(--space-6);
+      min-width: min(260px, 78vw);
       border-radius: var(--radius-xl); border: 1px solid rgba(239,187,73,.4);
       background: linear-gradient(180deg, rgba(23,48,39,.97), rgba(10,20,16,.97));
       box-shadow: 0 24px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
-      color: var(--color-text); text-align: center; cursor: pointer;
+      color: var(--color-text); text-align: center;
       animation: payoutOverlayIn 420ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     .payout-overlay[hidden] {
       display: none !important;
       pointer-events: none;
     }
-    .payout-overlay:hover { transform: translate(-50%, -50%) scale(1.03); border-color: rgba(239,187,73,.7); }
+    .payout-overlay-continue {
+      display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+      padding: var(--space-3) var(--space-5);
+      border: 0; background: transparent; color: inherit; cursor: pointer;
+      border-radius: var(--radius-lg);
+    }
+    .payout-overlay-continue:hover { background: rgba(255,255,255,.04); }
     .payout-overlay-amount { font-family: var(--font-display); font-size: clamp(3rem, 2.4rem + 3vw, 5rem); line-height: 1; font-variant-numeric: tabular-nums lining-nums; }
     .payout-overlay.win .payout-overlay-amount { color: var(--color-success); }
     .payout-overlay.lose .payout-overlay-amount { color: var(--color-error); }
     .payout-overlay.even .payout-overlay-amount { color: var(--color-text); }
+    .payout-overlay-hint {
+      font-size: var(--text-xs); letter-spacing: .08em; text-transform: uppercase;
+      color: var(--color-text-muted); font-weight: 700;
+    }
+    .payout-share-btn { width: 100%; min-height: 44px; border-radius: 3px; }
+    .payout-share-btn.is-copied { border-color: rgba(143,217,164,.45); color: #eafff0; }
     @keyframes payoutOverlayIn {
       from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
       to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     }
+    .replay-banner {
+      position: absolute; top: var(--space-3); left: var(--space-3); z-index: 7;
+      display: flex; align-items: center; gap: var(--space-2);
+      padding: 8px 10px 8px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(239,187,73,.28);
+      background: linear-gradient(180deg, rgba(20,53,40,.94), rgba(10,22,18,.96));
+      box-shadow: 0 10px 24px rgba(0,0,0,.35);
+      pointer-events: auto;
+    }
+    .replay-banner[hidden] { display: none !important; }
+    .replay-banner-label {
+      font-family: var(--font-display); font-size: var(--text-xs); font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase; color: #efbb49;
+    }
+    .replay-banner .btn { min-height: 36px; min-width: 64px; padding: 0 var(--space-3); font-size: var(--text-xs); border-radius: 3px; }
+    .controls .share-replay-btn:disabled { opacity: 0.45; cursor: default; transform: none; }
     .wheel-result {
       position: absolute;
       inset: 0;
@@ -640,6 +669,7 @@
             <div class="control-row">
               <button class="btn subtle" id="undoBtn" type="button" title="Undo last chip">Undo</button>
               <button class="btn warning" id="clearBtn" type="button" title="Clear board">Clear</button>
+              <button class="btn subtle share-replay-btn" id="shareReplayBtn" type="button" title="Share last spin replay" disabled>Share</button>
               <span class="spacer" aria-hidden="true"></span>
               <button class="btn subtle stats-toggle active" id="statsToggle" type="button" aria-expanded="false" aria-controls="analyticsDock">Stats</button>
               <div class="camera-menu-wrap">
@@ -660,6 +690,10 @@
           </div>
           <div class="roulette-wrap" id="rouletteWrap">
             <div class="board-shell" id="gameView">
+              <div class="replay-banner" id="replayBanner" hidden>
+                <span class="replay-banner-label">Watching replay</span>
+                <button class="btn subtle" id="exitReplayBtn" type="button">Exit</button>
+              </div>
               <button class="purse-stack" id="purseStack" type="button" aria-label="Your purse. Tap to change chip size.">
                 <div class="purse-chip-stacks" id="purseChipStack" aria-hidden="true"></div>
                 <span class="purse-selected-denom" id="purseSelectedDenom">$1 chip</span>
@@ -780,9 +814,13 @@
     </main>
   </div>
 
-  <button id="payoutOverlay" class="payout-overlay" type="button" hidden aria-live="assertive">
-    <span class="payout-overlay-amount" id="payoutOverlayAmount">$0</span>
-  </button>
+  <div id="payoutOverlay" class="payout-overlay" hidden aria-live="assertive">
+    <button type="button" class="payout-overlay-continue" id="payoutOverlayContinue">
+      <span class="payout-overlay-amount" id="payoutOverlayAmount">$0</span>
+      <span class="payout-overlay-hint">Tap to continue</span>
+    </button>
+    <button type="button" class="btn subtle payout-share-btn" id="shareReplayOverlayBtn">Share replay</button>
+  </div>
 
   <script>
     if (location.protocol === 'file:') {
@@ -847,7 +885,12 @@
     const wheelDisplayEl = document.getElementById('wheelDisplay');
     const wheelBallEl = document.getElementById('wheelBall');
     const payoutOverlayEl = document.getElementById('payoutOverlay');
+    const payoutOverlayContinueEl = document.getElementById('payoutOverlayContinue');
     const payoutOverlayAmountEl = document.getElementById('payoutOverlayAmount');
+    const shareReplayBtn = document.getElementById('shareReplayBtn');
+    const shareReplayOverlayBtn = document.getElementById('shareReplayOverlayBtn');
+    const replayBannerEl = document.getElementById('replayBanner');
+    const exitReplayBtn = document.getElementById('exitReplayBtn');
     const board3dEl = document.getElementById('board3d');
     const betListEl = document.getElementById('betList');
     const statsEl = document.getElementById('stats');
@@ -884,6 +927,11 @@
     let dealerStackCount = 0;
     let startingPurse = 100;
     let purse = 100;
+    let purseBeforeSpin = 100;
+    let lastReplayCycle = null;
+    let replayMode = false;
+    let forcedOutcome = null;
+    let replayPlaybackToken = 0;
     const CHIP_DENOMS = [1, 5, 25, 100];
     let selectedChipDenom = 1;
     let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelBall3D, wheelPhysics = null, wheelLastAnimTime = 0;
@@ -1420,8 +1468,34 @@
       return idx;
     }
 
+    function pocketIndexForOutcome(outcome) {
+      return wheelOrder.findIndex((value) => value === outcome || String(value) === String(outcome));
+    }
+
+    function lockOffsetForForcedOutcome(outcome, approxOffset) {
+      const pocketIdx = pocketIndexForOutcome(outcome);
+      if (pocketIdx < 0) return approxOffset;
+      const base = pocketIdx * WHEEL_PHYS.seg;
+      let best = base;
+      let bestDist = Infinity;
+      for (let k = -3; k <= 3; k++) {
+        const cand = base + k * 360;
+        const dist = Math.abs(cand - approxOffset);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = cand;
+        }
+      }
+      return best;
+    }
+
     function finishWheelSpin(p) {
-      const pocketIdx = normalizePocketIndex(p.lockOffset);
+      let pocketIdx = normalizePocketIndex(p.lockOffset);
+      if (forcedOutcome != null) {
+        const forcedIdx = pocketIndexForOutcome(forcedOutcome);
+        if (forcedIdx >= 0) pocketIdx = forcedIdx;
+        forcedOutcome = null;
+      }
       wheelBallLockOffset = pocketIdx * WHEEL_PHYS.seg;
       wheelCoastVel = Math.max(WHEEL_PHYS.idleWheelVel, p.wheelVel);
       wheelPhysics = null;
@@ -1551,7 +1625,10 @@
         if (Math.abs(rel) < p.settleSpeed && p.height < 4 && Math.abs(p.vy) < 130) {
           p.phase = 'settle';
           // Keep the offset unnormalized so the settle ease stays continuous
-          p.lockOffset = Math.round((p.ballAngle - wheelRotation) / WHEEL_PHYS.seg) * WHEEL_PHYS.seg;
+          const approx = Math.round((p.ballAngle - wheelRotation) / WHEEL_PHYS.seg) * WHEEL_PHYS.seg;
+          p.lockOffset = forcedOutcome != null
+            ? lockOffsetForForcedOutcome(forcedOutcome, approx)
+            : approx;
           p.settleT = 0;
         }
       } else if (p.phase === 'settle') {
@@ -1762,25 +1839,40 @@
 
     function updateWheelButtonState() {
       if (!wheelDisplayEl) return;
-      const canSpin = !wheelSpinning && !settling && !awaitingAdvance;
-      wheelDisplayEl.disabled = !canSpin;
-      if (canSpin) {
-        wheelDisplayEl.setAttribute('aria-label', 'Spin wheel');
-      } else if (awaitingAdvance) {
-        wheelDisplayEl.setAttribute('aria-label', `Result ${wheelResultEl.textContent}. Collect payout to continue.`);
-      } else {
+      const replayLocked = replayMode && !awaitingAdvance;
+      wheelDisplayEl.disabled = wheelSpinning || settling || replayLocked;
+      if (wheelSpinning || settling) {
         wheelDisplayEl.setAttribute('aria-label', 'Wheel spinning');
+      } else if (awaitingAdvance) {
+        wheelDisplayEl.setAttribute('aria-label', `Result ${wheelResultEl.textContent}. Tap wheel to continue.`);
+      } else if (replayLocked) {
+        wheelDisplayEl.setAttribute('aria-label', 'Watching replay');
+      } else {
+        wheelDisplayEl.setAttribute('aria-label', 'Spin wheel');
       }
     }
 
-    function spinWheel() {
+    function onWheelDisplayActivate() {
+      if (replayMode && !awaitingAdvance) return;
+      if (awaitingAdvance) {
+        advanceRound();
+        return;
+      }
+      spinWheel();
+    }
+
+    function spinWheel(options = {}) {
       if (wheelSpinning || settling || awaitingAdvance) return;
+      if (replayMode && !options.forced) return;
+      purseBeforeSpin = purse;
+      forcedOutcome = options.forcedOutcome != null ? options.forcedOutcome : null;
       wheelSpinning = true;
       wheelDisplayEl.disabled = true;
       wheelDisplayEl?.classList.remove('landed', 'has-result');
       wheelDisplayEl?.classList.add('spinning');
       wheelHighlightIndex = null;
       drawWheelFace();
+      updateShareButtons();
 
       const rand = (a, b) => a + Math.random() * (b - a);
       // The croupier gives the rotor a push and launches the ball the other
@@ -1813,6 +1905,10 @@
       applyWheelBall(wheelBallAngle, WHEEL_PHYS.rimOrbit, 0);
     }
 
+    function spinWheelForced(outcome) {
+      spinWheel({ forced: true, forcedOutcome: outcome });
+    }
+
     function startWheelIdleLoop() {
       if (wheelIdleLoop) return;
       const tick = (now) => {
@@ -1832,12 +1928,12 @@
       applyWheelBall(wheelRotation + wheelBallLockOffset, WHEEL_PHYS.pocketOrbit, 0);
       wheelLastAnimTime = performance.now();
       setWheelResult('—');
-      wheelDisplayEl.addEventListener('click', spinWheel);
-      payoutOverlayEl.addEventListener('click', advanceRound);
+      wheelDisplayEl.addEventListener('click', onWheelDisplayActivate);
+      payoutOverlayContinueEl?.addEventListener('click', advanceRound);
       document.addEventListener('keydown', (event) => {
         if (event.code !== 'Space' || event.target.closest('input, textarea, select')) return;
         event.preventDefault();
-        spinWheel();
+        onWheelDisplayActivate();
       });
       startWheelIdleLoop();
     }
@@ -2965,7 +3061,7 @@
       leftPointer.active = false;
       leftPointer.moved = false;
       cameraDragMoved = false;
-      if (!shouldPlace || settling || awaitingAdvance) return;
+      if (!shouldPlace || settling || awaitingAdvance || replayMode) return;
       setPointerFromEvent(event);
       const target = raycastTarget();
       if (!target) return;
@@ -3276,15 +3372,218 @@
       payoutOverlayEl.classList.toggle('win', net > 0);
       payoutOverlayEl.classList.toggle('lose', net < 0);
       payoutOverlayEl.classList.toggle('even', net === 0);
-      payoutOverlayEl.setAttribute('aria-label', net === 0
+      const continueLabel = net === 0
         ? 'No net change. Click to continue.'
-        : `${net > 0 ? 'Won' : 'Lost'} ${purseFmt.format(Math.abs(net))}. Click to continue.`);
+        : `${net > 0 ? 'Won' : 'Lost'} ${purseFmt.format(Math.abs(net))}. Click to continue.`;
+      payoutOverlayEl.setAttribute('aria-label', continueLabel);
+      payoutOverlayContinueEl?.setAttribute('aria-label', continueLabel);
+      updateShareButtons();
     }
 
     function updateControlStates() {
       updateWheelButtonState();
       if (awaitingAdvance) showPayoutOverlay();
       else hidePayoutOverlay();
+      updateShareButtons();
+      updateReplayChrome();
+    }
+
+    function updateShareButtons() {
+      const canShare = !!lastReplayCycle && !wheelSpinning && !settling;
+      if (shareReplayBtn) {
+        shareReplayBtn.disabled = !canShare || replayMode;
+        shareReplayBtn.textContent = 'Share';
+      }
+      if (shareReplayOverlayBtn) {
+        shareReplayOverlayBtn.disabled = !canShare;
+        if (!shareReplayOverlayBtn.classList.contains('is-copied')) {
+          shareReplayOverlayBtn.textContent = 'Share replay';
+        }
+      }
+    }
+
+    function updateReplayChrome() {
+      if (replayBannerEl) replayBannerEl.hidden = !replayMode;
+      if (shareReplayBtn) shareReplayBtn.hidden = replayMode;
+      document.getElementById('undoBtn')?.toggleAttribute('disabled', replayMode);
+      document.getElementById('clearBtn')?.toggleAttribute('disabled', replayMode);
+      if (purseStackEl) purseStackEl.disabled = replayMode;
+    }
+
+    function encodeReplayCycle(cycle) {
+      const json = JSON.stringify(cycle);
+      const b64 = btoa(unescape(encodeURIComponent(json)));
+      return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function decodeReplayCycle(encoded) {
+      let b64 = String(encoded || '').replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      const json = decodeURIComponent(escape(atob(b64)));
+      return JSON.parse(json);
+    }
+
+    function isValidReplayOutcome(outcome) {
+      return pocketIndexForOutcome(outcome) >= 0;
+    }
+
+    function normalizeReplayCycle(raw) {
+      if (!raw || raw.v !== 1 || !Array.isArray(raw.p) || !isValidReplayOutcome(raw.o)) return null;
+      const placementsList = [];
+      for (const entry of raw.p) {
+        if (!Array.isArray(entry) || entry.length < 2) continue;
+        const [key, stake] = entry;
+        if (typeof key !== 'string' || !allBetDefs.has(key)) continue;
+        const amount = Math.max(0, Math.round(Number(stake) || 0));
+        if (amount <= 0) continue;
+        placementsList.push([key, amount]);
+      }
+      return {
+        v: 1,
+        p: placementsList,
+        o: raw.o === '00' ? '00' : Number(raw.o) === 0 ? 0 : Number(raw.o),
+        n: Number(raw.n) || 0,
+        b: Math.max(0, Math.round(Number(raw.b) || 0))
+      };
+    }
+
+    function buildReplayCycle(outcome, net) {
+      return {
+        v: 1,
+        p: Array.from(placements.entries()).map(([key, stake]) => [key, Math.round(stake)]),
+        o: outcome,
+        n: Math.round(net),
+        b: Math.max(0, Math.round(purseBeforeSpin))
+      };
+    }
+
+    function getReplayShareUrl(cycle) {
+      const encoded = encodeReplayCycle(cycle);
+      return `${location.origin}${location.pathname}${location.search}#replay=${encoded}`;
+    }
+
+    function formatReplayShareText(cycle) {
+      const net = Math.round(cycle.n);
+      const outcomeLabel = String(cycle.o);
+      if (net > 0) return `Roulette replay — net +${purseFmt.format(net)} on ${outcomeLabel}`;
+      if (net < 0) return `Roulette replay — net −${purseFmt.format(Math.abs(net))} on ${outcomeLabel}`;
+      return `Roulette replay — even on ${outcomeLabel}`;
+    }
+
+    async function shareReplayCycle(cycle, buttonEl) {
+      if (!cycle || wheelSpinning || settling) return;
+      const url = getReplayShareUrl(cycle);
+      const text = formatReplayShareText(cycle);
+      const title = 'Roulette spin replay';
+      try {
+        if (navigator.share) {
+          await navigator.share({ title, text, url });
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return;
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        if (buttonEl) {
+          buttonEl.classList.add('is-copied');
+          const prev = buttonEl.textContent;
+          buttonEl.textContent = 'Link copied';
+          setTimeout(() => {
+            buttonEl.classList.remove('is-copied');
+            buttonEl.textContent = prev;
+          }, 1600);
+        }
+      } catch {
+        window.prompt('Copy this replay link:', url);
+      }
+    }
+
+    function clearReplayHash() {
+      if (!location.hash.startsWith('#replay=')) return;
+      window.history.replaceState(null, '', `${location.pathname}${location.search}`);
+    }
+
+    function delay(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function placeReplayStake(key, amount) {
+      if (!allBetDefs.has(key) || amount <= 0) return;
+      placements.set(key, amount);
+      renderChips();
+      updateMetrics();
+    }
+
+    async function playReplay(cycle) {
+      const token = ++replayPlaybackToken;
+      replayMode = true;
+      forcedOutcome = null;
+      lastReplayCycle = cycle;
+      hidePayoutOverlay();
+      clearSettlementVisuals();
+      placements.clear();
+      history.length = 0;
+      purse = cycle.b;
+      clampSelectedChipDenom();
+      updatePurseDisplay();
+      renderChips();
+      updateMetrics();
+      updateReplayChrome();
+      updateShareButtons();
+      updateWheelButtonState();
+
+      for (const [key, stake] of cycle.p) {
+        if (token !== replayPlaybackToken) return;
+        await delay(220);
+        if (token !== replayPlaybackToken) return;
+        placeReplayStake(key, stake);
+      }
+
+      await delay(480);
+      if (token !== replayPlaybackToken) return;
+      spinWheelForced(cycle.o);
+    }
+
+    function exitReplayMode() {
+      replayPlaybackToken += 1;
+      replayMode = false;
+      forcedOutcome = null;
+      wheelPhysics = null;
+      wheelSpinning = false;
+      settling = false;
+      settlementState = null;
+      clearReplayHash();
+      hidePayoutOverlay();
+      clearSettlementVisuals();
+      placements.clear();
+      history.length = 0;
+      resetPurse();
+      renderChips();
+      updateMetrics();
+      updateReplayChrome();
+      updateShareButtons();
+      updateWheelButtonState();
+    }
+
+    function tryStartReplayFromHash() {
+      const match = location.hash.match(/^#replay=([^&]+)/);
+      if (!match) return false;
+      try {
+        const cycle = normalizeReplayCycle(decodeReplayCycle(decodeURIComponent(match[1])));
+        if (!cycle) {
+          clearReplayHash();
+          return false;
+        }
+        // Wait a frame so the 3D board is ready to render chips.
+        requestAnimationFrame(() => {
+          playReplay(cycle);
+        });
+        return true;
+      } catch {
+        clearReplayHash();
+        return false;
+      }
     }
 
     function computeAdvanceTotal() {
@@ -3331,6 +3630,10 @@
 
     function advanceRound() {
       if (!awaitingAdvance) return;
+      if (replayMode) {
+        exitReplayMode();
+        return;
+      }
       hidePayoutOverlay();
       purse += computeAdvanceTotal();
       clampSelectedChipDenom();
@@ -3340,6 +3643,7 @@
       clearSettlementVisuals();
       renderChips();
       updateMetrics();
+      updateShareButtons();
     }
 
     function dealerStackSlot(spec) {
@@ -3385,6 +3689,7 @@
       let lostTotal = 0;
       loseKeys.forEach((key) => { lostTotal += placements.get(key) || 0; });
       lastSpinNet = computeSettlementWinnings() - lostTotal;
+      if (!replayMode) lastReplayCycle = buildReplayCycle(outcome, lastSpinNet);
       drawBoard();
       buildSettlementHighlights3D(winKeys, outcome);
       applyChartSettlementHighlight(outcome);
@@ -3701,7 +4006,7 @@
     }
 
     function addChip(key, amount = 1, track = true) {
-      if (settling || awaitingAdvance) return;
+      if (settling || awaitingAdvance || replayMode) return;
       if (purse < amount) return;
       purse -= amount;
       placements.set(key, (placements.get(key) || 0) + amount);
@@ -3712,7 +4017,7 @@
       updateMetrics();
     }
     function removeChip() {
-      if (settling || awaitingAdvance) return;
+      if (settling || awaitingAdvance || replayMode) return;
       const last = history.pop();
       if (!last) return;
       const current = placements.get(last.key) || 0;
@@ -3726,7 +4031,7 @@
       updateMetrics();
     }
     function clearBoard() {
-      if (settling) return;
+      if (settling || replayMode) return;
       if (awaitingAdvance) {
         hidePayoutOverlay();
         purse += computeAdvanceTotal();
@@ -3742,6 +4047,7 @@
       updatePurseDisplay();
       renderChips();
       updateMetrics();
+      updateShareButtons();
     }
 
     function setMetricsOpen(open) {
@@ -3761,12 +4067,26 @@
 
     document.getElementById('undoBtn').addEventListener('click', removeChip);
     document.getElementById('clearBtn').addEventListener('click', clearBoard);
+    shareReplayBtn?.addEventListener('click', () => {
+      if (lastReplayCycle) shareReplayCycle(lastReplayCycle, shareReplayBtn);
+    });
+    shareReplayOverlayBtn?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (lastReplayCycle) shareReplayCycle(lastReplayCycle, shareReplayOverlayBtn);
+    });
+    exitReplayBtn?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      exitReplayMode();
+    });
     purseStackEl?.addEventListener('pointerdown', (event) => {
       event.stopPropagation();
     });
     purseStackEl?.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (replayMode) return;
       cycleSelectedChipDenom(event);
     });
     document.getElementById('statsToggle').addEventListener('click', () => {
@@ -3786,7 +4106,10 @@
       if (!event.target.closest('.camera-menu-wrap')) setCameraMenuOpen(false);
     });
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') setCameraMenuOpen(false);
+      if (event.key === 'Escape') {
+        setCameraMenuOpen(false);
+        if (replayMode) exitReplayMode();
+      }
     });
     document.querySelectorAll('.camera-option[data-view]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -3809,6 +4132,7 @@
     updateMetrics();
     updateControlStates();
     syncMobileStatsToggle();
+    tryStartReplayFromHash();
   </script>
 </body>
 </html>
