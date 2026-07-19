@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roulette Chip Analytics</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+      --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+      --space-12: 3rem; --space-16: 4rem;
+      --color-bg: #0d1512; --color-surface: #13211b; --color-surface-2: #173027; --color-surface-offset: #0f1b17;
+      --color-border: #2c473c; --color-divider: #355a4c; --color-text: #f5edd8; --color-text-muted: #bdb39b;
+      --color-text-faint: #897f6d; --color-text-inverse: #101815; --color-primary: #d0a23a; --color-primary-hover: #e0ba62;
+      --color-primary-highlight: #31260f; --color-success: #71d189; --color-warning: #d7874a; --color-error: #f26e89;
+      --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-xl: 1rem; --radius-full: 9999px;
+      --shadow-sm: 0 2px 4px rgba(0,0,0,.28); --shadow-md: 0 12px 30px rgba(0,0,0,.34); --font-display: 'Zodiak', Georgia, serif;
+      --font-body: 'General Sans', 'Inter', sans-serif; --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    [data-theme="dark"] {
+      --color-bg: #07100d; --color-surface: #0f1b17; --color-surface-2: #13271f; --color-surface-offset: #0c1411;
+      --color-border: #325345; --color-divider: #406a5a; --color-text: #f6ecd5; --color-text-muted: #c3b79d; --color-text-faint: #8d826f;
+      --color-text-inverse: #0b110e; --color-primary: #efbb49; --color-primary-hover: #f6cb73; --color-primary-highlight: #34270e;
+      --color-success: #7fe29a; --color-warning: #f0a46a; --color-error: #ff7c97;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100dvh; font-family: var(--font-body); color: var(--color-text); background: radial-gradient(circle at top, rgba(208,162,58,.08), transparent 26%), linear-gradient(180deg, #0d1512, #07100d 60%); }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .app { max-width: 1640px; margin: 0 auto; padding: var(--space-4); }
+    .skip-link { position: absolute; left: -9999px; }
+    .skip-link:focus { left: var(--space-4); top: var(--space-4); background: var(--color-surface); padding: var(--space-3); z-index: 20; border-radius: var(--radius-md); }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6); padding: var(--space-4) 0; }
+    .brand { display: flex; align-items: center; gap: var(--space-3); }
+    .logo { width: 36px; height: 36px; color: var(--color-primary); }
+    .brand h1 { margin: 0; font-family: var(--font-display); font-size: var(--text-xl); line-height: 1; }
+    .brand p { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+    .toolbar { display: flex; gap: var(--space-2); align-items: center; }
+    .icon-btn, .btn, .bet-pill { min-height: 44px; border-radius: var(--radius-full); transition: transform var(--transition), background var(--transition), color var(--transition), border-color var(--transition), box-shadow var(--transition); }
+    .icon-btn, .btn { padding: 0 var(--space-4); color: var(--color-text); background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)); border: 1px solid rgba(255,255,255,.1); box-shadow: var(--shadow-sm); }
+    .btn.primary { background: linear-gradient(180deg, #f0c869, #c28b2d); color: #1a1307; border-color: rgba(255,225,156,.45); }
+    .btn.subtle { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); }
+    .btn.warning { background: linear-gradient(180deg, #d88a54, #9d5427); color: #fff3e9; border-color: rgba(255,220,198,.24); }
+    .icon-btn:hover, .btn:hover { transform: translateY(-1px); }
+    .layout { display: grid; grid-template-columns: minmax(360px, 760px) minmax(360px, 1fr); gap: var(--space-6); align-items: start; }
+    .panel { background: linear-gradient(180deg, rgba(23,48,39,.92), rgba(15,27,23,.96)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); overflow: hidden; }
+    .panel-inner { padding: var(--space-5); }
+    .panel h2, .panel h3 { margin: 0 0 var(--space-3); }
+    .panel h2 { font-family: var(--font-display); font-size: var(--text-lg); }
+    .lede { margin: 0 0 var(--space-4); color: var(--color-text-muted); font-size: var(--text-sm); max-width: 64ch; }
+    .controls { display: grid; gap: var(--space-4); margin-bottom: var(--space-5); }
+    .control-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+    .roulette-wrap { display: grid; gap: var(--space-4); }
+    .board-shell { position: relative; border-radius: 28px; overflow: hidden; border: 1px solid rgba(242,214,143,.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 16px 50px rgba(0,0,0,.34); background: linear-gradient(180deg, rgba(8,20,16,.85), rgba(7,16,13,.98)); }
+    .board-stage { position: relative; padding: 14px; }
+    canvas#rouletteCanvas { display: none; }
+    .board-3d { width: 100%; min-height: 520px; aspect-ratio: 680 / 1360; border-radius: 22px; overflow: hidden; cursor: crosshair; }
+    .board-3d canvas { display: block; width: 100% !important; height: 100% !important; border-radius: 22px; }
+    .board-metrics { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: var(--space-3); align-items: stretch; }
+    .hero-metrics { display: grid; grid-template-columns: 1fr; gap: var(--space-3); margin-bottom: var(--space-4); }
+    .hero-card, .stat, .formula, .progression-box, .chart-card, .table-card { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
+    .hero-card { padding: var(--space-4); }
+    .hero-card .label, .stat .label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; }
+    .hero-card .value { font-family: var(--font-display); font-size: clamp(1.5rem, 1rem + 1.4vw, 2.5rem); line-height: 1; margin-top: var(--space-2); }
+    .hero-card .hint, .stat .hint { margin-top: var(--space-2); color: var(--color-text-muted); font-size: var(--text-xs); max-width: 28ch; }
+    .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+    .stat { padding: var(--space-4); }
+    .stat .value { font-size: var(--text-lg); font-weight: 700; font-variant-numeric: tabular-nums lining-nums; margin-top: var(--space-1); }
+    .formula, .progression-box, .chart-card, .table-card { padding: var(--space-4); color: var(--color-text-muted); font-size: var(--text-sm); }
+    .scenario { display: grid; gap: var(--space-3); }
+    .scenario label { display: grid; gap: var(--space-2); font-size: var(--text-sm); color: var(--color-text-muted); }
+    .scenario input { min-height: 44px; padding: 0 var(--space-3); background: rgba(255,255,255,.05); color: var(--color-text); border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,.12); }
+    .bet-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .bet-pill { display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); font-size: var(--text-xs); }
+    .chart-wrap { position: relative; height: 280px; }
+    .detail-grid { display: grid; gap: var(--space-4); margin-top: var(--space-4); }
+    .outcome-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+    .outcome-table th, .outcome-table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; font-variant-numeric: tabular-nums; }
+    .outcome-table th { position: sticky; top: 0; background: #14231d; z-index: 1; }
+    .outcome-scroll { max-height: 360px; overflow: auto; }
+    .positive { color: var(--color-success); font-weight: 700; }
+    .negative { color: var(--color-error); font-weight: 700; }
+    .neutral { color: var(--color-text-muted); }
+    .footer-note { margin-top: var(--space-4); font-size: var(--text-xs); color: var(--color-text-muted); }
+    @media (max-width: 1260px) { .layout { grid-template-columns: 1fr; } .topbar { align-items: flex-start; flex-direction: column; } }
+    @media (max-width: 900px) { .board-metrics, .stats { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) { .hero-metrics { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 48 48" fill="none" aria-label="Roulette Chip Analytics logo">
+          <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2.5"></circle>
+          <circle cx="24" cy="24" r="9" stroke="currentColor" stroke-width="2.5"></circle>
+          <path d="M24 4v8M24 36v8M4 24h8M36 24h8M10 10l5.5 5.5M32.5 32.5L38 38M38 10l-5.5 5.5M10 38l5.5-5.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"></path>
+        </svg>
+        <div>
+          <h1>Roulette Chip Analytics</h1>
+          <p>3D American roulette table with exact payout mapping and a Chart.js analytics layer.</p>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch to dark mode">◐</button>
+      </div>
+    </header>
+
+    <main id="main" class="layout">
+      <section class="panel">
+        <div class="panel-inner">
+          <h2>Board</h2>
+          <div class="controls" aria-label="Chip controls">
+            <div class="control-row">
+              <button class="btn subtle" id="undoBtn" type="button">Undo last chip</button>
+              <button class="btn warning" id="clearBtn" type="button">Clear board</button>
+              <button class="btn primary" id="flatEvenBtn" type="button">Demo: flat on red</button>
+              <button class="btn subtle" id="martingaleBtn" type="button">Demo: Martingale path</button>
+            </div>
+          </div>
+          <div class="roulette-wrap">
+            <div class="board-shell">
+              <div class="board-stage">
+                <canvas id="rouletteCanvas" width="680" height="1360" aria-hidden="true"></canvas>
+                <div id="board3d" class="board-3d" aria-label="Roulette betting board"></div>
+              </div>
+            </div>
+            <div class="board-metrics" aria-label="Board payout summary">
+              <div class="hero-card">
+                <div class="label">Highest payout hit</div>
+                <div class="value" id="boardMax">$0.00</div>
+                <div class="hint">Best single-spin net payout available from the current layout.</div>
+              </div>
+              <div class="hero-card">
+                <div class="label">Total dollars at risk</div>
+                <div class="value" id="boardStake">$0.00</div>
+                <div class="hint">Sum of all placed dollars.</div>
+              </div>
+              <div class="hero-card">
+                <div class="label">Expected profit / spin</div>
+                <div class="value" id="boardEv">$0.00</div>
+                <div class="hint">Probability-weighted average net result each spin.</div>
+              </div>
+            </div>
+            <div class="chart-card">
+              <h3>Payout curve</h3>
+              <div class="chart-wrap"><canvas id="payoutChart"></canvas></div>
+            </div>
+          </div>
+          <div style="margin-top: var(--space-4);">
+            <h3>Current placements</h3>
+            <div id="betList" class="bet-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-inner">
+          <h2>Metrics</h2>
+          <p class="lede">American roulette adds both 0 and 00, and a chip on the line between them acts as a green bet on either green outcome; split bets on 0 and 00 conventionally pay 17:1, while dozens and columns pay 2:1. [web:12][web:16][web:18]</p>
+          <div class="hero-metrics">
+            <div class="hero-card">
+              <div class="label">Expected ROI / spin</div>
+              <div class="value" id="heroRoi">0.00%</div>
+              <div class="hint">Expected profit divided by total dollars at risk. [web:18]</div>
+            </div>
+          </div>
+          <div id="stats" class="stats"></div>
+          <div class="formula" style="margin-top: var(--space-4);">
+            Expected value per spin = probability-weighted net profit across 38 outcomes. Variance comes from the same outcome distribution. Sharpe-style ratio = mean profit per spin divided by standard deviation per spin.
+          </div>
+          <div style="margin-top: var(--space-5);">
+            <h3>Scenario lens</h3>
+            <div class="scenario">
+              <label>Bankroll ($)
+                <input id="bankrollInput" type="number" min="1" step="1" value="100" />
+              </label>
+              <label>Spins to simulate for path metrics
+                <input id="spinsInput" type="number" min="1" step="1" value="500" />
+              </label>
+            </div>
+            <div id="progressionBox" class="progression-box" style="margin-top: var(--space-4);"></div>
+          </div>
+          <div class="detail-grid">
+            <div class="table-card">
+              <h3>Detailed outcomes</h3>
+              <div class="outcome-scroll">
+                <table class="outcome-table">
+                  <thead>
+                    <tr><th>Outcome</th><th>Net payout</th><th>Result</th></tr>
+                  </thead>
+                  <tbody id="outcomeTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <p class="footer-note">The detailed view maps every possible spin result to the exact net dollar payout implied by the current board. [web:18][web:20]</p>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const redNumbers = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+    const boardNumbers = [[3,2,1],[6,5,4],[9,8,7],[12,11,10],[15,14,13],[18,17,16],[21,20,19],[24,23,22],[27,26,25],[30,29,28],[33,32,31],[36,35,34]];
+    const numberPos = new Map();
+    boardNumbers.forEach((row, rowIndex) => row.forEach((num, colIndex) => numberPos.set(num, { row: rowIndex, col: colIndex })));
+    const outsideDefinitions = [
+      { key:'red', label:'Red', payout:1, numbers:[...redNumbers] },
+      { key:'black', label:'Black', payout:1, numbers:[...Array(36).keys()].map(n=>n+1).filter(n=>!redNumbers.has(n)) },
+      { key:'even', label:'Even', payout:1, numbers:[...Array(18).keys()].map(i=>(i+1)*2) },
+      { key:'odd', label:'Odd', payout:1, numbers:[...Array(18).keys()].map(i=>i*2+1) },
+      { key:'low', label:'1 to 18', payout:1, numbers:Array.from({length:18},(_,i)=>i+1) },
+      { key:'high', label:'19 to 36', payout:1, numbers:Array.from({length:18},(_,i)=>i+19) }
+    ];
+    const dozenDefinitions = [
+      { key:'dozen-1', label:'1st 12', payout:2, numbers:Array.from({length:12},(_,i)=>i+1) },
+      { key:'dozen-2', label:'2nd 12', payout:2, numbers:Array.from({length:12},(_,i)=>i+13) },
+      { key:'dozen-3', label:'3rd 12', payout:2, numbers:Array.from({length:12},(_,i)=>i+25) }
+    ];
+    const columnDefinitions = [
+      { key:'col-1', label:'1 to 1', payout:2, numbers:[1,4,7,10,13,16,19,22,25,28,31,34] },
+      { key:'col-2', label:'2 to 1', payout:2, numbers:[2,5,8,11,14,17,20,23,26,29,32,35] },
+      { key:'col-3', label:'3 to 1', payout:2, numbers:[3,6,9,12,15,18,21,24,27,30,33,36] }
+    ];
+
+    const canvas = document.getElementById('rouletteCanvas');
+    const ctx = canvas.getContext('2d');
+    const board3dEl = document.getElementById('board3d');
+    const betListEl = document.getElementById('betList');
+    const statsEl = document.getElementById('stats');
+    const progressionBox = document.getElementById('progressionBox');
+    const bankrollInput = document.getElementById('bankrollInput');
+    const spinsInput = document.getElementById('spinsInput');
+    const heroRoiEl = document.getElementById('heroRoi');
+    const boardMaxEl = document.getElementById('boardMax');
+    const boardStakeEl = document.getElementById('boardStake');
+    const boardEvEl = document.getElementById('boardEv');
+    const outcomeTableBody = document.getElementById('outcomeTableBody');
+    const placements = new Map();
+    const history = [];
+    const insideTargets = [];
+    const allTargets = [];
+    const outcomes = [0, '00', ...Array.from({length:36}, (_,i)=>i+1)];
+    const allBetDefs = new Map();
+    let payoutChart;
+    let lastDemo = null;
+    let hoverTarget = null;
+    let scene, camera, renderer, controls, boardTexture, chipGroup, hoverMesh, raycaster, pointer;
+    let hitMeshes = [];
+    let chipBodyMaterial;
+    let chipEdgeMaterial;
+
+    const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 });
+    const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+    const pct = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 2 });
+    const board = {
+      pad: 16, topW: 366, leftW: 150, rightW: 136, topH: 164,
+      cellW: 122, cellH: 76, gap: 4, dozenW: 132, colH: 58, outsideH: 70
+    };
+    board.gridX = board.leftW + board.pad;
+    board.gridY = board.topH + board.pad + 10;
+    board.gridW = board.cellW * 3 + board.gap * 2;
+    board.gridH = board.cellH * 12 + board.gap * 11;
+    board.totalW = canvas.width;
+    board.totalH = canvas.height;
+    board.outsideY = board.gridY + board.gridH + 20;
+    board.columnsY = board.outsideY + board.outsideH + 16;
+    board.dozenX = board.gridX + board.gridW + 14;
+    board.stageHeight = board.columnsY + board.colH + board.pad;
+
+    function formatMoney(value) {
+      const n = Number(value || 0);
+      const abs = moneyFmt.format(Math.abs(n));
+      if (n > 0) return `+${abs}`;
+      if (n < 0) return `-${abs}`;
+      return moneyFmt.format(0);
+    }
+
+    function themeInit() {
+      const root = document.documentElement;
+      let mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.setAttribute('data-theme', mode);
+      const btn = document.querySelector('[data-theme-toggle]');
+      const sync = () => {
+        btn.textContent = mode === 'dark' ? '☀︎' : '◐';
+        btn.setAttribute('aria-label', `Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`);
+      };
+      sync();
+      btn.addEventListener('click', () => { mode = mode === 'dark' ? 'light' : 'dark'; root.setAttribute('data-theme', mode); drawBoard(); updateChartTheme(); });
+    }
+
+    function buildSplitKey(numbers) { return `split-${[...numbers].sort((a,b)=>String(a).localeCompare(String(b), undefined, {numeric:true})).join('-')}`; }
+    function buildCornerKey(numbers) { return `corner-${[...numbers].sort((a,b)=>a-b).join('-')}`; }
+    function registerBet(def) { allBetDefs.set(def.key, def); return def.key; }
+
+    registerBet({ key:'n-0', label:'Straight 0', payout:35, numbers:[0], type:'straight' });
+    registerBet({ key:'n-00', label:'Straight 00', payout:35, numbers:['00'], type:'straight' });
+    registerBet({ key:'green', label:'Green', payout:17, numbers:[0,'00'], type:'green' });
+    for (let n = 1; n <= 36; n++) registerBet({ key:`n-${n}`, label:`Straight ${n}`, payout:35, numbers:[n], type:'straight' });
+    [...outsideDefinitions, ...dozenDefinitions, ...columnDefinitions].forEach(def => registerBet({ ...def, type:'outside' }));
+
+    function registerSplit(numbers) {
+      const sorted = [...numbers].sort((a,b)=>String(a).localeCompare(String(b), undefined, {numeric:true}));
+      const key = buildSplitKey(sorted);
+      if (!allBetDefs.has(key)) registerBet({ key, label:`Split ${sorted.join('-')}`, payout:17, numbers:sorted, type:'split' });
+      return key;
+    }
+    function registerCorner(numbers) {
+      const sorted = [...numbers].sort((a,b)=>a-b);
+      const key = buildCornerKey(sorted);
+      if (!allBetDefs.has(key)) registerBet({ key, label:`Corner ${sorted.join('-')}`, payout:8, numbers:sorted, type:'corner' });
+      return key;
+    }
+
+    function pushTarget(target, inside = true) {
+      if (inside) insideTargets.push(target);
+      allTargets.push(target);
+    }
+
+    function buildTargets() {
+      pushTarget({ key:'n-0', x: board.gridX, y: board.pad, width: board.topW / 2 - 2, height: 78, kind:'special' });
+      pushTarget({ key:'n-00', x: board.gridX + board.topW / 2 + 2, y: board.pad, width: board.topW / 2 - 2, height: 78, kind:'special' });
+      pushTarget({ key:'green', x: board.gridX + 86, y: board.pad + 86, width: board.topW - 172, height: 56, kind:'special' });
+
+      for (let row = 0; row < 12; row++) {
+        for (let col = 0; col < 3; col++) {
+          const num = boardNumbers[row][col];
+          const x = board.gridX + col * (board.cellW + board.gap);
+          const y = board.gridY + row * (board.cellH + board.gap);
+          pushTarget({ key:`n-${num}`, x, y, width: board.cellW, height: board.cellH, kind:'number' });
+        }
+      }
+
+      for (let num = 1; num <= 36; num++) {
+        const pos = numberPos.get(num);
+        const baseX = board.gridX + pos.col * (board.cellW + board.gap);
+        const baseY = board.gridY + pos.row * (board.cellH + board.gap);
+        if (pos.col < 2) {
+          const right = boardNumbers[pos.row][pos.col + 1];
+          pushTarget({ key: registerSplit([num, right]), x: baseX + board.cellW - 10, y: baseY + 18, width: 20, height: board.cellH - 36, kind:'split' });
+        }
+        if (pos.row < 11) {
+          const below = boardNumbers[pos.row + 1][pos.col];
+          pushTarget({ key: registerSplit([num, below]), x: baseX + 18, y: baseY + board.cellH - 10, width: board.cellW - 36, height: 20, kind:'split' });
+        }
+        if (pos.row < 11 && pos.col < 2) {
+          const set = [num, boardNumbers[pos.row][pos.col + 1], boardNumbers[pos.row + 1][pos.col], boardNumbers[pos.row + 1][pos.col + 1]];
+          pushTarget({ key: registerCorner(set), x: baseX + board.cellW - 12, y: baseY + board.cellH - 12, width: 24, height: 24, kind:'corner' });
+        }
+      }
+
+      dozenDefinitions.forEach((def, i) => {
+        pushTarget({ key:def.key, x:board.dozenX, y:board.gridY + i * (board.gridH / 3), width:board.dozenW, height:(board.gridH / 3) - (i < 2 ? board.gap : 0), kind:'outside' }, false);
+      });
+      columnDefinitions.forEach((def, i) => {
+        pushTarget({ key:def.key, x:board.gridX + i * (board.cellW + board.gap), y:board.columnsY, width:board.cellW, height:board.colH, kind:'outside' }, false);
+      });
+      outsideDefinitions.forEach((def, i) => {
+        pushTarget({ key:def.key, x:board.pad + i * ((canvas.width - board.pad * 2) / outsideDefinitions.length), y:board.outsideY, width:(canvas.width - board.pad * 2) / outsideDefinitions.length - 3, height:board.outsideH, kind:'outside' }, false);
+      });
+    }
+
+    function roundedRect(x,y,w,h,r) {
+      ctx.beginPath();
+      ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+      ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+      ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+      ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+    }
+
+    function drawFeltNoise() {
+      ctx.save();
+      ctx.globalAlpha = 0.08;
+      for (let i = 0; i < 2200; i++) {
+        ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+        ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
+      }
+      ctx.restore();
+    }
+
+    function drawText(text, x, y, opts = {}) {
+      ctx.save();
+      ctx.textAlign = opts.align || 'center';
+      ctx.textBaseline = opts.baseline || 'middle';
+      ctx.fillStyle = opts.color || '#f7ead0';
+      ctx.font = opts.font || '700 26px Zodiak';
+      if (opts.shadow) { ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 10; }
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function cellColor(num) {
+      return redNumbers.has(num)
+        ? ['#c65450', '#7a2220']
+        : ['#34383d', '#111214'];
+    }
+
+    function drawChipGlow(target) {
+      if (!target || !(placements.get(target.key) > 0)) return;
+      const cx = target.x + target.width / 2;
+      const cy = target.y + target.height / 2;
+      const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, Math.max(target.width, target.height) * 0.55);
+      grad.addColorStop(0, 'rgba(255,214,108,0.25)');
+      grad.addColorStop(1, 'rgba(255,214,108,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.max(target.width, target.height) * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawBoard() {
+      const styles = getComputedStyle(document.documentElement);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      bg.addColorStop(0, '#143528'); bg.addColorStop(1, '#0c1a15');
+      ctx.fillStyle = bg;
+      roundedRect(0, 0, canvas.width, canvas.height, 28);
+      ctx.fill();
+      drawFeltNoise();
+
+      const rail = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      rail.addColorStop(0, 'rgba(238,194,97,.22)'); rail.addColorStop(.5, 'rgba(255,233,180,.08)'); rail.addColorStop(1, 'rgba(238,194,97,.22)');
+      ctx.strokeStyle = rail;
+      ctx.lineWidth = 2;
+      roundedRect(8, 8, canvas.width - 16, canvas.height - 16, 24);
+      ctx.stroke();
+
+      const brass = '#d0a23a';
+      const cream = '#f7ead0';
+      const muted = styles.getPropertyValue('--color-text-muted').trim();
+      const divider = 'rgba(255,238,198,0.18)';
+
+      const specialTargets = ['n-0','n-00','green'].map(k => insideTargets.find(t => t.key === k));
+      specialTargets.forEach((t, idx) => {
+        const g = ctx.createLinearGradient(0, t.y, 0, t.y + t.height);
+        g.addColorStop(0, idx < 2 ? '#3f9a5d' : '#2f8850'); g.addColorStop(1, idx < 2 ? '#1f5d39' : '#1a5031');
+        ctx.fillStyle = g;
+        roundedRect(t.x, t.y, t.width, t.height, 20);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1; ctx.stroke();
+        drawChipGlow(t);
+      });
+      drawText('0', specialTargets[0].x + specialTargets[0].width / 2, specialTargets[0].y + specialTargets[0].height / 2 + 2, { font:'700 42px Zodiak', shadow:true });
+      drawText('00', specialTargets[1].x + specialTargets[1].width / 2, specialTargets[1].y + specialTargets[1].height / 2 + 2, { font:'700 42px Zodiak', shadow:true });
+      drawText('GREEN', specialTargets[2].x + specialTargets[2].width / 2, specialTargets[2].y + specialTargets[2].height / 2 + 1, { font:'700 22px General Sans', shadow:true });
+
+      insideTargets.filter(t => t.kind === 'number').forEach(t => {
+        const num = Number(t.key.replace('n-',''));
+        const [top, bottom] = cellColor(num);
+        const g = ctx.createLinearGradient(0, t.y, 0, t.y + t.height);
+        g.addColorStop(0, top); g.addColorStop(1, bottom);
+        ctx.fillStyle = g;
+        roundedRect(t.x, t.y, t.width, t.height, 14); ctx.fill();
+        ctx.strokeStyle = divider; ctx.lineWidth = 1; ctx.stroke();
+        drawChipGlow(t);
+        ctx.save();
+        ctx.translate(t.x + t.width / 2, t.y + t.height / 2 + 3);
+        ctx.rotate(-0.045);
+        drawText(String(num), 0, 0, { font:'700 34px Zodiak', color:cream, shadow:true });
+        ctx.restore();
+      });
+
+      allTargets.filter(t => ['split','corner'].includes(t.kind)).forEach(t => {
+        ctx.fillStyle = hoverTarget && hoverTarget.key === t.key ? 'rgba(255,228,170,.22)' : 'rgba(255,245,214,.10)';
+        roundedRect(t.x, t.y, t.width, t.height, 10); ctx.fill();
+        drawChipGlow(t);
+      });
+
+      allTargets.filter(t => t.kind === 'outside').forEach((t) => {
+        const g = ctx.createLinearGradient(0, t.y, 0, t.y + t.height);
+        g.addColorStop(0, 'rgba(255,255,255,.08)'); g.addColorStop(1, 'rgba(255,255,255,.03)');
+        ctx.fillStyle = g;
+        roundedRect(t.x, t.y, t.width, t.height, 16); ctx.fill();
+        ctx.strokeStyle = divider; ctx.lineWidth = 1; ctx.stroke();
+        drawChipGlow(t);
+        const def = allBetDefs.get(t.key);
+        drawText(def.label.toUpperCase(), t.x + t.width / 2, t.y + t.height / 2 + 1, { font: t.height > 60 ? '700 22px General Sans' : '700 18px General Sans', color: cream });
+      });
+
+      ctx.fillStyle = 'rgba(255,255,255,.05)';
+      ctx.fillRect(board.gridX - 6, board.gridY - 6, board.gridW + 12, board.gridH + 12);
+      drawText('AMERICAN TABLE', canvas.width / 2, canvas.height - 24, { font:'600 14px General Sans', color: muted });
+      updateBoardTexture();
+    }
+
+    function targetCenter(target) {
+      return {
+        x: target.x + target.width / 2 - canvas.width / 2,
+        z: target.y + target.height / 2 - canvas.height / 2
+      };
+    }
+
+    function updateBoardTexture() {
+      if (boardTexture) boardTexture.needsUpdate = true;
+    }
+
+    function initThree() {
+      raycaster = new THREE.Raycaster();
+      pointer = new THREE.Vector2();
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a1210);
+      scene.fog = new THREE.Fog(0x0a1210, 900, 2200);
+
+      const width = board3dEl.clientWidth || 360;
+      const height = board3dEl.clientHeight || Math.round(width * (canvas.height / canvas.width));
+      camera = new THREE.PerspectiveCamera(42, width / height, 1, 4000);
+      camera.position.set(0, 520, 380);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(width, height);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      board3dEl.appendChild(renderer.domElement);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.target.set(0, 0, 40);
+      controls.minPolarAngle = Math.PI / 6;
+      controls.maxPolarAngle = Math.PI / 2.15;
+      controls.minDistance = 420;
+      controls.maxDistance = 920;
+      controls.enablePan = false;
+
+      scene.add(new THREE.AmbientLight(0xfff2d6, 0.55));
+      const keyLight = new THREE.DirectionalLight(0xffe9bf, 1.15);
+      keyLight.position.set(180, 420, 220);
+      keyLight.castShadow = true;
+      keyLight.shadow.mapSize.set(1024, 1024);
+      scene.add(keyLight);
+      const fillLight = new THREE.DirectionalLight(0x6b9e88, 0.35);
+      fillLight.position.set(-240, 180, -120);
+      scene.add(fillLight);
+
+      const tableGroup = new THREE.Group();
+      scene.add(tableGroup);
+
+      const base = new THREE.Mesh(
+        new THREE.BoxGeometry(canvas.width + 44, 36, canvas.height + 44),
+        new THREE.MeshStandardMaterial({ color: 0x2a1810, roughness: 0.82, metalness: 0.08 })
+      );
+      base.position.set(0, -18, 0);
+      base.receiveShadow = true;
+      tableGroup.add(base);
+
+      const apron = new THREE.Mesh(
+        new THREE.BoxGeometry(canvas.width + 16, 8, canvas.height + 16),
+        new THREE.MeshStandardMaterial({ color: 0x0f241c, roughness: 0.9, metalness: 0.02 })
+      );
+      apron.position.set(0, -4, 0);
+      tableGroup.add(apron);
+
+      drawBoard();
+      boardTexture = new THREE.CanvasTexture(canvas);
+      boardTexture.colorSpace = THREE.SRGBColorSpace;
+      boardTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+      const felt = new THREE.Mesh(
+        new THREE.PlaneGeometry(canvas.width, canvas.height),
+        new THREE.MeshStandardMaterial({ map: boardTexture, roughness: 0.94, metalness: 0.02 })
+      );
+      felt.rotation.x = -Math.PI / 2;
+      felt.receiveShadow = true;
+      tableGroup.add(felt);
+
+      const railMaterial = new THREE.MeshStandardMaterial({ color: 0xd0a23a, roughness: 0.35, metalness: 0.72 });
+      const railHeight = 10;
+      const railDepth = 12;
+      const railWidth = canvas.width + 28;
+      const railLength = canvas.height + 28;
+      [
+        [railWidth, railHeight, railDepth, 0, 4, -(canvas.height + railDepth) / 2],
+        [railWidth, railHeight, railDepth, 0, 4, (canvas.height + railDepth) / 2],
+        [railDepth, railHeight, railLength, -(canvas.width + railDepth) / 2, 4, 0],
+        [railDepth, railHeight, railLength, (canvas.width + railDepth) / 2, 4, 0]
+      ].forEach(([w, h, d, x, y, z]) => {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), railMaterial);
+        rail.position.set(x, y, z);
+        rail.castShadow = true;
+        tableGroup.add(rail);
+      });
+
+      chipGroup = new THREE.Group();
+      tableGroup.add(chipGroup);
+      chipBodyMaterial = new THREE.MeshStandardMaterial({ color: 0xefc14f, roughness: 0.42, metalness: 0.55 });
+      chipEdgeMaterial = new THREE.MeshStandardMaterial({ color: 0x6d4310, roughness: 0.7, metalness: 0.2 });
+
+      hitMeshes = allTargets.map((target) => {
+        const center = targetCenter(target);
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(target.width, 2, target.height),
+          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+        );
+        mesh.position.set(center.x, 1.2, center.z);
+        mesh.userData.target = target;
+        tableGroup.add(mesh);
+        return mesh;
+      });
+
+      hoverMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 3, 1),
+        new THREE.MeshBasicMaterial({ color: 0xffe4a8, transparent: true, opacity: 0.24, depthWrite: false })
+      );
+      hoverMesh.visible = false;
+      tableGroup.add(hoverMesh);
+
+      window.addEventListener('resize', onBoardResize);
+      renderer.domElement.addEventListener('pointermove', onBoardPointerMove);
+      renderer.domElement.addEventListener('pointerleave', () => updateHover(null));
+      renderer.domElement.addEventListener('click', onBoardClick);
+      animateThree();
+    }
+
+    function onBoardResize() {
+      if (!renderer || !camera) return;
+      const width = board3dEl.clientWidth;
+      const height = Math.max(320, Math.round(width * (canvas.height / canvas.width)));
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+    }
+
+    function setPointerFromEvent(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    function raycastTarget() {
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(hitMeshes, false);
+      return hits.length ? hits[0].object.userData.target : null;
+    }
+
+    function onBoardPointerMove(event) {
+      setPointerFromEvent(event);
+      updateHover(raycastTarget());
+    }
+
+    function onBoardClick(event) {
+      setPointerFromEvent(event);
+      const target = raycastTarget();
+      if (!target) return;
+      lastDemo = null;
+      addChip(target.key, 1);
+      updateHover(target);
+    }
+
+    function updateHover(target) {
+      hoverTarget = target;
+      if (!target) {
+        hoverMesh.visible = false;
+        drawBoard();
+        return;
+      }
+      const center = targetCenter(target);
+      hoverMesh.scale.set(target.width, 1, target.height);
+      hoverMesh.position.set(center.x, 2.5, center.z);
+      hoverMesh.visible = true;
+      drawBoard();
+    }
+
+    function renderChips3D() {
+      if (!chipGroup) return;
+      while (chipGroup.children.length) chipGroup.remove(chipGroup.children[0]);
+      placements.forEach((amount, key) => {
+        const target = allTargets.find(t => t.key === key);
+        if (!target) return;
+        const center = targetCenter(target);
+        const stackCount = Math.min(Math.max(1, Math.round(Math.log2(amount + 1) * 2)), 8);
+        for (let i = 0; i < stackCount; i++) {
+          const y = 8 + i * 3.4;
+          const chip = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 3.2, 32), chipBodyMaterial);
+          chip.position.set(center.x, y, center.z);
+          chip.castShadow = true;
+          chipGroup.add(chip);
+          const rim = new THREE.Mesh(new THREE.TorusGeometry(14, 1.2, 8, 32), chipEdgeMaterial);
+          rim.rotation.x = Math.PI / 2;
+          rim.position.set(center.x, y + 1.6, center.z);
+          chipGroup.add(rim);
+        }
+      });
+    }
+
+    function animateThree() {
+      requestAnimationFrame(animateThree);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function renderChips() {
+      renderChips3D();
+      const items = [...placements.entries()].sort((a,b) => a[0].localeCompare(b[0]));
+      betListEl.innerHTML = items.length ? items.map(([key, amount]) => {
+        const def = allBetDefs.get(key);
+        return `<span class="bet-pill"><strong>${moneyFmt.format(amount)}</strong> ${def.label}</span>`;
+      }).join('') : '<span class="bet-pill">No chips placed</span>';
+    }
+
+    function getDistribution() {
+      const bets = [...placements.entries()].map(([key, stake]) => ({ ...allBetDefs.get(key), stake }));
+      const totalStake = bets.reduce((sum, bet) => sum + bet.stake, 0);
+      const profits = [];
+      for (const outcome of outcomes) {
+        let net = 0;
+        for (const bet of bets) net += bet.numbers.includes(outcome) ? bet.stake * bet.payout : -bet.stake;
+        profits.push(net);
+      }
+      return { bets, totalStake, profits };
+    }
+
+    function calcMetrics() {
+      const { totalStake, profits, bets } = getDistribution();
+      if (!totalStake) return { totalStake:0, ev:0, variance:0, std:0, winProb:0, lossProb:0, breakEvenProb:1, sharpe:0, roi:0, maxProfit:0, profits:[], bets:[] };
+      const n = profits.length;
+      const ev = profits.reduce((a,b)=>a+b,0) / n;
+      const variance = profits.reduce((a,b)=>a + (b - ev) ** 2, 0) / n;
+      const std = Math.sqrt(variance);
+      const winProb = profits.filter(v => v > 0).length / n;
+      const lossProb = profits.filter(v => v < 0).length / n;
+      const breakEvenProb = profits.filter(v => v === 0).length / n;
+      const roi = ev / totalStake;
+      const sharpe = std ? ev / std : 0;
+      const maxProfit = Math.max(...profits);
+      return { totalStake, ev, variance, std, winProb, lossProb, breakEvenProb, sharpe, roi, maxProfit, profits, bets };
+    }
+
+    function martingalePath(bankroll, spins) {
+      let base = 1; const loseProb = 20 / 38; const maxLossStreak = Math.floor(Math.log2(bankroll / base + 1));
+      let cumulativeRisk = 0; if (maxLossStreak > 0) cumulativeRisk = 1 - Math.pow(1 - Math.pow(loseProb, maxLossStreak), Math.max(1, spins));
+      const sequence = []; let nextBet = base;
+      for (let i = 0; i < Math.min(8, spins); i++) { if (nextBet > bankroll) break; sequence.push(nextBet); nextBet *= 2; }
+      const cycleLoss = Math.pow(2, sequence.length) - 1;
+      return { maxLossStreak, cumulativeRisk, sequence, cycleLoss };
+    }
+
+    function ensureChart() {
+      payoutChart = new Chart(document.getElementById('payoutChart').getContext('2d'), {
+        type: 'line',
+        data: { labels: outcomes.map(String), datasets: [{ label: 'Net payout', data: [], borderColor: '#efbb49', backgroundColor: 'rgba(239,187,73,0.12)', fill: true, tension: 0.22, pointRadius: 2, pointHoverRadius: 5 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: 'Spin outcome' }, ticks: { maxRotation: 0, autoSkip: true } }, y: { title: { display: true, text: 'Net payout ($)' } } } }
+      });
+      updateChartTheme();
+    }
+
+    function updateChartTheme() {
+      if (!payoutChart) return;
+      const s = getComputedStyle(document.documentElement);
+      const text = s.getPropertyValue('--color-text').trim();
+      const muted = s.getPropertyValue('--color-text-muted').trim();
+      const primary = s.getPropertyValue('--color-primary').trim();
+      payoutChart.data.datasets[0].borderColor = primary;
+      payoutChart.data.datasets[0].backgroundColor = primary + '22';
+      payoutChart.options.scales.x.ticks.color = muted;
+      payoutChart.options.scales.y.ticks.color = muted;
+      payoutChart.options.scales.x.title.color = text;
+      payoutChart.options.scales.y.title.color = text;
+      payoutChart.options.scales.x.grid.color = 'rgba(255,255,255,0.08)';
+      payoutChart.options.scales.y.grid.color = 'rgba(255,255,255,0.08)';
+      payoutChart.update();
+    }
+
+    function renderOutcomeTable(profits) {
+      outcomeTableBody.innerHTML = outcomes.map((outcome, idx) => {
+        const value = profits[idx] || 0; const cls = value > 0 ? 'positive' : value < 0 ? 'negative' : 'neutral'; const result = value > 0 ? 'Win' : value < 0 ? 'Lose' : 'Push';
+        return `<tr><td>${outcome}</td><td class="${cls}">${formatMoney(value)}</td><td>${result}</td></tr>`;
+      }).join('');
+    }
+
+    function updateMetrics() {
+      const m = calcMetrics();
+      const bankroll = Math.max(1, Number(bankrollInput.value || 100));
+      const spins = Math.max(1, Number(spinsInput.value || 500));
+      heroRoiEl.textContent = `${m.roi >= 0 ? '+' : ''}${pct.format(m.roi || 0)}`;
+      boardMaxEl.textContent = formatMoney(m.maxProfit || 0);
+      boardStakeEl.textContent = formatMoney(m.totalStake || 0);
+      boardEvEl.textContent = formatMoney(m.ev || 0);
+      const stats = [
+        ['Expected profit / spin', formatMoney(m.ev), 'American wheel assumptions.'],
+        ['Std. dev. / spin', formatMoney(m.std), 'One-spin volatility of net profit.'],
+        ['Sharpe-style ratio', `${m.sharpe >= 0 ? '+' : ''}${fmt.format(m.sharpe)}`, 'Expected profit per spin divided by volatility.'],
+        ['Win probability', pct.format(m.winProb), 'Chance the spin ends net positive.'],
+        ['Loss probability', pct.format(m.lossProb), 'Chance the spin ends net negative.'],
+        ['Break-even probability', pct.format(m.breakEvenProb), 'Chance the spin ends exactly flat.'],
+        ['Highest payout outcome', formatMoney(m.maxProfit || 0), 'Best outcome among the 38 wheel results.'],
+        ['Total dollars at risk', formatMoney(m.totalStake), 'Sum of all placed dollars.']
+      ];
+      statsEl.innerHTML = stats.map(([label, value, hint]) => `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div><div class="hint">${hint}</div></div>`).join('');
+      if (lastDemo === 'martingale') {
+        const mg = martingalePath(bankroll, spins);
+        progressionBox.innerHTML = `<strong>Martingale path view</strong><br>With a ${moneyFmt.format(bankroll)} bankroll, the longest loss streak you can survive starting from $1 is about <strong>${mg.maxLossStreak - 1}</strong> consecutive losses before the next double becomes unaffordable.<br>First doubling sequence: <strong>${mg.sequence.map(v => moneyFmt.format(v)).join(', ')}</strong>. Full failed cycle loss: <strong>${moneyFmt.format(mg.cycleLoss)}</strong>.<br>Approximate chance of hitting at least one bankroll-breaking loss streak within ${fmt.format(spins)} spins: <strong>${pct.format(Math.min(Math.max(mg.cumulativeRisk,0),1))}</strong>.`;
+      } else if (lastDemo === 'flat-red') {
+        progressionBox.innerHTML = `<strong>Flat betting view</strong><br>A flat $1 bet on red keeps stake size constant, so volatility comes only from the game outcome, not bet escalation. Over ${fmt.format(spins)} spins, expected profit is roughly <strong>${formatMoney(m.ev * spins)}</strong> with standard deviation scaling near <strong>${formatMoney(m.std * Math.sqrt(spins))}</strong>.`;
+      } else {
+        progressionBox.innerHTML = `<strong>Custom layout view</strong><br>The 3D table uses the courtesy line between 0 and 00 as the green bet, while the detailed chart and table show the exact dollar payout for every possible wheel outcome. [web:15][web:16]`;
+      }
+      payoutChart.data.labels = outcomes.map(String);
+      payoutChart.data.datasets[0].data = m.profits;
+      payoutChart.update();
+      renderOutcomeTable(m.profits);
+      drawBoard();
+    }
+
+    function addChip(key, amount = 1, track = true) { placements.set(key, (placements.get(key) || 0) + amount); if (track) history.push({ key, amount }); renderChips(); updateMetrics(); }
+    function removeChip() { const last = history.pop(); if (!last) return; const current = placements.get(last.key) || 0; const next = current - last.amount; if (next <= 0) placements.delete(last.key); else placements.set(last.key, next); renderChips(); updateMetrics(); }
+    function clearBoard() { placements.clear(); history.length = 0; lastDemo = null; renderChips(); updateMetrics(); }
+    function demoFlatRed() { clearBoard(); addChip('red', 1, false); lastDemo = 'flat-red'; updateMetrics(); }
+    function demoMartingale() { clearBoard(); addChip('red', 1, false); lastDemo = 'martingale'; updateMetrics(); }
+
+    document.getElementById('undoBtn').addEventListener('click', removeChip);
+    document.getElementById('clearBtn').addEventListener('click', clearBoard);
+    document.getElementById('flatEvenBtn').addEventListener('click', demoFlatRed);
+    document.getElementById('martingaleBtn').addEventListener('click', demoMartingale);
+    bankrollInput.addEventListener('input', updateMetrics);
+    spinsInput.addEventListener('input', updateMetrics);
+
+    buildTargets();
+    initThree();
+    ensureChart();
+    themeInit();
+    renderChips();
+    updateMetrics();
+  </script>
+</body>
+</html>
