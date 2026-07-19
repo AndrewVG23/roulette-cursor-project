@@ -322,93 +322,103 @@
       flex-direction: column;
       align-items: center;
       gap: 10px;
-      width: clamp(108px, 14vw, 168px);
+      width: clamp(128px, 16vw, 188px);
       pointer-events: none;
       filter: drop-shadow(0 16px 24px rgba(0,0,0,.52));
       transform: scale(var(--purse-scale, 1));
       transform-origin: top right;
       transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1), filter 360ms ease;
     }
-    .purse-chip-stack {
+    .purse-chip-stacks {
       position: relative;
-      width: var(--chip-w, 72px);
-      height: var(--stack-h, 92px);
-      perspective: 680px;
-      transform: rotateX(16deg) rotateZ(-3deg);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 5px;
+      width: calc(var(--chip-w, 52px) * 3 + 10px);
+      height: var(--stack-h, 88px);
+      perspective: 720px;
+      transform: rotateX(15deg) rotateZ(-2deg);
       transform-origin: center bottom;
       transition: width 360ms cubic-bezier(0.16, 1, 0.3, 1), height 360ms cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .purse-chip-stack::before {
+    .purse-chip-stacks::before {
       content: '';
       position: absolute;
       left: 50%;
-      bottom: -4px;
-      width: calc(var(--chip-w, 72px) * 0.88);
-      height: calc(var(--chip-w, 72px) * 0.16);
+      bottom: -5px;
+      width: 88%;
+      height: calc(var(--chip-w, 52px) * 0.18);
       transform: translateX(-50%);
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(0,0,0,.48) 0%, rgba(0,0,0,.2) 45%, transparent 72%);
+      background: radial-gradient(circle, rgba(0,0,0,.5) 0%, rgba(0,0,0,.18) 48%, transparent 74%);
       filter: blur(1.5px);
       z-index: 0;
     }
+    .purse-chip-column {
+      position: relative;
+      width: var(--chip-w, 52px);
+      height: 100%;
+      z-index: 1;
+    }
+    .purse-chip-column:nth-child(1) { transform: translateY(2px); }
+    .purse-chip-column:nth-child(2) { transform: translateY(0); z-index: 2; }
+    .purse-chip-column:nth-child(3) { transform: translateY(3px); }
     .purse-chip {
-      --chip-lift: calc(var(--chip-i) * var(--chip-pitch, 7px) * -1);
-      --chip-shift: calc((var(--chip-i) - var(--chip-mid, 3)) * 0.65px);
-      --chip-tilt: calc((var(--chip-i) - var(--chip-mid, 3)) * 0.35deg);
+      --chip-lift: calc(var(--chip-i) * var(--chip-pitch, 6px) * -1);
       position: absolute;
       left: 50%;
-      bottom: 8px;
-      width: var(--chip-w, 72px);
-      transform: translate(calc(-50% + var(--chip-shift)), var(--chip-lift)) rotate(var(--chip-tilt));
+      bottom: 4px;
+      width: var(--chip-w, 52px);
+      transform: translate(-50%, var(--chip-lift));
       transform-origin: center bottom;
       z-index: calc(var(--chip-i) + 1);
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,.32));
-      transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1), width 360ms cubic-bezier(0.16, 1, 0.3, 1);
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,.3));
+      transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     .purse-chip-edge {
       display: block;
       width: 100%;
-      height: var(--chip-edge-h, 10px);
+      height: var(--chip-edge-h, 8px);
       border-radius: 50%;
       background-image: var(--chip-edge);
       background-size: 100% 100%;
       background-repeat: no-repeat;
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.22),
-        inset 0 -2px 4px rgba(0,0,0,.32),
-        0 1px 0 rgba(0,0,0,.4);
+        inset 0 -2px 3px rgba(0,0,0,.3),
+        0 1px 0 rgba(0,0,0,.38);
+    }
+    .purse-chip:not(.is-top) .purse-chip-cap {
+      width: calc(var(--chip-w, 52px) - 14px);
+      height: calc(var(--chip-w, 52px) - 14px);
+      margin-top: -3px;
+      opacity: 0.85;
     }
     .purse-chip-cap {
       display: block;
-      width: calc(var(--chip-w, 72px) - 10px);
-      height: calc(var(--chip-w, 72px) - 10px);
+      width: calc(var(--chip-w, 52px) - 10px);
+      height: calc(var(--chip-w, 52px) - 10px);
       margin: -2px auto 0;
       border-radius: 50%;
-      background:
-        radial-gradient(circle at 34% 28%, #fffdf6 0%, #f3ead8 58%, #d8ccb4 100%);
+      background: radial-gradient(circle at 34% 28%, #fffdf6 0%, #f3ead8 58%, #d8ccb4 100%);
       box-shadow:
         inset 0 0 0 2px var(--chip-primary),
         inset 0 0 0 4px #f3ead8,
-        inset 0 0 0 6px var(--chip-primary),
-        0 2px 5px rgba(0,0,0,.26);
-      opacity: 0.9;
-    }
-    .purse-chip:not(.is-top) .purse-chip-cap {
-      width: calc(var(--chip-w, 72px) - 18px);
-      height: calc(var(--chip-w, 72px) - 18px);
-      margin-top: -4px;
-      opacity: 0.82;
+        inset 0 0 0 5px var(--chip-primary),
+        0 2px 4px rgba(0,0,0,.24);
+      opacity: 0.92;
     }
     .purse-chip.is-top .purse-chip-edge {
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.26),
-        inset 0 -2px 4px rgba(0,0,0,.34),
-        0 1px 0 rgba(0,0,0,.42);
+        inset 0 -2px 4px rgba(0,0,0,.32),
+        0 1px 0 rgba(0,0,0,.4);
     }
     .purse-chip-face {
       position: relative;
-      width: var(--chip-w, 72px);
-      height: var(--chip-w, 72px);
+      width: var(--chip-w, 52px);
+      height: var(--chip-w, 52px);
       margin: -2px auto 0;
       border-radius: 50%;
       background-image: var(--chip-face);
@@ -417,8 +427,8 @@
       background-repeat: no-repeat;
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,.4),
-        0 6px 12px rgba(0,0,0,.36),
-        0 0 0 1px rgba(0,0,0,.14);
+        0 5px 10px rgba(0,0,0,.34),
+        0 0 0 1px rgba(0,0,0,.12);
     }
     .purse-chip-face::after {
       content: '';
@@ -440,7 +450,7 @@
       min-width: 6ch;
     }
     .purse-stack.low .purse-stack-amount { color: #ffd2a0; }
-    .purse-stack.empty .purse-chip-stack { opacity: 0.45; filter: saturate(0.65); }
+    .purse-stack.empty .purse-chip-stacks { opacity: 0.45; filter: saturate(0.65); }
     .purse-stack.empty .purse-stack-amount { color: #f26e89; }
     .hero-card, .stat, .formula, .progression-box, .chart-card, .table-card, .metrics-details { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
     .stat .label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; }
@@ -485,6 +495,7 @@
       .bottom-dock { width: 100%; max-width: none; }
       .chart-dock { position: relative; width: 100%; min-width: 0; height: 260px; margin-top: var(--space-2); }
       .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .controls .metrics-toggle { display: none; }
     }
     @media (max-width: 560px) { .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: 1fr; } }
   </style>
@@ -520,7 +531,7 @@
           <div class="roulette-wrap" id="rouletteWrap">
             <div class="board-shell">
               <div class="purse-stack" aria-label="Your purse">
-                <div class="purse-chip-stack" id="purseChipStack" aria-hidden="true"></div>
+                <div class="purse-chip-stacks" id="purseChipStack" aria-hidden="true"></div>
                 <div class="purse-stack-amount" id="scorePurse">$100</div>
               </div>
               <div class="wheel-area" aria-label="Roulette wheel controls">
@@ -537,7 +548,7 @@
               <div class="board-stage">
                 <div id="board3d" class="board-3d" aria-label="Roulette betting board"></div>
               </div>
-              <p class="board-hint">Click a bet to place chips · Click result to continue · Drag to look · Scroll to zoom · Space to spin</p>
+              <p class="board-hint">Click a bet to place chips · Click result to continue · Drag to look · Pinch or scroll to zoom · Space to spin</p>
             </div>
             <div class="analytics-dock" id="analyticsDock">
             <div class="bottom-dock">
@@ -748,6 +759,8 @@
     const feltPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1);
     const planeHit = new THREE.Vector3();
     let leftPointer = { active: false, x: 0, y: 0, moved: false };
+    const boardPointers = new Map();
+    let pinchZoom = null;
     let boardResizeObserver = null;
     let resizeFrame = null;
     let lastViewportW = 0;
@@ -2442,6 +2455,69 @@
       board3dEl.style.cursor = 'grab';
     }
 
+    function cancelCameraDrag() {
+      if (!cameraDrag) return;
+      if (renderer.domElement.hasPointerCapture(cameraDrag.pointerId)) {
+        renderer.domElement.releasePointerCapture(cameraDrag.pointerId);
+      }
+      cameraDrag = null;
+      board3dEl.style.cursor = 'grab';
+    }
+
+    function boardPointerPositions() {
+      return [...boardPointers.values()];
+    }
+
+    function beginPinchZoom() {
+      const pts = boardPointerPositions();
+      if (pts.length < 2) return;
+      const [a, b] = pts;
+      const startDist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (startDist < 8) return;
+      pinchZoom = { startDist, startFov: cameraRig.targetFov };
+      cancelCameraDrag();
+      leftPointer.active = false;
+      leftPointer.moved = true;
+      viewTween = null;
+      activeViewId = null;
+      viewButtonsDirty = true;
+    }
+
+    function movePinchZoom() {
+      if (!pinchZoom || boardPointers.size < 2) return false;
+      const pts = boardPointerPositions();
+      if (pts.length < 2) return false;
+      const [a, b] = pts;
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchZoom.startDist <= 0) return false;
+      const ratio = dist / pinchZoom.startDist;
+      cameraRig.targetFov = THREE.MathUtils.clamp(
+        pinchZoom.startFov * ratio,
+        CAMERA_LIMITS.minFov,
+        CAMERA_LIMITS.maxFov
+      );
+      return true;
+    }
+
+    function trackBoardPointerDown(event) {
+      boardPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (boardPointers.size === 2) beginPinchZoom();
+    }
+
+    function trackBoardPointerMove(event) {
+      if (!boardPointers.has(event.pointerId)) return;
+      boardPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    function trackBoardPointerUp(event) {
+      boardPointers.delete(event.pointerId);
+      if (boardPointers.size < 2) pinchZoom = null;
+    }
+
+    function isPinchActive() {
+      return Boolean(pinchZoom && boardPointers.size >= 2);
+    }
+
     function panDragScale() {
       const refFov = 28;
       return THREE.MathUtils.clamp(cameraRig.fov / refFov, 0.38, 1);
@@ -2651,7 +2727,12 @@
     }
 
     function onBoardPointerDown(event) {
+      trackBoardPointerDown(event);
       cameraDragMoved = false;
+      if (isPinchActive()) {
+        event.preventDefault();
+        return;
+      }
       if (shouldOrbitDrag(event)) {
         beginCameraDrag(event);
         event.preventDefault();
@@ -2663,9 +2744,11 @@
     }
 
     function onBoardPointerUp(event) {
+      const wasPinching = isPinchActive();
+      trackBoardPointerUp(event);
       endCameraDrag(event);
       if (event.button !== 0) return;
-      const shouldPlace = leftPointer.active && !leftPointer.moved && !cameraDragMoved;
+      const shouldPlace = leftPointer.active && !leftPointer.moved && !cameraDragMoved && !wasPinching;
       leftPointer.active = false;
       leftPointer.moved = false;
       cameraDragMoved = false;
@@ -2677,6 +2760,7 @@
     }
 
     function onBoardPointerLeave(event) {
+      trackBoardPointerUp(event);
       endCameraDrag(event);
       leftPointer.active = false;
       leftPointer.moved = false;
@@ -2684,6 +2768,15 @@
     }
 
     function onBoardPointerMove(event) {
+      trackBoardPointerMove(event);
+      if (movePinchZoom()) {
+        event.preventDefault();
+        return;
+      }
+      if (isPinchActive()) {
+        event.preventDefault();
+        return;
+      }
       if (cameraDrag) {
         moveCameraDrag(event);
         event.preventDefault();
@@ -2819,54 +2912,58 @@
       return face;
     }
 
-    function getPurseStackMetrics(value) {
-      const base = Math.max(1, startingPurse);
+    function getPurseColumnLayout(value) {
       const v = Math.max(0, Math.round(value));
+      const base = Math.max(1, startingPurse);
       const logV = Math.log10(v + 1);
       const logMax = Math.log10(base * 5 + 1);
       const t = Math.min(1, logV / Math.max(logMax, 1));
+      const scale = v === 0 ? 0.74 : 0.78 + t * 0.34;
+      const chipW = Math.round(40 + scale * 14);
+      const pitch = Math.round(3 + scale * 2.8);
+      const edgeH = Math.max(5, Math.round(chipW * 0.11));
+      const denoms = [1, 5, v >= 100 ? 100 : 25];
 
       if (v === 0) {
-        return { scale: 0.72, count: 2, pitch: 5, chipW: 52, stackH: 48, edgeH: 7, mid: 0.5 };
+        return { scale, chipW, pitch, edgeH, stackH: 48, heights: [1, 2, 1], denoms };
       }
 
-      const scale = 0.76 + t * 0.44;
-      const count = Math.min(12, Math.max(3, Math.round(2 + logV * 2.4)));
-      const chipW = Math.round(50 + scale * 28);
-      const pitch = Math.round(4 + scale * 4.2);
-      const edgeH = Math.max(7, Math.round(chipW * 0.125));
-      const stackH = Math.round(14 + pitch * (count - 1) + chipW * 0.36);
-      return { scale, count, pitch, chipW, stackH, edgeH, mid: (count - 1) / 2 };
+      const hShort = Math.max(2, Math.round(2 + t * 4));
+      const hMid = Math.max(hShort + 1, Math.round(3 + t * 7));
+      const hTall = Math.max(hMid + 1, Math.round(4 + t * 10));
+      const maxH = Math.max(hShort, hMid, hTall);
+      const stackH = Math.round(8 + pitch * (maxH - 1) + chipW * 0.32);
+      return { scale, chipW, pitch, edgeH, stackH, heights: [hShort, hMid, hTall], denoms };
+    }
+
+    function buildPurseChipHtml(i, count, style) {
+      const isTop = i === count - 1;
+      const edge = getPurseChipEdgeTexture(style);
+      const face = isTop ? getPurseChipFaceTexture(style) : '';
+      const topClass = isTop ? ' is-top' : '';
+      const topMarkup = isTop
+        ? '<span class="purse-chip-face" aria-hidden="true"></span>'
+        : '<span class="purse-chip-cap" aria-hidden="true"></span>';
+      return `<div class="purse-chip${topClass}" style="--chip-i:${i};--chip-primary:${style.primary};--chip-edge:url('${edge}')${face ? `;--chip-face:url('${face}')` : ''}"><span class="purse-chip-edge"></span>${topMarkup}</div>`;
     }
 
     function renderPurseStack() {
       if (!purseChipStackEl) return;
       const value = Math.max(0, Math.round(purse));
-      const metrics = getPurseStackMetrics(value);
-      const topStyle = getChipStyle(Math.max(1, value));
-      const stackDenoms = [1, 5, 25, 100];
+      const layout = getPurseColumnLayout(value);
 
       if (purseStackEl) {
-        purseStackEl.style.setProperty('--purse-scale', metrics.scale.toFixed(3));
+        purseStackEl.style.setProperty('--purse-scale', layout.scale.toFixed(3));
       }
-      purseChipStackEl.style.setProperty('--chip-w', `${metrics.chipW}px`);
-      purseChipStackEl.style.setProperty('--chip-pitch', `${metrics.pitch}px`);
-      purseChipStackEl.style.setProperty('--chip-edge-h', `${metrics.edgeH}px`);
-      purseChipStackEl.style.setProperty('--stack-h', `${metrics.stackH}px`);
-      purseChipStackEl.style.setProperty('--chip-mid', metrics.mid.toFixed(2));
+      purseChipStackEl.style.setProperty('--chip-w', `${layout.chipW}px`);
+      purseChipStackEl.style.setProperty('--chip-pitch', `${layout.pitch}px`);
+      purseChipStackEl.style.setProperty('--chip-edge-h', `${layout.edgeH}px`);
+      purseChipStackEl.style.setProperty('--stack-h', `${layout.stackH}px`);
 
-      purseChipStackEl.innerHTML = Array.from({ length: metrics.count }, (_, i) => {
-        const isTop = i === metrics.count - 1;
-        const layerStyle = isTop
-          ? topStyle
-          : getChipStyle(stackDenoms[(metrics.count - 2 - i) % stackDenoms.length]);
-        const edge = getPurseChipEdgeTexture(layerStyle);
-        const face = isTop ? getPurseChipFaceTexture(layerStyle) : '';
-        const topClass = isTop ? ' is-top' : '';
-        const topMarkup = isTop
-          ? '<span class="purse-chip-face" aria-hidden="true"></span>'
-          : '<span class="purse-chip-cap" aria-hidden="true"></span>';
-        return `<div class="purse-chip${topClass}" style="--chip-i:${i};--chip-primary:${layerStyle.primary};--chip-edge:url('${edge}')${face ? `;--chip-face:url('${face}')` : ''}"><span class="purse-chip-edge"></span>${topMarkup}</div>`;
+      purseChipStackEl.innerHTML = layout.heights.map((count, col) => {
+        const style = getChipStyle(layout.denoms[col]);
+        const chips = Array.from({ length: count }, (_, i) => buildPurseChipHtml(i, count, style)).join('');
+        return `<div class="purse-chip-column">${chips}</div>`;
       }).join('');
     }
 
