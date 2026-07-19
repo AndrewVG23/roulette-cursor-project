@@ -1402,9 +1402,11 @@
       wheelRotation += p.wheelVel * dt;
 
       if (p.phase === 'rim') {
-        // Rolling friction + aero drag proportional to speed
+        // A heavy ball is dominated by rolling resistance (constant decel);
+        // quadratic aero drag is a minor correction that fades as it slows
         const speed = Math.abs(p.ballVel);
-        const next = Math.max(0, speed - (p.ballDragK * speed + p.ballDragC) * dt);
+        const decel = p.ballDragC + p.ballDragK * speed * speed / 3600;
+        const next = Math.max(0, speed - decel * dt);
         p.ballVel = Math.sign(p.ballVel) * next;
         p.ballAngle += p.ballVel * dt;
         p.orbit = WHEEL_PHYS.rimOrbit;
@@ -1416,9 +1418,14 @@
           p.vy = 0;
         }
       } else if (p.phase === 'drop') {
-        // Spiral inward off the rim toward the pocket ring
-        const speed = Math.abs(p.ballVel);
-        p.ballVel = Math.sign(p.ballVel) * Math.max(0, speed - p.ballDragC * 0.9 * dt);
+        // Spiral inward off the rim toward the pocket ring. Friction only
+        // acts while the ball is on the cone; airborne it flies ballistic,
+        // and rolling downhill it picks up a little pace from gravity
+        if (p.height === 0) {
+          const speed = Math.abs(p.ballVel);
+          const rolled = Math.max(0, speed - p.ballDragC * 0.9 * dt) + 14 * dt;
+          p.ballVel = Math.sign(p.ballVel) * rolled;
+        }
         p.ballAngle += p.ballVel * dt;
         p.orbitVel += p.orbitAccel * dt;
         p.orbit -= p.orbitVel * dt;
@@ -1450,9 +1457,13 @@
         }
       } else if (p.phase === 'pockets') {
         // The ball now lives in the rotating pocket ring: what matters is its
-        // velocity relative to the wheel, killed off by pocket friction
+        // velocity relative to the wheel. Pocket friction only grips while
+        // the ball is actually down in the ring; mid-hop it keeps its speed
+        // (ballistic flight) and only the contacts bleed energy
         let rel = p.ballVel - p.wheelVel;
-        rel = Math.sign(rel) * Math.max(0, Math.abs(rel) - p.pocketFriction * dt);
+        if (p.height === 0) {
+          rel = Math.sign(rel) * Math.max(0, Math.abs(rel) - p.pocketFriction * dt);
+        }
         p.ballVel = p.wheelVel + rel;
         p.ballAngle += p.ballVel * dt;
 
@@ -1731,15 +1742,17 @@
         wheelVel: rand(85, 135),
         wheelFriction: rand(4.5, 7.5),
         ballAngle: wheelBallAngle,
-        // Heavy ball: lazy launch, firmer drag so the run stays short
+        // Heavy ball: lazy launch; deceleration is mostly constant rolling
+        // resistance (ballDragC), with a small quadratic aero term (ballDragK)
         ballVel: -rand(240, 330),
-        ballDragK: rand(0.18, 0.26),
-        ballDragC: rand(18, 26),
+        ballDragK: rand(0.15, 0.3),
+        ballDragC: rand(56, 74),
         dropSpeed: rand(110, 140),
         orbit: WHEEL_PHYS.rimOrbit,
         orbitVel: 0,
         orbitAccel: rand(7, 11),
-        pocketFriction: rand(620, 800),
+        // Grips harder per contact since airborne stretches now bleed nothing
+        pocketFriction: rand(880, 1080),
         settleSpeed: rand(70, 100),
         deflectorChecked: false,
         lastFretIdx: null,
