@@ -308,7 +308,8 @@
       color: var(--color-text-muted); font-weight: 700;
     }
     .payout-share-btn { width: 100%; min-height: 44px; border-radius: 3px; }
-    .payout-share-btn.is-copied { border-color: rgba(143,217,164,.45); color: #eafff0; }
+    .payout-share-btn.is-shared,
+    .share-replay-btn.is-shared { border-color: rgba(143,217,164,.45); color: #eafff0; }
     @keyframes payoutOverlayIn {
       from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
       to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
@@ -932,6 +933,11 @@
     let replayMode = false;
     let forcedOutcome = null;
     let replayPlaybackToken = 0;
+    let recordingInProgress = false;
+    let recordingReplay = false;
+    let replayRecordCanvas = null;
+    let replayRecordCtx = null;
+    let replayRecordHold = false;
     const CHIP_DENOMS = [1, 5, 25, 100];
     let selectedChipDenom = 1;
     let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelBall3D, wheelPhysics = null, wheelLastAnimTime = 0;
@@ -2909,7 +2915,12 @@
 
       camera = new THREE.PerspectiveCamera(28, 1, 1, 3000);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: false,
+        powerPreference: 'high-performance',
+        preserveDrawingBuffer: true
+      });
       renderer.setClearColor(0x0a1210, 1);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -3004,6 +3015,7 @@
       updateSettlementAnimation(frameTime);
       if (viewButtonsDirty) syncViewButtons();
       renderer.render(scene, camera);
+      compositeReplayRecordFrame();
     }
 
     function setPointerFromEvent(event) {
@@ -3377,6 +3389,7 @@
         : `${net > 0 ? 'Won' : 'Lost'} ${purseFmt.format(Math.abs(net))}. Click to continue.`;
       payoutOverlayEl.setAttribute('aria-label', continueLabel);
       payoutOverlayContinueEl?.setAttribute('aria-label', continueLabel);
+      if (payoutOverlayContinueEl) payoutOverlayContinueEl.disabled = recordingInProgress;
       updateShareButtons();
     }
 
@@ -3389,22 +3402,27 @@
     }
 
     function updateShareButtons() {
-      const canShare = !!lastReplayCycle && !wheelSpinning && !settling;
+      const canShare = !!lastReplayCycle && !wheelSpinning && !settling && !recordingInProgress;
       if (shareReplayBtn) {
-        shareReplayBtn.disabled = !canShare || replayMode;
-        shareReplayBtn.textContent = 'Share';
+        shareReplayBtn.disabled = !canShare || (replayMode && !recordingReplay);
+        shareReplayBtn.classList.toggle('is-shared', false);
+        shareReplayBtn.textContent = recordingInProgress ? 'Recording…' : 'Share';
       }
       if (shareReplayOverlayBtn) {
         shareReplayOverlayBtn.disabled = !canShare;
-        if (!shareReplayOverlayBtn.classList.contains('is-copied')) {
-          shareReplayOverlayBtn.textContent = 'Share replay';
-        }
+        shareReplayOverlayBtn.classList.toggle('is-shared', false);
+        shareReplayOverlayBtn.textContent = recordingInProgress ? 'Recording…' : 'Share replay';
       }
     }
 
     function updateReplayChrome() {
-      if (replayBannerEl) replayBannerEl.hidden = !replayMode;
-      if (shareReplayBtn) shareReplayBtn.hidden = replayMode;
+      if (replayBannerEl) {
+        replayBannerEl.hidden = !replayMode;
+        const label = replayBannerEl.querySelector('.replay-banner-label');
+        if (label) label.textContent = recordingReplay ? 'Recording replay' : 'Watching replay';
+        if (exitReplayBtn) exitReplayBtn.hidden = recordingReplay;
+      }
+      if (shareReplayBtn) shareReplayBtn.hidden = replayMode && !recordingReplay;
       document.getElementById('undoBtn')?.toggleAttribute('disabled', replayMode);
       document.getElementById('clearBtn')?.toggleAttribute('disabled', replayMode);
       if (purseStackEl) purseStackEl.disabled = replayMode;
@@ -3457,46 +3475,12 @@
       };
     }
 
-    function getReplayShareUrl(cycle) {
-      const encoded = encodeReplayCycle(cycle);
-      return `${location.origin}${location.pathname}${location.search}#replay=${encoded}`;
-    }
-
     function formatReplayShareText(cycle) {
       const net = Math.round(cycle.n);
       const outcomeLabel = String(cycle.o);
       if (net > 0) return `Roulette replay — net +${purseFmt.format(net)} on ${outcomeLabel}`;
       if (net < 0) return `Roulette replay — net −${purseFmt.format(Math.abs(net))} on ${outcomeLabel}`;
       return `Roulette replay — even on ${outcomeLabel}`;
-    }
-
-    async function shareReplayCycle(cycle, buttonEl) {
-      if (!cycle || wheelSpinning || settling) return;
-      const url = getReplayShareUrl(cycle);
-      const text = formatReplayShareText(cycle);
-      const title = 'Roulette spin replay';
-      try {
-        if (navigator.share) {
-          await navigator.share({ title, text, url });
-          return;
-        }
-      } catch (err) {
-        if (err && err.name === 'AbortError') return;
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        if (buttonEl) {
-          buttonEl.classList.add('is-copied');
-          const prev = buttonEl.textContent;
-          buttonEl.textContent = 'Link copied';
-          setTimeout(() => {
-            buttonEl.classList.remove('is-copied');
-            buttonEl.textContent = prev;
-          }, 1600);
-        }
-      } catch {
-        window.prompt('Copy this replay link:', url);
-      }
     }
 
     function clearReplayHash() {
@@ -3508,6 +3492,118 @@
       return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
+    function waitUntil(predicate, timeoutMs = 90000) {
+      return new Promise((resolve, reject) => {
+        const start = performance.now();
+        const tick = () => {
+          if (predicate()) {
+            resolve();
+            return;
+          }
+          if (performance.now() - start > timeoutMs) {
+            reject(new Error('Timed out waiting for replay'));
+            return;
+          }
+          requestAnimationFrame(tick);
+        };
+        tick();
+      });
+    }
+
+    function pickRecorderMimeType() {
+      const types = [
+        'video/mp4',
+        'video/webm;codecs=vp9',
+        'video/webm;codecs=vp8',
+        'video/webm'
+      ];
+      for (const type of types) {
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) return type;
+      }
+      return '';
+    }
+
+    function extensionForMime(mimeType) {
+      if (mimeType.includes('mp4')) return 'mp4';
+      return 'webm';
+    }
+
+    function compositeReplayRecordFrame() {
+      if (!recordingInProgress || !replayRecordCtx || !replayRecordCanvas || !renderer) return;
+      const gl = renderer.domElement;
+      const ctx = replayRecordCtx;
+      const { width, height } = replayRecordCanvas;
+      ctx.fillStyle = '#0a1210';
+      ctx.fillRect(0, 0, width, height);
+      try {
+        ctx.drawImage(gl, 0, 0, width, height);
+      } catch {
+        return;
+      }
+
+      // Burn in the HUD wheel so the recorded clip matches what players see.
+      if (wheelDisplayEl && wheelCanvas) {
+        const game = document.getElementById('gameView');
+        if (game) {
+          const gameRect = game.getBoundingClientRect();
+          const wheelRect = wheelDisplayEl.getBoundingClientRect();
+          if (gameRect.width > 0 && gameRect.height > 0) {
+            const scaleX = width / gameRect.width;
+            const scaleY = height / gameRect.height;
+            const dx = (wheelRect.left - gameRect.left) * scaleX;
+            const dy = (wheelRect.top - gameRect.top) * scaleY;
+            const dw = Math.max(1, wheelRect.width * scaleX);
+            const dh = Math.max(1, wheelRect.height * scaleY);
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(dx + dw / 2, dy + dh / 2, Math.min(dw, dh) / 2, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+            ctx.translate(dx + dw / 2, dy + dh / 2);
+            ctx.rotate((wheelRotation * Math.PI) / 180);
+            ctx.drawImage(wheelCanvas, -dw / 2, -dh / 2, dw, dh);
+            ctx.restore();
+          }
+        }
+      }
+
+      if (replayRecordHold && awaitingAdvance) {
+        drawReplayResultCard(ctx, width, height, lastSpinNet, settlementOutcome);
+      }
+    }
+
+    function drawReplayResultCard(ctx, width, height, netValue, outcome) {
+      const net = Math.round(netValue || 0);
+      const label = net > 0
+        ? `+${purseFmt.format(net)}`
+        : net < 0
+          ? `−${purseFmt.format(Math.abs(net))}`
+          : purseFmt.format(0);
+      const sub = outcome == null ? 'Result' : `Hit ${outcome}`;
+      const cardW = Math.min(width * 0.42, 360);
+      const cardH = Math.min(height * 0.22, 150);
+      const x = (width - cardW) / 2;
+      const y = (height - cardH) / 2;
+      ctx.save();
+      ctx.fillStyle = 'rgba(10, 20, 16, 0.88)';
+      ctx.strokeStyle = 'rgba(239, 187, 73, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, cardW, cardH, 18);
+      else ctx.rect(x, y, cardW, cardH);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = net > 0 ? '#8fd9a4' : net < 0 ? '#f26e89' : '#f4ecda';
+      ctx.font = `700 ${Math.round(cardH * 0.42)}px Zodiak, Georgia, serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, width / 2, height / 2 - cardH * 0.08);
+      ctx.fillStyle = 'rgba(244, 236, 218, 0.72)';
+      ctx.font = `700 ${Math.round(cardH * 0.14)}px "General Sans", sans-serif`;
+      ctx.fillText(sub, width / 2, height / 2 + cardH * 0.28);
+      ctx.restore();
+    }
+
     function placeReplayStake(key, amount) {
       if (!allBetDefs.has(key) || amount <= 0) return;
       placements.set(key, amount);
@@ -3515,8 +3611,10 @@
       updateMetrics();
     }
 
-    async function playReplay(cycle) {
+    async function playReplay(cycle, options = {}) {
       const token = ++replayPlaybackToken;
+      const forRecording = !!options.forRecording;
+      recordingReplay = forRecording;
       replayMode = true;
       forcedOutcome = null;
       lastReplayCycle = cycle;
@@ -3534,20 +3632,32 @@
       updateWheelButtonState();
 
       for (const [key, stake] of cycle.p) {
-        if (token !== replayPlaybackToken) return;
-        await delay(220);
-        if (token !== replayPlaybackToken) return;
+        if (token !== replayPlaybackToken) return false;
+        await delay(180);
+        if (token !== replayPlaybackToken) return false;
         placeReplayStake(key, stake);
       }
 
-      await delay(480);
-      if (token !== replayPlaybackToken) return;
+      await delay(360);
+      if (token !== replayPlaybackToken) return false;
       spinWheelForced(cycle.o);
+
+      try {
+        await waitUntil(
+          () => token !== replayPlaybackToken || (awaitingAdvance && !settling && !wheelSpinning),
+          90000
+        );
+      } catch {
+        return false;
+      }
+      return token === replayPlaybackToken;
     }
 
     function exitReplayMode() {
       replayPlaybackToken += 1;
       replayMode = false;
+      recordingReplay = false;
+      replayRecordHold = false;
       forcedOutcome = null;
       wheelPhysics = null;
       wheelSpinning = false;
@@ -3564,6 +3674,140 @@
       updateReplayChrome();
       updateShareButtons();
       updateWheelButtonState();
+    }
+
+    async function recordReplayVideo(cycle) {
+      if (!renderer?.domElement) throw new Error('Board is not ready to record');
+      if (!window.MediaRecorder || typeof HTMLCanvasElement.prototype.captureStream !== 'function') {
+        throw new Error('Video recording is not supported in this browser');
+      }
+
+      const mimeType = pickRecorderMimeType();
+      const gl = renderer.domElement;
+      const maxW = 1280;
+      const scale = Math.min(1, maxW / Math.max(1, gl.width));
+      const width = Math.max(640, Math.round(gl.width * scale));
+      const height = Math.max(360, Math.round(gl.height * scale));
+
+      replayRecordCanvas = document.createElement('canvas');
+      replayRecordCanvas.width = width;
+      replayRecordCanvas.height = height;
+      replayRecordCtx = replayRecordCanvas.getContext('2d');
+      replayRecordHold = false;
+
+      const stream = replayRecordCanvas.captureStream(30);
+      const chunks = [];
+      const recorder = new MediaRecorder(stream, mimeType
+        ? { mimeType, videoBitsPerSecond: 3_500_000 }
+        : { videoBitsPerSecond: 3_500_000 });
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) chunks.push(event.data);
+      };
+
+      const stopped = new Promise((resolve, reject) => {
+        recorder.onerror = () => reject(new Error('Recording failed'));
+        recorder.onstop = () => {
+          const type = recorder.mimeType || mimeType || 'video/webm';
+          resolve(new Blob(chunks, { type }));
+        };
+      });
+
+      recorder.start(100);
+      const played = await playReplay(cycle, { forRecording: true });
+      if (!played) {
+        if (recorder.state !== 'inactive') recorder.stop();
+        stream.getTracks().forEach((track) => track.stop());
+        replayRecordCanvas = null;
+        replayRecordCtx = null;
+        replayRecordHold = false;
+        throw new Error('Replay was interrupted');
+      }
+
+      replayRecordHold = true;
+      updateControlStates();
+      await delay(1600);
+      replayRecordHold = false;
+
+      if (recorder.state !== 'inactive') recorder.stop();
+      stream.getTracks().forEach((track) => track.stop());
+      const blob = await stopped;
+      replayRecordCanvas = null;
+      replayRecordCtx = null;
+      return blob;
+    }
+
+    async function shareOrDownloadVideo(file, cycle) {
+      const text = formatReplayShareText(cycle);
+      const title = 'Roulette spin replay';
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title, text });
+          return 'shared';
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') return 'aborted';
+      }
+
+      const url = URL.createObjectURL(file);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = file.name;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      return 'downloaded';
+    }
+
+    async function shareReplayCycle(cycle, buttonEl) {
+      if (!cycle || recordingInProgress || wheelSpinning || settling) return;
+
+      // Finish an open live round first so purse accounting stays correct.
+      if (awaitingAdvance && !replayMode) {
+        advanceRound();
+      } else if (replayMode) {
+        replayPlaybackToken += 1;
+        wheelPhysics = null;
+        wheelSpinning = false;
+        settling = false;
+        settlementState = null;
+        hidePayoutOverlay();
+      }
+
+      recordingInProgress = true;
+      updateShareButtons();
+      updateReplayChrome();
+
+      let shareResult = null;
+      try {
+        const blob = await recordReplayVideo(cycle);
+        if (!blob || blob.size < 32) throw new Error('Recording produced an empty video');
+        const ext = extensionForMime(blob.type || 'video/webm');
+        const file = new File([blob], `roulette-replay-${cycle.o}.${ext}`, {
+          type: blob.type || 'video/webm'
+        });
+        shareResult = await shareOrDownloadVideo(file, cycle);
+      } catch (err) {
+        console.error(err);
+        window.alert(err?.message || 'Could not create a replay video.');
+      } finally {
+        recordingInProgress = false;
+        recordingReplay = false;
+        replayRecordHold = false;
+        if (replayMode) exitReplayMode();
+        else {
+          updateShareButtons();
+          updateReplayChrome();
+        }
+        if (buttonEl && shareResult && shareResult !== 'aborted') {
+          buttonEl.classList.add('is-shared');
+          buttonEl.textContent = shareResult === 'downloaded' ? 'Saved video' : 'Shared';
+          setTimeout(() => {
+            buttonEl.classList.remove('is-shared');
+            updateShareButtons();
+          }, 1600);
+        }
+      }
     }
 
     function tryStartReplayFromHash() {
@@ -3629,7 +3873,7 @@
     }
 
     function advanceRound() {
-      if (!awaitingAdvance) return;
+      if (!awaitingAdvance || recordingInProgress) return;
       if (replayMode) {
         exitReplayMode();
         return;
@@ -4108,7 +4352,7 @@
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
         setCameraMenuOpen(false);
-        if (replayMode) exitReplayMode();
+        if (replayMode && !recordingInProgress) exitReplayMode();
       }
     });
     document.querySelectorAll('.camera-option[data-view]').forEach((btn) => {
