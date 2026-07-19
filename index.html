@@ -3142,6 +3142,7 @@
       updateWheelAnimation(frameTime);
       wheelLastAnimTime = frameTime;
       updateSettlementAnimation(frameTime);
+      updateChipDropAnims(frameTime);
       if (viewButtonsDirty) syncViewButtons();
       renderer.render(scene, camera);
       liveCapture?.tick?.();
@@ -4151,7 +4152,7 @@
     function placeReplayStake(key, amount) {
       if (!allBetDefs.has(key) || amount <= 0) return;
       placements.set(key, amount);
-      renderChips();
+      renderChips(key);
       updateMetrics();
     }
 
@@ -4482,7 +4483,7 @@
         if (!target) return;
         const isWin = winKeys.has(key);
         const total = Math.max(1, Math.round(count));
-        const stackCount = Math.min(total, 12);
+        const stackCount = total;
 
         if (isWin) {
           for (let i = 0; i < stackCount; i++) {
@@ -4632,24 +4633,91 @@
       void finalizeLiveReplayCapture();
     }
 
-    function renderChips3D() {
+    let chipDropAnims = [];
+    const CHIP_TOSS_FLIGHT = 0.68;
+
+    function queueChipDrop(mesh) {
+      // Toss arc: the chip flies in from the player's edge of the table and
+      // lands exactly on its final stack position, every time
+      const to = mesh.position.clone();
+      const fromX = to.x * 0.18 + (Math.random() - 0.5) * 70;
+      const from = new THREE.Vector3(fromX, FELT_Y + 26, BOARD_H / 2 + 150);
+      const dist = from.distanceTo(to);
+      chipDropAnims.push({
+        mesh,
+        from,
+        to,
+        start: performance.now(),
+        duration: Math.min(680, 360 + dist * 0.18),
+        arc: Math.min(95, 36 + dist * 0.06),
+        spin: (Math.random() < 0.5 ? -1 : 1) * (1.6 + Math.random() * 1.4),
+        tilt: 0.2 + Math.random() * 0.16,
+        baseRotY: mesh.rotation.y
+      });
+      mesh.position.copy(from);
+    }
+
+    function updateChipDropAnims(now) {
+      if (!chipDropAnims.length) return;
+      chipDropAnims = chipDropAnims.filter((a) => {
+        const m = a.mesh;
+        // The chip group is rebuilt on every placement; orphaned meshes are done
+        if (!m.parent) return false;
+        const t = Math.min(1, (now - a.start) / a.duration);
+        if (t < CHIP_TOSS_FLIGHT) {
+          // Ballistic flight: constant ground speed, parabolic height, a
+          // frisbee spin and a slight wobble that both flatten out by landing
+          const p = t / CHIP_TOSS_FLIGHT;
+          m.position.x = a.from.x + (a.to.x - a.from.x) * p;
+          m.position.z = a.from.z + (a.to.z - a.from.z) * p;
+          m.position.y = a.from.y + (a.to.y - a.from.y) * p + a.arc * 4 * p * (1 - p);
+          m.rotation.y = a.baseRotY + a.spin * (1 - p) * (1 - p);
+          m.rotation.x = a.tilt * Math.sin(p * Math.PI);
+          m.scale.set(1, 1, 1);
+        } else {
+          // Touchdown: one springy rebound, squash on both contacts, then
+          // seat precisely at the stack position and resting rotation
+          const p = (t - CHIP_TOSS_FLIGHT) / (1 - CHIP_TOSS_FLIGHT);
+          m.position.x = a.to.x;
+          m.position.z = a.to.z;
+          m.position.y = a.to.y + 9 * 4 * p * (1 - p);
+          m.rotation.set(0, a.baseRotY, 0);
+          const impact = Math.max(
+            Math.max(0, 1 - Math.abs(t - CHIP_TOSS_FLIGHT) * 9),
+            Math.max(0, 1 - (1 - t) * 11)
+          );
+          m.scale.y = 1 - 0.3 * impact;
+          m.scale.x = m.scale.z = 1 + 0.14 * impact;
+        }
+        if (t >= 1) {
+          m.position.copy(a.to);
+          m.rotation.set(0, a.baseRotY, 0);
+          m.scale.set(1, 1, 1);
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function renderChips3D(animateKey = null) {
       if (!chipGroup || settling) return;
       while (chipGroup.children.length) chipGroup.remove(chipGroup.children[0]);
       placements.forEach((count, key) => {
         const target = allTargets.find(t => t.key === key);
         if (!target) return;
         const total = Math.max(1, Math.round(count));
-        const stackCount = Math.min(total, 12);
+        const stackCount = total;
         for (let i = 0; i < stackCount; i++) {
           const chipAmount = i === stackCount - 1 ? total : 1;
           const built = createChipMesh(key, target, i, stackCount, chipAmount);
           chipGroup.add(built.chip);
+          if (key === animateKey && i === stackCount - 1) queueChipDrop(built.chip);
         }
       });
     }
 
-    function renderChips() {
-      renderChips3D();
+    function renderChips(animateKey = null) {
+      renderChips3D(animateKey);
       const items = [...placements.entries()].sort((a,b) => a[0].localeCompare(b[0]));
       betListEl.innerHTML = items.length ? items.map(([key, amount]) => {
         const def = allBetDefs.get(key);
@@ -4789,7 +4857,7 @@
       if (track) history.push({ key, amount });
       clampSelectedChipDenom();
       updatePurseDisplay();
-      renderChips();
+      renderChips(key);
       updateMetrics();
     }
     function removeChip() {
