@@ -310,6 +310,45 @@
     .payout-share-btn { width: 100%; min-height: 44px; border-radius: 3px; }
     .payout-share-btn.is-shared,
     .share-replay-btn.is-shared { border-color: rgba(143,217,164,.45); color: #eafff0; }
+    .share-options {
+      display: grid;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(239,187,73,.18);
+      background: rgba(0,0,0,.22);
+      text-align: left;
+    }
+    .share-options-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--color-primary);
+    }
+    .share-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .share-opt input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--color-primary);
+      flex-shrink: 0;
+    }
+    .share-opts-inline {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-left: 2px;
+    }
+    .share-opts-inline:not([hidden]) { display: inline-flex; }
+    .share-opts-inline .share-opt { color: #d8c9a8; }
     @keyframes payoutOverlayIn {
       from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
       to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
@@ -671,6 +710,10 @@
               <button class="btn subtle" id="undoBtn" type="button" title="Undo last chip">Undo</button>
               <button class="btn warning" id="clearBtn" type="button" title="Clear board">Clear</button>
               <button class="btn subtle share-replay-btn" id="shareReplayBtn" type="button" title="Share last spin replay" disabled>Share</button>
+              <span class="share-opts-inline" id="shareOptsInline" hidden>
+                <label class="share-opt"><input type="checkbox" data-share-opt="stats" /> Stats</label>
+                <label class="share-opt"><input type="checkbox" data-share-opt="chart" /> Curve</label>
+              </span>
               <span class="spacer" aria-hidden="true"></span>
               <button class="btn subtle stats-toggle active" id="statsToggle" type="button" aria-expanded="false" aria-controls="analyticsDock">Stats</button>
               <div class="camera-menu-wrap">
@@ -820,6 +863,11 @@
       <span class="payout-overlay-amount" id="payoutOverlayAmount">$0</span>
       <span class="payout-overlay-hint">Tap to continue</span>
     </button>
+    <div class="share-options" id="shareOptions">
+      <div class="share-options-title">Include in video</div>
+      <label class="share-opt"><input type="checkbox" data-share-opt="stats" /> Summary stats</label>
+      <label class="share-opt"><input type="checkbox" data-share-opt="chart" /> Payout curve</label>
+    </div>
     <button type="button" class="btn subtle payout-share-btn" id="shareReplayOverlayBtn">Share replay</button>
   </div>
 
@@ -945,6 +993,10 @@
     let recordingReplay = false;
     let liveCapture = null; // active MP4 capture session for the live spin
     let liveCaptureStarting = false;
+    let lastEnhancedReplayVideo = null; // { key, blob }
+    const SHARE_OPTS_KEY = 'roulette-share-extras';
+    const shareIncludeStats = { value: false };
+    const shareIncludeChart = { value: false };
     const CHIP_DENOMS = [1, 5, 25, 100];
     let selectedChipDenom = 1;
     let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelBall3D, wheelPhysics = null, wheelLastAnimTime = 0;
@@ -3411,6 +3463,53 @@
       updateReplayChrome();
     }
 
+    function loadShareOptions() {
+      try {
+        const raw = localStorage.getItem(SHARE_OPTS_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        shareIncludeStats.value = !!parsed.stats;
+        shareIncludeChart.value = !!parsed.chart;
+      } catch { /* ignore */ }
+    }
+
+    function saveShareOptions() {
+      localStorage.setItem(SHARE_OPTS_KEY, JSON.stringify({
+        stats: shareIncludeStats.value,
+        chart: shareIncludeChart.value
+      }));
+    }
+
+    function getShareExtras() {
+      return {
+        includeStats: !!shareIncludeStats.value,
+        includeChart: !!shareIncludeChart.value
+      };
+    }
+
+    function syncShareOptionInputs() {
+      document.querySelectorAll('[data-share-opt="stats"]').forEach((input) => {
+        input.checked = shareIncludeStats.value;
+      });
+      document.querySelectorAll('[data-share-opt="chart"]').forEach((input) => {
+        input.checked = shareIncludeChart.value;
+      });
+    }
+
+    function initShareOptions() {
+      loadShareOptions();
+      syncShareOptionInputs();
+      document.querySelectorAll('[data-share-opt]').forEach((input) => {
+        input.addEventListener('change', () => {
+          if (input.dataset.shareOpt === 'stats') shareIncludeStats.value = input.checked;
+          if (input.dataset.shareOpt === 'chart') shareIncludeChart.value = input.checked;
+          syncShareOptionInputs();
+          saveShareOptions();
+          lastEnhancedReplayVideo = null;
+        });
+      });
+    }
+
     function updateShareButtons() {
       // Keep labels stable during live capture so the toolbar doesn't reflow.
       const canShare = !!lastReplayCycle
@@ -3424,6 +3523,11 @@
         if (!shareReplayBtn.classList.contains('is-shared')) {
           shareReplayBtn.textContent = recordingInProgress ? 'Sharing…' : 'Share';
         }
+      }
+      const optsInline = document.getElementById('shareOptsInline');
+      if (optsInline) {
+        const showOpts = canShare && !(replayMode && !recordingReplay);
+        optsInline.hidden = !showOpts;
       }
       if (shareReplayOverlayBtn) {
         shareReplayOverlayBtn.disabled = !canShare;
@@ -3589,22 +3693,122 @@
       ctx.restore();
     }
 
-    async function createMp4RecorderSession() {
-      if (!canCaptureReplayVideo()) return null;
-      const gl = renderer.domElement;
-      if ((gl.width || 0) < 2 || (gl.height || 0) < 2) return null;
+    function drawShareStatsPanel(ctx, x, y, w, h) {
+      const items = [
+        ['Expected profit', scoreEvEl?.textContent || '—'],
+        ['At risk', scoreStakeEl?.textContent || '—'],
+        ['Highest payout', scoreMaxEl?.textContent || '—'],
+        ['Median payout', scoreMedianEl?.textContent || '—'],
+        ['Win', scoreWinEl?.textContent || '—'],
+        ['Even', scoreEvenEl?.textContent || '—'],
+        ['Lose', scoreLossEl?.textContent || '—']
+      ];
+      ctx.save();
+      ctx.fillStyle = 'rgba(8, 18, 14, 0.97)';
+      ctx.strokeStyle = 'rgba(239, 187, 73, 0.22)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, w, h, 14);
+      else ctx.rect(x, y, w, h);
+      ctx.fill();
+      ctx.stroke();
 
-      // Encode from a lightweight composite canvas so we can burn in the payout card.
-      const recordCanvas = document.createElement('canvas');
-      recordCanvas.width = gl.width;
-      recordCanvas.height = gl.height;
-      const recordCtx = recordCanvas.getContext('2d', { alpha: false });
+      const pad = 14;
+      const titleH = 22;
+      ctx.fillStyle = '#d0a23a';
+      ctx.font = `700 ${Math.max(11, Math.round(h * 0.07))}px "General Sans", sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('SUMMARY STATS', x + pad, y + pad);
+
+      const cols = w > 420 ? 4 : 2;
+      const rows = Math.ceil(items.length / cols);
+      const gridX = x + pad;
+      const gridY = y + pad + titleH + 8;
+      const gridW = w - pad * 2;
+      const gridH = h - pad * 2 - titleH - 8;
+      const cellW = gridW / cols;
+      const cellH = gridH / rows;
+
+      items.forEach(([label, value], i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const cx = gridX + col * cellW;
+        const cy = gridY + row * cellH;
+        ctx.fillStyle = 'rgba(0,0,0,.28)';
+        ctx.strokeStyle = 'rgba(239,187,73,.14)';
+        ctx.beginPath();
+        if (typeof ctx.roundRect === 'function') {
+          ctx.roundRect(cx + 4, cy + 4, cellW - 8, cellH - 8, 10);
+        } else {
+          ctx.rect(cx + 4, cy + 4, cellW - 8, cellH - 8);
+        }
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#d0a23a';
+        ctx.font = `600 ${Math.max(9, Math.round(cellH * 0.16))}px "General Sans", sans-serif`;
+        ctx.fillText(label.toUpperCase(), cx + 14, cy + 14);
+        ctx.fillStyle = '#f5edd8';
+        ctx.font = `700 ${Math.max(16, Math.round(cellH * 0.34))}px Zodiak, Georgia, serif`;
+        ctx.fillText(value, cx + 14, cy + cellH * 0.42);
+      });
+      ctx.restore();
+    }
+
+    function drawShareChartPanel(ctx, x, y, w, h) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(8, 18, 14, 0.97)';
+      ctx.strokeStyle = 'rgba(255,255,255,.1)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, w, h, 14);
+      else ctx.rect(x, y, w, h);
+      ctx.fill();
+      ctx.stroke();
+
+      const pad = 14;
+      ctx.fillStyle = '#f5edd8';
+      ctx.font = `700 ${Math.max(12, Math.round(h * 0.08))}px Zodiak, Georgia, serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('Payout curve', x + pad, y + pad);
+
+      const chartCanvas = payoutChart?.canvas;
+      const chartY = y + pad + 26;
+      const chartH = h - pad * 2 - 26;
+      const chartW = w - pad * 2;
+      if (chartCanvas && chartW > 8 && chartH > 8) {
+        ctx.drawImage(chartCanvas, x + pad, chartY, chartW, chartH);
+      } else {
+        ctx.fillStyle = 'rgba(244,236,218,.45)';
+        ctx.font = `600 12px "General Sans", sans-serif`;
+        ctx.fillText('Chart unavailable', x + pad, chartY + 12);
+      }
+      ctx.restore();
+    }
+
+    function drawShareAnalyticsStrip(ctx, x, y, w, h, extras) {
+      const both = extras.includeStats && extras.includeChart;
+      const gap = 12;
+      if (both) {
+        const leftW = Math.round(w * 0.52);
+        drawShareStatsPanel(ctx, x, y, leftW, h);
+        drawShareChartPanel(ctx, x + leftW + gap, y, w - leftW - gap, h);
+        return;
+      }
+      if (extras.includeStats) drawShareStatsPanel(ctx, x, y, w, h);
+      if (extras.includeChart) drawShareChartPanel(ctx, x, y, w, h);
+    }
+
+    async function createMp4EncoderSession(sourceCanvas) {
+      if (!canCaptureReplayVideo() || !sourceCanvas) return null;
+      if ((sourceCanvas.width || 0) < 2 || (sourceCanvas.height || 0) < 2) return null;
 
       const output = new Output({
         format: new Mp4OutputFormat({ fastStart: 'in-memory' }),
         target: new BufferTarget()
       });
-      const videoSource = new CanvasSource(recordCanvas, {
+      const videoSource = new CanvasSource(sourceCanvas, {
         codec: 'avc',
         bitrate: 6_000_000
       });
@@ -3615,7 +3819,6 @@
       let framesAdded = 0;
       let running = true;
       let encoding = false;
-      let showPayout = false;
       let pumpError = null;
       let idleWaiters = [];
 
@@ -3626,30 +3829,8 @@
       };
 
       return {
-        setShowPayout(on) {
-          showPayout = !!on;
-        },
-        // Called from the render loop immediately after renderer.render().
         tick() {
           if (!running || encoding || pumpError) return;
-          if (recordCanvas.width !== gl.width || recordCanvas.height !== gl.height) {
-            recordCanvas.width = gl.width;
-            recordCanvas.height = gl.height;
-          }
-          try {
-            recordCtx.drawImage(gl, 0, 0);
-          } catch {
-            return;
-          }
-          if (showPayout && awaitingAdvance) {
-            drawReplayResultCard(
-              recordCtx,
-              recordCanvas.width,
-              recordCanvas.height,
-              lastSpinNet,
-              settlementOutcome
-            );
-          }
           encoding = true;
           const timestamp = framesAdded * frameDuration;
           videoSource.add(timestamp, frameDuration).then(() => {
@@ -3676,17 +3857,162 @@
         },
         abort() {
           running = false;
-          showPayout = false;
           try { output.cancel?.(); } catch { /* ignore */ }
           notifyIdle();
         }
       };
     }
 
+    async function createMp4RecorderSession() {
+      if (!canCaptureReplayVideo()) return null;
+      const gl = renderer.domElement;
+      if ((gl.width || 0) < 2 || (gl.height || 0) < 2) return null;
+
+      // Encode from a lightweight composite canvas so we can burn in the payout card.
+      const recordCanvas = document.createElement('canvas');
+      recordCanvas.width = gl.width;
+      recordCanvas.height = gl.height;
+      const recordCtx = recordCanvas.getContext('2d', { alpha: false });
+      const encoder = await createMp4EncoderSession(recordCanvas);
+      if (!encoder) return null;
+
+      let showPayout = false;
+
+      return {
+        setShowPayout(on) {
+          showPayout = !!on;
+        },
+        // Called from the render loop immediately after renderer.render().
+        tick() {
+          if (recordCanvas.width !== gl.width || recordCanvas.height !== gl.height) {
+            recordCanvas.width = gl.width;
+            recordCanvas.height = gl.height;
+          }
+          try {
+            recordCtx.drawImage(gl, 0, 0);
+          } catch {
+            return;
+          }
+          if (showPayout && awaitingAdvance) {
+            drawReplayResultCard(
+              recordCtx,
+              recordCanvas.width,
+              recordCanvas.height,
+              lastSpinNet,
+              settlementOutcome
+            );
+          }
+          encoder.tick();
+        },
+        stop: () => encoder.stop(),
+        abort() {
+          showPayout = false;
+          encoder.abort();
+        }
+      };
+    }
+
+    function extrasCacheKey(cycle, extras) {
+      return `${cycleCacheKey(cycle)}|s:${extras.includeStats ? 1 : 0}|c:${extras.includeChart ? 1 : 0}`;
+    }
+
+    async function enhanceReplayVideoWithExtras(baseBlob, extras) {
+      if (!extras.includeStats && !extras.includeChart) return baseBlob;
+
+      const wrap = document.getElementById('rouletteWrap');
+      const wasCollapsed = !!wrap?.classList.contains('stats-collapsed');
+      if (extras.includeChart && wasCollapsed) setStatsDockOpen(true);
+
+      updateMetrics();
+      try { payoutChart?.resize(); } catch { /* ignore */ }
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      const objectUrl = URL.createObjectURL(baseBlob);
+      video.src = objectUrl;
+
+      try {
+        await new Promise((resolve, reject) => {
+          video.onloadeddata = () => resolve();
+          video.onerror = () => reject(new Error('Could not read the replay video'));
+        });
+
+        const vw = video.videoWidth || 1280;
+        const vh = video.videoHeight || 720;
+        const stripH = Math.round(Math.min(Math.max(vh * 0.4, 220), 340));
+        const outW = vw + (vw % 2);
+        const outH = vh + stripH + ((vh + stripH) % 2);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = outW;
+        canvas.height = outH;
+        const ctx = canvas.getContext('2d', { alpha: false });
+        const encoder = await createMp4EncoderSession(canvas);
+        if (!encoder) throw new Error('MP4 encoding is not supported in this browser');
+
+        const paint = () => {
+          ctx.fillStyle = '#0a1210';
+          ctx.fillRect(0, 0, outW, outH);
+          ctx.drawImage(video, 0, 0, vw, vh);
+          drawShareAnalyticsStrip(ctx, 0, vh, outW, stripH, extras);
+        };
+
+        await video.play();
+
+        await new Promise((resolve, reject) => {
+          let finished = false;
+          const finish = () => {
+            if (finished) return;
+            finished = true;
+            resolve();
+          };
+          const step = () => {
+            try {
+              if (video.ended) {
+                finish();
+                return;
+              }
+              paint();
+              encoder.tick();
+              if (typeof video.requestVideoFrameCallback === 'function') {
+                video.requestVideoFrameCallback(step);
+              } else {
+                requestAnimationFrame(step);
+              }
+            } catch (err) {
+              reject(err);
+            }
+          };
+          video.onended = finish;
+          if (typeof video.requestVideoFrameCallback === 'function') {
+            video.requestVideoFrameCallback(step);
+          } else {
+            requestAnimationFrame(step);
+          }
+        });
+
+        video.pause();
+        for (let i = 0; i < 90; i++) {
+          paint();
+          encoder.tick();
+          await delay(1000 / 60);
+        }
+
+        return encoder.stop();
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        if (extras.includeChart && wasCollapsed) setStatsDockOpen(false);
+      }
+    }
+
     function ensureLiveReplayCapture() {
       if (replayMode || liveCapture || liveCaptureStarting) return;
       if (wheelSpinning || settling || awaitingAdvance) return;
       lastReplayVideo = null;
+      lastEnhancedReplayVideo = null;
       void beginLiveReplayCapture();
     }
 
@@ -3892,11 +4218,26 @@
 
       let shareResult = null;
       try {
-        const blob = await ensureReplayVideoBlob(cycle);
-        if (!blob || blob.size < 32) throw new Error('Recording produced an empty video');
-        if (!(blob.type || '').includes('mp4')) {
-          throw new Error('Share requires an MP4 recording');
+        const extras = getShareExtras();
+        let blob = null;
+        const enhancedKey = extrasCacheKey(cycle, extras);
+        if ((extras.includeStats || extras.includeChart)
+          && lastEnhancedReplayVideo?.key === enhancedKey) {
+          blob = lastEnhancedReplayVideo.blob;
+        } else {
+          const baseBlob = await ensureReplayVideoBlob(cycle);
+          if (!baseBlob || baseBlob.size < 32) throw new Error('Recording produced an empty video');
+          if (!(baseBlob.type || '').includes('mp4')) {
+            throw new Error('Share requires an MP4 recording');
+          }
+          blob = (extras.includeStats || extras.includeChart)
+            ? await enhanceReplayVideoWithExtras(baseBlob, extras)
+            : baseBlob;
+          if (extras.includeStats || extras.includeChart) {
+            lastEnhancedReplayVideo = { key: enhancedKey, blob };
+          }
         }
+        if (!blob || blob.size < 32) throw new Error('Recording produced an empty video');
         const file = new File([blob], `roulette-replay-${cycle.o}.mp4`, { type: 'video/mp4' });
         shareResult = await shareOrDownloadVideo(file, cycle);
       } catch (err) {
@@ -4398,6 +4739,7 @@
         // Mid-round clear discards an in-progress placement recording.
         abortLiveReplayCapture();
         lastReplayVideo = null;
+        lastEnhancedReplayVideo = null;
       }
       clearSettlementVisuals();
       placements.clear();
@@ -4491,6 +4833,7 @@
     updateMetrics();
     updateControlStates();
     syncMobileStatsToggle();
+    initShareOptions();
     tryStartReplayFromHash();
   </script>
 </body>
