@@ -930,6 +930,7 @@
     let purse = 100;
     let purseBeforeSpin = 100;
     let lastReplayCycle = null;
+    let lastReplayVideo = null; // { key, blob, mimeType }
     let replayMode = false;
     let forcedOutcome = null;
     let replayPlaybackToken = 0;
@@ -938,6 +939,7 @@
     let replayRecordCanvas = null;
     let replayRecordCtx = null;
     let replayRecordHold = false;
+    let liveCapture = null; // active MediaRecorder session for the live spin
     const CHIP_DENOMS = [1, 5, 25, 100];
     let selectedChipDenom = 1;
     let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelBall3D, wheelPhysics = null, wheelLastAnimTime = 0;
@@ -1878,6 +1880,10 @@
       wheelDisplayEl?.classList.add('spinning');
       wheelHighlightIndex = null;
       drawWheelFace();
+      if (!replayMode) {
+        lastReplayVideo = null;
+        beginLiveReplayCapture();
+      }
       updateShareButtons();
 
       const rand = (a, b) => a + Math.random() * (b - a);
@@ -3402,16 +3408,25 @@
     }
 
     function updateShareButtons() {
+      const preparing = !!liveCapture;
       const canShare = !!lastReplayCycle && !wheelSpinning && !settling && !recordingInProgress;
       if (shareReplayBtn) {
         shareReplayBtn.disabled = !canShare || (replayMode && !recordingReplay);
         shareReplayBtn.classList.toggle('is-shared', false);
-        shareReplayBtn.textContent = recordingInProgress ? 'Recording…' : 'Share';
+        shareReplayBtn.textContent = recordingInProgress
+          ? 'Recording…'
+          : preparing
+            ? 'Preparing…'
+            : 'Share';
       }
       if (shareReplayOverlayBtn) {
         shareReplayOverlayBtn.disabled = !canShare;
         shareReplayOverlayBtn.classList.toggle('is-shared', false);
-        shareReplayOverlayBtn.textContent = recordingInProgress ? 'Recording…' : 'Share replay';
+        shareReplayOverlayBtn.textContent = recordingInProgress
+          ? 'Recording…'
+          : preparing
+            ? 'Preparing…'
+            : 'Share replay';
       }
     }
 
@@ -3528,8 +3543,130 @@
       return 'webm';
     }
 
+    function cycleCacheKey(cycle) {
+      return JSON.stringify({
+        p: cycle?.p || [],
+        o: cycle?.o,
+        n: cycle?.n,
+        b: cycle?.b
+      });
+    }
+
+    function getCachedReplayVideo(cycle) {
+      if (!lastReplayVideo || !cycle) return null;
+      return lastReplayVideo.key === cycleCacheKey(cycle) ? lastReplayVideo.blob : null;
+    }
+
+    function setCachedReplayVideo(cycle, blob) {
+      if (!cycle || !blob || blob.size < 32) return;
+      lastReplayVideo = {
+        key: cycleCacheKey(cycle),
+        blob,
+        mimeType: blob.type || 'video/webm'
+      };
+    }
+
+    function canCaptureReplayVideo() {
+      return !!(
+        renderer?.domElement
+        && window.MediaRecorder
+        && typeof HTMLCanvasElement.prototype.captureStream === 'function'
+      );
+    }
+
+    function createReplayRecorderSession() {
+      if (!canCaptureReplayVideo()) return null;
+      const mimeType = pickRecorderMimeType();
+      const gl = renderer.domElement;
+      const maxW = 1280;
+      const scale = Math.min(1, maxW / Math.max(1, gl.width));
+      const width = Math.max(640, Math.round(gl.width * scale));
+      const height = Math.max(360, Math.round(gl.height * scale));
+
+      replayRecordCanvas = document.createElement('canvas');
+      replayRecordCanvas.width = width;
+      replayRecordCanvas.height = height;
+      replayRecordCtx = replayRecordCanvas.getContext('2d');
+      replayRecordHold = false;
+
+      const stream = replayRecordCanvas.captureStream(30);
+      const chunks = [];
+      const recorder = new MediaRecorder(stream, mimeType
+        ? { mimeType, videoBitsPerSecond: 3_500_000 }
+        : { videoBitsPerSecond: 3_500_000 });
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) chunks.push(event.data);
+      };
+      const stopped = new Promise((resolve, reject) => {
+        recorder.onerror = () => reject(new Error('Recording failed'));
+        recorder.onstop = () => {
+          const type = recorder.mimeType || mimeType || 'video/webm';
+          resolve(new Blob(chunks, { type }));
+        };
+      });
+      return { recorder, stream, stopped, mimeType };
+    }
+
+    function teardownReplayRecorderSession(session) {
+      if (!session) return;
+      try {
+        if (session.recorder.state !== 'inactive') session.recorder.stop();
+      } catch { /* ignore */ }
+      session.stream?.getTracks?.().forEach((track) => track.stop());
+      replayRecordCanvas = null;
+      replayRecordCtx = null;
+      replayRecordHold = false;
+    }
+
+    function beginLiveReplayCapture() {
+      if (replayMode || liveCapture || !canCaptureReplayVideo()) return;
+      const session = createReplayRecorderSession();
+      if (!session) return;
+      liveCapture = session;
+      try {
+        session.recorder.start(100);
+      } catch (err) {
+        console.error(err);
+        teardownReplayRecorderSession(session);
+        liveCapture = null;
+      }
+      updateShareButtons();
+    }
+
+    async function finalizeLiveReplayCapture() {
+      const session = liveCapture;
+      if (!session || replayMode) return;
+      const cycle = lastReplayCycle;
+      try {
+        replayRecordHold = true;
+        updateShareButtons();
+        await delay(1600);
+        replayRecordHold = false;
+        if (session.recorder.state !== 'inactive') session.recorder.stop();
+        const blob = await session.stopped;
+        session.stream.getTracks().forEach((track) => track.stop());
+        if (cycle) setCachedReplayVideo(cycle, blob);
+      } catch (err) {
+        console.error(err);
+        teardownReplayRecorderSession(session);
+      } finally {
+        if (liveCapture === session) liveCapture = null;
+        replayRecordCanvas = null;
+        replayRecordCtx = null;
+        replayRecordHold = false;
+        updateShareButtons();
+      }
+    }
+
+    function abortLiveReplayCapture() {
+      if (!liveCapture) return;
+      teardownReplayRecorderSession(liveCapture);
+      liveCapture = null;
+      updateShareButtons();
+    }
+
     function compositeReplayRecordFrame() {
-      if (!recordingInProgress || !replayRecordCtx || !replayRecordCanvas || !renderer) return;
+      if (!replayRecordCtx || !replayRecordCanvas || !renderer) return;
       const gl = renderer.domElement;
       const ctx = replayRecordCtx;
       const { width, height } = replayRecordCanvas;
@@ -3659,6 +3796,7 @@
       recordingReplay = false;
       replayRecordHold = false;
       forcedOutcome = null;
+      abortLiveReplayCapture();
       wheelPhysics = null;
       wheelSpinning = false;
       settling = false;
@@ -3677,63 +3815,33 @@
     }
 
     async function recordReplayVideo(cycle) {
-      if (!renderer?.domElement) throw new Error('Board is not ready to record');
-      if (!window.MediaRecorder || typeof HTMLCanvasElement.prototype.captureStream !== 'function') {
-        throw new Error('Video recording is not supported in this browser');
-      }
+      abortLiveReplayCapture();
+      const session = createReplayRecorderSession();
+      if (!session) throw new Error('Video recording is not supported in this browser');
 
-      const mimeType = pickRecorderMimeType();
-      const gl = renderer.domElement;
-      const maxW = 1280;
-      const scale = Math.min(1, maxW / Math.max(1, gl.width));
-      const width = Math.max(640, Math.round(gl.width * scale));
-      const height = Math.max(360, Math.round(gl.height * scale));
+      try {
+        session.recorder.start(100);
+        const played = await playReplay(cycle, { forRecording: true });
+        if (!played) throw new Error('Replay was interrupted');
 
-      replayRecordCanvas = document.createElement('canvas');
-      replayRecordCanvas.width = width;
-      replayRecordCanvas.height = height;
-      replayRecordCtx = replayRecordCanvas.getContext('2d');
-      replayRecordHold = false;
+        replayRecordHold = true;
+        updateControlStates();
+        await delay(1600);
+        replayRecordHold = false;
 
-      const stream = replayRecordCanvas.captureStream(30);
-      const chunks = [];
-      const recorder = new MediaRecorder(stream, mimeType
-        ? { mimeType, videoBitsPerSecond: 3_500_000 }
-        : { videoBitsPerSecond: 3_500_000 });
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) chunks.push(event.data);
-      };
-
-      const stopped = new Promise((resolve, reject) => {
-        recorder.onerror = () => reject(new Error('Recording failed'));
-        recorder.onstop = () => {
-          const type = recorder.mimeType || mimeType || 'video/webm';
-          resolve(new Blob(chunks, { type }));
-        };
-      });
-
-      recorder.start(100);
-      const played = await playReplay(cycle, { forRecording: true });
-      if (!played) {
-        if (recorder.state !== 'inactive') recorder.stop();
-        stream.getTracks().forEach((track) => track.stop());
+        if (session.recorder.state !== 'inactive') session.recorder.stop();
+        const blob = await session.stopped;
+        session.stream.getTracks().forEach((track) => track.stop());
+        setCachedReplayVideo(cycle, blob);
+        return blob;
+      } catch (err) {
+        teardownReplayRecorderSession(session);
+        throw err;
+      } finally {
         replayRecordCanvas = null;
         replayRecordCtx = null;
         replayRecordHold = false;
-        throw new Error('Replay was interrupted');
       }
-
-      replayRecordHold = true;
-      updateControlStates();
-      await delay(1600);
-      replayRecordHold = false;
-
-      if (recorder.state !== 'inactive') recorder.stop();
-      stream.getTracks().forEach((track) => track.stop());
-      const blob = await stopped;
-      replayRecordCanvas = null;
-      replayRecordCtx = null;
-      return blob;
     }
 
     async function shareOrDownloadVideo(file, cycle) {
@@ -3759,13 +3867,20 @@
       return 'downloaded';
     }
 
-    async function shareReplayCycle(cycle, buttonEl) {
-      if (!cycle || recordingInProgress || wheelSpinning || settling) return;
+    async function ensureReplayVideoBlob(cycle) {
+      const cached = getCachedReplayVideo(cycle);
+      if (cached) return cached;
 
-      // Finish an open live round first so purse accounting stays correct.
-      if (awaitingAdvance && !replayMode) {
-        advanceRound();
-      } else if (replayMode) {
+      // Live capture may still be finishing the result hold.
+      if (liveCapture) {
+        await waitUntil(() => !liveCapture, 20000);
+        const ready = getCachedReplayVideo(cycle);
+        if (ready) return ready;
+      }
+
+      // Fallback: re-record only when the cache is missing.
+      if (awaitingAdvance && !replayMode) advanceRound();
+      else if (replayMode) {
         replayPlaybackToken += 1;
         wheelPhysics = null;
         wheelSpinning = false;
@@ -3773,6 +3888,13 @@
         settlementState = null;
         hidePayoutOverlay();
       }
+      const blob = await recordReplayVideo(cycle);
+      if (replayMode) exitReplayMode();
+      return blob;
+    }
+
+    async function shareReplayCycle(cycle, buttonEl) {
+      if (!cycle || recordingInProgress || wheelSpinning || settling) return;
 
       recordingInProgress = true;
       updateShareButtons();
@@ -3780,11 +3902,11 @@
 
       let shareResult = null;
       try {
-        const blob = await recordReplayVideo(cycle);
+        const blob = await ensureReplayVideoBlob(cycle);
         if (!blob || blob.size < 32) throw new Error('Recording produced an empty video');
-        const ext = extensionForMime(blob.type || 'video/webm');
+        const ext = extensionForMime(blob.type || lastReplayVideo?.mimeType || 'video/webm');
         const file = new File([blob], `roulette-replay-${cycle.o}.${ext}`, {
-          type: blob.type || 'video/webm'
+          type: blob.type || lastReplayVideo?.mimeType || 'video/webm'
         });
         shareResult = await shareOrDownloadVideo(file, cycle);
       } catch (err) {
@@ -3794,11 +3916,8 @@
         recordingInProgress = false;
         recordingReplay = false;
         replayRecordHold = false;
-        if (replayMode) exitReplayMode();
-        else {
-          updateShareButtons();
-          updateReplayChrome();
-        }
+        updateShareButtons();
+        updateReplayChrome();
         if (buttonEl && shareResult && shareResult !== 'aborted') {
           buttonEl.classList.add('is-shared');
           buttonEl.textContent = shareResult === 'downloaded' ? 'Saved video' : 'Shared';
@@ -3942,6 +4061,7 @@
       if (!placements.size) {
         awaitingAdvance = true;
         updateControlStates();
+        void finalizeLiveReplayCapture();
         return;
       }
 
@@ -4104,6 +4224,7 @@
       renderChips();
       updateMetrics();
       updateControlStates();
+      void finalizeLiveReplayCapture();
     }
 
     function renderChips3D() {
