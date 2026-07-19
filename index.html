@@ -230,11 +230,15 @@
     .wheel-frame::before { content: ''; position: absolute; inset: 6px; border-radius: 50%; border: 1px solid rgba(255,235,180,.3); box-shadow: inset 0 0 22px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,248,222,.25); background: repeating-conic-gradient(from 0deg, rgba(20,10,4,.5) 0 1.2deg, transparent 1.2deg 7.5deg); }
     .wheel-frame::after { content: ''; position: absolute; inset: -8px; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(243,207,115,.85) 0 1.4deg, transparent 1.4deg 45deg); mask: radial-gradient(circle, transparent 78%, #000 79%); -webkit-mask: radial-gradient(circle, transparent 78%, #000 79%); animation: bezelSpin 40s linear infinite; opacity: .8; }
     @keyframes bezelSpin { to { transform: rotate(360deg); } }
-    .wheel-display.spinning .wheel-frame { animation: frameGlow 900ms ease-in-out infinite alternate; }
-    @keyframes frameGlow { from { filter: brightness(1); } to { filter: brightness(1.18) drop-shadow(0 0 18px rgba(239,187,73,.35)); } }
+    /* Glow pulse animates opacity only (compositor-friendly); animating
+       filter/drop-shadow here re-rasterizes the frame every frame and janks */
+    .wheel-display.spinning .wheel-frame::after { animation: bezelSpin 40s linear infinite, filigreePulse 900ms ease-in-out infinite alternate; }
+    @keyframes filigreePulse { from { opacity: .55; } to { opacity: 1; } }
     .wheel-canvas-wrap { position: relative; z-index: 1; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 38%, rgba(255,230,170,.1), transparent 58%), #120a08; box-shadow: inset 0 0 30px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,225,156,.14); transition: box-shadow 280ms ease, filter 280ms ease; }
     .wheel-canvas-wrap::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; z-index: 3; background: radial-gradient(ellipse 62% 42% at 50% 18%, rgba(255,255,255,.14), rgba(255,255,255,.04) 48%, transparent 62%), radial-gradient(circle at 50% 115%, rgba(0,0,0,.32), transparent 55%); }
-    .wheel-display.spinning .wheel-canvas-wrap { box-shadow: inset 0 0 32px rgba(0,0,0,.55), inset 0 0 0 2px rgba(239,187,73,.4), 0 0 30px rgba(239,187,73,.22); filter: saturate(1.1); }
+    /* No filter here: a filter on the wrap forces the rotating canvas child
+       to re-rasterize every frame instead of compositing the transform */
+    .wheel-display.spinning .wheel-canvas-wrap { box-shadow: inset 0 0 32px rgba(0,0,0,.55), inset 0 0 0 2px rgba(239,187,73,.4), 0 0 30px rgba(239,187,73,.22); }
     .wheel-display.landed .wheel-canvas-wrap { box-shadow: inset 0 0 30px rgba(0,0,0,.5), inset 0 0 0 2px rgba(239,187,73,.5), 0 0 34px rgba(239,187,73,.26); }
     .wheel-canvas-wrap canvas { display: block; width: 100%; height: 100%; will-change: transform; transform-origin: 50% 50%; }
     .wheel-pointer { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 14px; height: 22px; z-index: 5; pointer-events: none; filter: drop-shadow(0 2px 5px rgba(0,0,0,.55)); }
@@ -322,121 +326,53 @@
       flex-direction: column;
       align-items: center;
       gap: 10px;
-      width: clamp(128px, 16vw, 188px);
+      width: clamp(108px, 14vw, 136px);
       pointer-events: none;
-      filter: drop-shadow(0 16px 24px rgba(0,0,0,.52));
-      transform: scale(var(--purse-scale, 1));
-      transform-origin: top right;
-      transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1), filter 360ms ease;
+      filter: drop-shadow(0 14px 22px rgba(0,0,0,.52));
     }
     .purse-chip-stacks {
-      position: relative;
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      gap: 5px;
-      width: calc(var(--chip-w, 52px) * 3 + 10px);
-      height: var(--stack-h, 88px);
-      perspective: 720px;
-      transform: rotateX(15deg) rotateZ(-2deg);
-      transform-origin: center bottom;
-      transition: width 360ms cubic-bezier(0.16, 1, 0.3, 1), height 360ms cubic-bezier(0.16, 1, 0.3, 1);
+      gap: 6px;
+      height: 72px;
     }
-    .purse-chip-stacks::before {
+    .purse-cylinder {
+      --stack-h: 48px;
+      position: relative;
+      width: 34px;
+      height: var(--stack-h);
+      border-radius: 17px;
+      background: repeating-linear-gradient(
+        180deg,
+        var(--chip-primary) 0 5px,
+        var(--chip-accent) 5px 10px
+      );
+      box-shadow:
+        inset 1px 0 0 rgba(255,255,255,.12),
+        inset -1px 0 0 rgba(0,0,0,.18),
+        0 4px 10px rgba(0,0,0,.35);
+    }
+    .purse-cylinder::before {
       content: '';
       position: absolute;
-      left: 50%;
-      bottom: -5px;
-      width: 88%;
-      height: calc(var(--chip-w, 52px) * 0.18);
-      transform: translateX(-50%);
+      top: -3px;
+      left: 2px;
+      right: 2px;
+      height: 9px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(0,0,0,.5) 0%, rgba(0,0,0,.18) 48%, transparent 74%);
-      filter: blur(1.5px);
-      z-index: 0;
+      background: radial-gradient(circle at 50% 35%, #fffdf6, #e8dcc4);
+      box-shadow: inset 0 0 0 2px var(--chip-primary);
     }
-    .purse-chip-column {
-      position: relative;
-      width: var(--chip-w, 52px);
-      height: 100%;
-      z-index: 1;
-    }
-    .purse-chip-column:nth-child(1) { transform: translateY(2px); }
-    .purse-chip-column:nth-child(2) { transform: translateY(0); z-index: 2; }
-    .purse-chip-column:nth-child(3) { transform: translateY(3px); }
-    .purse-chip {
-      --chip-lift: calc(var(--chip-i) * var(--chip-pitch, 6px) * -1);
-      position: absolute;
-      left: 50%;
-      bottom: 4px;
-      width: var(--chip-w, 52px);
-      transform: translate(-50%, var(--chip-lift));
-      transform-origin: center bottom;
-      z-index: calc(var(--chip-i) + 1);
-      filter: drop-shadow(0 2px 3px rgba(0,0,0,.3));
-      transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    .purse-chip-edge {
-      display: block;
-      width: 100%;
-      height: var(--chip-edge-h, 8px);
-      border-radius: 50%;
-      background-image: var(--chip-edge);
-      background-size: 100% 100%;
-      background-repeat: no-repeat;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.22),
-        inset 0 -2px 3px rgba(0,0,0,.3),
-        0 1px 0 rgba(0,0,0,.38);
-    }
-    .purse-chip:not(.is-top) .purse-chip-cap {
-      width: calc(var(--chip-w, 52px) - 14px);
-      height: calc(var(--chip-w, 52px) - 14px);
-      margin-top: -3px;
-      opacity: 0.85;
-    }
-    .purse-chip-cap {
-      display: block;
-      width: calc(var(--chip-w, 52px) - 10px);
-      height: calc(var(--chip-w, 52px) - 10px);
-      margin: -2px auto 0;
-      border-radius: 50%;
-      background: radial-gradient(circle at 34% 28%, #fffdf6 0%, #f3ead8 58%, #d8ccb4 100%);
-      box-shadow:
-        inset 0 0 0 2px var(--chip-primary),
-        inset 0 0 0 4px #f3ead8,
-        inset 0 0 0 5px var(--chip-primary),
-        0 2px 4px rgba(0,0,0,.24);
-      opacity: 0.92;
-    }
-    .purse-chip.is-top .purse-chip-edge {
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.26),
-        inset 0 -2px 4px rgba(0,0,0,.32),
-        0 1px 0 rgba(0,0,0,.4);
-    }
-    .purse-chip-face {
-      position: relative;
-      width: var(--chip-w, 52px);
-      height: var(--chip-w, 52px);
-      margin: -2px auto 0;
-      border-radius: 50%;
-      background-image: var(--chip-face);
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,.4),
-        0 5px 10px rgba(0,0,0,.34),
-        0 0 0 1px rgba(0,0,0,.12);
-    }
-    .purse-chip-face::after {
+    .purse-cylinder::after {
       content: '';
       position: absolute;
-      inset: 0;
+      bottom: -2px;
+      left: 3px;
+      right: 3px;
+      height: 7px;
       border-radius: 50%;
-      background: radial-gradient(circle at 32% 24%, rgba(255,255,255,.32), transparent 44%);
-      pointer-events: none;
+      background: color-mix(in srgb, var(--chip-primary) 88%, black);
     }
     .purse-stack-amount {
       font-family: var(--font-display);
@@ -826,7 +762,6 @@
     let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelBall3D, wheelPhysics = null, wheelLastAnimTime = 0;
     let wheelHighlightIndex = null;
     let chipMaterialCache = null;
-    let purseChipTextureCache = null;
     let feltFiberCanvas = null;
     let feltNormalTexture = null;
     let feltRoughnessTexture = null;
@@ -1086,7 +1021,7 @@
       }
       // Sink the ball a little when it is down in a pocket so it reads as
       // resting inside the bucket rather than floating on the face
-      const restY = THREE.MathUtils.lerp(39, 42.5, span);
+      const restY = THREE.MathUtils.lerp(40, 43.5, span);
       wheelBall3D.position.set(
         Math.sin(rad) * trackR,
         restY + bounce,
@@ -1249,13 +1184,14 @@
       wheelCtx.fillStyle = hub;
       wheelCtx.fill();
 
-      // Engine-turned sunburst on the hub plate
+      // Engine-turned sunburst on the hub plate. Rays are kept wide and
+      // low-contrast: thin lines alias and crawl while the wheel rotates
       wheelCtx.save();
-      wheelCtx.globalAlpha = 0.22;
-      for (let i = 0; i < 48; i++) {
-        const a = (Math.PI * 2 * i) / 48;
+      wheelCtx.globalAlpha = 0.14;
+      for (let i = 0; i < 32; i++) {
+        const a = (Math.PI * 2 * i) / 32;
         wheelCtx.strokeStyle = i % 2 ? 'rgba(255,240,200,.8)' : 'rgba(70,40,10,.9)';
-        wheelCtx.lineWidth = 3;
+        wheelCtx.lineWidth = 6;
         wheelCtx.beginPath();
         wheelCtx.moveTo(cx + Math.cos(a) * hubR * 0.4, cy + Math.sin(a) * hubR * 0.4);
         wheelCtx.lineTo(cx + Math.cos(a) * hubR * 0.94, cy + Math.sin(a) * hubR * 0.94);
@@ -1563,7 +1499,9 @@
         new THREE.MeshStandardMaterial({ map: wheelTexture, roughness: 0.86, metalness: 0.03 })
       );
       topCap.rotation.x = -Math.PI / 2;
-      topCap.position.y = 3.6;
+      // Keep a full unit of clearance above the disc top (y=3.5); a smaller
+      // gap z-fights at this camera distance and shimmers while rotating
+      topCap.position.y = 4.75;
       wheelRotator.add(topCap);
 
       const outerRing = new THREE.Mesh(new THREE.TorusGeometry(118, 4.5, 10, 64), brassMat);
@@ -2498,8 +2436,12 @@
       }
     }
 
+    function getDefaultCameraView() {
+      return window.matchMedia('(max-width: 900px)').matches ? 'player' : 'side';
+    }
+
     function initCameraRig() {
-      applyCameraView('side', false);
+      applyCameraView(getDefaultCameraView(), false);
     }
 
     function shouldOrbitDrag(event) {
@@ -2959,85 +2901,25 @@
       return Math.max(1, Number(bankrollInput.value || 100));
     }
 
-    function getPurseChipEdgeTexture(style) {
-      if (!purseChipTextureCache) purseChipTextureCache = new Map();
-      const key = `edge-${style.primary}-${style.accent}`;
-      if (purseChipTextureCache.has(key)) return purseChipTextureCache.get(key);
-      const edgeCanvas = document.createElement('canvas');
-      edgeCanvas.width = 256;
-      edgeCanvas.height = 32;
-      drawClassicChipSide(edgeCanvas.getContext('2d'), 256, 32, style.primary, style.accent);
-      const edge = edgeCanvas.toDataURL('image/png');
-      purseChipTextureCache.set(key, edge);
-      return edge;
-    }
-
-    function getPurseChipFaceTexture(style) {
-      if (!purseChipTextureCache) purseChipTextureCache = new Map();
-      const key = `face-${style.primary}-${style.accent}-${style.label}`;
-      if (purseChipTextureCache.has(key)) return purseChipTextureCache.get(key);
-      const faceCanvas = document.createElement('canvas');
-      const size = 160;
-      faceCanvas.width = size;
-      faceCanvas.height = size;
-      drawClassicChipTop(faceCanvas.getContext('2d'), size, style.primary, style.accent, style.label);
-      const face = faceCanvas.toDataURL('image/png');
-      purseChipTextureCache.set(key, face);
-      return face;
-    }
-
-    function getPurseColumnLayout(value) {
+    function getPurseCylinderHeights(value) {
       const v = Math.max(0, Math.round(value));
-      const base = Math.max(1, startingPurse);
-      const logV = Math.log10(v + 1);
-      const logMax = Math.log10(base * 5 + 1);
-      const t = Math.min(1, logV / Math.max(logMax, 1));
-      const scale = v === 0 ? 0.74 : 0.78 + t * 0.34;
-      const chipW = Math.round(40 + scale * 14);
-      const pitch = Math.round(3 + scale * 2.8);
-      const edgeH = Math.max(5, Math.round(chipW * 0.11));
-      const denoms = [1, 5, v >= 100 ? 100 : 25];
-
-      if (v === 0) {
-        return { scale, chipW, pitch, edgeH, stackH: 48, heights: [1, 2, 1], denoms };
-      }
-
-      const hShort = Math.max(2, Math.round(2 + t * 4));
-      const hMid = Math.max(hShort + 1, Math.round(3 + t * 7));
-      const hTall = Math.max(hMid + 1, Math.round(4 + t * 10));
-      const maxH = Math.max(hShort, hMid, hTall);
-      const stackH = Math.round(8 + pitch * (maxH - 1) + chipW * 0.32);
-      return { scale, chipW, pitch, edgeH, stackH, heights: [hShort, hMid, hTall], denoms };
-    }
-
-    function buildPurseChipHtml(i, count, style) {
-      const isTop = i === count - 1;
-      const edge = getPurseChipEdgeTexture(style);
-      const face = isTop ? getPurseChipFaceTexture(style) : '';
-      const topClass = isTop ? ' is-top' : '';
-      const topMarkup = isTop
-        ? '<span class="purse-chip-face" aria-hidden="true"></span>'
-        : '<span class="purse-chip-cap" aria-hidden="true"></span>';
-      return `<div class="purse-chip${topClass}" style="--chip-i:${i};--chip-primary:${style.primary};--chip-edge:url('${edge}')${face ? `;--chip-face:url('${face}')` : ''}"><span class="purse-chip-edge"></span>${topMarkup}</div>`;
+      if (v === 0) return [30, 38, 32];
+      const boost = Math.min(Math.log10(v + 1) * 8, 22);
+      return [
+        Math.round(38 + boost * 0.75),
+        Math.round(52 + boost),
+        Math.round(44 + boost * 0.85)
+      ];
     }
 
     function renderPurseStack() {
       if (!purseChipStackEl) return;
       const value = Math.max(0, Math.round(purse));
-      const layout = getPurseColumnLayout(value);
-
-      if (purseStackEl) {
-        purseStackEl.style.setProperty('--purse-scale', layout.scale.toFixed(3));
-      }
-      purseChipStackEl.style.setProperty('--chip-w', `${layout.chipW}px`);
-      purseChipStackEl.style.setProperty('--chip-pitch', `${layout.pitch}px`);
-      purseChipStackEl.style.setProperty('--chip-edge-h', `${layout.edgeH}px`);
-      purseChipStackEl.style.setProperty('--stack-h', `${layout.stackH}px`);
-
-      purseChipStackEl.innerHTML = layout.heights.map((count, col) => {
-        const style = getChipStyle(layout.denoms[col]);
-        const chips = Array.from({ length: count }, (_, i) => buildPurseChipHtml(i, count, style)).join('');
-        return `<div class="purse-chip-column">${chips}</div>`;
+      const denoms = [1, 5, value >= 100 ? 100 : 25];
+      const heights = getPurseCylinderHeights(value);
+      purseChipStackEl.innerHTML = heights.map((height, i) => {
+        const style = getChipStyle(denoms[i]);
+        return `<div class="purse-cylinder" style="--chip-primary:${style.primary};--chip-accent:${style.accent};--stack-h:${height}px"></div>`;
       }).join('');
     }
 
