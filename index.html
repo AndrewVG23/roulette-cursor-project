@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Roulette Chip Analytics</title>
+  <title>Roulette</title>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -31,45 +31,81 @@
       --color-success: #7fe29a; --color-warning: #f0a46a; --color-error: #ff7c97;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100dvh; font-family: var(--font-body); color: var(--color-text); background: radial-gradient(circle at top, rgba(208,162,58,.08), transparent 26%), linear-gradient(180deg, #0d1512, #07100d 60%); }
+    html, body { height: 100%; }
+    body { margin: 0; min-height: 100dvh; height: 100dvh; overflow: hidden; font-family: var(--font-body); color: var(--color-text); background: radial-gradient(circle at top, rgba(208,162,58,.08), transparent 26%), linear-gradient(180deg, #0d1512, #07100d 60%); }
     button, input { font: inherit; }
     button { cursor: pointer; }
-    .app { max-width: 1640px; margin: 0 auto; padding: var(--space-4); }
+    .app { max-width: none; height: 100dvh; margin: 0; padding: var(--space-2); display: flex; flex-direction: column; min-height: 0; }
     .skip-link { position: absolute; left: -9999px; }
     .skip-link:focus { left: var(--space-4); top: var(--space-4); background: var(--color-surface); padding: var(--space-3); z-index: 20; border-radius: var(--radius-md); }
-    .topbar { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin-bottom: var(--space-6); padding: var(--space-4) 0; }
-    .brand { display: flex; align-items: center; gap: var(--space-3); }
-    .logo { width: 36px; height: 36px; color: var(--color-primary); }
-    .brand h1 { margin: 0; font-family: var(--font-display); font-size: var(--text-xl); line-height: 1; }
-    .brand p { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
-    .toolbar { display: flex; gap: var(--space-2); align-items: center; }
+    .control-row .spacer { flex: 1; }
+    .icon-btn.compact { min-height: 44px; width: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
     .icon-btn, .btn, .bet-pill { min-height: 44px; border-radius: var(--radius-full); transition: transform var(--transition), background var(--transition), color var(--transition), border-color var(--transition), box-shadow var(--transition); }
     .icon-btn, .btn { padding: 0 var(--space-4); color: var(--color-text); background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)); border: 1px solid rgba(255,255,255,.1); box-shadow: var(--shadow-sm); }
     .btn.primary { background: linear-gradient(180deg, #f0c869, #c28b2d); color: #1a1307; border-color: rgba(255,225,156,.45); }
     .btn.subtle { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); }
     .btn.warning { background: linear-gradient(180deg, #d88a54, #9d5427); color: #fff3e9; border-color: rgba(255,220,198,.24); }
     .icon-btn:hover, .btn:hover { transform: translateY(-1px); }
-    .layout { display: grid; grid-template-columns: minmax(360px, 760px) minmax(360px, 1fr); gap: var(--space-6); align-items: start; }
-    .panel { background: linear-gradient(180deg, rgba(23,48,39,.92), rgba(15,27,23,.96)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); overflow: hidden; }
-    .panel-inner { padding: var(--space-5); }
+    .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); gap: var(--space-2); align-items: stretch; }
+    .panel { background: linear-gradient(180deg, rgba(23,48,39,.92), rgba(15,27,23,.96)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
+    .panel-inner { padding: var(--space-4); flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .panel-inner.board-panel { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
     .panel h2, .panel h3 { margin: 0 0 var(--space-3); }
     .panel h2 { font-family: var(--font-display); font-size: var(--text-lg); }
     .lede { margin: 0 0 var(--space-4); color: var(--color-text-muted); font-size: var(--text-sm); max-width: 64ch; }
-    .controls { display: grid; gap: var(--space-4); margin-bottom: var(--space-5); }
+    .controls { display: grid; gap: var(--space-2); flex-shrink: 0; }
     .control-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-    .roulette-wrap { display: grid; gap: var(--space-4); }
-    .board-shell { position: relative; border-radius: 28px; overflow: hidden; border: 1px solid rgba(242,214,143,.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 16px 50px rgba(0,0,0,.34); background: linear-gradient(180deg, rgba(8,20,16,.85), rgba(7,16,13,.98)); }
-    .board-stage { position: relative; padding: 14px; }
-    canvas#rouletteCanvas { display: none; }
-    .board-3d { width: 100%; min-height: 520px; aspect-ratio: 680 / 1360; border-radius: 22px; overflow: hidden; cursor: crosshair; }
-    .board-3d canvas { display: block; width: 100% !important; height: 100% !important; border-radius: 22px; }
-    .board-metrics { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: var(--space-3); align-items: stretch; }
-    .hero-metrics { display: grid; grid-template-columns: 1fr; gap: var(--space-3); margin-bottom: var(--space-4); }
-    .hero-card, .stat, .formula, .progression-box, .chart-card, .table-card { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
-    .hero-card { padding: var(--space-4); }
-    .hero-card .label, .stat .label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; }
-    .hero-card .value { font-family: var(--font-display); font-size: clamp(1.5rem, 1rem + 1.4vw, 2.5rem); line-height: 1; margin-top: var(--space-2); }
-    .hero-card .hint, .stat .hint { margin-top: var(--space-2); color: var(--color-text-muted); font-size: var(--text-xs); max-width: 28ch; }
+    .view-toggle { gap: var(--space-2); }
+    .view-label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; margin-right: var(--space-1); }
+    .view-btn.active { background: linear-gradient(180deg, rgba(239,187,73,.28), rgba(208,162,58,.12)); border-color: rgba(239,187,73,.45); color: var(--color-primary); box-shadow: 0 0 18px rgba(239,187,73,.12); }
+    .roulette-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-2); position: relative; }
+    .board-shell { position: relative; flex: 1 1 0; min-height: 220px; overflow: hidden; border-radius: 24px; border: 1px solid rgba(242,214,143,.16); box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), 0 16px 50px rgba(0,0,0,.34); background: linear-gradient(180deg, rgba(8,20,16,.85), rgba(7,16,13,.98)); padding-top: min(168px, 34vw); }
+    .bottom-dock { flex: 0 0 auto; width: calc(100% * 2 / 3 - var(--space-1)); max-width: 66.666%; position: relative; z-index: 4; }
+    .scoreboard { min-width: 0; position: relative; z-index: 0; padding: var(--space-4) var(--space-5); background: linear-gradient(180deg, rgba(8,18,14,.96), rgba(4,10,8,.98)); border-radius: var(--radius-xl); border: 1px solid rgba(239,187,73,.18); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 8px 24px rgba(0,0,0,.22); }
+    .scoreboard::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(239,187,73,.03) 0, rgba(239,187,73,.03) 1px, transparent 1px, transparent 24px); pointer-events: none; border-radius: inherit; }
+    .scoreboard-grid { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
+    .scoreboard-outcomes { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid rgba(239,187,73,.14); }
+    .scoreboard-stat { text-align: center; padding: var(--space-4) var(--space-3); border-radius: var(--radius-lg); background: rgba(0,0,0,.28); border: 1px solid rgba(239,187,73,.14); box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 0 24px rgba(239,187,73,.04); }
+    .scoreboard-stat .label { color: var(--color-primary); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .1em; font-weight: 600; }
+    .scoreboard-stat .value { font-family: var(--font-display); font-size: clamp(1.85rem, 1.35rem + 1.1vw, 2.75rem); line-height: 1.05; margin-top: var(--space-2); font-variant-numeric: tabular-nums lining-nums; }
+    .wheel-area { position: absolute; top: var(--space-3); left: 50%; z-index: 4; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: 0; pointer-events: none; width: min(100%, 320px); }
+    .wheel-display { position: relative; width: min(156px, 34vw); aspect-ratio: 1; flex-shrink: 0; pointer-events: none; }
+    .wheel-canvas-wrap { width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 38%, rgba(255,230,170,.08), transparent 58%), #120a08; box-shadow: 0 0 0 3px rgba(217,170,66,.36), 0 0 0 7px rgba(18,10,8,.92), 0 10px 28px rgba(0,0,0,.45), inset 0 0 18px rgba(0,0,0,.35); transition: box-shadow 280ms ease, filter 280ms ease; }
+    .wheel-display.spinning .wheel-canvas-wrap { box-shadow: 0 0 0 3px rgba(239,187,73,.55), 0 0 0 7px rgba(18,10,8,.92), 0 0 28px rgba(239,187,73,.24), 0 10px 28px rgba(0,0,0,.45); filter: saturate(1.08); }
+    .wheel-display.landed .wheel-canvas-wrap { box-shadow: 0 0 0 3px rgba(239,187,73,.65), 0 0 0 7px rgba(18,10,8,.92), 0 0 32px rgba(239,187,73,.28), 0 10px 28px rgba(0,0,0,.45); }
+    .wheel-canvas-wrap canvas { display: block; width: 100%; height: 100%; will-change: transform; transform-origin: 50% 50%; }
+    .wheel-pointer { position: absolute; top: -3px; left: 50%; transform: translateX(-50%); width: 14px; height: 22px; z-index: 3; pointer-events: none; filter: drop-shadow(0 2px 5px rgba(0,0,0,.5)); }
+    .wheel-pointer::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, #fff0c8, #efbb49 42%, #a8741f); clip-path: polygon(50% 100%, 0 0, 100% 0); border-radius: 2px 2px 0 0; }
+    .wheel-pointer::after { content: ''; position: absolute; top: 2px; left: 50%; transform: translateX(-50%); width: 9px; height: 9px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff8e8, #c28b2d); box-shadow: inset 0 -1px 2px rgba(0,0,0,.25); }
+    .wheel-ball { position: absolute; top: 7%; left: 50%; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: radial-gradient(circle at 32% 28%, #ffffff, #d8dde3 38%, #8a9199); box-shadow: 0 1px 3px rgba(0,0,0,.55), inset 0 -1px 1px rgba(0,0,0,.2); z-index: 2; pointer-events: none; opacity: 0.95; }
+    .wheel-display.spinning .wheel-ball { animation: wheelBallPulse 420ms ease-in-out infinite alternate; }
+    .wheel-display.landed .wheel-ball { animation: wheelBallSettle 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes wheelBallPulse { from { transform: scale(0.92) translateY(0); } to { transform: scale(1.08) translateY(-1px); } }
+    @keyframes wheelBallSettle { 0% { transform: scale(1.15) translateY(-2px); } 55% { transform: scale(0.94) translateY(1px); } 100% { transform: scale(1) translateY(0); } }
+    .wheel-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-2); min-width: 0; padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); background: rgba(4,10,8,.82); backdrop-filter: blur(10px); border: 1px solid rgba(239,187,73,.16); pointer-events: auto; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+    .wheel-result { font-family: var(--font-display); font-size: clamp(1.25rem, 1.05rem + 0.6vw, 1.65rem); line-height: 1; font-variant-numeric: tabular-nums lining-nums; min-height: 1.1em; min-width: 1.5ch; text-align: center; }
+    .wheel-result.landed { animation: wheelResultPop 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes wheelResultPop { 0% { transform: scale(0.82); opacity: 0.55; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+    .wheel-result.red { color: #f26e89; }
+    .wheel-result.black { color: var(--color-text); }
+    .wheel-result.green { color: var(--color-success); }
+    .wheel-caption { margin: 0; color: var(--color-text-faint); font-size: var(--text-xs); max-width: 28ch; }
+    .wheel-caption { display: none; }
+    .board-stage { position: absolute; inset: 0; z-index: 1; min-height: 200px; }
+    canvas#rouletteCanvas { position: fixed; left: -10000px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; visibility: hidden; }
+    .board-3d { width: 100%; height: 100%; min-height: 200px; position: relative; border-radius: 18px; overflow: hidden; cursor: grab; touch-action: none; }
+    .board-3d canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 18px; outline: none; }
+    .board-hint { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; margin: 0; padding: var(--space-1) var(--space-2); color: var(--color-text-faint); font-size: 0.65rem; text-align: center; background: linear-gradient(transparent, rgba(4,10,8,.92)); pointer-events: none; }
+    .hero-card, .stat, .formula, .progression-box, .chart-card, .table-card, .metrics-details { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: inset 0 1px 0 rgba(255,255,255,.03); }
+    .stat .label { color: var(--color-text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .1em; }
+    .stat .hint { margin-top: var(--space-2); color: var(--color-text-muted); font-size: var(--text-xs); max-width: 28ch; }
+    .metrics-details { margin-top: var(--space-4); overflow: hidden; }
+    .metrics-details > summary { list-style: none; cursor: pointer; padding: var(--space-4); font-family: var(--font-display); font-size: var(--text-base); color: var(--color-text); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); user-select: none; }
+    .metrics-details > summary::-webkit-details-marker { display: none; }
+    .metrics-details > summary::after { content: '+'; color: var(--color-primary); font-size: var(--text-lg); line-height: 1; transition: transform var(--transition); }
+    .metrics-details[open] > summary::after { transform: rotate(45deg); }
+    .metrics-details > summary:hover { color: var(--color-primary); }
+    .metrics-details-body { padding: 0 var(--space-4) var(--space-4); display: grid; gap: var(--space-4); border-top: 1px solid rgba(255,255,255,.06); }
     .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
     .stat { padding: var(--space-4); }
     .stat .value { font-size: var(--text-lg); font-weight: 700; font-variant-numeric: tabular-nums lining-nums; margin-top: var(--space-1); }
@@ -79,8 +115,10 @@
     .scenario input { min-height: 44px; padding: 0 var(--space-3); background: rgba(255,255,255,.05); color: var(--color-text); border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,.12); }
     .bet-list { display: flex; flex-wrap: wrap; gap: var(--space-2); }
     .bet-pill { display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); font-size: var(--text-xs); }
-    .chart-wrap { position: relative; height: 280px; }
-    .detail-grid { display: grid; gap: var(--space-4); margin-top: var(--space-4); }
+    .chart-dock { position: absolute; right: 0; bottom: 0; z-index: 5; display: flex; flex-direction: column; width: 33.333%; min-width: 220px; height: min(460px, 52vh); padding: var(--space-3) var(--space-4) var(--space-4); background: linear-gradient(180deg, rgba(8,18,14,.97), rgba(4,10,8,.99)); border: 1px solid rgba(255,255,255,.1); border-radius: var(--radius-xl); box-shadow: 0 12px 36px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.04); backdrop-filter: blur(8px); pointer-events: none; }
+    .chart-dock h3, .chart-wrap { pointer-events: auto; }
+    .chart-dock h3 { margin: 0 0 var(--space-2); font-family: var(--font-display); font-size: var(--text-sm); color: var(--color-text); flex-shrink: 0; }
+    .chart-wrap { position: relative; flex: 1; min-height: 0; width: 100%; }
     .outcome-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
     .outcome-table th, .outcome-table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; font-variant-numeric: tabular-nums; }
     .outcome-table th { position: sticky; top: 0; background: #14231d; z-index: 1; }
@@ -89,35 +127,26 @@
     .negative { color: var(--color-error); font-weight: 700; }
     .neutral { color: var(--color-text-muted); }
     .footer-note { margin-top: var(--space-4); font-size: var(--text-xs); color: var(--color-text-muted); }
-    @media (max-width: 1260px) { .layout { grid-template-columns: 1fr; } .topbar { align-items: flex-start; flex-direction: column; } }
-    @media (max-width: 900px) { .board-metrics, .stats { grid-template-columns: 1fr; } }
-    @media (max-width: 760px) { .hero-metrics { grid-template-columns: 1fr; } }
+    @media (max-width: 1260px) {
+      body { overflow: auto; height: auto; min-height: 100dvh; }
+      .app { height: auto; min-height: 100dvh; }
+      .layout { grid-template-columns: 1fr; }
+      .board-shell { min-height: 70vh; }
+    }
+    @media (max-width: 900px) {
+      .bottom-dock { width: 100%; max-width: none; }
+      .chart-dock { position: relative; width: 100%; min-width: 0; height: 260px; margin-top: var(--space-2); }
+      .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) { .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: 1fr; } .wheel-meta { flex-direction: column; } }
   </style>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
   <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <svg class="logo" viewBox="0 0 48 48" fill="none" aria-label="Roulette Chip Analytics logo">
-          <circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="2.5"></circle>
-          <circle cx="24" cy="24" r="9" stroke="currentColor" stroke-width="2.5"></circle>
-          <path d="M24 4v8M24 36v8M4 24h8M36 24h8M10 10l5.5 5.5M32.5 32.5L38 38M38 10l-5.5 5.5M10 38l5.5-5.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"></path>
-        </svg>
-        <div>
-          <h1>Roulette Chip Analytics</h1>
-          <p>3D American roulette table with exact payout mapping and a Chart.js analytics layer.</p>
-        </div>
-      </div>
-      <div class="toolbar">
-        <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch to dark mode">◐</button>
-      </div>
-    </header>
-
     <main id="main" class="layout">
       <section class="panel">
-        <div class="panel-inner">
-          <h2>Board</h2>
+        <div class="panel-inner board-panel">
           <div class="controls" aria-label="Chip controls">
             <div class="control-row">
               <button class="btn subtle" id="undoBtn" type="button">Undo last chip</button>
@@ -125,84 +154,124 @@
               <button class="btn primary" id="flatEvenBtn" type="button">Demo: flat on red</button>
               <button class="btn subtle" id="martingaleBtn" type="button">Demo: Martingale path</button>
             </div>
+            <div class="control-row view-toggle" role="group" aria-label="Camera angle">
+              <span class="view-label">Angle</span>
+              <button type="button" class="btn subtle view-btn active" data-view="dealer" aria-pressed="true">Dealer</button>
+              <button type="button" class="btn subtle view-btn" data-view="player" aria-pressed="false">Player</button>
+              <button type="button" class="btn subtle view-btn" data-view="side" aria-pressed="false">Side</button>
+              <span class="spacer" aria-hidden="true"></span>
+              <button class="icon-btn compact" type="button" data-theme-toggle aria-label="Switch to dark mode">◐</button>
+            </div>
           </div>
           <div class="roulette-wrap">
             <div class="board-shell">
+              <div class="wheel-area" aria-label="Roulette wheel controls">
+                <div id="wheelDisplay" class="wheel-display">
+                  <div class="wheel-pointer" aria-hidden="true"></div>
+                  <div class="wheel-ball" aria-hidden="true"></div>
+                  <div class="wheel-canvas-wrap">
+                    <canvas id="wheelCanvas" width="640" height="640" aria-hidden="true"></canvas>
+                  </div>
+                </div>
+                <div class="wheel-meta">
+                  <div id="wheelResult" class="wheel-result neutral" aria-live="polite">—</div>
+                  <button class="btn primary" id="spinBtn" type="button">Spin wheel</button>
+                  <p class="wheel-caption">3D wheel on dealer rail · use Dealer angle to view</p>
+                </div>
+              </div>
               <div class="board-stage">
                 <canvas id="rouletteCanvas" width="680" height="1360" aria-hidden="true"></canvas>
                 <div id="board3d" class="board-3d" aria-label="Roulette betting board"></div>
               </div>
+              <p class="board-hint">Click to place chips · Drag empty felt or right-drag to pan · Scroll to zoom · Space to spin</p>
             </div>
-            <div class="board-metrics" aria-label="Board payout summary">
-              <div class="hero-card">
-                <div class="label">Highest payout hit</div>
-                <div class="value" id="boardMax">$0.00</div>
-                <div class="hint">Best single-spin net payout available from the current layout.</div>
-              </div>
-              <div class="hero-card">
-                <div class="label">Total dollars at risk</div>
-                <div class="value" id="boardStake">$0.00</div>
-                <div class="hint">Sum of all placed dollars.</div>
-              </div>
-              <div class="hero-card">
-                <div class="label">Expected profit / spin</div>
-                <div class="value" id="boardEv">$0.00</div>
-                <div class="hint">Probability-weighted average net result each spin.</div>
+            <div class="bottom-dock">
+              <div class="scoreboard" aria-label="Live stats scoreboard">
+                <div class="scoreboard-grid">
+                  <div class="scoreboard-stat">
+                    <div class="label">Expected profit</div>
+                    <div class="value" id="scoreEv">$0.00</div>
+                  </div>
+                  <div class="scoreboard-stat">
+                    <div class="label">At risk</div>
+                    <div class="value" id="scoreStake">$0.00</div>
+                  </div>
+                  <div class="scoreboard-stat">
+                    <div class="label">Highest payout</div>
+                    <div class="value" id="scoreMax">$0.00</div>
+                  </div>
+                  <div class="scoreboard-stat">
+                    <div class="label">Median payout</div>
+                    <div class="value" id="scoreMedian">$0.00</div>
+                  </div>
+                </div>
+                <div class="scoreboard-outcomes" aria-label="Outcome probabilities">
+                  <div class="scoreboard-stat">
+                    <div class="label">Win</div>
+                    <div class="value positive" id="scoreWin">0.0%</div>
+                  </div>
+                  <div class="scoreboard-stat">
+                    <div class="label">Even</div>
+                    <div class="value neutral" id="scoreEven">0.0%</div>
+                  </div>
+                  <div class="scoreboard-stat">
+                    <div class="label">Lose</div>
+                    <div class="value negative" id="scoreLoss">0.0%</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="chart-card">
+            <div class="chart-dock">
               <h3>Payout curve</h3>
               <div class="chart-wrap"><canvas id="payoutChart"></canvas></div>
             </div>
           </div>
-          <div style="margin-top: var(--space-4);">
-            <h3>Current placements</h3>
-            <div id="betList" class="bet-list"></div>
-          </div>
         </div>
       </section>
 
-      <aside class="panel">
+      <aside class="panel" style="overflow: auto;">
         <div class="panel-inner">
           <h2>Metrics</h2>
           <p class="lede">American roulette adds both 0 and 00, and a chip on the line between them acts as a green bet on either green outcome; split bets on 0 and 00 conventionally pay 17:1, while dozens and columns pay 2:1. [web:12][web:16][web:18]</p>
-          <div class="hero-metrics">
-            <div class="hero-card">
-              <div class="label">Expected ROI / spin</div>
-              <div class="value" id="heroRoi">0.00%</div>
-              <div class="hint">Expected profit divided by total dollars at risk. [web:18]</div>
+          <details class="metrics-details" style="margin-top: 0;">
+            <summary>Current placements</summary>
+            <div class="metrics-details-body">
+              <div id="betList" class="bet-list"></div>
             </div>
-          </div>
-          <div id="stats" class="stats"></div>
-          <div class="formula" style="margin-top: var(--space-4);">
-            Expected value per spin = probability-weighted net profit across 38 outcomes. Variance comes from the same outcome distribution. Sharpe-style ratio = mean profit per spin divided by standard deviation per spin.
-          </div>
-          <div style="margin-top: var(--space-5);">
-            <h3>Scenario lens</h3>
-            <div class="scenario">
-              <label>Bankroll ($)
-                <input id="bankrollInput" type="number" min="1" step="1" value="100" />
-              </label>
-              <label>Spins to simulate for path metrics
-                <input id="spinsInput" type="number" min="1" step="1" value="500" />
-              </label>
-            </div>
-            <div id="progressionBox" class="progression-box" style="margin-top: var(--space-4);"></div>
-          </div>
-          <div class="detail-grid">
-            <div class="table-card">
-              <h3>Detailed outcomes</h3>
-              <div class="outcome-scroll">
-                <table class="outcome-table">
-                  <thead>
-                    <tr><th>Outcome</th><th>Net payout</th><th>Result</th></tr>
-                  </thead>
-                  <tbody id="outcomeTableBody"></tbody>
-                </table>
+          </details>
+          <details class="metrics-details">
+            <summary>Detailed metrics</summary>
+            <div class="metrics-details-body">
+              <div id="stats" class="stats"></div>
+              <div class="formula">
+                Expected value per spin = probability-weighted net profit across 38 outcomes. Variance comes from the same outcome distribution. Sharpe-style ratio = mean profit per spin divided by standard deviation per spin.
               </div>
+              <div>
+                <h3>Scenario lens</h3>
+                <div class="scenario">
+                  <label>Bankroll ($)
+                    <input id="bankrollInput" type="number" min="1" step="1" value="100" />
+                  </label>
+                  <label>Spins to simulate for path metrics
+                    <input id="spinsInput" type="number" min="1" step="1" value="500" />
+                  </label>
+                </div>
+                <div id="progressionBox" class="progression-box" style="margin-top: var(--space-4);"></div>
+              </div>
+              <div class="table-card">
+                <h3>Detailed outcomes</h3>
+                <div class="outcome-scroll">
+                  <table class="outcome-table">
+                    <thead>
+                      <tr><th>Outcome</th><th>Net payout</th><th>Result</th></tr>
+                    </thead>
+                    <tbody id="outcomeTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <p class="footer-note" style="margin-top: 0;">The detailed view maps every possible spin result to the exact net dollar payout implied by the current board. [web:18][web:20]</p>
             </div>
-          </div>
-          <p class="footer-note">The detailed view maps every possible spin result to the exact net dollar payout implied by the current board. [web:18][web:20]</p>
+          </details>
         </div>
       </aside>
     </main>
@@ -218,18 +287,21 @@
   </script>
   <script type="module">
     import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+    const BOARD_W = 680;
+    const BOARD_H = 1360;
+    const TEXTURE_SCALE = 2;
     const redNumbers = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+    const wheelOrder = [0,28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1,'00',27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2];
     const boardNumbers = [[3,2,1],[6,5,4],[9,8,7],[12,11,10],[15,14,13],[18,17,16],[21,20,19],[24,23,22],[27,26,25],[30,29,28],[33,32,31],[36,35,34]];
     const numberPos = new Map();
     boardNumbers.forEach((row, rowIndex) => row.forEach((num, colIndex) => numberPos.set(num, { row: rowIndex, col: colIndex })));
     const outsideDefinitions = [
+      { key:'low', label:'1 to 18', payout:1, numbers:Array.from({length:18},(_,i)=>i+1) },
+      { key:'even', label:'Even', payout:1, numbers:[...Array(18).keys()].map(i=>(i+1)*2) },
       { key:'red', label:'Red', payout:1, numbers:[...redNumbers] },
       { key:'black', label:'Black', payout:1, numbers:[...Array(36).keys()].map(n=>n+1).filter(n=>!redNumbers.has(n)) },
-      { key:'even', label:'Even', payout:1, numbers:[...Array(18).keys()].map(i=>(i+1)*2) },
       { key:'odd', label:'Odd', payout:1, numbers:[...Array(18).keys()].map(i=>i*2+1) },
-      { key:'low', label:'1 to 18', payout:1, numbers:Array.from({length:18},(_,i)=>i+1) },
       { key:'high', label:'19 to 36', payout:1, numbers:Array.from({length:18},(_,i)=>i+19) }
     ];
     const dozenDefinitions = [
@@ -245,16 +317,22 @@
 
     const canvas = document.getElementById('rouletteCanvas');
     const ctx = canvas.getContext('2d');
+    const wheelResultEl = document.getElementById('wheelResult');
+    const wheelDisplayEl = document.getElementById('wheelDisplay');
+    const spinBtn = document.getElementById('spinBtn');
     const board3dEl = document.getElementById('board3d');
     const betListEl = document.getElementById('betList');
     const statsEl = document.getElementById('stats');
     const progressionBox = document.getElementById('progressionBox');
     const bankrollInput = document.getElementById('bankrollInput');
     const spinsInput = document.getElementById('spinsInput');
-    const heroRoiEl = document.getElementById('heroRoi');
-    const boardMaxEl = document.getElementById('boardMax');
-    const boardStakeEl = document.getElementById('boardStake');
-    const boardEvEl = document.getElementById('boardEv');
+    const scoreEvEl = document.getElementById('scoreEv');
+    const scoreStakeEl = document.getElementById('scoreStake');
+    const scoreWinEl = document.getElementById('scoreWin');
+    const scoreEvenEl = document.getElementById('scoreEven');
+    const scoreLossEl = document.getElementById('scoreLoss');
+    const scoreMaxEl = document.getElementById('scoreMax');
+    const scoreMedianEl = document.getElementById('scoreMedian');
     const outcomeTableBody = document.getElementById('outcomeTableBody');
     const placements = new Map();
     const history = [];
@@ -264,27 +342,90 @@
     const allBetDefs = new Map();
     let payoutChart;
     let lastDemo = null;
-    let hoverTarget = null;
-    let scene, camera, renderer, controls, boardTexture, chipGroup, hoverMesh, raycaster, pointer;
-    let hitMeshes = [];
-    let chipBodyMaterial;
-    let chipEdgeMaterial;
+    let hoverTargetKey = null;
+    let scene, camera, renderer, boardTexture, chipGroup, hoverMesh, raycaster, pointer;
+    let wheelCanvas, wheelCtx, wheelTexture, wheelRotator, wheelSpinAnim, wheelLastAnimTime = 0;
+    let chipMaterialCache = null;
+    let feltNoiseCanvas = null;
+    const feltPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -1);
+    const planeHit = new THREE.Vector3();
+    let leftPointer = { active: false, x: 0, y: 0, moved: false };
+    let boardResizeObserver = null;
+    let resizeFrame = null;
+    let lastViewportW = 0;
+    let lastViewportH = 0;
+    let lastViewportDpr = 0;
+    let pendingWheelDelta = 0;
+    let viewButtonsDirty = false;
+    let cameraReady = false;
+    let activeViewId = 'dealer';
+    let viewTween = null;
+    let cameraDrag = null;
+    let cameraDragMoved = false;
+    let wheelRotation = 0;
+    let wheelSpinning = false;
+    let wheelLandTimer = null;
+    let wheelIdleLoop = null;
+    const WHEEL_SIZE = 640;
+    const WHEEL_3D_Y_OFFSET = Math.PI;
+
+    function pocketFill(kind) {
+      if (kind === 'green') return ['#45b56a', '#1a6840'];
+      if (kind === 'red') return ['#d44a45', '#8f2420'];
+      return ['#434850', '#15181c'];
+    }
+
+    function rotationForIndex(index, jitterDeg = 0) {
+      const segmentDeg = 360 / wheelOrder.length;
+      return (360 - index * segmentDeg + jitterDeg + 360) % 360;
+    }
+
+    function spinEase(t) {
+      if (t < 0.78) {
+        const p = t / 0.78;
+        return (1 - Math.pow(1 - p, 2.65)) * 0.92;
+      }
+      const tail = (t - 0.78) / 0.22;
+      return 0.92 + (1 - Math.pow(1 - tail, 4)) * 0.08;
+    }
+    const CAMERA_LIMITS = {
+      minPhi: THREE.MathUtils.degToRad(52),
+      maxPhi: THREE.MathUtils.degToRad(82),
+      minRadius: 420,
+      maxRadius: 1300,
+      damp: 0.16
+    };
+    const cameraRig = {
+      pivot: new THREE.Vector3(),
+      spherical: new THREE.Spherical(),
+      fov: 34,
+      targetPivot: new THREE.Vector3(),
+      targetSpherical: new THREE.Spherical(),
+      targetFov: 34
+    };
+    const cameraViews = [
+      { id: 'dealer', label: 'Dealer', position: new THREE.Vector3(0, 580, -930), target: new THREE.Vector3(0, 40, 90), fov: 34 },
+      { id: 'player', label: 'Player', position: new THREE.Vector3(0, 610, 920), target: new THREE.Vector3(0, 28, -80), fov: 34 },
+      { id: 'side', label: 'Side', position: new THREE.Vector3(-760, 520, 40), target: new THREE.Vector3(0, 28, -80), fov: 36 }
+    ];
 
     const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 });
     const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
     const pct = new Intl.NumberFormat('en-US', { style: 'percent', maximumFractionDigits: 2 });
     const board = {
       pad: 16, topW: 366, leftW: 150, rightW: 136, topH: 164,
-      cellW: 122, cellH: 76, gap: 4, dozenW: 132, colH: 58, outsideH: 70
+      cellW: 122, cellH: 76, gap: 4, dozenW: 132, colH: 58
     };
     board.gridX = board.leftW + board.pad;
     board.gridY = board.topH + board.pad + 10;
     board.gridW = board.cellW * 3 + board.gap * 2;
     board.gridH = board.cellH * 12 + board.gap * 11;
-    board.totalW = canvas.width;
-    board.totalH = canvas.height;
-    board.outsideY = board.gridY + board.gridH + 20;
-    board.columnsY = board.outsideY + board.outsideH + 16;
+    board.totalW = BOARD_W;
+    board.totalH = BOARD_H;
+    board.outsideLeftX = board.pad;
+    board.outsideLeftW = board.leftW - board.pad;
+    board.outsideRowH = board.gridH / outsideDefinitions.length;
+    board.columnsY = board.gridY + board.gridH + 16;
     board.dozenX = board.gridX + board.gridW + 14;
     board.stageHeight = board.columnsY + board.colH + board.pad;
 
@@ -294,6 +435,311 @@
       if (n > 0) return `+${abs}`;
       if (n < 0) return `-${abs}`;
       return moneyFmt.format(0);
+    }
+
+    function pocketColor(value) {
+      if (value === 0 || value === '00') return 'green';
+      return redNumbers.has(value) ? 'red' : 'black';
+    }
+
+    function ensureWheelCanvas() {
+      if (wheelCanvas) return;
+      wheelCanvas = document.getElementById('wheelCanvas');
+      wheelCanvas.width = WHEEL_SIZE;
+      wheelCanvas.height = WHEEL_SIZE;
+      wheelCtx = wheelCanvas.getContext('2d');
+    }
+
+    function getIndexAtPointer(rotationDeg) {
+      const segmentDeg = 360 / wheelOrder.length;
+      const normalized = ((rotationDeg % 360) + 360) % 360;
+      let index = Math.floor((360 - normalized) / segmentDeg + 0.0001) % wheelOrder.length;
+      if (index < 0) index += wheelOrder.length;
+      return index;
+    }
+
+    function drawWheelNumber(value, mid, cx, cy, labelR, segment) {
+      const label = String(value);
+      const arcLen = segment * labelR;
+      const fontSize = label === '00'
+        ? Math.max(12, Math.min(17, arcLen * 0.48))
+        : Math.max(13, Math.min(20, arcLen * 0.56));
+
+      wheelCtx.save();
+      wheelCtx.translate(cx + Math.cos(mid) * labelR, cy + Math.sin(mid) * labelR);
+      wheelCtx.rotate(mid + Math.PI / 2);
+      wheelCtx.font = `700 ${fontSize}px "General Sans", sans-serif`;
+      wheelCtx.textAlign = 'center';
+      wheelCtx.textBaseline = 'middle';
+      wheelCtx.lineWidth = Math.max(1.2, fontSize * 0.11);
+      wheelCtx.strokeStyle = 'rgba(0,0,0,.62)';
+      wheelCtx.strokeText(label, 0, 0.6);
+      wheelCtx.fillStyle = '#fff6e3';
+      wheelCtx.fillText(label, 0, 0);
+      wheelCtx.restore();
+    }
+
+    function drawWheelFace() {
+      ensureWheelCanvas();
+      if (wheelCanvas.width !== WHEEL_SIZE) {
+        wheelCanvas.width = WHEEL_SIZE;
+        wheelCanvas.height = WHEEL_SIZE;
+      }
+      const cx = WHEEL_SIZE / 2;
+      const cy = WHEEL_SIZE / 2;
+      const outerR = WHEEL_SIZE / 2 - 12;
+      const pocketOuter = outerR - 10;
+      const pocketInner = outerR - 88;
+      const segment = (Math.PI * 2) / wheelOrder.length;
+
+      wheelCtx.clearRect(0, 0, WHEEL_SIZE, WHEEL_SIZE);
+
+      const wood = wheelCtx.createRadialGradient(cx, cy, pocketInner * 0.2, cx, cy, outerR + 6);
+      wood.addColorStop(0, '#4a2818');
+      wood.addColorStop(0.55, '#32180f');
+      wood.addColorStop(1, '#1a0c08');
+      wheelCtx.fillStyle = wood;
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, outerR + 6, 0, Math.PI * 2);
+      wheelCtx.fill();
+
+      wheelCtx.strokeStyle = 'rgba(255,225,156,.48)';
+      wheelCtx.lineWidth = 7;
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, pocketOuter + 5, 0, Math.PI * 2);
+      wheelCtx.stroke();
+
+      wheelOrder.forEach((value, index) => {
+        const start = index * segment - Math.PI / 2 - segment / 2;
+        const end = start + segment;
+        const kind = pocketColor(value);
+        const [light, dark] = pocketFill(kind);
+        const mid = start + segment / 2;
+        const labelR = (pocketInner + pocketOuter) / 2;
+
+        wheelCtx.beginPath();
+        wheelCtx.arc(cx, cy, pocketOuter, start, end);
+        wheelCtx.arc(cx, cy, pocketInner, end, start, true);
+        wheelCtx.closePath();
+        const pocketGrad = wheelCtx.createLinearGradient(
+          cx + Math.cos(mid) * pocketInner,
+          cy + Math.sin(mid) * pocketInner,
+          cx + Math.cos(mid) * pocketOuter,
+          cy + Math.sin(mid) * pocketOuter
+        );
+        pocketGrad.addColorStop(0, dark);
+        pocketGrad.addColorStop(0.45, light);
+        pocketGrad.addColorStop(1, dark);
+        wheelCtx.fillStyle = pocketGrad;
+        wheelCtx.fill();
+
+        wheelCtx.strokeStyle = 'rgba(255,220,150,.28)';
+        wheelCtx.lineWidth = 1.4;
+        wheelCtx.beginPath();
+        wheelCtx.moveTo(cx + Math.cos(start) * pocketInner, cy + Math.sin(start) * pocketInner);
+        wheelCtx.lineTo(cx + Math.cos(start) * pocketOuter, cy + Math.sin(start) * pocketOuter);
+        wheelCtx.stroke();
+
+        drawWheelNumber(value, mid, cx, cy, labelR, segment);
+      });
+
+      wheelCtx.strokeStyle = 'rgba(0,0,0,.4)';
+      wheelCtx.lineWidth = 2;
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, pocketInner, 0, Math.PI * 2);
+      wheelCtx.stroke();
+
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, pocketInner - 8, 0, Math.PI * 2);
+      wheelCtx.fillStyle = '#0e0806';
+      wheelCtx.fill();
+
+      const hub = wheelCtx.createRadialGradient(cx - 16, cy - 20, 4, cx, cy, pocketInner - 16);
+      hub.addColorStop(0, '#f3cf73');
+      hub.addColorStop(0.42, '#c28b2d');
+      hub.addColorStop(1, '#4a2810');
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, pocketInner - 16, 0, Math.PI * 2);
+      wheelCtx.fillStyle = hub;
+      wheelCtx.fill();
+
+      wheelCtx.strokeStyle = 'rgba(255,225,156,.5)';
+      wheelCtx.lineWidth = 4;
+      wheelCtx.beginPath();
+      wheelCtx.arc(cx, cy, outerR - 2, 0, Math.PI * 2);
+      wheelCtx.stroke();
+
+      if (wheelTexture) wheelTexture.needsUpdate = true;
+    }
+
+    function applyWheelRotation(deg) {
+      if (wheelCanvas) wheelCanvas.style.transform = `rotate(${deg}deg)`;
+      if (wheelRotator) wheelRotator.rotation.y = THREE.MathUtils.degToRad(-deg) + WHEEL_3D_Y_OFFSET;
+    }
+
+    function buildWheel3D(parentScene) {
+      ensureWheelCanvas();
+      drawWheelFace();
+      wheelTexture = new THREE.CanvasTexture(wheelCanvas);
+      wheelTexture.colorSpace = THREE.SRGBColorSpace;
+      wheelTexture.center.set(0.5, 0.5);
+      wheelTexture.rotation = Math.PI / 2;
+      wheelTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+      const wheelAssembly = new THREE.Group();
+      wheelAssembly.position.set(0, 78, -(BOARD_H / 2 + 108));
+      wheelAssembly.rotation.x = THREE.MathUtils.degToRad(12);
+      parentScene.add(wheelAssembly);
+
+      const woodMat = new THREE.MeshStandardMaterial({ color: 0x3a1c12, roughness: 0.9, metalness: 0.04 });
+      const brassMat = new THREE.MeshStandardMaterial({ color: 0xd9aa42, roughness: 0.24, metalness: 0.84 });
+
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(132, 148, 32, 32), woodMat);
+      bowl.position.y = 16;
+      bowl.castShadow = true;
+      bowl.receiveShadow = true;
+      wheelAssembly.add(bowl);
+
+      const lip = new THREE.Mesh(new THREE.TorusGeometry(138, 5, 8, 40), brassMat);
+      lip.rotation.x = Math.PI / 2;
+      lip.position.y = 30;
+      wheelAssembly.add(lip);
+
+      wheelRotator = new THREE.Group();
+      wheelRotator.position.y = 34;
+      wheelAssembly.add(wheelRotator);
+
+      const disc = new THREE.Mesh(
+        new THREE.CylinderGeometry(118, 118, 7, 48),
+        new THREE.MeshStandardMaterial({ color: 0x241008, roughness: 0.92, metalness: 0.02 })
+      );
+      disc.castShadow = true;
+      disc.receiveShadow = true;
+      wheelRotator.add(disc);
+
+      const topCap = new THREE.Mesh(
+        new THREE.CircleGeometry(118, 48),
+        new THREE.MeshStandardMaterial({ map: wheelTexture, roughness: 0.86, metalness: 0.03 })
+      );
+      topCap.rotation.x = -Math.PI / 2;
+      topCap.position.y = 3.6;
+      wheelRotator.add(topCap);
+
+      const outerRing = new THREE.Mesh(new THREE.TorusGeometry(118, 4.5, 8, 48), brassMat);
+      outerRing.rotation.x = Math.PI / 2;
+      outerRing.position.y = 3.2;
+      wheelRotator.add(outerRing);
+
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(34, 34, 10, 24), brassMat);
+      hub.position.y = 4;
+      wheelRotator.add(hub);
+
+      const deflector = new THREE.Mesh(new THREE.BoxGeometry(10, 22, 28), brassMat);
+      deflector.position.set(0, 46, 126);
+      wheelAssembly.add(deflector);
+
+      const marker = new THREE.Mesh(new THREE.ConeGeometry(7, 14, 8), brassMat);
+      marker.rotation.x = Math.PI;
+      marker.position.set(0, 58, 118);
+      wheelAssembly.add(marker);
+
+      applyWheelRotation(wheelRotation);
+    }
+
+    function updateWheelAnimation(now) {
+      if (wheelSpinAnim) {
+        const t = Math.min(1, (now - wheelSpinAnim.startTime) / wheelSpinAnim.duration);
+        const eased = spinEase(t);
+        let angle = wheelSpinAnim.start + (wheelSpinAnim.end - wheelSpinAnim.start) * eased;
+        if (t > 0.9) {
+          const wobble = Math.sin((t - 0.9) / 0.1 * Math.PI * 2.4) * (1 - t) * 1.6;
+          angle += wobble;
+        }
+        wheelRotation = angle;
+        applyWheelRotation(wheelRotation);
+        if (t < 1) return;
+
+        const finalIndex = wheelSpinAnim.targetIndex;
+        wheelRotation = rotationForIndex(finalIndex, wheelSpinAnim.jitterDeg);
+        applyWheelRotation(wheelRotation);
+        setWheelResult(wheelOrder[finalIndex], true);
+        wheelSpinning = false;
+        spinBtn.disabled = false;
+        wheelDisplayEl?.classList.remove('spinning');
+        wheelDisplayEl?.classList.add('landed');
+        if (wheelLandTimer) clearTimeout(wheelLandTimer);
+        wheelLandTimer = setTimeout(() => wheelDisplayEl?.classList.remove('landed'), 700);
+        wheelSpinAnim = null;
+        return;
+      }
+
+      if (!wheelSpinning) {
+        const dt = wheelLastAnimTime ? Math.min(48, now - wheelLastAnimTime) : 0;
+        wheelRotation = (wheelRotation + dt * 0.0035) % 360;
+        applyWheelRotation(wheelRotation);
+      }
+    }
+
+    function setWheelResult(value, landed = false) {
+      const kind = value === '—' ? 'neutral' : pocketColor(value);
+      wheelResultEl.textContent = String(value);
+      wheelResultEl.className = `wheel-result ${kind}${landed ? ' landed' : ''}`;
+      if (landed) {
+        wheelResultEl.addEventListener('animationend', () => wheelResultEl.classList.remove('landed'), { once: true });
+      }
+    }
+
+    function spinWheel() {
+      if (wheelSpinning) return;
+      wheelSpinning = true;
+      spinBtn.disabled = true;
+      wheelDisplayEl?.classList.remove('landed');
+      wheelDisplayEl?.classList.add('spinning');
+
+      const targetIndex = Math.floor(Math.random() * wheelOrder.length);
+      const segmentDeg = 360 / wheelOrder.length;
+      const jitterDeg = (Math.random() - 0.5) * segmentDeg * 0.28;
+      const targetAngle = rotationForIndex(targetIndex, jitterDeg);
+      const extraTurns = 5 + Math.floor(Math.random() * 3);
+      const start = wheelRotation;
+      const delta = ((targetAngle - (start % 360) + 360) % 360);
+      const end = start + extraTurns * 360 + delta;
+
+      wheelSpinAnim = {
+        start,
+        end,
+        targetIndex,
+        jitterDeg,
+        duration: 4800 + Math.random() * 1200,
+        startTime: performance.now()
+      };
+    }
+
+    function startWheelIdleLoop() {
+      if (wheelIdleLoop) return;
+      const tick = (now) => {
+        wheelIdleLoop = requestAnimationFrame(tick);
+        if (renderer && scene && camera) return;
+        updateWheelAnimation(now);
+        wheelLastAnimTime = now;
+      };
+      wheelLastAnimTime = performance.now();
+      wheelIdleLoop = requestAnimationFrame(tick);
+    }
+
+    function initWheelControls() {
+      ensureWheelCanvas();
+      drawWheelFace();
+      applyWheelRotation(wheelRotation);
+      wheelLastAnimTime = performance.now();
+      setWheelResult('—');
+      spinBtn.addEventListener('click', spinWheel);
+      document.addEventListener('keydown', (event) => {
+        if (event.code !== 'Space' || event.target.closest('input, textarea, select')) return;
+        event.preventDefault();
+        spinWheel();
+      });
+      startWheelIdleLoop();
     }
 
     function themeInit() {
@@ -306,7 +752,15 @@
         btn.setAttribute('aria-label', `Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`);
       };
       sync();
-      btn.addEventListener('click', () => { mode = mode === 'dark' ? 'light' : 'dark'; root.setAttribute('data-theme', mode); drawBoard(); updateChartTheme(); });
+      btn.addEventListener('click', () => {
+        mode = mode === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', mode);
+        feltNoiseCanvas = null;
+        prepareBoardTextureCanvas();
+        drawBoard();
+        drawWheelFace();
+        updateChartTheme();
+      });
     }
 
     function buildSplitKey(numbers) { return `split-${[...numbers].sort((a,b)=>String(a).localeCompare(String(b), undefined, {numeric:true})).join('-')}`; }
@@ -357,15 +811,36 @@
         const baseY = board.gridY + pos.row * (board.cellH + board.gap);
         if (pos.col < 2) {
           const right = boardNumbers[pos.row][pos.col + 1];
-          pushTarget({ key: registerSplit([num, right]), x: baseX + board.cellW - 10, y: baseY + 18, width: 20, height: board.cellH - 36, kind:'split' });
+          pushTarget({
+            key: registerSplit([num, right]),
+            x: baseX + board.cellW - 18,
+            y: baseY + 8,
+            width: 36,
+            height: board.cellH + board.gap - 16,
+            kind: 'split'
+          });
         }
         if (pos.row < 11) {
           const below = boardNumbers[pos.row + 1][pos.col];
-          pushTarget({ key: registerSplit([num, below]), x: baseX + 18, y: baseY + board.cellH - 10, width: board.cellW - 36, height: 20, kind:'split' });
+          pushTarget({
+            key: registerSplit([num, below]),
+            x: baseX + 8,
+            y: baseY + board.cellH - 18,
+            width: board.cellW + board.gap - 16,
+            height: 36,
+            kind: 'split'
+          });
         }
         if (pos.row < 11 && pos.col < 2) {
           const set = [num, boardNumbers[pos.row][pos.col + 1], boardNumbers[pos.row + 1][pos.col], boardNumbers[pos.row + 1][pos.col + 1]];
-          pushTarget({ key: registerCorner(set), x: baseX + board.cellW - 12, y: baseY + board.cellH - 12, width: 24, height: 24, kind:'corner' });
+          pushTarget({
+            key: registerCorner(set),
+            x: baseX + board.cellW - 20,
+            y: baseY + board.cellH - 20,
+            width: 40,
+            height: 40,
+            kind: 'corner'
+          });
         }
       }
 
@@ -376,7 +851,14 @@
         pushTarget({ key:def.key, x:board.gridX + i * (board.cellW + board.gap), y:board.columnsY, width:board.cellW, height:board.colH, kind:'outside' }, false);
       });
       outsideDefinitions.forEach((def, i) => {
-        pushTarget({ key:def.key, x:board.pad + i * ((canvas.width - board.pad * 2) / outsideDefinitions.length), y:board.outsideY, width:(canvas.width - board.pad * 2) / outsideDefinitions.length - 3, height:board.outsideH, kind:'outside' }, false);
+        pushTarget({
+          key: def.key,
+          x: board.outsideLeftX,
+          y: board.gridY + i * board.outsideRowH,
+          width: board.outsideLeftW,
+          height: board.outsideRowH - (i < outsideDefinitions.length - 1 ? board.gap : 0),
+          kind: 'outside'
+        }, false);
       });
     }
 
@@ -389,12 +871,19 @@
     }
 
     function drawFeltNoise() {
+      if (!feltNoiseCanvas) {
+        feltNoiseCanvas = document.createElement('canvas');
+        feltNoiseCanvas.width = BOARD_W;
+        feltNoiseCanvas.height = BOARD_H;
+        const nctx = feltNoiseCanvas.getContext('2d');
+        for (let i = 0; i < 2200; i++) {
+          nctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+          nctx.fillRect(Math.random() * BOARD_W, Math.random() * BOARD_H, 1, 1);
+        }
+      }
       ctx.save();
       ctx.globalAlpha = 0.08;
-      for (let i = 0; i < 2200; i++) {
-        ctx.fillStyle = i % 2 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
-        ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 1, 1);
-      }
+      ctx.drawImage(feltNoiseCanvas, 0, 0);
       ctx.restore();
     }
 
@@ -415,34 +904,123 @@
         : ['#34383d', '#111214'];
     }
 
-    function drawChipGlow(target) {
-      if (!target || !(placements.get(target.key) > 0)) return;
-      const cx = target.x + target.width / 2;
-      const cy = target.y + target.height / 2;
-      const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, Math.max(target.width, target.height) * 0.55);
-      grad.addColorStop(0, 'rgba(255,214,108,0.25)');
-      grad.addColorStop(1, 'rgba(255,214,108,0)');
-      ctx.fillStyle = grad;
+    function getChipStyle(amount) {
+      const value = Math.max(1, Math.round(amount));
+      if (value >= 100) return { primary: '#17130f', accent: '#d0a23a', label: `$${value}` };
+      if (value >= 25) return { primary: '#1f6b41', accent: '#f2e6cf', label: `$${value}` };
+      if (value >= 5) return { primary: '#b63a34', accent: '#f2e6cf', label: `$${value}` };
+      return { primary: '#244f8f', accent: '#f2e6cf', label: `$${value}` };
+    }
+
+    function drawClassicChipTop(ctx, size, primary, accent, label) {
+      const cx = size / 2;
+      const cy = size / 2;
+      const r = size / 2 - 6;
+      ctx.clearRect(0, 0, size, size);
+
+      ctx.fillStyle = '#f2e6cf';
       ctx.beginPath();
-      ctx.arc(cx, cy, Math.max(target.width, target.height) * 0.55, 0, Math.PI * 2);
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fill();
+
+      ctx.strokeStyle = primary;
+      ctx.lineWidth = size * 0.075;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - size * 0.04, 0, Math.PI * 2);
+      ctx.stroke();
+
+      const spots = 8;
+      for (let i = 0; i < spots; i++) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate((i / spots) * Math.PI * 2);
+        ctx.fillStyle = i % 2 ? primary : accent;
+        ctx.fillRect(-size * 0.055, -r + size * 0.015, size * 0.11, size * 0.13);
+        ctx.restore();
+      }
+
+      ctx.fillStyle = '#faf6eb';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.44, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = primary;
+      ctx.lineWidth = Math.max(2, size * 0.018);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.44, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = primary;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const fontSize = label.length > 3 ? size * 0.16 : size * 0.22;
+      ctx.font = `700 ${fontSize}px General Sans`;
+      ctx.fillText(label, cx, cy + 1);
+    }
+
+    function drawClassicChipSide(ctx, width, height, primary, accent) {
+      ctx.fillStyle = accent;
+      ctx.fillRect(0, 0, width, height);
+      const blocks = 16;
+      const blockW = width / blocks;
+      for (let i = 0; i < blocks; i++) {
+        ctx.fillStyle = i % 2 ? primary : accent;
+        ctx.fillRect(i * blockW, 0, blockW + 0.5, height);
+      }
+    }
+
+    function getClassicChipMaterials(amount) {
+      if (!chipMaterialCache) chipMaterialCache = new Map();
+      const style = getChipStyle(amount);
+      const key = `${style.primary}-${style.label}`;
+      if (chipMaterialCache.has(key)) return chipMaterialCache.get(key);
+
+      const topCanvas = document.createElement('canvas');
+      topCanvas.width = 128;
+      topCanvas.height = 128;
+      drawClassicChipTop(topCanvas.getContext('2d'), 128, style.primary, style.accent, style.label);
+      const topTex = new THREE.CanvasTexture(topCanvas);
+      topTex.colorSpace = THREE.SRGBColorSpace;
+
+      const sideCanvas = document.createElement('canvas');
+      sideCanvas.width = 256;
+      sideCanvas.height = 64;
+      drawClassicChipSide(sideCanvas.getContext('2d'), 256, 64, style.primary, style.accent);
+      const sideTex = new THREE.CanvasTexture(sideCanvas);
+      sideTex.colorSpace = THREE.SRGBColorSpace;
+      sideTex.wrapS = THREE.RepeatWrapping;
+      sideTex.wrapT = THREE.ClampToEdgeWrapping;
+      sideTex.repeat.set(1, 1);
+
+      const faceMat = new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.72, metalness: 0.03 });
+      const sideMat = new THREE.MeshStandardMaterial({ map: sideTex, roughness: 0.78, metalness: 0.02 });
+      const materials = [sideMat, faceMat, faceMat];
+      chipMaterialCache.set(key, materials);
+      return materials;
+    }
+
+    function hashChipOffset(key, index) {
+      let hash = 0;
+      const seed = `${key}-${index}`;
+      for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+      return hash;
     }
 
     function drawBoard() {
       const styles = getComputedStyle(document.documentElement);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      ctx.clearRect(0, 0, BOARD_W, BOARD_H);
+      const bg = ctx.createLinearGradient(0, 0, 0, BOARD_H);
       bg.addColorStop(0, '#143528'); bg.addColorStop(1, '#0c1a15');
       ctx.fillStyle = bg;
-      roundedRect(0, 0, canvas.width, canvas.height, 28);
+      roundedRect(0, 0, BOARD_W, BOARD_H, 28);
       ctx.fill();
       drawFeltNoise();
 
-      const rail = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      const rail = ctx.createLinearGradient(0, 0, BOARD_W, 0);
       rail.addColorStop(0, 'rgba(238,194,97,.22)'); rail.addColorStop(.5, 'rgba(255,233,180,.08)'); rail.addColorStop(1, 'rgba(238,194,97,.22)');
       ctx.strokeStyle = rail;
       ctx.lineWidth = 2;
-      roundedRect(8, 8, canvas.width - 16, canvas.height - 16, 24);
+      roundedRect(8, 8, BOARD_W - 16, BOARD_H - 16, 24);
       ctx.stroke();
 
       const brass = '#d0a23a';
@@ -458,7 +1036,6 @@
         roundedRect(t.x, t.y, t.width, t.height, 20);
         ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1; ctx.stroke();
-        drawChipGlow(t);
       });
       drawText('0', specialTargets[0].x + specialTargets[0].width / 2, specialTargets[0].y + specialTargets[0].height / 2 + 2, { font:'700 42px Zodiak', shadow:true });
       drawText('00', specialTargets[1].x + specialTargets[1].width / 2, specialTargets[1].y + specialTargets[1].height / 2 + 2, { font:'700 42px Zodiak', shadow:true });
@@ -472,7 +1049,6 @@
         ctx.fillStyle = g;
         roundedRect(t.x, t.y, t.width, t.height, 14); ctx.fill();
         ctx.strokeStyle = divider; ctx.lineWidth = 1; ctx.stroke();
-        drawChipGlow(t);
         ctx.save();
         ctx.translate(t.x + t.width / 2, t.y + t.height / 2 + 3);
         ctx.rotate(-0.045);
@@ -481,9 +1057,8 @@
       });
 
       allTargets.filter(t => ['split','corner'].includes(t.kind)).forEach(t => {
-        ctx.fillStyle = hoverTarget && hoverTarget.key === t.key ? 'rgba(255,228,170,.22)' : 'rgba(255,245,214,.10)';
+        ctx.fillStyle = 'rgba(255,245,214,.10)';
         roundedRect(t.x, t.y, t.width, t.height, 10); ctx.fill();
-        drawChipGlow(t);
       });
 
       allTargets.filter(t => t.kind === 'outside').forEach((t) => {
@@ -492,26 +1067,578 @@
         ctx.fillStyle = g;
         roundedRect(t.x, t.y, t.width, t.height, 16); ctx.fill();
         ctx.strokeStyle = divider; ctx.lineWidth = 1; ctx.stroke();
-        drawChipGlow(t);
         const def = allBetDefs.get(t.key);
         drawText(def.label.toUpperCase(), t.x + t.width / 2, t.y + t.height / 2 + 1, { font: t.height > 60 ? '700 22px General Sans' : '700 18px General Sans', color: cream });
       });
 
       ctx.fillStyle = 'rgba(255,255,255,.05)';
       ctx.fillRect(board.gridX - 6, board.gridY - 6, board.gridW + 12, board.gridH + 12);
-      drawText('AMERICAN TABLE', canvas.width / 2, canvas.height - 24, { font:'600 14px General Sans', color: muted });
+      drawText('AMERICAN TABLE', BOARD_W / 2, BOARD_H - 24, { font:'600 14px General Sans', color: muted });
       updateBoardTexture();
     }
 
     function targetCenter(target) {
       return {
-        x: target.x + target.width / 2 - canvas.width / 2,
-        z: target.y + target.height / 2 - canvas.height / 2
+        x: target.x + target.width / 2 - BOARD_W / 2,
+        z: target.y + target.height / 2 - BOARD_H / 2
       };
     }
 
+    function prepareBoardTextureCanvas() {
+      canvas.width = BOARD_W * TEXTURE_SCALE;
+      canvas.height = BOARD_H * TEXTURE_SCALE;
+      ctx.setTransform(TEXTURE_SCALE, 0, 0, TEXTURE_SCALE, 0, 0);
+    }
+
     function updateBoardTexture() {
-      if (boardTexture) boardTexture.needsUpdate = true;
+      if (!boardTexture) return;
+      boardTexture.needsUpdate = true;
+    }
+
+    function makeProcTexture(width, height, drawFn, repeatX = 1, repeatY = 1) {
+      const c = document.createElement('canvas');
+      c.width = width;
+      c.height = height;
+      drawFn(c.getContext('2d'), width, height);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(repeatX, repeatY);
+      return tex;
+    }
+
+    function makeCarpetTexture() {
+      return makeProcTexture(128, 128, (ctx, w, h) => {
+        ctx.fillStyle = '#162820';
+        ctx.fillRect(0, 0, w, h);
+        const step = 16;
+        for (let x = 0; x < w; x += step) {
+          for (let y = 0; y < h; y += step) {
+            ctx.fillStyle = (x / step + y / step) % 2 ? '#1a3028' : '#14261f';
+            ctx.fillRect(x, y, step, step);
+          }
+        }
+        ctx.strokeStyle = 'rgba(208,162,58,.08)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x <= w; x += step) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+        for (let y = 0; y <= h; y += step) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+      }, 8, 8);
+    }
+
+    function makeWallTexture() {
+      return makeProcTexture(128, 256, (ctx, w, h) => {
+        const grad = ctx.createLinearGradient(0, 0, w, 0);
+        grad.addColorStop(0, '#2a1418');
+        grad.addColorStop(0.5, '#3a1c22');
+        grad.addColorStop(1, '#241016');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+        const panelW = 32;
+        for (let x = 0; x < w; x += panelW) {
+          ctx.strokeStyle = 'rgba(0,0,0,.35)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(255,220,160,.03)';
+          ctx.fillRect(x + 2, 0, panelW / 2, h);
+        }
+      }, 4, 2);
+    }
+
+    function addPendantLight(group, x, z) {
+      const mountY = 430;
+      const chain = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.8, 1.8, 72, 6),
+        new THREE.MeshStandardMaterial({ color: 0x2a2418, metalness: 0.75, roughness: 0.35 })
+      );
+      chain.position.set(x, mountY - 36, z);
+      group.add(chain);
+
+      const shade = new THREE.Mesh(
+        new THREE.ConeGeometry(26, 34, 10, 1, true),
+        new THREE.MeshStandardMaterial({
+          color: 0x4a3210,
+          emissive: 0xffc866,
+          emissiveIntensity: 0.42,
+          roughness: 0.55,
+          side: THREE.DoubleSide
+        })
+      );
+      shade.position.set(x, mountY - 82, z);
+      group.add(shade);
+
+      const glow = new THREE.Mesh(
+        new THREE.SphereGeometry(8, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffe8b8 })
+      );
+      glow.position.set(x, mountY - 92, z);
+      group.add(glow);
+
+      const bulb = new THREE.PointLight(0xffddb0, 0.95, 720, 1.7);
+      bulb.position.set(x, mountY - 92, z);
+      group.add(bulb);
+    }
+
+    function buildCasinoEnvironment(scene) {
+      scene.background = new THREE.Color(0x0a1210);
+      scene.fog = new THREE.FogExp2(0x0a1210, 0.00038);
+
+      const envGroup = new THREE.Group();
+      scene.add(envGroup);
+
+      const carpetTex = makeCarpetTexture();
+      const wallTex = makeWallTexture();
+      const floorMat = new THREE.MeshStandardMaterial({ map: carpetTex, roughness: 0.96, metalness: 0 });
+      const wallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.9, metalness: 0.03 });
+
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(2200, 2200), floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -36;
+      floor.receiveShadow = true;
+      envGroup.add(floor);
+
+      const backWall = new THREE.Mesh(new THREE.PlaneGeometry(1700, 480), wallMat);
+      backWall.position.set(0, 210, -860);
+      envGroup.add(backWall);
+
+      const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(1200, 480), wallMat);
+      leftWall.position.set(-820, 210, -120);
+      leftWall.rotation.y = Math.PI / 2;
+      envGroup.add(leftWall);
+
+      const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(1200, 480), wallMat);
+      rightWall.position.set(820, 210, -120);
+      rightWall.rotation.y = -Math.PI / 2;
+      envGroup.add(rightWall);
+
+      const ceiling = new THREE.Mesh(
+        new THREE.PlaneGeometry(1900, 1900),
+        new THREE.MeshStandardMaterial({ color: 0x100e0c, roughness: 1, metalness: 0 })
+      );
+      ceiling.rotation.x = Math.PI / 2;
+      ceiling.position.y = 470;
+      envGroup.add(ceiling);
+
+      [[-200, -40], [200, -40], [0, -260]].forEach(([x, z]) => addPendantLight(envGroup, x, z));
+
+      const sconceMat = new THREE.MeshStandardMaterial({ color: 0x5a3018, emissive: 0xffb84a, emissiveIntensity: 0.55, roughness: 0.5 });
+      [-420, 0, 420].forEach((x) => {
+        const sconce = new THREE.Mesh(new THREE.BoxGeometry(36, 56, 8), sconceMat);
+        sconce.position.set(x, 250, -852);
+        envGroup.add(sconce);
+      });
+
+      const railBackdrop = new THREE.Mesh(
+        new THREE.BoxGeometry(BOARD_W + 120, 48, 18),
+        new THREE.MeshStandardMaterial({ color: 0x1a0f0c, roughness: 0.82, metalness: 0.04 })
+      );
+      railBackdrop.position.set(0, 26, -(BOARD_H / 2 + 36));
+      railBackdrop.receiveShadow = true;
+      envGroup.add(railBackdrop);
+
+      const tray = new THREE.Mesh(
+        new THREE.BoxGeometry(BOARD_W * 0.55, 10, 28),
+        new THREE.MeshStandardMaterial({ color: 0x24140e, roughness: 0.7, metalness: 0.08 })
+      );
+      tray.position.set(0, 8, -(BOARD_H / 2 + 52));
+      envGroup.add(tray);
+
+      for (let i = -3; i <= 3; i++) {
+        const slot = new THREE.Mesh(
+          new THREE.BoxGeometry(BOARD_W * 0.07, 8, 22),
+          new THREE.MeshStandardMaterial({ color: 0x120a08, roughness: 0.85, metalness: 0.02 })
+        );
+        slot.position.set(i * (BOARD_W * 0.075), 8, -(BOARD_H / 2 + 52));
+        envGroup.add(slot);
+      }
+
+      addKitschyBackgroundDecor(envGroup);
+    }
+
+    function neonMaterial(color, intensity = 0.75) {
+      return new THREE.MeshStandardMaterial({
+        color,
+        emissive: color,
+        emissiveIntensity: intensity,
+        roughness: 0.38,
+        metalness: 0.08
+      });
+    }
+
+    function addKitschyBackgroundDecor(group) {
+      const decorMat = (color, intensity = 0.72) => neonMaterial(color, intensity);
+
+      const jackpot = new THREE.Group();
+      jackpot.position.set(0, 390, -835);
+      'JACKPOT'.split('').forEach((_, i) => {
+        const letter = new THREE.Mesh(new THREE.BoxGeometry(44, 68, 14), decorMat(i % 2 ? 0xff44aa : 0x44ddff, 0.68));
+        letter.position.set((i - 3) * 54, 0, 0);
+        jackpot.add(letter);
+      });
+      group.add(jackpot);
+
+      const sevens = new THREE.Group();
+      sevens.position.set(-300, 300, -815);
+      for (let i = 0; i < 3; i++) {
+        const block = new THREE.Mesh(new THREE.BoxGeometry(72, 118, 16), decorMat(0xff2244, 0.82));
+        block.position.set(i * 90, 0, 0);
+        sevens.add(block);
+      }
+      group.add(sevens);
+
+      const sevensRight = sevens.clone();
+      sevensRight.position.set(300, 300, -815);
+      group.add(sevensRight);
+
+      function addGiantDie(x, z, scale, rotY = 0.4) {
+        const die = new THREE.Group();
+        die.position.set(x, 0, z);
+        die.scale.setScalar(scale);
+        const body = new THREE.Mesh(
+          new THREE.BoxGeometry(84, 84, 84),
+          new THREE.MeshStandardMaterial({ color: 0xfff8ef, roughness: 0.42, metalness: 0.04 })
+        );
+        body.position.y = 42;
+        die.add(body);
+        const pipMat = decorMat(0xcc1122, 0.35);
+        [[-22, -22], [22, 22], [0, 0]].forEach(([px, pz]) => {
+          const pip = new THREE.Mesh(new THREE.SphereGeometry(9, 10, 10), pipMat);
+          pip.position.set(px, 84, pz);
+          die.add(pip);
+        });
+        die.rotation.y = rotY;
+        die.rotation.z = 0.22;
+        group.add(die);
+      }
+      addGiantDie(-640, -430, 1.7, 0.55);
+      addGiantDie(660, -390, 1.45, -0.35);
+
+      function addChipStack(x, z, count, color) {
+        const stack = new THREE.Group();
+        stack.position.set(x, 0, z);
+        const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.38, metalness: 0.52, emissive: color, emissiveIntensity: 0.1 });
+        for (let i = 0; i < count; i++) {
+          const chip = new THREE.Mesh(new THREE.CylinderGeometry(52, 52, 16, 28), mat);
+          chip.position.y = 24 + i * 13;
+          stack.add(chip);
+          const rim = new THREE.Mesh(new THREE.TorusGeometry(52, 4, 8, 28), new THREE.MeshStandardMaterial({ color: 0x4a2808, roughness: 0.55, metalness: 0.25 }));
+          rim.rotation.x = Math.PI / 2;
+          rim.position.y = 32 + i * 13;
+          stack.add(rim);
+        }
+        group.add(stack);
+      }
+      addChipStack(-700, 220, 7, 0xefc14f);
+      addChipStack(740, 190, 6, 0xe84a5f);
+      addChipStack(-660, 540, 5, 0x3b9bdb);
+
+      function addSlotMachine(x, z) {
+        const slot = new THREE.Group();
+        slot.position.set(x, 0, z);
+        const cabinet = new THREE.Mesh(
+          new THREE.BoxGeometry(130, 280, 96),
+          new THREE.MeshStandardMaterial({ color: 0x6b1018, roughness: 0.72, metalness: 0.12 })
+        );
+        cabinet.position.y = 140;
+        slot.add(cabinet);
+        const screen = new THREE.Mesh(new THREE.BoxGeometry(92, 76, 8), decorMat(0x33ff99, 0.5));
+        screen.position.set(0, 188, 50);
+        slot.add(screen);
+        const marquee = new THREE.Mesh(new THREE.BoxGeometry(108, 24, 10), decorMat(0xffcc44, 0.7));
+        marquee.position.set(0, 262, 50);
+        slot.add(marquee);
+        const arm = new THREE.Mesh(
+          new THREE.CylinderGeometry(7, 7, 110, 8),
+          new THREE.MeshStandardMaterial({ color: 0xd9aa42, metalness: 0.82, roughness: 0.22 })
+        );
+        arm.rotation.z = -0.72;
+        arm.position.set(78, 198, 24);
+        slot.add(arm);
+        group.add(slot);
+      }
+      addSlotMachine(-840, -690);
+      addSlotMachine(860, -660);
+
+      const martini = new THREE.Group();
+      martini.position.set(760, 0, -710);
+      martini.scale.setScalar(1.65);
+      const stem = new THREE.Mesh(
+        new THREE.CylinderGeometry(9, 13, 190, 10),
+        new THREE.MeshStandardMaterial({ color: 0xd9aa42, metalness: 0.86, roughness: 0.18 })
+      );
+      stem.position.y = 95;
+      martini.add(stem);
+      const bowl = new THREE.Mesh(
+        new THREE.ConeGeometry(74, 54, 16, 1, true),
+        new THREE.MeshStandardMaterial({ color: 0xe8f4ff, transparent: true, opacity: 0.42, roughness: 0.08, side: THREE.DoubleSide })
+      );
+      bowl.position.y = 196;
+      martini.add(bowl);
+      const olive = new THREE.Mesh(new THREE.SphereGeometry(18, 12, 12), decorMat(0x66cc44, 0.38));
+      olive.position.set(0, 222, 0);
+      martini.add(olive);
+      group.add(martini);
+
+      const starburst = new THREE.Group();
+      starburst.position.set(-780, 410, -520);
+      for (let i = 0; i < 8; i++) {
+        const ray = new THREE.Mesh(new THREE.BoxGeometry(22, 150, 8), decorMat(0xffee55, 0.58));
+        ray.position.y = 75;
+        ray.rotation.z = (i / 8) * Math.PI;
+        starburst.add(ray);
+      }
+      const starCore = new THREE.Mesh(new THREE.CylinderGeometry(44, 44, 18, 14), decorMat(0xff6622, 0.75));
+      starCore.rotation.x = Math.PI / 2;
+      starCore.position.y = 10;
+      starburst.add(starCore);
+      group.add(starburst);
+
+      const luckyWheel = new THREE.Group();
+      luckyWheel.position.set(820, 260, -560);
+      const wheel = new THREE.Mesh(
+        new THREE.TorusGeometry(110, 18, 12, 36),
+        decorMat(0xff3344, 0.55)
+      );
+      wheel.rotation.x = Math.PI / 2;
+      luckyWheel.add(wheel);
+      const wheelInner = new THREE.Mesh(
+        new THREE.CylinderGeometry(72, 72, 12, 24),
+        decorMat(0xffcc44, 0.62)
+      );
+      wheelInner.rotation.x = Math.PI / 2;
+      luckyWheel.add(wheelInner);
+      group.add(luckyWheel);
+    }
+
+    function lerpAngle(from, to, t) {
+      let delta = to - from;
+      while (delta > Math.PI) delta -= Math.PI * 2;
+      while (delta < -Math.PI) delta += Math.PI * 2;
+      return from + delta * t;
+    }
+
+    function viewToRigState(view) {
+      const pivot = view.target.clone();
+      const offset = view.position.clone().sub(pivot);
+      const spherical = new THREE.Spherical().setFromVector3(offset);
+      return { pivot, spherical, fov: view.fov };
+    }
+
+    function clampSpherical(spherical) {
+      spherical.phi = THREE.MathUtils.clamp(spherical.phi, CAMERA_LIMITS.minPhi, CAMERA_LIMITS.maxPhi);
+      spherical.radius = THREE.MathUtils.clamp(spherical.radius, CAMERA_LIMITS.minRadius, CAMERA_LIMITS.maxRadius);
+    }
+
+    function snapToView(view) {
+      if (!view || !camera) return;
+      const state = viewToRigState(view);
+      cameraRig.targetPivot.copy(state.pivot);
+      cameraRig.targetSpherical.copy(state.spherical);
+      cameraRig.targetFov = state.fov;
+      cameraRig.pivot.copy(state.pivot);
+      cameraRig.spherical.copy(state.spherical);
+      cameraRig.fov = state.fov;
+      camera.position.copy(view.position);
+      camera.fov = view.fov;
+      camera.updateProjectionMatrix();
+      camera.lookAt(view.target);
+    }
+
+    function applyCameraRig(force = false) {
+      if (!camera) return;
+      const k = force ? 1 : CAMERA_LIMITS.damp;
+      cameraRig.targetSpherical.radius = THREE.MathUtils.clamp(
+        cameraRig.targetSpherical.radius,
+        CAMERA_LIMITS.minRadius,
+        CAMERA_LIMITS.maxRadius
+      );
+      cameraRig.targetSpherical.phi = THREE.MathUtils.clamp(
+        cameraRig.targetSpherical.phi,
+        CAMERA_LIMITS.minPhi,
+        CAMERA_LIMITS.maxPhi
+      );
+      cameraRig.spherical.theta = lerpAngle(cameraRig.spherical.theta, cameraRig.targetSpherical.theta, k);
+      cameraRig.spherical.phi += (cameraRig.targetSpherical.phi - cameraRig.spherical.phi) * k;
+      cameraRig.spherical.radius += (cameraRig.targetSpherical.radius - cameraRig.spherical.radius) * k;
+      cameraRig.pivot.lerp(cameraRig.targetPivot, k);
+      cameraRig.fov += (cameraRig.targetFov - cameraRig.fov) * k;
+      const offset = new THREE.Vector3().setFromSpherical(cameraRig.spherical);
+      camera.position.copy(cameraRig.pivot).add(offset);
+      camera.lookAt(cameraRig.pivot);
+      const prevFov = camera.fov;
+      camera.fov = cameraRig.fov;
+      if (force || Math.abs(prevFov - cameraRig.fov) > 0.01) {
+        camera.updateProjectionMatrix();
+      }
+    }
+
+    function snapRigToTargets() {
+      cameraRig.pivot.copy(cameraRig.targetPivot);
+      cameraRig.spherical.copy(cameraRig.targetSpherical);
+      cameraRig.fov = cameraRig.targetFov;
+      applyCameraRig(true);
+    }
+
+    function syncViewButtons(force = false) {
+      if (!force && !viewButtonsDirty) return;
+      viewButtonsDirty = false;
+      document.querySelectorAll('[data-view]').forEach((btn) => {
+        const active = btn.dataset.view === activeViewId;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+    }
+
+    function applyCameraView(viewId, animate = true) {
+      const view = cameraViews.find((v) => v.id === viewId);
+      if (!view || !camera) return;
+      activeViewId = viewId;
+      viewButtonsDirty = true;
+      syncViewButtons(true);
+      viewTween = null;
+      const state = viewToRigState(view);
+      if (!animate) {
+        snapToView(view);
+        return;
+      }
+      viewTween = {
+        start: performance.now(),
+        duration: 780,
+        view,
+        fromPivot: cameraRig.targetPivot.clone(),
+        toPivot: state.pivot.clone(),
+        fromSph: cameraRig.targetSpherical.clone(),
+        toSph: state.spherical.clone(),
+        fromFov: cameraRig.targetFov,
+        toFov: state.fov
+      };
+    }
+
+    function updateViewTween() {
+      if (!viewTween || !camera) return;
+      const t = Math.min(1, (performance.now() - viewTween.start) / viewTween.duration);
+      const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      cameraRig.targetPivot.lerpVectors(viewTween.fromPivot, viewTween.toPivot, ease);
+      cameraRig.targetSpherical.radius = THREE.MathUtils.lerp(viewTween.fromSph.radius, viewTween.toSph.radius, ease);
+      cameraRig.targetSpherical.theta = lerpAngle(viewTween.fromSph.theta, viewTween.toSph.theta, ease);
+      cameraRig.targetSpherical.phi = THREE.MathUtils.lerp(viewTween.fromSph.phi, viewTween.toSph.phi, ease);
+      cameraRig.targetFov = THREE.MathUtils.lerp(viewTween.fromFov, viewTween.toFov, ease);
+      if (t >= 1) {
+        snapToView(viewTween.view);
+        viewTween = null;
+      }
+    }
+
+    function initCameraRig() {
+      applyCameraView('dealer', false);
+    }
+
+    function shouldOrbitDrag(event) {
+      return isCameraDragButton(event) || event.shiftKey || event.altKey;
+    }
+
+    function isCameraDragButton(event) {
+      return event.button === 2 || event.button === 1;
+    }
+
+    function beginCameraDrag(event) {
+      cameraDrag = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+      cameraDragMoved = false;
+      viewTween = null;
+      activeViewId = null;
+      viewButtonsDirty = true;
+      board3dEl.style.cursor = 'grabbing';
+      renderer.domElement.setPointerCapture(event.pointerId);
+    }
+
+    function endCameraDrag(event) {
+      if (!cameraDrag || event.pointerId !== cameraDrag.pointerId) return;
+      if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+        renderer.domElement.releasePointerCapture(event.pointerId);
+      }
+      cameraDrag = null;
+      board3dEl.style.cursor = 'grab';
+    }
+
+    function moveCameraDrag(event) {
+      if (!cameraDrag || event.pointerId !== cameraDrag.pointerId) return;
+      const dx = event.clientX - cameraDrag.x;
+      const dy = event.clientY - cameraDrag.y;
+      if (dx || dy) cameraDragMoved = true;
+      cameraDrag.x = event.clientX;
+      cameraDrag.y = event.clientY;
+      cameraRig.targetSpherical.theta += dx * 0.0046;
+      cameraRig.targetSpherical.phi = THREE.MathUtils.clamp(
+        cameraRig.targetSpherical.phi + dy * 0.0034,
+        CAMERA_LIMITS.minPhi,
+        CAMERA_LIMITS.maxPhi
+      );
+      clampSpherical(cameraRig.targetSpherical);
+      cameraRig.spherical.copy(cameraRig.targetSpherical);
+      applyCameraRig(true);
+    }
+
+    function onBoardWheel(event) {
+      event.preventDefault();
+      pendingWheelDelta += event.deltaY;
+      viewTween = null;
+      activeViewId = null;
+      viewButtonsDirty = true;
+    }
+
+    function applyWheelZoom() {
+      if (!pendingWheelDelta) return;
+      const factor = Math.pow(1.0016, pendingWheelDelta);
+      cameraRig.targetSpherical.radius = THREE.MathUtils.clamp(
+        cameraRig.targetSpherical.radius * factor,
+        CAMERA_LIMITS.minRadius,
+        CAMERA_LIMITS.maxRadius
+      );
+      pendingWheelDelta = 0;
+    }
+
+    function syncBoardViewport() {
+      if (!renderer || !camera || !board3dEl) return;
+      const width = Math.max(1, Math.round(board3dEl.clientWidth));
+      const height = Math.max(1, Math.round(board3dEl.clientHeight));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const sizeStable = lastViewportW > 0
+        && Math.abs(width - lastViewportW) < 2
+        && Math.abs(height - lastViewportH) < 2
+        && dpr === lastViewportDpr;
+      if (sizeStable) return;
+      lastViewportW = width;
+      lastViewportH = height;
+      lastViewportDpr = dpr;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      if (renderer.getPixelRatio() !== dpr) renderer.setPixelRatio(dpr);
+      renderer.setSize(width, height, false);
+      if (!cameraReady && width > 10 && height > 10) {
+        cameraReady = true;
+        initCameraRig();
+      }
+    }
+
+    function scheduleBoardViewportSync() {
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = null;
+        syncBoardViewport();
+      });
     }
 
     function initThree() {
@@ -519,127 +1646,160 @@
       pointer = new THREE.Vector2();
 
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0a1210);
-      scene.fog = new THREE.Fog(0x0a1210, 900, 2200);
+      buildCasinoEnvironment(scene);
 
-      const width = board3dEl.clientWidth || 360;
-      const height = board3dEl.clientHeight || Math.round(width * (canvas.height / canvas.width));
-      camera = new THREE.PerspectiveCamera(42, width / height, 1, 4000);
-      camera.position.set(0, 520, 380);
+      camera = new THREE.PerspectiveCamera(34, 1, 1, 3000);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(width, height);
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer.setClearColor(0x0a1210, 1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      renderer.shadowMap.enabled = false;
       board3dEl.appendChild(renderer.domElement);
 
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.06;
-      controls.target.set(0, 0, 40);
-      controls.minPolarAngle = Math.PI / 6;
-      controls.maxPolarAngle = Math.PI / 2.15;
-      controls.minDistance = 420;
-      controls.maxDistance = 920;
-      controls.enablePan = false;
+      scene.add(new THREE.HemisphereLight(0xdde8e0, 0x1a1008, 0.26));
+      scene.add(new THREE.AmbientLight(0xfff0d0, 0.14));
 
-      scene.add(new THREE.AmbientLight(0xfff2d6, 0.55));
-      const keyLight = new THREE.DirectionalLight(0xffe9bf, 1.15);
-      keyLight.position.set(180, 420, 220);
-      keyLight.castShadow = true;
-      keyLight.shadow.mapSize.set(1024, 1024);
+      const tableSpot = new THREE.SpotLight(0xfff4d6, 0.95, 1900, Math.PI / 4.8, 0.38, 1.1);
+      tableSpot.position.set(0, 760, 360);
+      tableSpot.target.position.set(0, 0, -40);
+      tableSpot.castShadow = false;
+      scene.add(tableSpot);
+      scene.add(tableSpot.target);
+
+      const keyLight = new THREE.DirectionalLight(0xffe8b8, 1.28);
+      keyLight.position.set(120, 520, 180);
+      keyLight.castShadow = false;
       scene.add(keyLight);
-      const fillLight = new THREE.DirectionalLight(0x6b9e88, 0.35);
-      fillLight.position.set(-240, 180, -120);
+
+      const fillLight = new THREE.DirectionalLight(0x89b39a, 0.42);
+      fillLight.position.set(-260, 260, -180);
       scene.add(fillLight);
+
+      const rimLight = new THREE.DirectionalLight(0xc9973f, 0.28);
+      rimLight.position.set(40, 180, -360);
+      scene.add(rimLight);
 
       const tableGroup = new THREE.Group();
       scene.add(tableGroup);
 
       const base = new THREE.Mesh(
-        new THREE.BoxGeometry(canvas.width + 44, 36, canvas.height + 44),
-        new THREE.MeshStandardMaterial({ color: 0x2a1810, roughness: 0.82, metalness: 0.08 })
+        new THREE.BoxGeometry(BOARD_W + 44, 36, BOARD_H + 44),
+        new THREE.MeshStandardMaterial({ color: 0x24140e, roughness: 0.78, metalness: 0.06 })
       );
-      base.position.set(0, -18, 0);
-      base.receiveShadow = true;
+      base.position.set(0, -20, 0);
+      base.receiveShadow = false;
       tableGroup.add(base);
 
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x1a0f0c, roughness: 0.82, metalness: 0.05 });
+      [[-(BOARD_W + 20) / 2, -(BOARD_H + 20) / 2], [(BOARD_W + 20) / 2, -(BOARD_H + 20) / 2], [-(BOARD_W + 20) / 2, (BOARD_H + 20) / 2], [(BOARD_W + 20) / 2, (BOARD_H + 20) / 2]].forEach(([x, z]) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(14, 16, 52, 8), legMat);
+        leg.position.set(x, -62, z);
+        leg.castShadow = false;
+        leg.receiveShadow = false;
+        tableGroup.add(leg);
+      });
+
       const apron = new THREE.Mesh(
-        new THREE.BoxGeometry(canvas.width + 16, 8, canvas.height + 16),
-        new THREE.MeshStandardMaterial({ color: 0x0f241c, roughness: 0.9, metalness: 0.02 })
+        new THREE.BoxGeometry(BOARD_W + 16, 8, BOARD_H + 16),
+        new THREE.MeshStandardMaterial({ color: 0x0f241c, roughness: 0.88, metalness: 0.03 })
       );
-      apron.position.set(0, -4, 0);
+      apron.position.set(0, -6, 0);
+      apron.receiveShadow = false;
       tableGroup.add(apron);
 
+      prepareBoardTextureCanvas();
       drawBoard();
       boardTexture = new THREE.CanvasTexture(canvas);
       boardTexture.colorSpace = THREE.SRGBColorSpace;
       boardTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      boardTexture.generateMipmaps = false;
+      boardTexture.minFilter = THREE.LinearFilter;
+      boardTexture.magFilter = THREE.LinearFilter;
+      boardTexture.needsUpdate = true;
 
       const felt = new THREE.Mesh(
-        new THREE.PlaneGeometry(canvas.width, canvas.height),
-        new THREE.MeshStandardMaterial({ map: boardTexture, roughness: 0.94, metalness: 0.02 })
+        new THREE.PlaneGeometry(BOARD_W, BOARD_H),
+        new THREE.MeshBasicMaterial({
+          map: boardTexture,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+          polygonOffsetUnits: -2
+        })
       );
       felt.rotation.x = -Math.PI / 2;
-      felt.receiveShadow = true;
+      felt.position.y = 1;
+      felt.receiveShadow = false;
+      felt.castShadow = false;
+      felt.renderOrder = 2;
       tableGroup.add(felt);
 
-      const railMaterial = new THREE.MeshStandardMaterial({ color: 0xd0a23a, roughness: 0.35, metalness: 0.72 });
+      const railMaterial = new THREE.MeshStandardMaterial({ color: 0xd9aa42, roughness: 0.22, metalness: 0.82 });
       const railHeight = 10;
       const railDepth = 12;
-      const railWidth = canvas.width + 28;
-      const railLength = canvas.height + 28;
+      const railWidth = BOARD_W + 28;
+      const railLength = BOARD_H + 28;
       [
-        [railWidth, railHeight, railDepth, 0, 4, -(canvas.height + railDepth) / 2],
-        [railWidth, railHeight, railDepth, 0, 4, (canvas.height + railDepth) / 2],
-        [railDepth, railHeight, railLength, -(canvas.width + railDepth) / 2, 4, 0],
-        [railDepth, railHeight, railLength, (canvas.width + railDepth) / 2, 4, 0]
+        [railWidth, railHeight, railDepth, 0, 4, -(BOARD_H + railDepth) / 2],
+        [railWidth, railHeight, railDepth, 0, 4, (BOARD_H + railDepth) / 2],
+        [railDepth, railHeight, railLength, -(BOARD_W + railDepth) / 2, 4, 0],
+        [railDepth, railHeight, railLength, (BOARD_W + railDepth) / 2, 4, 0]
       ].forEach(([w, h, d, x, y, z]) => {
         const rail = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), railMaterial);
         rail.position.set(x, y, z);
-        rail.castShadow = true;
+        rail.castShadow = false;
+        rail.receiveShadow = false;
         tableGroup.add(rail);
       });
 
       chipGroup = new THREE.Group();
       tableGroup.add(chipGroup);
-      chipBodyMaterial = new THREE.MeshStandardMaterial({ color: 0xefc14f, roughness: 0.42, metalness: 0.55 });
-      chipEdgeMaterial = new THREE.MeshStandardMaterial({ color: 0x6d4310, roughness: 0.7, metalness: 0.2 });
-
-      hitMeshes = allTargets.map((target) => {
-        const center = targetCenter(target);
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(target.width, 2, target.height),
-          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-        );
-        mesh.position.set(center.x, 1.2, center.z);
-        mesh.userData.target = target;
-        tableGroup.add(mesh);
-        return mesh;
-      });
+      chipMaterialCache = new Map();
 
       hoverMesh = new THREE.Mesh(
         new THREE.BoxGeometry(1, 3, 1),
-        new THREE.MeshBasicMaterial({ color: 0xffe4a8, transparent: true, opacity: 0.24, depthWrite: false })
+        new THREE.MeshBasicMaterial({
+          color: 0xffe4a8,
+          transparent: true,
+          opacity: 0.55,
+          depthWrite: false,
+          depthTest: false
+        })
       );
       hoverMesh.visible = false;
       tableGroup.add(hoverMesh);
 
-      window.addEventListener('resize', onBoardResize);
+      buildWheel3D(scene);
+
+      boardResizeObserver = new ResizeObserver(() => scheduleBoardViewportSync());
+      boardResizeObserver.observe(board3dEl);
+      window.addEventListener('resize', scheduleBoardViewportSync, { passive: true });
+      scheduleBoardViewportSync();
+      initCameraRig();
+
+      renderer.domElement.addEventListener('contextmenu', event => event.preventDefault());
+      renderer.domElement.addEventListener('pointerdown', onBoardPointerDown);
       renderer.domElement.addEventListener('pointermove', onBoardPointerMove);
-      renderer.domElement.addEventListener('pointerleave', () => updateHover(null));
+      renderer.domElement.addEventListener('pointerup', onBoardPointerUp);
+      renderer.domElement.addEventListener('pointercancel', onBoardPointerUp);
+      renderer.domElement.addEventListener('pointerleave', onBoardPointerLeave);
       renderer.domElement.addEventListener('click', onBoardClick);
+      renderer.domElement.addEventListener('wheel', onBoardWheel, { passive: false });
       animateThree();
     }
 
-    function onBoardResize() {
-      if (!renderer || !camera) return;
-      const width = board3dEl.clientWidth;
-      const height = Math.max(320, Math.round(width * (canvas.height / canvas.width)));
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+    function animateThree(now) {
+      requestAnimationFrame(animateThree);
+      if (!renderer || !scene || !camera) return;
+      const frameTime = now ?? performance.now();
+      updateViewTween();
+      applyWheelZoom();
+      applyCameraRig(false);
+      updateWheelAnimation(frameTime);
+      wheelLastAnimTime = frameTime;
+      if (viewButtonsDirty) syncViewButtons();
+      renderer.render(scene, camera);
     }
 
     function setPointerFromEvent(event) {
@@ -650,16 +1810,69 @@
 
     function raycastTarget() {
       raycaster.setFromCamera(pointer, camera);
-      const hits = raycaster.intersectObjects(hitMeshes, false);
-      return hits.length ? hits[0].object.userData.target : null;
+      if (!raycaster.ray.intersectPlane(feltPlane, planeHit)) return null;
+      const boardX = planeHit.x + BOARD_W / 2;
+      const boardZ = planeHit.z + BOARD_H / 2;
+      let best = null;
+      let bestArea = Infinity;
+      for (const target of allTargets) {
+        if (boardX < target.x || boardX > target.x + target.width) continue;
+        if (boardZ < target.y || boardZ > target.y + target.height) continue;
+        const area = target.width * target.height;
+        if (area < bestArea) {
+          bestArea = area;
+          best = target;
+        }
+      }
+      return best;
+    }
+
+    function onBoardPointerDown(event) {
+      if (shouldOrbitDrag(event)) {
+        beginCameraDrag(event);
+        event.preventDefault();
+        return;
+      }
+      if (event.button !== 0) return;
+      setPointerFromEvent(event);
+      const target = raycastTarget();
+      if (!target) {
+        beginCameraDrag(event);
+        event.preventDefault();
+        return;
+      }
+      leftPointer = { active: true, x: event.clientX, y: event.clientY, moved: false, targetKey: target.key };
+      updateHover(target);
+    }
+
+    function onBoardPointerUp(event) {
+      endCameraDrag(event);
+      if (event.button === 0) leftPointer.active = false;
+    }
+
+    function onBoardPointerLeave(event) {
+      endCameraDrag(event);
+      leftPointer.active = false;
+      updateHover(null);
     }
 
     function onBoardPointerMove(event) {
-      setPointerFromEvent(event);
-      updateHover(raycastTarget());
+      if (cameraDrag) {
+        moveCameraDrag(event);
+        event.preventDefault();
+        return;
+      }
+      if (leftPointer.active && Math.hypot(event.clientX - leftPointer.x, event.clientY - leftPointer.y) > 6) {
+        leftPointer.moved = true;
+      }
+      if (!event.buttons || (event.buttons & 1)) {
+        setPointerFromEvent(event);
+        updateHover(raycastTarget());
+      }
     }
 
     function onBoardClick(event) {
+      if (event.button !== 0 || leftPointer.moved || cameraDragMoved) return;
       setPointerFromEvent(event);
       const target = raycastTarget();
       if (!target) return;
@@ -669,45 +1882,40 @@
     }
 
     function updateHover(target) {
-      hoverTarget = target;
+      const nextKey = target ? target.key : null;
+      if (nextKey === hoverTargetKey) return;
+      hoverTargetKey = nextKey;
       if (!target) {
         hoverMesh.visible = false;
-        drawBoard();
         return;
       }
       const center = targetCenter(target);
       hoverMesh.scale.set(target.width, 1, target.height);
-      hoverMesh.position.set(center.x, 2.5, center.z);
+      hoverMesh.position.set(center.x, 4, center.z);
       hoverMesh.visible = true;
-      drawBoard();
     }
 
     function renderChips3D() {
       if (!chipGroup) return;
       while (chipGroup.children.length) chipGroup.remove(chipGroup.children[0]);
-      placements.forEach((amount, key) => {
+      placements.forEach((count, key) => {
         const target = allTargets.find(t => t.key === key);
         if (!target) return;
         const center = targetCenter(target);
-        const stackCount = Math.min(Math.max(1, Math.round(Math.log2(amount + 1) * 2)), 8);
-        for (let i = 0; i < stackCount; i++) {
-          const y = 8 + i * 3.4;
-          const chip = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 3.2, 32), chipBodyMaterial);
-          chip.position.set(center.x, y, center.z);
+        for (let i = 0; i < count; i++) {
+          const hash = hashChipOffset(key, i);
+          const offsetX = ((hash % 100) / 100 - 0.5) * 2.4;
+          const offsetZ = (((hash >> 8) % 100) / 100 - 0.5) * 2.4;
+          const y = 8 + i * 3.5;
+          const materials = getClassicChipMaterials(1);
+          const chip = new THREE.Mesh(new THREE.CylinderGeometry(14, 14, 3.5, 32), materials);
+          chip.position.set(center.x + offsetX, y, center.z + offsetZ);
+          chip.rotation.y = ((hash >> 16) % 360) * (Math.PI / 180);
           chip.castShadow = true;
+          chip.receiveShadow = true;
           chipGroup.add(chip);
-          const rim = new THREE.Mesh(new THREE.TorusGeometry(14, 1.2, 8, 32), chipEdgeMaterial);
-          rim.rotation.x = Math.PI / 2;
-          rim.position.set(center.x, y + 1.6, center.z);
-          chipGroup.add(rim);
         }
       });
-    }
-
-    function animateThree() {
-      requestAnimationFrame(animateThree);
-      controls.update();
-      renderer.render(scene, camera);
     }
 
     function renderChips() {
@@ -731,9 +1939,16 @@
       return { bets, totalStake, profits };
     }
 
+    function medianProfit(profits) {
+      if (!profits.length) return 0;
+      const sorted = [...profits].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+
     function calcMetrics() {
       const { totalStake, profits, bets } = getDistribution();
-      if (!totalStake) return { totalStake:0, ev:0, variance:0, std:0, winProb:0, lossProb:0, breakEvenProb:1, sharpe:0, roi:0, maxProfit:0, profits:[], bets:[] };
+      if (!totalStake) return { totalStake:0, ev:0, variance:0, std:0, winProb:0, lossProb:0, breakEvenProb:1, sharpe:0, roi:0, maxProfit:0, medianProfit:0, profits:[], bets:[] };
       const n = profits.length;
       const ev = profits.reduce((a,b)=>a+b,0) / n;
       const variance = profits.reduce((a,b)=>a + (b - ev) ** 2, 0) / n;
@@ -744,7 +1959,8 @@
       const roi = ev / totalStake;
       const sharpe = std ? ev / std : 0;
       const maxProfit = Math.max(...profits);
-      return { totalStake, ev, variance, std, winProb, lossProb, breakEvenProb, sharpe, roi, maxProfit, profits, bets };
+      const median = medianProfit(profits);
+      return { totalStake, ev, variance, std, winProb, lossProb, breakEvenProb, sharpe, roi, maxProfit, medianProfit: median, profits, bets };
     }
 
     function martingalePath(bankroll, spins) {
@@ -763,6 +1979,10 @@
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: 'Spin outcome' }, ticks: { maxRotation: 0, autoSkip: true } }, y: { title: { display: true, text: 'Net payout ($)' } } } }
       });
       updateChartTheme();
+      const chartDock = document.querySelector('.chart-dock');
+      if (chartDock) {
+        new ResizeObserver(() => payoutChart?.resize()).observe(chartDock);
+      }
     }
 
     function updateChartTheme() {
@@ -793,19 +2013,23 @@
       const m = calcMetrics();
       const bankroll = Math.max(1, Number(bankrollInput.value || 100));
       const spins = Math.max(1, Number(spinsInput.value || 500));
-      heroRoiEl.textContent = `${m.roi >= 0 ? '+' : ''}${pct.format(m.roi || 0)}`;
-      boardMaxEl.textContent = formatMoney(m.maxProfit || 0);
-      boardStakeEl.textContent = formatMoney(m.totalStake || 0);
-      boardEvEl.textContent = formatMoney(m.ev || 0);
+      scoreEvEl.textContent = formatMoney(m.ev || 0);
+      scoreEvEl.className = 'value ' + (m.ev > 0 ? 'positive' : m.ev < 0 ? 'negative' : 'neutral');
+      scoreStakeEl.textContent = moneyFmt.format(m.totalStake || 0);
+      scoreWinEl.textContent = pct.format(m.winProb);
+      scoreEvenEl.textContent = pct.format(m.breakEvenProb);
+      scoreLossEl.textContent = pct.format(m.lossProb);
+      scoreMaxEl.textContent = formatMoney(m.maxProfit || 0);
+      scoreMaxEl.className = 'value ' + (m.maxProfit > 0 ? 'positive' : m.maxProfit < 0 ? 'negative' : 'neutral');
+      scoreMedianEl.textContent = formatMoney(m.medianProfit || 0);
+      scoreMedianEl.className = 'value ' + (m.medianProfit > 0 ? 'positive' : m.medianProfit < 0 ? 'negative' : 'neutral');
       const stats = [
-        ['Expected profit / spin', formatMoney(m.ev), 'American wheel assumptions.'],
+        ['Expected ROI / spin', `${m.roi >= 0 ? '+' : ''}${pct.format(m.roi || 0)}`, 'Expected profit divided by total dollars at risk.'],
         ['Std. dev. / spin', formatMoney(m.std), 'One-spin volatility of net profit.'],
         ['Sharpe-style ratio', `${m.sharpe >= 0 ? '+' : ''}${fmt.format(m.sharpe)}`, 'Expected profit per spin divided by volatility.'],
-        ['Win probability', pct.format(m.winProb), 'Chance the spin ends net positive.'],
-        ['Loss probability', pct.format(m.lossProb), 'Chance the spin ends net negative.'],
-        ['Break-even probability', pct.format(m.breakEvenProb), 'Chance the spin ends exactly flat.'],
-        ['Highest payout outcome', formatMoney(m.maxProfit || 0), 'Best outcome among the 38 wheel results.'],
-        ['Total dollars at risk', formatMoney(m.totalStake), 'Sum of all placed dollars.']
+        ['Win / even / lose', `${pct.format(m.winProb)} / ${pct.format(m.breakEvenProb)} / ${pct.format(m.lossProb)}`, 'Chance each spin ends net positive, flat, or negative.'],
+        ['Highest payout', formatMoney(m.maxProfit || 0), 'Best single-spin net payout among all 38 outcomes.'],
+        ['Median payout', formatMoney(m.medianProfit || 0), 'Middle outcome when all 38 spin results are sorted by net payout.']
       ];
       statsEl.innerHTML = stats.map(([label, value, hint]) => `<div class="stat"><div class="label">${label}</div><div class="value">${value}</div><div class="hint">${hint}</div></div>`).join('');
       if (lastDemo === 'martingale') {
@@ -820,7 +2044,6 @@
       payoutChart.data.datasets[0].data = m.profits;
       payoutChart.update();
       renderOutcomeTable(m.profits);
-      drawBoard();
     }
 
     function addChip(key, amount = 1, track = true) { placements.set(key, (placements.get(key) || 0) + amount); if (track) history.push({ key, amount }); renderChips(); updateMetrics(); }
@@ -833,10 +2056,14 @@
     document.getElementById('clearBtn').addEventListener('click', clearBoard);
     document.getElementById('flatEvenBtn').addEventListener('click', demoFlatRed);
     document.getElementById('martingaleBtn').addEventListener('click', demoMartingale);
+    document.querySelectorAll('[data-view]').forEach((btn) => {
+      btn.addEventListener('click', () => applyCameraView(btn.dataset.view));
+    });
     bankrollInput.addEventListener('input', updateMetrics);
     spinsInput.addEventListener('input', updateMetrics);
 
     buildTargets();
+    initWheelControls();
     initThree();
     ensureChart();
     themeInit();

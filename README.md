@@ -1,7 +1,7 @@
 # Roulette Chip Analytics
 
 A static casino-style roulette web app with:
-- Three.js 3D table rendering with orbit controls
+- Three.js 3D table rendering with a fixed south-side camera and neck-style pan
 - Chart.js payout curve
 - American roulette layout with 0, 00, green courtesy bet, dozens, columns, splits, and corners
 - Exact per-outcome payout table
@@ -16,6 +16,8 @@ Because this app is static, you can run it with any lightweight file server.
 python3 -m http.server 8000
 ```
 Then open <http://localhost:8000>
+
+**Controls:** click to place chips; right-drag, Shift-drag, or Alt-drag to look around the table.
 
 ### Option 2: Node
 ```bash

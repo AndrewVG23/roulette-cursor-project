@@ -5,6 +5,7 @@
   "description": "Static Three.js + Chart.js roulette board app",
   "scripts": {
     "dev": "python3 -m http.server 8000",
-    "serve": "npx serve ."
+    "serve": "npx serve .",
+    "deploy": "vercel --prod"
   }
 }
