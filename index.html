@@ -341,16 +341,8 @@
       accent-color: var(--color-primary);
       flex-shrink: 0;
     }
-    .share-opts-inline {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      margin-left: 2px;
-      flex: 0 0 auto;
-    }
-    .share-opts-inline .share-opt { color: #d8c9a8; }
     .share-replay-btn {
-      min-width: 6.5rem;
+      min-width: 5.5rem;
       flex: 0 0 auto;
     }
     @keyframes payoutOverlayIn {
@@ -714,10 +706,6 @@
               <button class="btn subtle" id="undoBtn" type="button" title="Undo last chip">Undo</button>
               <button class="btn warning" id="clearBtn" type="button" title="Clear board">Clear</button>
               <button class="btn subtle share-replay-btn" id="shareReplayBtn" type="button" title="Share last spin replay" disabled>Share</button>
-              <span class="share-opts-inline" id="shareOptsInline" title="Include in shared video">
-                <label class="share-opt"><input type="checkbox" data-share-opt="stats" /> Stats</label>
-                <label class="share-opt"><input type="checkbox" data-share-opt="chart" /> Curve</label>
-              </span>
               <span class="spacer" aria-hidden="true"></span>
               <button class="btn subtle stats-toggle active" id="statsToggle" type="button" aria-expanded="false" aria-controls="analyticsDock">Stats</button>
               <div class="camera-menu-wrap">
@@ -3639,8 +3627,6 @@
           shareReplayBtn.textContent = recordingInProgress ? 'Sharing…' : 'Share';
         }
       }
-      // Keep Stats/Curve opts mounted always — toggling [hidden] reflowed the toolbar
-      // and resized the WebGL board after every spin.
       if (shareReplayOverlayBtn) {
         shareReplayOverlayBtn.disabled = !canShare;
         if (!shareReplayOverlayBtn.classList.contains('is-shared')) {
