@@ -429,9 +429,17 @@
     time: 45,
     maxTime: 45,
     hopCooldown: 0,
+    hopQueued: null,
+    hopAnim: null,
+    facing: 'up',
+    combo: 0,
+    comboTimer: 0,
+    nearMissCd: 0,
     invuln: 0,
     flash: 0,
+    shake: 0,
     particles: [],
+    floatText: [],
     muted: false,
     lastTs: 0,
     reachedRows: new Set([SCENARIO === 'grill' ? GRILL.START : ROW.START]),
@@ -511,7 +519,7 @@
     const lenMap = { beater: 1.15, hooptie: 1.05, van: 1.7, lowrider: 1.25, junker: 1.35, rice: 0.95 };
     const colors = ['#6b4a2a', '#4a5540', '#5a2e3a', '#3a3a42', '#7a5a20', '#2e4a3a', '#5a4030', '#4a3048', '#707060'];
     const w = (lenMap[kind] || 1.1) * TILE * (0.85 + Math.random() * 0.45);
-    const speed = (2.8 + Math.random() * 2.8 + level * 0.35) * (Math.random() < 0.15 ? 1.6 : 1);
+    const speed = (2.2 + Math.random() * 2.4 + level * 0.28) * (Math.random() < 0.12 ? 1.45 : 1);
     return {
       x: dir > 0 ? -w - 10 - Math.random() * 40 : W + 10 + Math.random() * 40,
       w,
@@ -538,11 +546,11 @@
         dir,
         ghetto: true,
         entities: [],
-        spawnTimer: 0.2 + Math.random() * 0.9,
+        spawnTimer: 0.45 + Math.random() * 1.1,
         baseSpeed: 1 // unused; per-car speed
       });
       // One scare car already in the lane so it isn't empty at start
-      if (Math.random() < 0.7) {
+      if (Math.random() < 0.55) {
         const car = makeJankyCar(dir, level);
         car.x = Math.random() * W;
         lanes[i].entities.push(car);
@@ -553,21 +561,23 @@
 
   function buildLanes(level) {
     if (isGrill()) return buildGhettoLanes(level);
-    const speed = 1 + (level - 1) * 0.18;
+    // Gentler early levels — challenge ramps in, doesn't jump you
+    const speed = 0.82 + (level - 1) * 0.15;
+    const gapEase = Math.max(0, 28 - (level - 1) * 6);
     const lanes = [];
     const riverSpecs = [
-      { row: 2, dir: 1, speed: 1.1 * speed, gap: 220, len: 2.4, kind: 'ferry' },
-      { row: 3, dir: -1, speed: 1.35 * speed, gap: 200, len: 1.8, kind: 'barge' },
-      { row: 4, dir: 1, speed: 0.95 * speed, gap: 240, len: 2.8, kind: 'ferry' },
-      { row: 5, dir: -1, speed: 1.5 * speed, gap: 180, len: 1.6, kind: 'kayak' },
-      { row: 6, dir: 1, speed: 1.2 * speed, gap: 210, len: 2.2, kind: 'barge' }
+      { row: 2, dir: 1, speed: 1.05 * speed, gap: 230 + gapEase, len: 2.5, kind: 'ferry' },
+      { row: 3, dir: -1, speed: 1.25 * speed, gap: 210 + gapEase, len: 1.9, kind: 'barge' },
+      { row: 4, dir: 1, speed: 0.9 * speed, gap: 250 + gapEase, len: 2.9, kind: 'ferry' },
+      { row: 5, dir: -1, speed: 1.35 * speed, gap: 195 + gapEase, len: 1.7, kind: 'kayak' },
+      { row: 6, dir: 1, speed: 1.1 * speed, gap: 220 + gapEase, len: 2.3, kind: 'barge' }
     ];
     const roadSpecs = [
-      { row: 8, dir: -1, speed: 1.6 * speed, gap: 170, len: 1.1, kind: 'taxi' },
-      { row: 9, dir: 1, speed: 1.2 * speed, gap: 200, len: 1.8, kind: 'bus' },
-      { row: 10, dir: -1, speed: 2.0 * speed, gap: 150, len: 0.9, kind: 'bike' },
-      { row: 11, dir: 1, speed: 1.4 * speed, gap: 185, len: 1.2, kind: 'taxi' },
-      { row: 12, dir: -1, speed: 1.1 * speed, gap: 220, len: 2.0, kind: 'truck' }
+      { row: 8, dir: -1, speed: 1.45 * speed, gap: 185 + gapEase, len: 1.1, kind: 'taxi' },
+      { row: 9, dir: 1, speed: 1.1 * speed, gap: 215 + gapEase, len: 1.8, kind: 'bus' },
+      { row: 10, dir: -1, speed: 1.75 * speed, gap: 170 + gapEase, len: 0.9, kind: 'bike' },
+      { row: 11, dir: 1, speed: 1.25 * speed, gap: 200 + gapEase, len: 1.2, kind: 'taxi' },
+      { row: 12, dir: -1, speed: 1.0 * speed, gap: 235 + gapEase, len: 2.0, kind: 'truck' }
     ];
     for (const spec of [...riverSpecs, ...roadSpecs]) {
       const entities = [];
@@ -589,7 +599,13 @@
     state.frog = { col: 5.5, row: startRow(), onFerry: null };
     state.time = state.maxTime;
     state.hopCooldown = 0;
-    state.invuln = 0.6;
+    state.hopQueued = null;
+    state.hopAnim = null;
+    state.facing = 'up';
+    state.combo = 0;
+    state.comboTimer = 0;
+    state.nearMissCd = 0;
+    state.invuln = 0.85;
     state.reachedRows = new Set([startRow()]);
   }
 
@@ -599,9 +615,10 @@
     state.destination = isGrill()
       ? DESTINATIONS.find(d => d.id === 'grill') || DESTINATIONS[1]
       : pickDestination(level);
+    // Generous timer — pressure without the constant panic
     state.maxTime = isGrill()
-      ? Math.max(18, 32 - (level - 1) * 2)
-      : Math.max(28, 45 - (level - 1) * 2);
+      ? Math.max(24, 40 - (level - 1) * 2)
+      : Math.max(36, 55 - (level - 1) * 2);
     state.lanes = buildLanes(level);
     resetFrog();
     setPhaseUI();
@@ -611,6 +628,8 @@
   function startGame() {
     state.score = 0;
     state.lives = 3;
+    state.combo = 0;
+    state.floatText = [];
     state.mode = 'play';
     startCrossingLevel(1);
     overlay.hidden = true;
@@ -618,6 +637,20 @@
     pauseBtn.textContent = 'Pause';
     beep(440, 0.08);
     beep(660, 0.1);
+  }
+
+  function spawnFloat(text, x, y, color) {
+    state.floatText.push({
+      text, x, y,
+      life: 0.85,
+      color: color || '#efc84a'
+    });
+  }
+
+  function hopSfx(row) {
+    const base = 320 + (startRow() - row) * 22;
+    beep(base, 0.045, 'triangle', 0.035);
+    beep(base * 1.5, 0.04, 'square', 0.018);
   }
 
   // Shared drive world scale — physics + render stay in the same units
@@ -806,8 +839,13 @@
 
     state.lives -= 1;
     state.flash = 0.35;
+    state.shake = 0.28;
+    state.combo = 0;
+    state.comboTimer = 0;
+    state.hopAnim = null;
+    state.hopQueued = null;
     if (state.phase === 'cross') {
-      spawnSplash(state.frog.col * TILE, state.frog.row * TILE + TILE / 2);
+      spawnSplash(state.frog.col * TILE + TILE / 2, state.frog.row * TILE + TILE / 2);
     } else if (state.drive) {
       // crash FX already spawned by triggerDriveCrash
       state.drive.crashFlash = 0.55;
@@ -850,13 +888,27 @@
   }
 
   function reachCar() {
-    const bonus = 120 + Math.floor(state.time * 2) + state.level * 20;
+    const comboBonus = Math.max(0, state.combo) * 18;
+    const bonus = 120 + Math.floor(state.time * 2.5) + state.level * 20 + comboBonus;
     state.score += bonus;
+    const fx = state.frog.col * TILE + TILE / 2;
+    const fy = state.frog.row * TILE + TILE / 2;
+    spawnFloat(comboBonus > 0 ? `+${bonus}  ×${state.combo}` : `+${bonus}`, fx, fy - 8, '#efc84a');
+    for (let i = 0; i < 22; i++) {
+      const a = (Math.PI * 2 * i) / 22;
+      state.particles.push({
+        x: fx, y: fy,
+        vx: Math.cos(a) * (40 + Math.random() * 70),
+        vy: Math.sin(a) * (40 + Math.random() * 70) - 30,
+        life: 0.45 + Math.random() * 0.35,
+        color: Math.random() > 0.4 ? '#efc84a' : '#f5edd8'
+      });
+    }
     updateHUD();
-    beep(523, 0.08);
-    beep(659, 0.1);
-    beep(784, 0.16);
-    // No explainer — drop straight into the drive
+    beep(523, 0.07);
+    beep(659, 0.09);
+    beep(784, 0.12);
+    beep(1046, 0.16);
     beginDrive();
   }
 
@@ -886,32 +938,61 @@
     if (exit.href) window.location.href = exit.href;
   }
 
+  function spawnHopDust(col, row) {
+    const x = col * TILE + TILE / 2;
+    const y = row * TILE + TILE - 6;
+    for (let i = 0; i < 5; i++) {
+      state.particles.push({
+        x: x + (Math.random() - 0.5) * 10,
+        y,
+        vx: (Math.random() - 0.5) * 50,
+        vy: -10 - Math.random() * 25,
+        life: 0.2 + Math.random() * 0.18,
+        color: 'rgba(200,190,160,0.7)'
+      });
+    }
+  }
+
   function tryMove(dx, dy) {
-    if (state.phase !== 'cross' || state.mode !== 'play' || state.hopCooldown > 0) return;
+    if (state.phase !== 'cross' || state.mode !== 'play') return;
+    if (state.hopCooldown > 0) {
+      state.hopQueued = { dx, dy };
+      return;
+    }
     const f = state.frog;
     const nc = f.col + dx;
     const nr = f.row + dy;
     if (nc < 0 || nc > COLS - 1 || nr < 0 || nr > ROWS - 1) return;
 
     if (isGrill()) {
-      // Can't walk into building rows
       if (nr < GRILL.GOAL || nr > GRILL.START) return;
       if (nr === GRILL.GOAL) {
         if (Math.abs(nc - GRILL.CAR_COL) < 0.75) {
+          state.facing = dy < 0 ? 'up' : dy > 0 ? 'down' : dx < 0 ? 'left' : 'right';
+          state.hopAnim = {
+            fromCol: f.col, fromRow: f.row, toCol: GRILL.CAR_COL, toRow: nr,
+            t: 0, dur: 0.1
+          };
           f.col = GRILL.CAR_COL;
           f.row = nr;
           f.onFerry = null;
+          hopSfx(nr);
           reachCar();
           return;
         }
-        // Standing on the far curb is fine; only the car tile ends it
       }
     } else if (nr === ROW.GARAGE) {
       const slot = PARK_SLOTS.find(c => Math.abs(nc - c) < 0.6);
       if (slot === CAR_COL) {
+        state.facing = 'up';
+        state.hopAnim = {
+          fromCol: f.col, fromRow: f.row, toCol: CAR_COL, toRow: nr,
+          t: 0, dur: 0.1
+        };
         f.col = CAR_COL;
         f.row = nr;
         f.onFerry = null;
+        hopSfx(nr);
         reachCar();
         return;
       }
@@ -919,29 +1000,84 @@
       return;
     }
 
+    const fromCol = f.col;
+    const fromRow = f.row;
     f.col = Math.max(0, Math.min(COLS - 1, nc));
     f.row = nr;
     f.onFerry = null;
-    state.hopCooldown = 0.12;
-    beep(280 + (ROWS - nr) * 18, 0.05, 'triangle', 0.03);
+    state.facing = dy < 0 ? 'up' : dy > 0 ? 'down' : dx < 0 ? 'left' : 'right';
+    state.hopAnim = { fromCol, fromRow, toCol: f.col, toRow: f.row, t: 0, dur: 0.1 };
+    state.hopCooldown = 0.075;
+    hopSfx(nr);
+    spawnHopDust(fromCol, fromRow);
+
+    if (dy < 0) {
+      state.combo = (state.comboTimer > 0 ? state.combo : 0) + 1;
+      state.comboTimer = 1.35;
+    } else if (dy > 0) {
+      state.combo = 0;
+      state.comboTimer = 0;
+    } else if (state.comboTimer > 0) {
+      state.comboTimer = Math.max(state.comboTimer, 0.9);
+    }
 
     if (!state.reachedRows.has(nr) && nr < startRow()) {
       state.reachedRows.add(nr);
-      state.score += 10;
+      const pts = 10 + Math.max(0, state.combo - 1) * 4;
+      state.score += pts;
+      const px = f.col * TILE + TILE / 2;
+      const py = f.row * TILE + 8;
+      if (state.combo >= 3) {
+        spawnFloat(`${state.combo}×  +${pts}`, px, py, '#7ec8e3');
+        beep(520 + state.combo * 40, 0.05, 'square', 0.02);
+      } else {
+        spawnFloat(`+${pts}`, px, py, '#efc84a');
+      }
       updateHUD();
     }
   }
 
   function spawnSplash(x, y) {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 14; i++) {
       state.particles.push({
         x, y,
-        vx: (Math.random() - 0.5) * 80,
-        vy: (Math.random() - 0.5) * 80 - 20,
-        life: 0.4 + Math.random() * 0.3,
+        vx: (Math.random() - 0.5) * 100,
+        vy: (Math.random() - 0.5) * 100 - 30,
+        life: 0.4 + Math.random() * 0.35,
         color: Math.random() > 0.5 ? '#efbb49' : '#71d189'
       });
     }
+  }
+
+  function frogDrawPose() {
+    const f = state.frog;
+    const a = state.hopAnim;
+    if (!a) {
+      return { x: f.col * TILE + TILE / 2, y: f.row * TILE + TILE / 2 + 1, sx: 1, sy: 1 };
+    }
+    const t = Math.min(1, a.t / a.dur);
+    const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const col = a.fromCol + (a.toCol - a.fromCol) * ease;
+    const row = a.fromRow + (a.toRow - a.fromRow) * ease;
+    const arc = Math.sin(t * Math.PI) * 11;
+    let sx = 1;
+    let sy = 1;
+    if (t < 0.25) {
+      sx = 1.2 - t * 0.6;
+      sy = 0.75 + t;
+    } else if (t < 0.7) {
+      sx = 0.82;
+      sy = 1.22;
+    } else {
+      const land = (t - 0.7) / 0.3;
+      sx = 0.82 + land * 0.35;
+      sy = 1.22 - land * 0.4;
+    }
+    return {
+      x: col * TILE + TILE / 2,
+      y: row * TILE + TILE / 2 + 1 - arc,
+      sx, sy
+    };
   }
 
   function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
@@ -966,8 +1102,8 @@
       if (lane.spawnTimer <= 0) {
         // Sudden spawn — sometimes nothing, sometimes a pack
         const roll = Math.random();
-        if (roll > 0.22) {
-          const n = roll > 0.92 ? 2 : 1;
+        if (roll > 0.32) {
+          const n = roll > 0.94 ? 2 : 1;
           for (let k = 0; k < n; k++) {
             const car = makeJankyCar(lane.dir, state.level);
             if (k > 0) car.x += lane.dir * -(car.w + 18 + Math.random() * 30);
@@ -977,13 +1113,24 @@
             if (!blocked) lane.entities.push(car);
           }
         }
-        lane.spawnTimer = 0.15 + Math.random() * (1.1 - Math.min(0.5, state.level * 0.08));
+        lane.spawnTimer = 0.35 + Math.random() * (1.35 - Math.min(0.45, state.level * 0.07));
       }
     }
   }
 
   // --- Crossing update ---
   function updateCross(dt) {
+    if (state.shake > 0) state.shake = Math.max(0, state.shake - dt);
+    if (state.hopAnim) {
+      state.hopAnim.t += dt;
+      if (state.hopAnim.t >= state.hopAnim.dur) state.hopAnim = null;
+    }
+    for (const ft of state.floatText) {
+      ft.life -= dt;
+      ft.y -= 36 * dt;
+    }
+    state.floatText = state.floatText.filter(ft => ft.life > 0);
+
     if (state.mode !== 'play') {
       if (state.mode === 'title' || state.mode === 'pause' || state.mode === 'gameover' || state.mode === 'win' || state.mode === 'arrived') {
         if (isGrill()) {
@@ -1004,15 +1151,26 @@
 
     state.time -= dt;
     if (state.hopCooldown > 0) state.hopCooldown -= dt;
+    if (state.hopCooldown <= 0 && state.hopQueued) {
+      const q = state.hopQueued;
+      state.hopQueued = null;
+      tryMove(q.dx, q.dy);
+    }
     if (state.invuln > 0) state.invuln -= dt;
     if (state.flash > 0) state.flash -= dt;
+    if (state.comboTimer > 0) {
+      state.comboTimer -= dt;
+      if (state.comboTimer <= 0) state.combo = 0;
+    }
+    if (state.nearMissCd > 0) state.nearMissCd -= dt;
     if (state.time <= 0) {
       loseLife(isGrill() ? 'Shift over — you froze up on the curb.' : 'The garage closed — time ran out.');
       return;
     }
 
     const f = state.frog;
-    const frogPad = 6;
+    // Generous hurtbox — reads fair, still punishable
+    const frogPad = 11;
     const fx = f.col * TILE + frogPad;
     const fy = f.row * TILE + frogPad;
     const fw = TILE - frogPad * 2;
@@ -1023,9 +1181,11 @@
       for (const lane of state.lanes) {
         if (f.row !== lane.row) continue;
         for (const e of lane.entities) {
-          const ey = lane.row * TILE + 4;
-          const eh = TILE - 8;
-          if (rectsOverlap(fx, fy, fw, fh, e.x, ey, e.w, eh)) {
+          const ey = lane.row * TILE + 8;
+          const eh = TILE - 16;
+          const hx = e.x + 5;
+          const hw = Math.max(10, e.w - 10);
+          if (rectsOverlap(fx, fy, fw, fh, hx, ey, hw, eh)) {
             const hits = [
               'Didn\'t even see it coming.',
               'Nailed by a hoopty.',
@@ -1035,6 +1195,15 @@
             ];
             loseLife(hits[Math.floor(Math.random() * hits.length)]);
             return;
+          }
+          if (state.nearMissCd <= 0 && state.invuln <= 0
+              && rectsOverlap(fx - 10, fy, fw + 20, fh, hx, ey, hw, eh)
+              && !rectsOverlap(fx, fy, fw, fh, hx, ey, hw, eh)) {
+            state.nearMissCd = 0.55;
+            state.score += 5;
+            spawnFloat('close!', f.col * TILE + TILE / 2, f.row * TILE, '#7ec8e3');
+            beep(880, 0.04, 'triangle', 0.02);
+            updateHUD();
           }
         }
       }
@@ -1052,15 +1221,28 @@
 
       if (f.row === lane.row) {
         for (const e of lane.entities) {
-          const ey = lane.row * TILE + 4;
-          const eh = TILE - 8;
-          if (rectsOverlap(fx, fy, fw, fh, e.x, ey, e.w, eh)) {
+          const ey = lane.row * TILE + 8;
+          const eh = TILE - 16;
+          const padX = lane.row >= ROW.ROAD_START ? 6 : 2;
+          const hx = e.x + padX;
+          const hw = Math.max(12, e.w - padX * 2);
+          if (rectsOverlap(fx, fy, fw, fh, hx, ey, hw, eh)) {
             if (lane.row >= ROW.RIVER_START && lane.row <= ROW.RIVER_END) {
               riding = { lane, e };
             } else if (lane.row >= ROW.ROAD_START && lane.row <= ROW.ROAD_END) {
-              loseLife(e.kind === 'bus' ? 'Hit by an MTA bus.' : e.kind === 'truck' ? 'Flattened by a truck.' : 'Yellow cab. Classic.');
+              loseLife(e.kind === 'bus' ? 'Hit by an MTA bus.' : e.kind === 'truck' ? 'Flattened by a truck.' : e.kind === 'bike' ? 'Messengerd.' : 'Yellow cab. Classic.');
               return;
             }
+          } else if (
+            lane.row >= ROW.ROAD_START && lane.row <= ROW.ROAD_END
+            && state.nearMissCd <= 0 && state.invuln <= 0
+            && rectsOverlap(fx - 12, fy, fw + 24, fh, hx, ey, hw, eh)
+          ) {
+            state.nearMissCd = 0.5;
+            state.score += 5 + Math.min(10, state.combo);
+            spawnFloat('near miss!', f.col * TILE + TILE / 2, f.row * TILE, '#7ec8e3');
+            beep(920, 0.035, 'triangle', 0.018);
+            updateHUD();
           }
         }
       }
@@ -1073,6 +1255,10 @@
       }
       f.col += (riding.lane.dir * riding.lane.speed * 40 * dt) / TILE;
       f.onFerry = riding;
+      if (state.hopAnim) {
+        state.hopAnim.fromCol += (riding.lane.dir * riding.lane.speed * 40 * dt) / TILE;
+        state.hopAnim.toCol += (riding.lane.dir * riding.lane.speed * 40 * dt) / TILE;
+      }
       if (f.col < -0.2 || f.col > COLS - 0.8) {
         loseLife('Swept past the pier.');
         return;
@@ -1198,38 +1384,65 @@
     const hard = !!opts.hard;
 
     if (other) {
-      // Full spin-out + crunch — car tumbles off with heavy yaw/roll
+      // Full spin-out + crunch — car launches skyward with heavy yaw/roll
       other.smashed = true;
       other.crush = 0.15;
       other.spinT = 0;
-      other.velX = dir * (3.6 + intensity * 4.5) + (Math.random() - 0.5);
-      other.yawVel = dir * (14 + intensity * 16) + (Math.random() - 0.5) * 6;
+      other.velX = dir * (4.2 + intensity * 5) + (Math.random() - 0.5);
+      other.yawVel = dir * (18 + intensity * 20) + (Math.random() - 0.5) * 8;
       other.yaw = dir * 0.9;
-      other.rollVel = dir * (8 + intensity * 10);
+      other.rollVel = dir * (11 + intensity * 13);
       other.roll = dir * 0.4;
-      other.flyVel = 14 + intensity * 16;
-      other.flyY = 4;
-      other.speed = Math.max(12, d.speed * 0.7 + 16 + Math.random() * 24);
+      other.flyVel = 22 + intensity * 22;
+      other.flyY = 6;
+      other.speed = Math.max(12, d.speed * 0.7 + 20 + Math.random() * 26);
       other.z += 8;
-      // Extra body-colored scrap at the hit
+      // Slow-mo beat + camera lunge so the launch reads big
+      d.slowMo = 0.45;
+      d.zoomPunch = 1;
       const hitP = projectWorld(other.x, 0, other.z, d);
-      for (let i = 0; i < 10 + intensity * 8; i++) {
+      // Body panels tearing off
+      for (let i = 0; i < 16 + intensity * 10; i++) {
         const ang = Math.random() * Math.PI * 2;
-        const sp = 60 + Math.random() * 180 * intensity;
+        const sp = 80 + Math.random() * 220 * intensity;
         state.particles.push({
           type: 'shard',
           x: hitP.x, y: hitP.y - 10 * hitP.scale,
-          vx: Math.cos(ang) * sp + dir * 90,
-          vy: Math.sin(ang) * sp - 60 - Math.random() * 140,
+          vx: Math.cos(ang) * sp + dir * 110,
+          vy: Math.sin(ang) * sp - 90 - Math.random() * 170,
           rot: Math.random() * Math.PI,
-          rotV: (Math.random() - 0.5) * 18,
-          life: 0.7 + Math.random() * 0.8,
-          maxLife: 1.4,
-          size: 5 + Math.random() * 12 * intensity,
+          rotV: (Math.random() - 0.5) * 22,
+          life: 0.8 + Math.random() * 0.9,
+          maxLife: 1.6,
+          size: 5 + Math.random() * 13 * intensity,
           color: Math.random() > 0.35 ? (other.color || '#4a5560') : '#2a2a30',
           sides: 3 + Math.floor(Math.random() * 2)
         });
       }
+      // Spark fountain out of the impact point
+      for (let i = 0; i < 14; i++) {
+        const ang = -Math.PI * (0.15 + Math.random() * 0.7);
+        const sp = 160 + Math.random() * 320;
+        state.particles.push({
+          type: 'spark',
+          x: hitP.x, y: hitP.y - 8 * hitP.scale,
+          vx: Math.cos(ang) * sp + dir * 80,
+          vy: Math.sin(ang) * sp,
+          life: 0.25 + Math.random() * 0.35,
+          maxLife: 0.6,
+          color: Math.random() > 0.4 ? '#ffe08a' : '#ff9040'
+        });
+      }
+      // Floating cost tag
+      state.particles.push({
+        type: 'text',
+        text: '-$10  -5 HP',
+        x: hitP.x, y: hitP.y - 40 * hitP.scale,
+        vx: 0, vy: -46,
+        life: 1.1, maxLife: 1.1,
+        size: 15,
+        color: '#ff6a5a'
+      });
     }
 
     // Player: nudge, brief slowdown — not a full wipeout
@@ -1244,12 +1457,17 @@
     d.roll = -dir * (hard ? 0.4 : 0.12);
     d.invuln = hard ? 1.4 : 0.85;
 
-    const dmg = hard ? 35 + Math.floor(Math.random() * 25) : 8 + Math.floor(Math.random() * 10);
-    const fine = hard ? 80 + Math.floor(Math.random() * 120) : 25 + Math.floor(Math.random() * 55);
+    // Car smashes cost a flat $10 and 5 HP; hard wrecks (barrier) hit harder
+    const dmg = hard ? 35 + Math.floor(Math.random() * 25) : 5;
+    const fine = hard ? 80 + Math.floor(Math.random() * 120) : 10;
     d.hp = Math.max(0, d.hp - dmg);
     state.score = Math.max(0, state.score - fine);
     beep(110, 0.08, 'sawtooth', 0.05);
     beep(70, 0.12, 'square', 0.04);
+    if (other) {
+      beep(200, 0.05, 'square', 0.045);
+      beep(48, 0.2, 'sawtooth', 0.05);
+    }
     updateHUD();
 
     if (hard || d.hp <= 0) {
@@ -1281,6 +1499,13 @@
     if (d.crashFlash > 0) d.crashFlash -= dt;
     if (state.flash > 0) state.flash -= dt;
 
+    // Impact slow-mo: the whole drive sim runs at quarter speed for a beat
+    if (d.slowMo > 0) {
+      d.slowMo = Math.max(0, d.slowMo - dt);
+      dt *= 0.3;
+    }
+    d.zoomPunch = (d.zoomPunch || 0) * Math.exp(-4.5 * dt);
+
     const gas = state.keys.up ? 1 : 0;
     const brake = state.keys.down ? 1 : 0;
     const speedNorm = d.speed / d.maxSpeed;
@@ -1305,7 +1530,7 @@
     let steerInput = 0;
     if (state.keys.left) steerInput -= 1;
     if (state.keys.right) steerInput += 1;
-    d.steer += (steerInput - d.steer) * Math.min(1, 18 * dt);
+    d.steer += (steerInput - d.steer) * Math.min(1, 11 * dt);
     // Keep authority high even at speed so dodging stays easy
     const steerAuth = 0.92 + 0.08 * (1 - speedNorm);
     const desiredLat = d.steer * steerAuth * (2.4 + d.speed * 0.028);
@@ -1318,10 +1543,8 @@
     // Light damping so the car keeps sliding while you hold a direction
     const damp = steerInput !== 0 ? 0.18 : 0.45;
     d.velX *= Math.exp(-(gripMax * damp) * dt);
-    // Direct lane assist while holding — makes left/right feel immediate
-    if (steerInput !== 0) {
-      d.playerX += steerInput * (1.55 + d.speed * 0.012) * dt;
-    }
+    // Direct lane assist scaled by eased steer — no jerk on press/release
+    d.playerX += d.steer * (1.55 + d.speed * 0.012) * dt;
     d.playerX += d.velX * dt;
 
     // Slip / yaw / body roll from real lateral accel
@@ -1376,7 +1599,7 @@
       d.curveTimer = 6 + Math.random() * 8;
     }
     d.curve += (d.targetCurve - d.curve) * Math.min(1, 0.22 * dt);
-    d.hills = Math.sin(d.z * 0.0009) * 8 + Math.sin(d.z * 0.0022) * 3;
+    d.hills = Math.sin(d.z * 0.0006) * 6 + Math.sin(d.z * 0.0015) * 2;
 
     // Pothole bumps when you roll over them
     for (const pr of d.props) {
@@ -1396,9 +1619,11 @@
 
     // Chase cam: spring-follow for weight, lift slightly with speed
     d.camX += (d.playerX - d.camX) * Math.min(1, 2.6 * dt);
-    const camTargetY = 40 + d.speed * 0.06 + Math.abs(d.velX) * 2.2 - d.susp * 0.4;
-    d.camY += (camTargetY - d.camY) * Math.min(1, 3 * dt);
-    d.camBack = 112 + d.speed * 0.15;
+    const camTargetY = 40 + d.speed * 0.06 + Math.abs(d.velX) * 0.8 - d.susp * 0.4;
+    d.camY += (camTargetY - d.camY) * Math.min(1, 2.4 * dt);
+    // Eased dolly; the crash zoom punch lunges the camera in, then relaxes
+    const camBackTarget = 112 + d.speed * 0.15 - (d.zoomPunch || 0) * 26;
+    d.camBack = (d.camBack || 112) + (camBackTarget - (d.camBack || 112)) * Math.min(1, 6 * dt);
 
     if (d.z + 1300 > d.nextBuildZ) {
       seedCityBlocks(d, d.nextBuildZ, d.nextBuildZ + 1000);
@@ -1485,19 +1710,11 @@
           });
         }
       } else {
+        // Traffic holds its lane — settle onto the nearest lane center and stay
         car.z += car.speed * DW.MPH_Z * dt;
-        // Occasional lazy lane change keeps traffic feeling alive
-        car.laneT = (car.laneT != null ? car.laneT : 2 + Math.random() * 6) - dt;
-        if (car.laneT <= 0) {
-          const cur = Math.round(car.x / DW.LANE);
-          if (Math.random() < 0.4) {
-            car.targetLane = Math.max(-1, Math.min(1, cur + (Math.random() < 0.5 ? -1 : 1))) * DW.LANE;
-          }
-          car.laneT = 5 + Math.random() * 7;
-        }
-        const lane = car.targetLane != null ? car.targetLane : Math.round(car.x / DW.LANE) * DW.LANE;
-        car.x += (lane - car.x) * Math.min(1, 1.1 * dt);
-        car.yaw = (lane - car.x) * -0.5;
+        const lane = Math.round(car.x / DW.LANE) * DW.LANE;
+        car.x += (lane - car.x) * Math.min(1, 1.2 * dt);
+        car.yaw = 0;
       }
     }
     d.traffic = d.traffic.filter(c => c.z > d.z - 80 && c.z < d.z + 1800);
@@ -1512,12 +1729,10 @@
           const impactX = d.playerX - car.x;
           const closing = d.speed - car.speed;
           if (closing > 6 || Math.abs(impactX) < car.halfW) {
-            const hard = closing > 38 && Math.random() < 0.12;
             triggerDriveCrash(
               car.kind === 'bus' ? 'Clipped a bus.' : car.kind === 'taxi' ? 'Cab got launched.' : 'Sent them flying.',
               impactX,
-              car,
-              { hard }
+              car
             );
             if (state.mode !== 'drive') return;
           }
@@ -1567,6 +1782,8 @@
         p.vy -= 10 * dt;
         p.size = (p.size || 10) + 28 * dt;
         p.vx *= Math.pow(0.5, dt);
+      } else if (p.type === 'text') {
+        p.vy *= Math.pow(0.3, dt);
       } else {
         p.vy += 120 * dt;
       }
@@ -1616,6 +1833,12 @@
     for (let x = 4; x < W; x += 11) {
       ctx.fillRect(x, y + 6 + (x % 7), 2, 2);
       ctx.fillRect(x + 5, y + 22 + (x % 5), 2, 2);
+    }
+    // Soft glow when you're standing here
+    if (state.frog && state.frog.row === row && state.phase === 'cross') {
+      const pulse = 0.08 + 0.06 * Math.sin(performance.now() / 220);
+      ctx.fillStyle = `rgba(239,200,74,${pulse})`;
+      ctx.fillRect(0, y, W, TILE);
     }
     // Painted yellow curb edge
     ctx.fillStyle = C.curb;
@@ -1702,6 +1925,16 @@
   function drawParkedCar(cx, cy, color, yours) {
     ctx.save();
     ctx.translate(cx, cy);
+    if (yours) {
+      const pulse = 0.45 + 0.55 * Math.sin(performance.now() / 260);
+      ctx.shadowColor = '#efc84a';
+      ctx.shadowBlur = 6 + pulse * 14;
+      ctx.fillStyle = `rgba(239,200,74,${0.12 + pulse * 0.12})`;
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 22 + pulse * 3, 14 + pulse * 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
     ctx.fillStyle = color;
     ctx.fillRect(-14, -8, 28, 16);
     ctx.fillStyle = yours ? '#7ec8e3' : '#4a6a7a';
@@ -1711,13 +1944,16 @@
     ctx.fillRect(-12, 6, 7, 3);
     ctx.fillRect(5, 6, 7, 3);
     if (yours) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 260);
       ctx.strokeStyle = '#efc84a';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 + pulse;
       ctx.strokeRect(-16, -10, 32, 20);
       ctx.fillStyle = '#efc84a';
       ctx.font = '700 7px "General Sans", sans-serif';
       ctx.textAlign = 'center';
+      ctx.globalAlpha = 0.75 + pulse * 0.25;
       ctx.fillText('YOURS', 0, -12);
+      ctx.globalAlpha = 1;
     }
     ctx.restore();
   }
@@ -2008,11 +2244,16 @@
     });
   }
 
-  function drawBanker(cx, cy, scale = 1, resting = false) {
+  function drawBanker(cx, cy, scale = 1, resting = false, opts = {}) {
+    const sx = opts.sx != null ? opts.sx : 1;
+    const sy = opts.sy != null ? opts.sy : 1;
+    const facing = opts.facing || state.facing || 'up';
     ctx.save();
     ctx.translate(cx, cy);
-    ctx.scale(scale, scale);
-    const bob = resting ? 0 : Math.sin(performance.now() / 160) * 1;
+    ctx.scale(scale * sx, scale * sy);
+    if (facing === 'left') ctx.scale(-1, 1);
+    const hopping = !!state.hopAnim && state.phase === 'cross';
+    const bob = resting || hopping ? 0 : Math.sin(performance.now() / 160) * 1.4;
     ctx.translate(0, bob);
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.fillRect(-10, 12, 20, 4);
@@ -2028,10 +2269,12 @@
     ctx.fillRect(-3, -4, 6, 10);
     ctx.fillStyle = '#b01030';
     ctx.fillRect(-1, -3, 2, 8);
+    // Briefcase swings with facing
+    const caseX = facing === 'right' ? 8 : -14;
     ctx.fillStyle = '#5a3a1a';
-    ctx.fillRect(-14, 0, 6, 8);
+    ctx.fillRect(caseX, facing === 'up' ? -1 : 0, 6, 8);
     ctx.fillStyle = '#efc84a';
-    ctx.fillRect(-13, 2, 4, 1);
+    ctx.fillRect(caseX + 1, facing === 'up' ? 1 : 2, 4, 1);
     ctx.fillStyle = '#e6b89a';
     ctx.fillRect(-6, -14, 12, 10);
     ctx.fillStyle = '#2a2430';
@@ -2055,8 +2298,14 @@
     const pct = Math.max(0, state.time / state.maxTime);
     ctx.fillStyle = '#2a2c30';
     ctx.fillRect(4, y - 5, W - 8, 5);
-    ctx.fillStyle = pct < 0.25 ? '#c0392b' : '#d4a017';
+    ctx.fillStyle = pct < 0.22 ? '#c0392b' : pct < 0.45 ? '#d4a017' : '#3d9b6e';
     ctx.fillRect(4, y - 5, (W - 8) * pct, 5);
+    if (state.combo >= 2 && state.mode === 'play') {
+      ctx.fillStyle = '#7ec8e3';
+      ctx.font = '700 9px "General Sans", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${state.combo}× COMBO`, W - 8, y - 10);
+    }
   }
 
   function drawBrickWall(x, y, w, h, seed) {
@@ -2466,16 +2715,20 @@
     drawGhettoCurb(GRILL.GOAL, 'PARKING  •  YOUR CAR', 'goal');
     const x = GRILL.CAR_COL * TILE;
     const y = GRILL.GOAL * TILE;
+    const pulse = 0.45 + 0.55 * Math.sin(performance.now() / 260);
     // Highlight stall
-    ctx.strokeStyle = 'rgba(212,160,23,0.55)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = `rgba(212,160,23,${0.4 + pulse * 0.45})`;
+    ctx.lineWidth = 2 + pulse;
     ctx.strokeRect(x + 3, y + 4, TILE - 6, TILE - 8);
     // Your beat-up car
     ctx.save();
     ctx.translate(x + TILE / 2, y + TILE / 2 + 2);
     ctx.rotate(-0.04);
+    ctx.shadowColor = '#d4a017';
+    ctx.shadowBlur = 5 + pulse * 12;
     ctx.fillStyle = '#3a4a38';
     ctx.fillRect(-16, -8, 32, 16);
+    ctx.shadowBlur = 0;
     ctx.fillStyle = '#5a3a20';
     ctx.fillRect(-10, -6, 8, 6);
     ctx.fillRect(2, -6, 8, 6);
@@ -2488,7 +2741,9 @@
     ctx.fillStyle = '#d4a017';
     ctx.font = '700 7px "General Sans", sans-serif';
     ctx.textAlign = 'center';
+    ctx.globalAlpha = 0.75 + pulse * 0.25;
     ctx.fillText('YOURS', 0, -11);
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -2589,6 +2844,13 @@
   function drawCross() {
     ctx.clearRect(0, 0, W, H);
 
+    const shaking = state.shake > 0;
+    if (shaking) {
+      const mag = state.shake * 7;
+      ctx.save();
+      ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+    }
+
     if (isGrill()) {
       drawGhettoCross();
     } else {
@@ -2616,11 +2878,11 @@
 
     if (state.mode !== 'gameover' && !(state.mode === 'dead' && state.flash > 0 && Math.floor(state.flash * 20) % 2 === 0)) {
       if (!(state.mode === 'win')) {
-        const f = state.frog;
+        const pose = frogDrawPose();
         const alpha = state.invuln > 0 && Math.floor(state.invuln * 16) % 2 === 0 ? 0.4 : 1;
         ctx.save();
         ctx.globalAlpha = alpha;
-        drawBanker(f.col * TILE + TILE / 2, f.row * TILE + TILE / 2 + 1, 1, false);
+        drawBanker(pose.x, pose.y, 1, false, { sx: pose.sx, sy: pose.sy, facing: state.facing });
         ctx.restore();
       }
     }
@@ -2632,12 +2894,23 @@
     }
     ctx.globalAlpha = 1;
 
+    for (const ft of state.floatText) {
+      ctx.globalAlpha = Math.min(1, ft.life * 2);
+      ctx.fillStyle = ft.color;
+      ctx.font = '700 11px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(ft.text, ft.x, ft.y);
+    }
+    ctx.globalAlpha = 1;
+
     if (state.mode === 'play' || state.mode === 'pause' || state.mode === 'dead') drawTimer();
 
     if (state.flash > 0) {
       ctx.fillStyle = `rgba(192,57,43,${state.flash * 0.35})`;
       ctx.fillRect(0, 0, W, H);
     }
+
+    if (shaking) ctx.restore();
 
     if (state.mode === 'pause') {
       ctx.fillStyle = 'rgba(20,22,26,0.55)';
@@ -3162,6 +3435,15 @@
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size || 10, 0, Math.PI * 2);
         ctx.fill();
+      } else if (p.type === 'text') {
+        ctx.globalAlpha = Math.min(1, a * 1.6);
+        ctx.font = `800 ${p.size || 15}px "General Sans", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(10,10,14,0.8)';
+        ctx.strokeText(p.text, p.x, p.y);
+        ctx.fillStyle = p.color;
+        ctx.fillText(p.text, p.x, p.y);
       } else {
         ctx.globalAlpha = a;
         ctx.fillStyle = p.color;
@@ -3175,11 +3457,11 @@
     const d = state.drive;
     ctx.clearRect(0, 0, W, H);
 
-    // Smooth camera sway — layered sines instead of per-frame random jitter
+    // Smooth camera sway — layered slow sines instead of per-frame random jitter
     const st = performance.now() / 1000;
-    const shakeAmt = (d.camShake || 0) * 0.8 + (d.rumble || 0) * 3;
-    const shakeX = shakeAmt ? (Math.sin(st * 37) * 0.6 + Math.sin(st * 59 + 1.3) * 0.4) * shakeAmt * 0.55 : 0;
-    const shakeY = shakeAmt ? (Math.sin(st * 43 + 0.7) * 0.6 + Math.sin(st * 67) * 0.4) * shakeAmt * 0.4 : 0;
+    const shakeAmt = (d.camShake || 0) * 0.7 + (d.rumble || 0) * 2.2;
+    const shakeX = shakeAmt ? (Math.sin(st * 21) * 0.6 + Math.sin(st * 34 + 1.3) * 0.4) * shakeAmt * 0.45 : 0;
+    const shakeY = shakeAmt ? (Math.sin(st * 26 + 0.7) * 0.6 + Math.sin(st * 41) * 0.4) * shakeAmt * 0.32 : 0;
     ctx.save();
     ctx.translate(shakeX, shakeY);
     ctx.rotate(d.roll * 0.05);
@@ -3383,23 +3665,6 @@
     // Player car — on the road plane with suspension compression
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const carZ = d.z + 14;
-
-    // Headlight pool washing the asphalt ahead of the hood
-    const beam = projectWorld(d.playerX + d.curve * 0.4, 0, carZ + 130, d);
-    const beamNear = projectWorld(d.playerX, 0, carZ + 30, d);
-    const bg = ctx.createRadialGradient(beam.x, beam.y, 2, beam.x, beam.y, Math.max(30, 150 * beam.scale * 3));
-    bg.addColorStop(0, 'rgba(255,240,190,0.14)');
-    bg.addColorStop(0.6, 'rgba(255,240,190,0.05)');
-    bg.addColorStop(1, 'rgba(255,240,190,0)');
-    ctx.fillStyle = bg;
-    ctx.beginPath();
-    ctx.moveTo(beamNear.x - 30 * beamNear.scale * 3, beamNear.y);
-    ctx.lineTo(beam.x - 60 * beam.scale * 3, beam.y);
-    ctx.lineTo(beam.x + 60 * beam.scale * 3, beam.y);
-    ctx.lineTo(beamNear.x + 30 * beamNear.scale * 3, beamNear.y);
-    ctx.closePath();
-    ctx.fill();
-
     const ground = projectWorld(d.playerX, 0, carZ, d);
     const blink = d.invuln > 0 && Math.floor(d.invuln * 14) % 2 === 0;
     if (!blink) {

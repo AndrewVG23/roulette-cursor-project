@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Night Shift Grill</title>
-  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     :root, [data-theme="light"] {
       --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
@@ -14,13 +14,14 @@
       --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
       --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
       --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem;
-      --color-bg: #0d1512; --color-surface: #13211b; --color-surface-2: #173027;
-      --color-border: #2c473c; --color-text: #f5edd8; --color-text-muted: #bdb39b;
-      --color-text-faint: #897f6d; --color-primary: #d0a23a;
-      --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-xl: 1rem; --radius-full: 9999px;
-      --shadow-sm: 0 2px 4px rgba(0,0,0,.28); --shadow-md: 0 12px 30px rgba(0,0,0,.34);
-      --font-display: 'Zodiak', Georgia, serif;
-      --font-body: 'General Sans', 'Inter', sans-serif;
+      --color-bg: #1a0c0e; --color-surface: #2a1216; --color-surface-2: #3a181c;
+      --color-border: #6a2a30; --color-text: #fff7ef; --color-text-muted: #e8c8c0;
+      --color-text-faint: #c09088; --color-primary: #e31c23;
+      --check-red: #c8102e; --check-cream: #f6efe4; --steel: #c5ccd4;
+      --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1rem; --radius-xl: 1.25rem; --radius-full: 9999px;
+      --shadow-sm: 0 2px 6px rgba(80,10,16,.28); --shadow-md: 0 14px 34px rgba(60,8,12,.4);
+      --font-display: 'Fredoka', 'Nunito', system-ui, sans-serif;
+      --font-body: 'Nunito', 'Fredoka', system-ui, sans-serif;
       --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
     }
     * { box-sizing: border-box; }
@@ -38,9 +39,9 @@
       font-family: var(--font-body);
       color: var(--color-text);
       background:
-        radial-gradient(ellipse 90% 50% at 50% -10%, rgba(208,162,58,.12), transparent 45%),
-        radial-gradient(circle at 20% 80%, rgba(180,80,40,.08), transparent 35%),
-        linear-gradient(180deg, #0d1512, #07100d 60%);
+        radial-gradient(ellipse 80% 45% at 50% -8%, rgba(227,28,35,.22), transparent 50%),
+        radial-gradient(circle at 85% 90%, rgba(246,239,228,.08), transparent 30%),
+        linear-gradient(180deg, #2a1014 0%, #14080a 55%, #0c0607 100%);
       user-select: none;
       -webkit-user-select: none;
       -webkit-touch-callout: none;
@@ -92,8 +93,8 @@
       align-items: center;
       justify-content: flex-end;
       gap: var(--space-3);
-      padding: 8px 10px;
-      background: linear-gradient(180deg, rgba(8,12,10,.72), transparent);
+      padding: 10px 12px;
+      background: linear-gradient(180deg, rgba(40,10,14,.78), transparent);
       border: none;
       pointer-events: none;
     }
@@ -107,17 +108,21 @@
     }
     .stat {
       min-width: 64px;
-      padding: 6px 10px;
-      border-radius: 3px;
-      background: linear-gradient(180deg, rgba(20,53,40,.78), rgba(12,26,21,.92));
-      border: 1px solid rgba(238,194,97,.18);
+      padding: 7px 11px;
+      border-radius: 14px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.14), transparent 40%),
+        linear-gradient(180deg, #3a1418, #220c10);
+      border: 2px solid rgba(246,239,228,.22);
+      box-shadow: 0 4px 0 rgba(80,10,16,.45), inset 0 1px 0 rgba(255,255,255,.12);
       text-align: center;
     }
     .stat .label {
       display: block;
-      font-size: 0.65rem;
-      letter-spacing: .08em;
+      font-size: 0.68rem;
+      letter-spacing: .06em;
       text-transform: uppercase;
+      font-weight: 800;
       color: var(--color-text-faint);
     }
     .stat .value {
@@ -125,12 +130,12 @@
       font-family: var(--font-display);
       font-size: var(--text-base);
       font-weight: 700;
-      color: var(--color-primary);
+      color: #fff4ea;
       line-height: 1.2;
     }
     .stat.money-stat {
       min-width: 108px;
-      padding: 4px 8px 6px;
+      padding: 5px 9px 7px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -140,12 +145,12 @@
       display: block;
       width: 92px;
       height: 40px;
-      border-radius: 3px;
-      box-shadow: 0 2px 6px rgba(0,0,0,.35);
+      border-radius: 8px;
+      box-shadow: 0 3px 8px rgba(0,0,0,.35);
     }
     .stat.money-stat .value {
       font-size: var(--text-sm);
-      color: #8fd989;
+      color: #7ddea0;
     }
     .stat.health-stat {
       min-width: 110px;
@@ -154,25 +159,25 @@
     .health-bar {
       margin-top: 4px;
       height: 12px;
-      border-radius: 2px;
+      border-radius: 999px;
       background: rgba(0,0,0,.45);
-      border: 1px solid rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.14);
       overflow: hidden;
       box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
     }
     .health-fill {
       height: 100%;
       width: 100%;
-      border-radius: 1px;
-      background: linear-gradient(180deg, #8fd9a4, #3f9a5d);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+      border-radius: 999px;
+      background: linear-gradient(180deg, #8fe0a8, #3fa866);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
       transition: width 180ms ease, background 180ms ease;
     }
     .health-fill.mid {
-      background: linear-gradient(180deg, #e0c06a, #b8842a);
+      background: linear-gradient(180deg, #f0c86a, #d09028);
     }
     .health-fill.low {
-      background: linear-gradient(180deg, #f26e89, #a03040);
+      background: linear-gradient(180deg, #ff7a8a, #c8102e);
     }
     .stat.health-stat .value {
       font-size: 0.8rem;
@@ -185,7 +190,7 @@
       display: block;
       border-radius: 0;
       overflow: hidden;
-      background: #1a1612;
+      background: #2a1418;
       border: none;
       box-shadow: none;
     }
@@ -206,8 +211,8 @@
       align-items: center;
       justify-content: center;
       padding: var(--space-4);
-      background: rgba(7,16,13,.72);
-      backdrop-filter: blur(4px);
+      background: rgba(30,8,12,.72);
+      backdrop-filter: blur(5px);
       z-index: 2;
       transition: opacity var(--transition);
     }
@@ -216,22 +221,40 @@
       width: min(100%, 340px);
       text-align: center;
       padding: var(--space-6) var(--space-5);
-      border-radius: var(--radius-lg);
-      background: linear-gradient(180deg, rgba(23,48,39,.96), rgba(12,26,21,.98));
-      border: 1px solid rgba(238,194,97,.28);
-      box-shadow: var(--shadow-md), 0 0 40px rgba(208,162,58,.08);
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, #fff8f0, #f0e4d4);
+      border: 3px solid #c8102e;
+      box-shadow: var(--shadow-md), 0 0 0 6px rgba(200,16,46,.18);
+      color: #2a1410;
     }
     .overlay-card h2 {
       margin: 0 0 var(--space-2);
       font-family: var(--font-display);
       font-size: var(--text-xl);
-      color: #f7ead0;
+      color: #c8102e;
     }
     .overlay-card p {
       margin: 0 0 var(--space-5);
-      color: var(--color-text-muted);
+      color: #5a4038;
       font-size: var(--text-sm);
       line-height: 1.45;
+      font-weight: 700;
+    }
+    .overlay-card .btn {
+      min-height: 48px;
+      min-width: 120px;
+      padding: 10px 22px;
+      border-radius: 999px;
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: #fff8f0;
+      background: linear-gradient(180deg, #f04048, #c8102e);
+      border: 2px solid rgba(160,20,30,.35);
+      box-shadow: 0 4px 0 rgba(120,16,30,.4);
     }
     .controls {
       position: absolute;
@@ -239,8 +262,13 @@
       z-index: 3;
       display: grid;
       gap: var(--space-2);
-      padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
-      background: linear-gradient(0deg, rgba(8,12,10,.85), rgba(8,12,10,.4) 70%, transparent);
+      padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+      background:
+        linear-gradient(0deg, rgba(28,8,12,.94), rgba(28,8,12,.55) 55%, transparent),
+        repeating-linear-gradient(90deg, #c8102e 0 14px, #f6efe4 14px 28px);
+      background-size: auto, 100% 8px;
+      background-position: 0 0, 0 100%;
+      background-repeat: no-repeat, repeat-x;
       border: none;
       border-radius: 0;
       box-shadow: none;
@@ -256,15 +284,15 @@
       min-height: 44px;
       min-width: 64px;
       padding: var(--space-2) var(--space-3);
-      border-radius: 3px;
+      border-radius: 999px;
       font-size: var(--text-xs);
-      font-weight: 700;
-      letter-spacing: .05em;
+      font-weight: 800;
+      letter-spacing: .04em;
       text-transform: uppercase;
-      color: #f7ead0;
-      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
-      border: 1px solid rgba(255,238,198,.22);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.24);
+      color: #fff7ef;
+      background: linear-gradient(180deg, #4a2228, #2a1014);
+      border: 2px solid rgba(246,239,228,.28);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 3px 0 rgba(60,8,12,.55);
       transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
       text-decoration: none;
       display: inline-flex;
@@ -273,15 +301,15 @@
       gap: 4px;
     }
     .controls .btn.primary {
-      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
-      color: #fff6e3;
-      border-color: rgba(255,210,200,.28);
+      background: linear-gradient(180deg, #f04048, #c8102e);
+      color: #fff8f0;
+      border-color: rgba(255,230,220,.45);
     }
     .controls .btn:hover {
       transform: translateY(-1px);
-      border-color: rgba(239,187,73,.42);
+      border-color: rgba(255,240,230,.55);
     }
-    .controls .btn:active { transform: translateY(0) scale(0.97); }
+    .controls .btn:active { transform: translateY(1px) scale(0.97); }
     .controls .btn:disabled {
       opacity: 0.45;
       pointer-events: none;
@@ -293,21 +321,26 @@
     }
     .controls .btn.ing {
       flex-direction: column;
-      min-height: 72px;
+      min-height: 76px;
       padding: 8px 6px;
-      letter-spacing: .04em;
-      font-size: 0.72rem;
-      gap: 5px;
-      background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.02)), linear-gradient(180deg, #3a2a18, #24180e);
-      border-color: rgba(255,220,160,.22);
+      letter-spacing: .03em;
+      font-size: 0.74rem;
+      gap: 4px;
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.2), transparent 45%),
+        linear-gradient(180deg, #fff4ea, #e8d4c0);
+      border: 2px solid #c8102e;
+      color: #3a1810;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 4px 0 rgba(120,16,30,.35);
     }
     .controls .btn.ing .icon {
       width: 52px;
       height: 34px;
-      border-radius: 4px;
-      background: rgba(0,0,0,.25);
-      border: 1px solid rgba(255,220,160,.18);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #fff, #f0e6d8);
+      border: 1px solid rgba(200,16,46,.18);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 2px 4px rgba(80,20,20,.12);
       display: block;
     }
     .controls .btn.ing .key {
@@ -317,22 +350,22 @@
       min-width: 22px;
       height: 18px;
       padding: 0 5px;
-      border-radius: 3px;
+      border-radius: 999px;
       font-size: 0.7rem;
       font-weight: 800;
       letter-spacing: .06em;
-      color: #1a1307;
-      background: linear-gradient(180deg, #f0c869, #c28b2d);
-      border: 1px solid rgba(255,225,156,.45);
+      color: #fff8f0;
+      background: linear-gradient(180deg, #f04048, #c8102e);
+      border: 1px solid rgba(255,200,190,.45);
     }
     .controls .btn.ing.flash-ok {
-      border-color: rgba(113,209,137,.75);
-      box-shadow: 0 0 14px rgba(113,209,137,.4);
+      border-color: #2a9a4a;
+      box-shadow: 0 0 0 3px rgba(80,200,120,.35), 0 4px 0 rgba(40,100,50,.3);
       transform: translateY(2px) scale(0.96);
     }
     .controls .btn.ing.flash-bad {
-      border-color: rgba(242,110,137,.75);
-      box-shadow: 0 0 14px rgba(242,110,137,.4);
+      border-color: #a01020;
+      box-shadow: 0 0 0 3px rgba(227,28,35,.35), 0 4px 0 rgba(120,16,30,.35);
     }
     @media (max-width: 520px) {
       .brand h1 { font-size: var(--text-base); }
@@ -445,7 +478,7 @@
     { id: 'solo',    name: 'Lonely Pat', stack: ['patty'] }
   ];
 
-  const TICKET_COLORS = ['#d0a23a', '#71d189', '#f0a46a', '#7eb6e8', '#e07ab5', '#c9a0ff'];
+  const TICKET_COLORS = ['#c8102e', '#e85a20', '#d4a017', '#2f8f4e', '#3a6ec8', '#a048a0'];
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1186,7 +1219,7 @@
 
     // Left "1"
     c.fillStyle = '#1f4d28';
-    c.font = '700 28px "Zodiak", Georgia, serif';
+    c.font = '700 28px Fredoka, Nunito, sans-serif';
     c.textAlign = 'left';
     c.fillText('1', 16, 48);
 
@@ -1224,12 +1257,12 @@
 
     // ONE DOLLAR
     c.fillStyle = '#1f4d28';
-    c.font = '800 9px "General Sans", sans-serif';
+    c.font = '800 9px Nunito, sans-serif';
     c.textAlign = 'center';
     c.fillText('ONE DOLLAR', bw / 2, bh - 14);
 
     // Serial-ish
-    c.font = '600 7px "General Sans", sans-serif';
+    c.font = '700 7px Nunito, sans-serif';
     c.fillStyle = '#3d6a44';
     c.textAlign = 'left';
     c.fillText('NIGHT SHIFT', 18, 18);
@@ -1483,44 +1516,58 @@
   function drawBottomBun(cx, y, scale = 1, squash = 0) {
     const sq = 1 + squash * 0.35;
     const tall = 1 - squash * 0.4;
-    const w = 58 * scale * sq;
-    const h = 12 * scale * tall;
-    ctx.fillStyle = '#b87830';
-    roundRect(cx - w / 2, y - h * 0.45, w, h, 4 * scale);
+    const w = 62 * scale * sq;
+    const h = 14 * scale * tall;
+    // Soft 3D underside shadow
+    ctx.fillStyle = 'rgba(80,40,10,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(cx + 1, y + 5 * scale, w * 0.48, 5 * scale, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#e0a858';
-    roundRect(cx - w / 2 + 2, y - h * 0.55, w - 4, h * 0.45, 3 * scale);
+    const grd = ctx.createLinearGradient(cx, y - h, cx, y + h);
+    grd.addColorStop(0, '#f0c878');
+    grd.addColorStop(0.45, '#e0a04a');
+    grd.addColorStop(1, '#b86828');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.ellipse(cx, y, w / 2, h * 0.72, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Toasted edge
-    ctx.fillStyle = 'rgba(90,40,10,0.35)';
-    roundRect(cx - w / 2, y + h * 0.15, w, h * 0.3, 2);
+    ctx.fillStyle = 'rgba(255,230,180,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(cx - 6 * scale, y - 3 * scale, w * 0.28, h * 0.28, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(120,50,10,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(cx, y + h * 0.25, w * 0.42, h * 0.22, 0, 0, Math.PI * 2);
     ctx.fill();
   }
 
   function drawTopBun(cx, y, scale = 1, squash = 0, stretchY = 1) {
     const sq = 1 + squash * 0.3;
-    const w = 56 * scale * sq;
-    const h = 15 * scale * stretchY * (1 - squash * 0.35);
-    ctx.fillStyle = '#d4a05a';
+    const w = 60 * scale * sq;
+    const h = 18 * scale * stretchY * (1 - squash * 0.35);
+    const grd = ctx.createRadialGradient(cx - 6, y - 4, 2, cx, y, w * 0.55);
+    grd.addColorStop(0, '#ffe0a0');
+    grd.addColorStop(0.45, '#f0b860');
+    grd.addColorStop(1, '#c87830');
+    ctx.fillStyle = grd;
     ctx.beginPath();
     ctx.ellipse(cx, y, w / 2, h, 0, Math.PI, 0);
     ctx.fill();
-    ctx.fillStyle = '#e8b86a';
+    ctx.fillStyle = '#e8a048';
     ctx.beginPath();
-    ctx.ellipse(cx, y + 2 * scale, w / 2 * 0.9, h * 0.5, 0, Math.PI, 0);
+    ctx.ellipse(cx, y + 1 * scale, w / 2, h * 0.35, 0, 0, Math.PI);
     ctx.fill();
-    // Sesame seeds — greasy
-    ctx.fillStyle = '#f5e6c8';
-    for (let i = 0; i < 6; i++) {
-      const a = -Math.PI + (i + 0.4) * (Math.PI / 6);
+    // Cute sesame seeds
+    ctx.fillStyle = '#fff6dc';
+    for (let i = 0; i < 8; i++) {
+      const a = -Math.PI + (i + 0.35) * (Math.PI / 7.5);
       ctx.beginPath();
-      ctx.ellipse(cx + Math.cos(a) * w * 0.28, y - 1 + Math.sin(a) * 2, 2.4, 1.3, a, 0, Math.PI * 2);
+      ctx.ellipse(cx + Math.cos(a) * w * 0.3, y - 2 + Math.sin(a) * 3, 2.6 * scale, 1.4 * scale, a, 0, Math.PI * 2);
       ctx.fill();
     }
-    // Gloss
-    ctx.fillStyle = 'rgba(255,240,200,0.25)';
+    ctx.fillStyle = 'rgba(255,250,230,0.45)';
     ctx.beginPath();
-    ctx.ellipse(cx - 8, y - 4, 8, 3, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(cx - 10 * scale, y - 6 * scale, 10 * scale, 4 * scale, -0.45, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -1760,14 +1807,16 @@
       const ic = btn._icon;
       const c = ic.getContext('2d');
       c.clearRect(0, 0, ic.width, ic.height);
-      c.fillStyle = '#1a1410';
+      const g = c.createLinearGradient(0, 0, 0, ic.height);
+      g.addColorStop(0, '#fffaf2');
+      g.addColorStop(1, '#f0e2d0');
+      c.fillStyle = g;
       c.fillRect(0, 0, ic.width, ic.height);
-      // subtle plate
-      c.fillStyle = 'rgba(255,240,220,0.06)';
+      c.fillStyle = 'rgba(200,16,46,0.08)';
       c.beginPath();
-      c.ellipse(ic.width / 2, ic.height * 0.62, 40, 10, 0, 0, Math.PI * 2);
+      c.ellipse(ic.width / 2, ic.height * 0.68, 38, 9, 0, 0, Math.PI * 2);
       c.fill();
-      drawIngredientOn(c, ing.id, ic.width / 2, ic.height * 0.52, 1.35, {});
+      drawIngredientOn(c, ing.id, ic.width / 2, ic.height * 0.5, 1.4, {});
     }
   }
 
@@ -1850,22 +1899,40 @@
   }
 
   function drawCustomerWindow() {
-    // Pass window frame
-    ctx.fillStyle = '#1a221c';
-    ctx.fillRect(W - 96, LINE_Y - 130, 96, 170);
-    ctx.fillStyle = '#2a322c';
-    ctx.fillRect(W - 90, LINE_Y - 122, 84, 150);
-    // Window glow
-    const wg = ctx.createLinearGradient(W - 90, 0, W, 0);
-    wg.addColorStop(0, 'rgba(208,162,58,0.08)');
-    wg.addColorStop(1, 'rgba(208,162,58,0.02)');
-    ctx.fillStyle = wg;
-    ctx.fillRect(W - 90, LINE_Y - 122, 84, 150);
-
-    ctx.fillStyle = '#897f6d';
-    ctx.font = '700 8px "General Sans", sans-serif';
+    const wx = W - 108;
+    const wy = LINE_Y - 142;
+    // Cute 3D booth with red awning
+    ctx.fillStyle = '#2a1418';
+    roundRect(wx, wy + 18, 104, 168, 14);
+    ctx.fill();
+    // Depth side
+    ctx.fillStyle = '#1a0c10';
+    ctx.beginPath();
+    ctx.moveTo(wx + 104, wy + 24);
+    ctx.lineTo(W, wy + 34);
+    ctx.lineTo(W, wy + 186);
+    ctx.lineTo(wx + 104, wy + 186);
+    ctx.closePath();
+    ctx.fill();
+    // Cream interior
+    const ig = ctx.createLinearGradient(wx, 0, W, 0);
+    ig.addColorStop(0, '#fff4ea');
+    ig.addColorStop(1, '#e8d4c4');
+    ctx.fillStyle = ig;
+    roundRect(wx + 8, wy + 36, 88, 140, 12);
+    ctx.fill();
+    // Red striped awning
+    ctx.fillStyle = '#c8102e';
+    roundRect(wx - 4, wy + 8, 112, 28, 8);
+    ctx.fill();
+    ctx.fillStyle = '#f6efe4';
+    for (let i = 0; i < 6; i++) {
+      ctx.fillRect(wx + 4 + i * 18, wy + 10, 9, 24);
+    }
+    ctx.fillStyle = '#fff8f0';
+    ctx.font = '800 10px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('PICKUP', W - 48, LINE_Y - 112);
+    ctx.fillText('PICKUP', wx + 52, wy + 27);
 
     if (!state.customer) state.customer = pickCustomer();
     drawCustomer(state.customer);
@@ -1881,25 +1948,26 @@
     ctx.save();
     ctx.translate(lean, 0);
 
-    // Body / shirt
+    // Chibi body
     ctx.fillStyle = c.shirt;
-    roundRect(cx - 22, cy - 18, 44, 52, 10);
+    roundRect(cx - 20, cy - 14, 40, 46, 14);
     ctx.fill();
     ctx.fillStyle = c.accent;
-    ctx.fillRect(cx - 6, cy - 18, 12, 40);
+    roundRect(cx - 5, cy - 14, 10, 34, 4);
+    ctx.fill();
 
     // Arms
     ctx.strokeStyle = c.skin;
-    ctx.lineWidth = 7;
+    ctx.lineWidth = 8;
     ctx.lineCap = 'round';
     const armUp = (c.mood === 'happy' || c.mood === 'eating') ? -0.9 * c.arm : c.mood === 'pissed' ? -0.5 : 0.15;
     ctx.beginPath();
-    ctx.moveTo(cx - 18, cy - 8);
-    ctx.quadraticCurveTo(cx - 34, cy - 4 + armUp * 30, cx - 28, cy + 10 + armUp * 20);
+    ctx.moveTo(cx - 16, cy - 4);
+    ctx.quadraticCurveTo(cx - 32, cy + armUp * 30, cx - 26, cy + 12 + armUp * 18);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(cx + 18, cy - 8);
-    ctx.quadraticCurveTo(cx + 34, cy - 2 + armUp * 28, cx + 30, cy + 8 + armUp * 18);
+    ctx.moveTo(cx + 16, cy - 4);
+    ctx.quadraticCurveTo(cx + 32, cy + 2 + armUp * 28, cx + 28, cy + 10 + armUp * 16);
     ctx.stroke();
 
     // Held burger (before the chomp finishes / while raging)
@@ -1931,13 +1999,23 @@
 
     // Neck
     ctx.fillStyle = c.skin;
-    ctx.fillRect(cx - 7, cy - 28, 14, 12);
+    roundRect(cx - 6, cy - 24, 12, 12, 4);
+    ctx.fill();
 
-    // Head
-    const headY = cy - 48;
+    // Bigger cute head
+    const headY = cy - 50;
+    ctx.fillStyle = 'rgba(40,10,14,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(cx + 1, headY + 3, 23, 25, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = c.skin;
     ctx.beginPath();
-    ctx.ellipse(cx, headY, 20, 22, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, headY, 22, 24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Soft cheek highlights
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(cx - 8, headY - 6, 7, 4, -0.4, 0, Math.PI * 2);
     ctx.fill();
 
     drawHair(c, cx, headY, c.mood);
@@ -2111,16 +2189,16 @@
       drawSpeechBubble(cx - 58, headY - 48, c.line, c.mood === 'pissed' ? '#3a1518' : '#1a2820', c.lineLife);
     }
 
-    // Name tag + funny title
-    ctx.fillStyle = 'rgba(20,24,22,0.82)';
-    roundRect(cx - 40, cy + 28, 80, 24, 3);
+    // Cute name tag
+    ctx.fillStyle = '#c8102e';
+    roundRect(cx - 38, cy + 28, 76, 24, 10);
     ctx.fill();
-    ctx.fillStyle = c.mood === 'pissed' ? '#f26e89' : c.mood === 'happy' || c.mood === 'eating' ? '#71d189' : '#e8dcc0';
-    ctx.font = '700 9px "General Sans", sans-serif';
+    ctx.fillStyle = '#fff8f0';
+    ctx.font = '700 10px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(c.name.toUpperCase(), cx, cy + 39);
-    ctx.fillStyle = '#a89878';
-    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.fillStyle = c.mood === 'pissed' ? '#ffd0d4' : c.mood === 'happy' || c.mood === 'eating' ? '#d8ffe0' : '#ffe8d8';
+    ctx.font = '700 8px Nunito, sans-serif';
     ctx.fillText(c.title, cx, cy + 48);
 
     ctx.restore();
@@ -2244,7 +2322,7 @@
 
   function drawSpeechBubble(x, y, text, bg, life) {
     const maxW = 120;
-    ctx.font = '700 9px "General Sans", sans-serif';
+    ctx.font = '700 10px Fredoka, Nunito, sans-serif';
     // naive wrap
     const words = text.split(' ');
     const lines = [];
@@ -2257,21 +2335,26 @@
       } else cur = test;
     }
     if (cur) lines.push(cur);
-    const bw = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width)) + 14);
-    const bh = 8 + lines.length * 11;
+    const bw = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width)) + 16);
+    const bh = 10 + lines.length * 12;
     ctx.globalAlpha = Math.min(1, life * 2);
-    ctx.fillStyle = bg;
-    roundRect(x - bw / 2, y - bh, bw, bh, 5);
+    ctx.fillStyle = bg === '#3a1518' ? '#3a1014' : '#fff8f0';
+    roundRect(x - bw / 2, y - bh, bw, bh, 12);
     ctx.fill();
+    ctx.strokeStyle = '#c8102e';
+    ctx.lineWidth = 2;
+    roundRect(x - bw / 2, y - bh, bw, bh, 12);
+    ctx.stroke();
     ctx.beginPath();
     ctx.moveTo(x - 4, y);
     ctx.lineTo(x + 6, y);
     ctx.lineTo(x + 2, y + 6);
     ctx.closePath();
+    ctx.fillStyle = bg === '#3a1518' ? '#3a1014' : '#fff8f0';
     ctx.fill();
-    ctx.fillStyle = '#f5edd8';
+    ctx.fillStyle = bg === '#3a1518' ? '#ffd0d4' : '#2a1410';
     ctx.textAlign = 'center';
-    lines.forEach((l, i) => ctx.fillText(l, x, y - bh + 12 + i * 11));
+    lines.forEach((l, i) => ctx.fillText(l, x, y - bh + 14 + i * 12));
     ctx.globalAlpha = 1;
   }
 
@@ -2287,29 +2370,54 @@
     ctx.fillRect(s.x - 4, s.y - 40, 8, 36);
   }
 
+  function burgerDepth(x) {
+    // Near station = larger; toward pickup = slightly smaller (3D depth)
+    const t = Math.max(0, Math.min(1, x / (W - 40)));
+    return 1.12 - t * 0.28;
+  }
+
+  function burgerGroundY(x) {
+    // Conveyor rises slightly toward the back-right pickup
+    return LINE_Y - 6 + (x / W) * -10;
+  }
+
   function drawBurger(b) {
     const bounce = b.bounce > 0 ? Math.sin(b.bounce * 28) * 5 : 0;
     const squash = b.squash > 0 ? b.squash / 0.35 : 0;
+    const scale = burgerDepth(b.x);
     const cx = b.x + BURGER_W / 2;
-    let y = LINE_Y - 8 + bounce;
+    const gy = burgerGroundY(b.x);
+    let y = gy - 10 * scale + bounce;
 
-    // Grease puddle under plate
+    ctx.save();
+    ctx.translate(cx, gy);
+    ctx.scale(scale, scale * 0.92);
+    ctx.translate(-cx, -gy);
+
     if (b.grease > 0) {
       ctx.fillStyle = `rgba(90,50,10,${0.15 + b.grease * 0.25})`;
       ctx.beginPath();
-      ctx.ellipse(cx, LINE_Y + 12, 28 + b.grease * 16, 6 + b.grease * 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, gy + 14, 30 + b.grease * 16, 7 + b.grease * 3, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    // Soft plate with thickness
+    ctx.fillStyle = 'rgba(40,20,20,0.3)';
     ctx.beginPath();
-    ctx.ellipse(cx, LINE_Y + 10, 34, 7, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 2, gy + 14, 36, 9, 0, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.strokeStyle = b.color;
-    ctx.lineWidth = 3;
+    const plate = ctx.createRadialGradient(cx - 8, gy + 4, 4, cx, gy + 10, 40);
+    plate.addColorStop(0, '#fffaf2');
+    plate.addColorStop(0.7, '#efe0d0');
+    plate.addColorStop(1, '#d8c4b0');
+    ctx.fillStyle = plate;
     ctx.beginPath();
-    ctx.ellipse(cx, LINE_Y + 10, 38, 9, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, gy + 10, 38, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.ellipse(cx, gy + 10, 40, 11, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     drawBottomBun(cx, y, 1, squash);
@@ -2320,7 +2428,7 @@
       const isGross = typeof layer === 'object' && layer.gross;
       y -= layerGap(id) * (1 - squash * 0.15);
       const layerSquash = i === b.stack.length - 1 ? squash : squash * 0.4;
-      drawIngredientLayer(id, cx, y, 1, { squash: layerSquash, gross: isGross });
+      drawIngredientLayer(id, cx, y, 1.05, { squash: layerSquash, gross: isGross });
     }
 
     const hasCheese = countOf(b.stack, 'cheese') > 0;
@@ -2330,36 +2438,37 @@
       ctx.fillStyle = dripCol;
       const dx = cx + 18;
       ctx.beginPath();
-      ctx.ellipse(dx, LINE_Y - 6 + Math.sin(b.x * 0.08) * 2, 2.5, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(dx, gy - 4 + Math.sin(b.x * 0.08) * 2, 2.5, 5, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
     if (b.tainted) {
       ctx.fillStyle = 'rgba(100,140,40,0.28)';
-      roundRect(b.x + 6, LINE_Y - 78, BURGER_W - 12, 78, 6);
+      roundRect(cx - 34, gy - 86, 68, 78, 10);
       ctx.fill();
-      ctx.fillStyle = '#c8e080';
-      ctx.font = '800 9px "General Sans", sans-serif';
+      ctx.fillStyle = '#5a7020';
+      ctx.font = '800 10px Fredoka, Nunito, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('GROSS', cx, LINE_Y - 70);
+      ctx.fillText('GROSS', cx, gy - 76);
     } else if (b.ruined) {
-      ctx.fillStyle = 'rgba(242,110,137,0.32)';
-      roundRect(b.x + 6, LINE_Y - 78, BURGER_W - 12, 78, 6);
+      ctx.fillStyle = 'rgba(227,28,35,0.22)';
+      roundRect(cx - 34, gy - 86, 68, 78, 10);
       ctx.fill();
     } else if (b.done) {
-      ctx.fillStyle = 'rgba(113,209,137,0.22)';
-      roundRect(b.x + 6, LINE_Y - 78, BURGER_W - 12, 78, 6);
+      ctx.fillStyle = 'rgba(80,180,100,0.18)';
+      roundRect(cx - 34, gy - 86, 68, 78, 10);
       ctx.fill();
     }
+    ctx.restore();
   }
 
   function drawTicket(ticket) {
     const stack = ticket.recipe.stack;
-    const rowH = 42;
-    const tw = Math.min(420, W - 40);
-    const th = 58 + stack.length * rowH + 16;
-    const x = (W - tw) / 2;
-    const y = 8;
+    const rowH = 40;
+    const tw = Math.min(400, W - 48);
+    const th = 56 + stack.length * rowH + 14;
+    const x = (W - tw) / 2 - 20;
+    const y = 10;
     const sway = Math.sin(ticket.age * 1.6) * 1.5;
     const burger = state.burgers.find(bb => bb.ticketId === ticket.id);
     const have = burger ? burger.stack : [];
@@ -2385,90 +2494,97 @@
       return { ingId, checked, gross };
     });
 
-    ctx.fillStyle = '#8a3030';
-    ctx.beginPath();
-    ctx.arc(x + tw / 2, y + 6 + sway, 6, 0, Math.PI * 2);
-    ctx.fill();
-
     ctx.save();
     ctx.translate(0, sway);
 
-    ctx.fillStyle = '#f7edd4';
-    roundRect(x, y + 10, tw, th, 6);
+    // Hanging clip
+    ctx.fillStyle = '#8a9098';
+    roundRect(x + tw / 2 - 10, y, 20, 12, 3);
     ctx.fill();
-    ctx.fillStyle = ticket.color;
-    ctx.fillRect(x, y + 10, 10, th);
-
-    ctx.fillStyle = '#2a2218';
-    ctx.font = '800 22px Zodiak, Georgia, serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(ticket.recipe.name.toUpperCase(), x + 22, y + 38);
-    ctx.fillStyle = '#7a6a50';
-    ctx.font = '700 12px "General Sans", sans-serif';
-    ctx.fillText('ONE ORDER  ·  ANY ORDER  ·  TOSS GROSS WITH X', x + 22, y + 56);
-
-    ctx.strokeStyle = 'rgba(80,60,40,0.28)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]);
+    ctx.fillStyle = '#c8102e';
     ctx.beginPath();
-    ctx.moveTo(x + 20, y + 64);
-    ctx.lineTo(x + tw - 16, y + 64);
+    ctx.arc(x + tw / 2, y + 4, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Soft paper shadow (3D hang)
+    ctx.fillStyle = 'rgba(40,10,14,0.28)';
+    roundRect(x + 4, y + 18, tw, th, 12);
+    ctx.fill();
+
+    // Kraft bag / pad style ticket
+    const paper = ctx.createLinearGradient(x, y, x, y + th);
+    paper.addColorStop(0, '#fffaf2');
+    paper.addColorStop(1, '#f0e4d4');
+    ctx.fillStyle = paper;
+    roundRect(x, y + 14, tw, th, 12);
+    ctx.fill();
+    ctx.strokeStyle = '#c8102e';
+    ctx.lineWidth = 3;
+    roundRect(x, y + 14, tw, th, 12);
     ctx.stroke();
-    ctx.setLineDash([]);
+
+    // Red brand stamp
+    ctx.fillStyle = '#c8102e';
+    roundRect(x + 12, y + 22, 70, 18, 6);
+    ctx.fill();
+    ctx.fillStyle = '#fff8f0';
+    ctx.font = '800 10px Fredoka, Nunito, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('ORDER UP', x + 47, y + 35);
+
+    ctx.fillStyle = '#2a1410';
+    ctx.font = '700 20px Fredoka, Nunito, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(ticket.recipe.name, x + 92, y + 38);
+    ctx.fillStyle = '#8a6a60';
+    ctx.font = '800 11px Nunito, sans-serif';
+    ctx.fillText('ANY ORDER  ·  TOSS GROSS WITH X', x + 92, y + 54);
 
     rows.forEach((row, i) => {
-      const ry = y + 74 + i * rowH;
+      const ry = y + 68 + i * rowH;
       const ing = ING_BY_ID[row.ingId];
 
-      ctx.strokeStyle = row.gross ? '#6a8a30' : row.checked ? '#3a8a4a' : '#6a5a40';
-      ctx.lineWidth = 2;
-      roundRect(x + 20, ry + 8, 22, 22, 3);
+      ctx.strokeStyle = row.gross ? '#6a8a30' : row.checked ? '#2f8f4e' : '#c8a898';
+      ctx.lineWidth = 2.5;
+      roundRect(x + 18, ry + 6, 22, 22, 7);
       ctx.stroke();
       if (row.checked) {
-        ctx.fillStyle = row.gross ? '#6a8a30' : '#3a8a4a';
-        ctx.fillRect(x + 23, ry + 11, 16, 16);
-        ctx.strokeStyle = '#f7edd4';
+        ctx.fillStyle = row.gross ? '#6a8a30' : '#2f8f4e';
+        roundRect(x + 21, ry + 9, 16, 16, 5);
+        ctx.fill();
+        ctx.strokeStyle = '#fff8f0';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(x + 26, ry + 19);
-        ctx.lineTo(x + 30, ry + 23);
-        ctx.lineTo(x + 37, ry + 14);
+        ctx.moveTo(x + 24, ry + 17);
+        ctx.lineTo(x + 28, ry + 21);
+        ctx.lineTo(x + 35, ry + 12);
         ctx.stroke();
       }
 
-      const iconCx = x + 72;
-      const iconCy = ry + 19;
-      ctx.fillStyle = row.gross ? 'rgba(100,140,40,0.18)' : row.checked ? 'rgba(60,120,70,0.12)' : 'rgba(0,0,0,0.06)';
-      roundRect(iconCx - 28, iconCy - 14, 56, 28, 4);
+      const iconCx = x + 70;
+      const iconCy = ry + 17;
+      ctx.fillStyle = row.gross ? 'rgba(100,140,40,0.15)' : 'rgba(200,16,46,0.06)';
+      roundRect(iconCx - 26, iconCy - 13, 52, 26, 8);
       ctx.fill();
-      ctx.globalAlpha = row.checked && !row.gross ? 0.45 : 1;
-      drawIngredientLayer(row.ingId, iconCx, iconCy, 0.85, { gross: row.gross });
+      ctx.globalAlpha = row.checked && !row.gross ? 0.4 : 1;
+      drawIngredientLayer(row.ingId, iconCx, iconCy, 0.82, { gross: row.gross });
       ctx.globalAlpha = 1;
 
-      ctx.fillStyle = row.gross ? '#4a6020' : row.checked ? '#6a8a6a' : '#2a2218';
-      ctx.font = '800 16px "General Sans", sans-serif';
+      ctx.fillStyle = row.gross ? '#4a6020' : row.checked ? '#6a8a6a' : '#2a1410';
+      ctx.font = '800 15px Fredoka, Nunito, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(ing.name, x + 110, ry + 16);
-      ctx.fillStyle = row.gross ? '#6a8030' : row.checked ? '#8aaa8a' : '#8a6a30';
-      ctx.font = '800 13px "General Sans", sans-serif';
-      ctx.fillText(row.gross ? 'DISGUSTING — TOSS' : `PRESS  ${ing.key.toUpperCase()}`, x + 110, ry + 34);
-
-      if (row.checked && !row.gross) {
-        ctx.strokeStyle = 'rgba(60,100,60,0.4)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x + 110, ry + 18);
-        ctx.lineTo(x + tw - 24, ry + 18);
-        ctx.stroke();
-      }
+      ctx.fillText(ing.name, x + 106, ry + 14);
+      ctx.fillStyle = row.gross ? '#6a8030' : '#c8102e';
+      ctx.font = '800 12px Nunito, sans-serif';
+      ctx.fillText(row.gross ? 'EWW — TOSS IT' : `HIT  ${ing.key.toUpperCase()}`, x + 106, ry + 30);
     });
 
     const left = stack.length - have.filter(l => layerId(l) !== 'top').length;
     ctx.fillStyle = burger && burger.tainted ? '#5a7020'
-      : burger && burger.ruined ? '#a03030'
-      : burger && burger.done ? '#2a7a3a'
-      : '#6a5a40';
-    ctx.font = '800 13px "General Sans", sans-serif';
+      : burger && burger.ruined ? '#c8102e'
+      : burger && burger.done ? '#2f8f4e'
+      : '#8a6a60';
+    ctx.font = '800 12px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'center';
     let status = `${left} TO GO`;
     if (burger && burger.tainted) status = 'GROSS — HIT TOSS';
@@ -2476,108 +2592,247 @@
     else if (burger && burger.done) status = 'HEADING TO PICKUP';
     else if (burger && left === 0) status = 'SEALING…';
     else if (!ticket.assigned) status = 'WAITING ON THE LINE';
-    ctx.fillText(status, x + tw / 2, y + th + 6);
+    ctx.fillText(status, x + tw / 2, y + th + 8);
 
     ctx.restore();
   }
 
-  function draw() {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#2a221c');
-    g.addColorStop(0.45, '#1c1814');
-    g.addColorStop(1, '#12100e');
-    ctx.fillStyle = g;
+  function drawCheckeredWall(x0, y0, x1, y1, size) {
+    const cols = Math.ceil((x1 - x0) / size);
+    const rows = Math.ceil((y1 - y0) / size);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        ctx.fillStyle = ((r + c) % 2 === 0) ? '#c8102e' : '#f6efe4';
+        ctx.fillRect(x0 + c * size, y0 + r * size, size + 0.5, size + 0.5);
+      }
+    }
+  }
+
+  function drawKitchenScene() {
+    // Warm room wash
+    const room = ctx.createLinearGradient(0, 0, 0, H);
+    room.addColorStop(0, '#5a3038');
+    room.addColorStop(0.35, '#3a1c22');
+    room.addColorStop(1, '#1a0c10');
+    ctx.fillStyle = room;
     ctx.fillRect(0, 0, W, H);
 
-    ctx.fillStyle = '#3a322c';
-    ctx.fillRect(0, 0, W, 220);
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    for (let x = 0; x < W; x += 28) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 220); ctx.stroke();
-    }
-    for (let y = 0; y < 220; y += 20) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
+    // Back wall checkers (perspective band)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, 40);
+    ctx.lineTo(W, 55);
+    ctx.lineTo(W, 210);
+    ctx.lineTo(0, 230);
+    ctx.closePath();
+    ctx.clip();
+    drawCheckeredWall(-20, 40, W + 20, 240, 26);
+    ctx.fillStyle = 'rgba(40,10,14,0.28)';
+    ctx.fillRect(0, 40, W, 200);
+    ctx.restore();
 
-    for (const lx of [140, 280, 420]) {
-      const glow = ctx.createRadialGradient(lx, 200, 4, lx, 250, 70);
-      glow.addColorStop(0, 'rgba(255,180,80,0.18)');
+    // Ceiling strip + cute hanging lights
+    ctx.fillStyle = '#2a1418';
+    ctx.fillRect(0, 0, W, 48);
+    for (const lx of [120, 260, 400]) {
+      ctx.strokeStyle = '#8a9098';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(lx, 20);
+      ctx.lineTo(lx, 58);
+      ctx.stroke();
+      const glow = ctx.createRadialGradient(lx, 78, 2, lx, 90, 55);
+      glow.addColorStop(0, 'rgba(255,210,140,0.45)');
       glow.addColorStop(1, 'rgba(255,180,80,0)');
       ctx.fillStyle = glow;
-      ctx.fillRect(lx - 70, 195, 140, 90);
-      ctx.fillStyle = '#c47830';
-      roundRect(lx - 18, 198, 36, 8, 2);
+      ctx.beginPath();
+      ctx.ellipse(lx, 90, 55, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff0c8';
+      ctx.beginPath();
+      ctx.ellipse(lx, 64, 14, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c8102e';
+      roundRect(lx - 10, 56, 20, 8, 3);
       ctx.fill();
     }
 
-    state.tickets.forEach((t) => drawTicket(t));
-
-    ctx.fillStyle = '#2e342f';
-    ctx.fillRect(0, LINE_Y + 18, W, H - LINE_Y - 18);
-    ctx.fillStyle = '#3d4540';
-    ctx.fillRect(0, LINE_Y + 18, W, 10);
-
-    // Conveyor
-    ctx.fillStyle = '#1a1c1e';
-    roundRect(8, LINE_Y - 16, W - 16, 42, 6);
+    // Brand sign on the left wall (stays clear of order ticket)
+    ctx.fillStyle = '#111';
+    roundRect(10, 58, 118, 52, 12);
     ctx.fill();
-    ctx.fillStyle = '#25282c';
-    roundRect(14, LINE_Y - 10, W - 28, 30, 4);
-    ctx.fill();
+    ctx.strokeStyle = '#c8102e';
+    ctx.lineWidth = 3;
+    roundRect(10, 58, 118, 52, 12);
+    ctx.stroke();
+    ctx.fillStyle = '#c8102e';
+    ctx.fillRect(18, 66, 102, 3);
+    ctx.fillStyle = '#f6efe4';
+    ctx.font = '700 11px Fredoka, Nunito, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('NIGHT SHIFT', 69, 88);
+    ctx.fillText('GRILL', 69, 102);
+
+    // Perspective floor (trapezoid checkers)
+    const floorTop = LINE_Y + 8;
     ctx.save();
     ctx.beginPath();
-    roundRect(14, LINE_Y - 10, W - 28, 30, 4);
+    ctx.moveTo(0, floorTop);
+    ctx.lineTo(W, floorTop - 12);
+    ctx.lineTo(W, H);
+    ctx.lineTo(0, H);
+    ctx.closePath();
     ctx.clip();
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
-    for (let x = -40 + state.beltOffset; x < W; x += 40) ctx.fillRect(x, LINE_Y - 10, 18, 30);
-    // Grease drips on belt
+    for (let r = 0; r < 12; r++) {
+      for (let c = -2; c < 18; c++) {
+        const s = 34;
+        ctx.fillStyle = ((r + c) % 2 === 0) ? '#a01020' : '#ebe0d2';
+        ctx.fillRect(c * s - (r * 4), floorTop + r * (s * 0.55), s, s * 0.55 + 1);
+      }
+    }
+    ctx.fillStyle = 'rgba(20,6,8,0.35)';
+    ctx.fillRect(0, floorTop, W, H - floorTop);
+    ctx.restore();
+
+    // Stainless counter edge (3D slab under belt)
+    const cy = LINE_Y + 22;
+    ctx.fillStyle = '#9aa2aa';
+    ctx.beginPath();
+    ctx.moveTo(0, cy);
+    ctx.lineTo(W, cy - 10);
+    ctx.lineTo(W, cy + 28);
+    ctx.lineTo(0, cy + 38);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#c5ccd4';
+    ctx.beginPath();
+    ctx.moveTo(0, cy);
+    ctx.lineTo(W, cy - 10);
+    ctx.lineTo(W, cy + 4);
+    ctx.lineTo(0, cy + 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillRect(0, cy + 2, W, 3);
+
+    // Little peanut piles (cute Five Guys nod)
+    for (const [px, py] of [[36, cy + 18], [70, cy + 22], [W - 150, cy + 12]]) {
+      ctx.fillStyle = '#d4a574';
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.ellipse(px + i * 5, py + (i % 2) * 2, 4, 2.6, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 3D perspective conveyor (trapezoid belt)
+    ctx.fillStyle = '#3a4048';
+    ctx.beginPath();
+    ctx.moveTo(12, LINE_Y + 18);
+    ctx.lineTo(W - 100, LINE_Y + 4);
+    ctx.lineTo(W - 108, LINE_Y - 28);
+    ctx.lineTo(20, LINE_Y - 10);
+    ctx.closePath();
+    ctx.fill();
+    // Belt face
+    const belt = ctx.createLinearGradient(0, LINE_Y - 20, 0, LINE_Y + 20);
+    belt.addColorStop(0, '#2a2e34');
+    belt.addColorStop(0.5, '#1a1e24');
+    belt.addColorStop(1, '#12161a');
+    ctx.fillStyle = belt;
+    ctx.beginPath();
+    ctx.moveTo(24, LINE_Y + 12);
+    ctx.lineTo(W - 106, LINE_Y - 2);
+    ctx.lineTo(W - 112, LINE_Y - 22);
+    ctx.lineTo(28, LINE_Y - 6);
+    ctx.closePath();
+    ctx.fill();
+    // Moving stripes
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(24, LINE_Y + 12);
+    ctx.lineTo(W - 106, LINE_Y - 2);
+    ctx.lineTo(W - 112, LINE_Y - 22);
+    ctx.lineTo(28, LINE_Y - 6);
+    ctx.closePath();
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 10;
+    for (let x = -60 + state.beltOffset; x < W; x += 36) {
+      ctx.beginPath();
+      ctx.moveTo(x, LINE_Y + 20);
+      ctx.lineTo(x + 40, LINE_Y - 30);
+      ctx.stroke();
+    }
     for (const d of state.drips) {
       ctx.globalAlpha = Math.min(1, d.life * 0.5);
       ctx.fillStyle = d.color;
       ctx.beginPath();
-      ctx.ellipse(d.x, d.y, d.w / 2, d.h / 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(d.x, d.y - 4, d.w / 2, d.h / 2, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
     ctx.restore();
 
-    const sl = STATION_X - STATION_W / 2;
-    const active = state.mode === 'play' ? activeBurger() : null;
-    ctx.fillStyle = active ? 'rgba(208,162,58,0.2)' : 'rgba(208,162,58,0.08)';
-    roundRect(sl, LINE_Y - 96, STATION_W, 108, 8);
-    ctx.fill();
-    ctx.strokeStyle = active ? 'rgba(208,162,58,0.7)' : 'rgba(208,162,58,0.28)';
-    ctx.lineWidth = 2;
-    roundRect(sl, LINE_Y - 96, STATION_W, 108, 8);
-    ctx.stroke();
-    ctx.fillStyle = active ? '#d0a23a' : '#897f6d';
-    ctx.font = '700 10px "General Sans", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(active ? 'SLAM ZONE' : 'STATION', STATION_X, LINE_Y - 82);
-
-    // Slam arm
-    const armDrop = state.armPulse > 0 ? 10 * (state.armPulse / 0.22) : 0;
-    ctx.strokeStyle = '#6a7068';
-    ctx.lineWidth = 7;
+    // Steel rails
+    ctx.strokeStyle = '#d0d6dc';
+    ctx.lineWidth = 4;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(STATION_X, 148);
-    ctx.lineTo(STATION_X, LINE_Y - 100 + armDrop);
+    ctx.moveTo(22, LINE_Y - 8);
+    ctx.lineTo(W - 110, LINE_Y - 24);
+    ctx.moveTo(18, LINE_Y + 14);
+    ctx.lineTo(W - 104, LINE_Y);
     ctx.stroke();
-    ctx.fillStyle = '#9a8a78';
-    roundRect(STATION_X - 26, LINE_Y - 108 + armDrop, 52, 16, 4);
+  }
+
+  function draw() {
+    drawKitchenScene();
+
+    state.tickets.forEach((t) => drawTicket(t));
+
+    const sl = STATION_X - STATION_W / 2;
+    const active = state.mode === 'play' ? activeBurger() : null;
+    // Cute 3D slam pad
+    ctx.fillStyle = 'rgba(40,10,14,0.25)';
+    roundRect(sl + 4, LINE_Y - 90, STATION_W, 100, 16);
     ctx.fill();
-    ctx.fillStyle = '#5a4a38';
-    roundRect(STATION_X - 20, LINE_Y - 100 + armDrop, 40, 6, 2);
+    const pad = ctx.createLinearGradient(sl, LINE_Y - 100, sl, LINE_Y + 10);
+    pad.addColorStop(0, active ? 'rgba(255,240,230,0.55)' : 'rgba(255,240,230,0.22)');
+    pad.addColorStop(1, active ? 'rgba(200,16,46,0.28)' : 'rgba(200,16,46,0.1)');
+    ctx.fillStyle = pad;
+    roundRect(sl, LINE_Y - 96, STATION_W, 104, 16);
+    ctx.fill();
+    ctx.strokeStyle = active ? '#c8102e' : 'rgba(246,239,228,0.35)';
+    ctx.lineWidth = 3;
+    roundRect(sl, LINE_Y - 96, STATION_W, 104, 16);
+    ctx.stroke();
+    ctx.fillStyle = active ? '#c8102e' : '#c09088';
+    ctx.font = '800 11px Fredoka, Nunito, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(active ? 'SLAM ZONE' : 'BUILD HERE', STATION_X, LINE_Y - 80);
+
+    // Cute press arm
+    const armDrop = state.armPulse > 0 ? 10 * (state.armPulse / 0.22) : 0;
+    ctx.strokeStyle = '#a8b0b8';
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(STATION_X, 150);
+    ctx.lineTo(STATION_X, LINE_Y - 102 + armDrop);
+    ctx.stroke();
+    ctx.fillStyle = '#c8102e';
+    roundRect(STATION_X - 28, LINE_Y - 112 + armDrop, 56, 18, 8);
+    ctx.fill();
+    ctx.fillStyle = '#f6efe4';
+    roundRect(STATION_X - 22, LINE_Y - 106 + armDrop, 44, 8, 4);
     ctx.fill();
 
     const sorted = [...state.burgers].sort((a, b) => a.x - b.x);
     for (const b of sorted) drawBurger(b);
 
-    // Mid-air slams on top
     for (const s of state.slams) drawFallingSlam(s);
 
-    // Flying goo
     for (const p of state.goo) {
       ctx.globalAlpha = Math.min(1, p.life * 2.2);
       ctx.fillStyle = p.color;
@@ -2590,7 +2845,7 @@
     for (const f of state.floatText) {
       ctx.globalAlpha = Math.min(1, f.life * 2);
       ctx.fillStyle = f.color;
-      ctx.font = '700 15px Zodiak, Georgia, serif';
+      ctx.font = '700 16px Fredoka, Nunito, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(f.text, f.x, f.y);
     }
@@ -2599,7 +2854,7 @@
     drawCustomerWindow();
 
     if (state.flash > 0) {
-      ctx.fillStyle = `rgba(242,110,137,${state.flash * 0.4})`;
+      ctx.fillStyle = `rgba(227,28,35,${state.flash * 0.35})`;
       ctx.fillRect(0, 0, W, H);
     }
     if (state.hurtFlash > 0) {
@@ -2611,10 +2866,10 @@
     }
 
     if (state.mode === 'pause') {
-      ctx.fillStyle = 'rgba(20,22,26,0.55)';
+      ctx.fillStyle = 'rgba(30,8,12,0.55)';
       ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = '#e8dcc0';
-      ctx.font = '700 22px Zodiak, Georgia, serif';
+      ctx.fillStyle = '#fff8f0';
+      ctx.font = '700 24px Fredoka, Nunito, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('Paused', W / 2, H / 2);
     }
