@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>NYC Crossing</title>
+  <title>Return to Your Car</title>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
   <style>
     :root, [data-theme="light"] {
@@ -148,9 +148,9 @@
       justify-content: center;
       border-radius: var(--radius-lg);
       overflow: hidden;
-      background: #12081c;
+      background: #1a1c20;
       border: 1px solid rgba(255,255,255,.06);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), inset 0 0 0 3px rgba(80,40,120,.35);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), inset 0 0 0 3px rgba(70,74,82,.4);
     }
     canvas {
       display: block;
@@ -227,6 +227,10 @@
       border: 1px solid rgba(255,238,198,.22);
       box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.24);
       transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .controls .btn.primary {
       background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
@@ -260,6 +264,8 @@
     .dpad .left { grid-column: 1; grid-row: 2; }
     .dpad .down { grid-column: 2; grid-row: 2; }
     .dpad .right { grid-column: 3; grid-row: 2; }
+    .dpad.drive-mode .up,
+    .dpad.drive-mode .down { opacity: 0.35; pointer-events: none; }
     .hint {
       margin: 0;
       text-align: center;
@@ -305,8 +311,8 @@
       <div class="panel-inner">
         <div class="topbar">
           <div class="brand">
-            <h1>NYC Crossing</h1>
-            <p>Frogger · Wall Street commute</p>
+            <h1 id="brandTitle">Return to Your Car</h1>
+            <p id="brandSub">Cross the city · get to the garage</p>
           </div>
           <div class="stats" aria-live="polite">
             <div class="stat">
@@ -314,7 +320,7 @@
               <span class="value" id="scoreVal">0</span>
             </div>
             <div class="stat">
-              <span class="label">Level</span>
+              <span class="label" id="meterLabel">Level</span>
               <span class="value" id="levelVal">1</span>
             </div>
             <div class="stat">
@@ -326,13 +332,13 @@
         </div>
 
         <div class="canvas-wrap" id="canvasWrap">
-          <canvas id="game" width="480" height="600" aria-label="NYC Crossing game board"></canvas>
+          <canvas id="game" width="480" height="600" aria-label="Return to your car"></canvas>
           <div class="overlay" id="overlay">
             <div class="overlay-card">
-              <h2 id="overlayTitle">Make the commute</h2>
-              <p id="overlayText">Get the banker from SoHo to Central Park. Dodge cabs and MTA buses, hop East River ferries. Arrow keys, WASD, or swipe.</p>
+              <h2 id="overlayTitle">Return to your car</h2>
+              <p id="overlayText">Leave the tables, cross Midtown, and reach your parked car. Then drive to the next stop. Arrow keys, WASD, or swipe.</p>
               <div class="control-row">
-                <button class="btn primary" id="startBtn" type="button">Start Commute</button>
+                <button class="btn primary" id="startBtn" type="button">Leave the Tables</button>
               </div>
             </div>
           </div>
@@ -342,15 +348,16 @@
           <div class="control-row">
             <button class="btn subtle" id="pauseBtn" type="button" disabled>Pause</button>
             <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
-            <a class="btn subtle" href="index.html" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Roulette</a>
+            <a class="btn subtle" href="burger.html">Grill</a>
+            <a class="btn subtle" href="index.html">Tables</a>
           </div>
-          <div class="dpad" aria-label="Direction pad">
+          <div class="dpad" id="dpad" aria-label="Direction pad">
             <button class="btn dir up" type="button" data-dir="up" aria-label="Move up">▲</button>
             <button class="btn dir left" type="button" data-dir="left" aria-label="Move left">◀</button>
             <button class="btn dir down" type="button" data-dir="down" aria-label="Move down">▼</button>
             <button class="btn dir right" type="button" data-dir="right" aria-label="Move right">▶</button>
           </div>
-          <p class="hint">Arrows / WASD · swipe · get the banker to Central Park</p>
+          <p class="hint" id="hintText">Arrows / WASD · swipe · cross Midtown to your car</p>
         </div>
       </div>
     </main>
@@ -364,6 +371,13 @@
   const W = COLS * TILE;
   const H = ROWS * TILE;
 
+  const DESTINATIONS = [
+    { id: 'tables', name: 'The Tables', href: 'index.html', blurb: 'Back to the casino floor.' },
+    { id: 'grill', name: 'Night Shift Grill', href: 'burger.html', blurb: 'Late-night burgers on the line.' },
+    { id: 'soho', name: 'SoHo Lounge', href: 'index.html', blurb: 'A quieter room uptown.' },
+    { id: 'pier', name: 'East River Club', href: 'index.html', blurb: 'Private tables by the water.' }
+  ];
+
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   const overlay = document.getElementById('overlay');
@@ -376,11 +390,14 @@
   const levelVal = document.getElementById('levelVal');
   const livesVal = document.getElementById('livesVal');
   const livesPips = document.getElementById('livesPips');
+  const brandTitle = document.getElementById('brandTitle');
+  const brandSub = document.getElementById('brandSub');
+  const meterLabel = document.getElementById('meterLabel');
+  const hintText = document.getElementById('hintText');
+  const dpad = document.getElementById('dpad');
 
-  // Row types from top (0) to bottom (13)
-  // 0: park homes, 1: park bank, 2-6: river, 7: median, 8-12: roads, 13: sidewalk start
   const ROW = {
-    HOME: 0,
+    GARAGE: 0,
     BANK: 1,
     RIVER_START: 2,
     RIVER_END: 6,
@@ -390,14 +407,17 @@
     START: 13
   };
 
-  const HOME_SLOTS = [1, 3, 5, 7, 9];
+  // Your car sits in one bay; other bays are pillars / strangers' cars
+  const CAR_COL = 5;
+  const PARK_SLOTS = [1, 3, 5, 7, 9];
+
   const state = {
-    mode: 'title', // title | play | pause | dead | win | gameover
+    phase: 'cross', // cross | drive
+    mode: 'title', // title | play | pause | dead | win | gameover | drive | arrived
     score: 0,
-    high: Number(localStorage.getItem('nycCrossingHigh') || 0),
+    high: Number(localStorage.getItem('returnToCarHigh') || 0),
     level: 1,
     lives: 3,
-    homes: Array(5).fill(false),
     frog: { col: 5.5, row: ROW.START, onFerry: null },
     lanes: [],
     time: 45,
@@ -408,10 +428,12 @@
     particles: [],
     muted: false,
     lastTs: 0,
-    reachedRows: new Set([ROW.START])
+    reachedRows: new Set([ROW.START]),
+    destination: DESTINATIONS[0],
+    drive: null,
+    keys: { left: false, right: false, up: false, down: false }
   };
 
-  // --- Audio (tiny beeps, no assets) ---
   let audioCtx = null;
   function ensureAudio() {
     if (state.muted) return null;
@@ -439,11 +461,29 @@
     o.stop(t + dur);
   }
 
+  function pickDestination(level) {
+    return DESTINATIONS[(level - 1) % DESTINATIONS.length];
+  }
+
+  function setPhaseUI() {
+    if (state.phase === 'drive') {
+      brandTitle.textContent = 'Night Drive';
+      brandSub.textContent = `En route · ${state.destination.name}`;
+      meterLabel.textContent = 'Mi';
+      hintText.textContent = 'Steer · hold gas · dodge traffic · reach the next stop';
+      dpad.classList.add('drive-mode');
+    } else {
+      brandTitle.textContent = 'Return to Your Car';
+      brandSub.textContent = 'Cross the city · get to the garage';
+      meterLabel.textContent = 'Level';
+      hintText.textContent = 'Arrows / WASD · swipe · cross Midtown to your car';
+      dpad.classList.remove('drive-mode');
+    }
+  }
+
   function buildLanes(level) {
     const speed = 1 + (level - 1) * 0.18;
     const lanes = [];
-
-    // River ferries (rows 2-6) — riding these keeps you afloat
     const riverSpecs = [
       { row: 2, dir: 1, speed: 1.1 * speed, gap: 220, len: 2.4, kind: 'ferry' },
       { row: 3, dir: -1, speed: 1.35 * speed, gap: 200, len: 1.8, kind: 'barge' },
@@ -451,8 +491,6 @@
       { row: 5, dir: -1, speed: 1.5 * speed, gap: 180, len: 1.6, kind: 'kayak' },
       { row: 6, dir: 1, speed: 1.2 * speed, gap: 210, len: 2.2, kind: 'barge' }
     ];
-
-    // Roads (rows 8-12)
     const roadSpecs = [
       { row: 8, dir: -1, speed: 1.6 * speed, gap: 170, len: 1.1, kind: 'taxi' },
       { row: 9, dir: 1, speed: 1.2 * speed, gap: 200, len: 1.8, kind: 'bus' },
@@ -460,7 +498,6 @@
       { row: 11, dir: 1, speed: 1.4 * speed, gap: 185, len: 1.2, kind: 'taxi' },
       { row: 12, dir: -1, speed: 1.1 * speed, gap: 220, len: 2.0, kind: 'truck' }
     ];
-
     for (const spec of [...riverSpecs, ...roadSpecs]) {
       const entities = [];
       const lenPx = spec.len * TILE;
@@ -485,12 +522,14 @@
     state.reachedRows = new Set([ROW.START]);
   }
 
-  function startLevel(level) {
+  function startCrossingLevel(level) {
+    state.phase = 'cross';
     state.level = level;
+    state.destination = pickDestination(level);
     state.maxTime = Math.max(28, 45 - (level - 1) * 2);
     state.lanes = buildLanes(level);
-    if (level === 1) state.homes = Array(5).fill(false);
     resetFrog();
+    setPhaseUI();
     updateHUD();
   }
 
@@ -498,7 +537,7 @@
     state.score = 0;
     state.lives = 3;
     state.mode = 'play';
-    startLevel(1);
+    startCrossingLevel(1);
     overlay.hidden = true;
     pauseBtn.disabled = false;
     pauseBtn.textContent = 'Pause';
@@ -506,10 +545,49 @@
     beep(660, 0.1);
   }
 
+  function beginDrive() {
+    state.phase = 'drive';
+    state.mode = 'drive';
+    state.invuln = 0;
+    state.flash = 0;
+    state.destination = pickDestination(state.level);
+    const trip = 2200 + state.level * 280;
+    state.drive = {
+      z: 0,
+      goal: trip,
+      speed: 0,
+      maxSpeed: 280 + state.level * 18,
+      playerX: 0,
+      steer: 0,
+      curve: 0,
+      targetCurve: 0,
+      curveTimer: 0,
+      hills: 0,
+      traffic: [],
+      spawnTimer: 0.8,
+      invuln: 1.2,
+      rpmPulse: 0,
+      crashFlash: 0
+    };
+    setPhaseUI();
+    overlay.hidden = true;
+    pauseBtn.disabled = false;
+    pauseBtn.textContent = 'Pause';
+    updateHUD();
+    beep(392, 0.08);
+    beep(523, 0.1);
+    beep(784, 0.14);
+  }
+
   function updateHUD() {
     scoreVal.textContent = String(state.score);
-    levelVal.textContent = String(state.level);
     livesVal.textContent = String(state.lives);
+    if (state.phase === 'drive' && state.drive) {
+      const left = Math.max(0, state.drive.goal - state.drive.z);
+      levelVal.textContent = (left / 1000).toFixed(1);
+    } else {
+      levelVal.textContent = String(state.level);
+    }
     livesPips.innerHTML = '';
     for (let i = 0; i < 3; i++) {
       const s = document.createElement('span');
@@ -526,25 +604,38 @@
   }
 
   function loseLife(reason) {
-    if (state.mode !== 'play' || state.invuln > 0) return;
+    if (state.mode !== 'play' && state.mode !== 'drive') return;
+    if (state.phase === 'cross' && state.invuln > 0) return;
+    if (state.phase === 'drive' && state.drive && state.drive.invuln > 0) return;
+
     state.lives -= 1;
     state.flash = 0.35;
-    spawnSplash(state.frog.col * TILE, state.frog.row * TILE + TILE / 2);
+    if (state.phase === 'cross') {
+      spawnSplash(state.frog.col * TILE, state.frog.row * TILE + TILE / 2);
+    } else if (state.drive) {
+      state.drive.crashFlash = 0.4;
+      state.drive.speed *= 0.35;
+      state.drive.invuln = 1.4;
+    }
     beep(120, 0.2, 'sawtooth', 0.05);
     updateHUD();
+
     if (state.lives <= 0) {
       state.mode = 'gameover';
       if (state.score > state.high) {
         state.high = state.score;
-        localStorage.setItem('nycCrossingHigh', String(state.high));
+        localStorage.setItem('returnToCarHigh', String(state.high));
       }
       showOverlay(
-        'Late for the meeting',
+        state.phase === 'drive' ? 'Wrecked' : 'Never made it to the car',
         `${reason} Final score ${state.score}. Best ${state.high}.`,
         'Try Again'
       );
       pauseBtn.disabled = true;
-    } else {
+      return;
+    }
+
+    if (state.phase === 'cross') {
       state.mode = 'dead';
       setTimeout(() => {
         if (state.mode === 'dead') {
@@ -555,46 +646,58 @@
     }
   }
 
-  function fillHome(slotIndex) {
-    state.homes[slotIndex] = true;
-    const bonus = 50 + Math.floor(state.time * 2) + state.level * 10;
+  function reachCar() {
+    const bonus = 120 + Math.floor(state.time * 2) + state.level * 20;
     state.score += bonus;
+    updateHUD();
+    state.mode = 'win';
+    beep(523, 0.08);
+    beep(659, 0.1);
+    beep(784, 0.16);
+    showOverlay(
+      'Keys in the ignition',
+      `You made it to your car. Score ${state.score}. Next: drive to ${state.destination.name}.`,
+      'Hit the Gas'
+    );
+    pauseBtn.disabled = true;
+  }
+
+  function arriveDestination() {
+    state.score += 250 + state.level * 40;
+    updateHUD();
+    state.mode = 'arrived';
+    if (state.score > state.high) {
+      state.high = state.score;
+      localStorage.setItem('returnToCarHigh', String(state.high));
+    }
     beep(523, 0.08);
     beep(784, 0.12);
-    updateHUD();
-    if (state.homes.every(Boolean)) {
-      state.score += 200 + state.level * 50;
-      state.mode = 'win';
-      updateHUD();
-      showOverlay(
-        `Level ${state.level} cleared`,
-        `Banker made it to the park. Score ${state.score}. Next rush hour is faster.`,
-        'Next Avenue'
-      );
-      pauseBtn.disabled = true;
-    } else {
-      resetFrog();
-    }
+    beep(1046, 0.18);
+    showOverlay(
+      `Arrived · ${state.destination.name}`,
+      `${state.destination.blurb} Score ${state.score}. Keep the night going, or park it here.`,
+      'Enter'
+    );
+    pauseBtn.disabled = true;
   }
 
   function tryMove(dx, dy) {
-    if (state.mode !== 'play' || state.hopCooldown > 0) return;
+    if (state.phase !== 'cross' || state.mode !== 'play' || state.hopCooldown > 0) return;
     const f = state.frog;
     const nc = f.col + dx;
     const nr = f.row + dy;
     if (nc < 0 || nc > COLS - 1 || nr < 0 || nr > ROWS - 1) return;
 
-    if (nr === ROW.HOME) {
-      const slot = HOME_SLOTS.findIndex(c => Math.abs(nc - c) < 0.6);
-      if (slot >= 0 && !state.homes[slot]) {
-        f.col = HOME_SLOTS[slot];
+    if (nr === ROW.GARAGE) {
+      const slot = PARK_SLOTS.find(c => Math.abs(nc - c) < 0.6);
+      if (slot === CAR_COL) {
+        f.col = CAR_COL;
         f.row = nr;
         f.onFerry = null;
-        fillHome(slot);
+        reachCar();
         return;
       }
-      // Hit park fence / filled home
-      loseLife('Clipped the park hedge.');
+      loseLife(slot != null ? 'Wrong car — alarms everywhere.' : 'Slammed into a garage pillar.');
       return;
     }
 
@@ -627,10 +730,10 @@
     return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
   }
 
-  function update(dt) {
+  // --- Crossing update ---
+  function updateCross(dt) {
     if (state.mode !== 'play') {
-      // still drift lanes for ambience on title
-      if (state.mode === 'title' || state.mode === 'pause' || state.mode === 'gameover' || state.mode === 'win') {
+      if (state.mode === 'title' || state.mode === 'pause' || state.mode === 'gameover' || state.mode === 'win' || state.mode === 'arrived') {
         for (const lane of state.lanes) {
           for (const e of lane.entities) {
             e.x += lane.dir * lane.speed * 40 * dt * 0.35;
@@ -648,7 +751,7 @@
     if (state.invuln > 0) state.invuln -= dt;
     if (state.flash > 0) state.flash -= dt;
     if (state.time <= 0) {
-      loseLife('The light changed — time ran out.');
+      loseLife('The garage closed — time ran out.');
       return;
     }
 
@@ -659,7 +762,6 @@
     const fw = TILE - frogPad * 2;
     const fh = TILE - frogPad * 2;
 
-    // Move lanes
     let riding = null;
     for (const lane of state.lanes) {
       for (const e of lane.entities) {
@@ -684,7 +786,6 @@
       }
     }
 
-    // River logic
     if (f.row >= ROW.RIVER_START && f.row <= ROW.RIVER_END) {
       if (!riding) {
         loseLife('You fell in the East River.');
@@ -701,6 +802,117 @@
     updateParticles(dt);
   }
 
+  // --- Drive update (pseudo-3D NFS-lite) ---
+  function spawnTraffic(d) {
+    const lane = [-0.55, 0, 0.55][Math.floor(Math.random() * 3)];
+    const kinds = ['taxi', 'sedan', 'bus', 'sports'];
+    d.traffic.push({
+      z: d.z + 900 + Math.random() * 500,
+      x: lane + (Math.random() - 0.5) * 0.08,
+      kind: kinds[Math.floor(Math.random() * kinds.length)],
+      speed: 90 + Math.random() * 80,
+      w: 0.22
+    });
+  }
+
+  function updateDrive(dt) {
+    const d = state.drive;
+    if (!d) return;
+
+    if (state.mode === 'pause' || state.mode === 'gameover' || state.mode === 'arrived') {
+      d.rpmPulse += dt;
+      return;
+    }
+    if (state.mode !== 'drive') return;
+
+    if (d.invuln > 0) d.invuln -= dt;
+    if (d.crashFlash > 0) d.crashFlash -= dt;
+    if (state.flash > 0) state.flash -= dt;
+
+    // Throttle / brake
+    const gas = state.keys.up ? 1 : 0;
+    const brake = state.keys.down ? 1 : 0;
+    if (gas) d.speed = Math.min(d.maxSpeed, d.speed + 140 * dt);
+    else d.speed = Math.max(40, d.speed - 35 * dt);
+    if (brake) d.speed = Math.max(20, d.speed - 180 * dt);
+
+    // Steer
+    let steerInput = 0;
+    if (state.keys.left) steerInput -= 1;
+    if (state.keys.right) steerInput += 1;
+    d.steer += (steerInput - d.steer) * Math.min(1, 8 * dt);
+    const grip = 1.1 + d.speed / 400;
+    d.playerX += d.steer * grip * dt * 1.35;
+    // Road curve pulls car
+    d.playerX -= d.curve * (d.speed / 280) * dt * 0.55;
+    d.playerX = Math.max(-0.92, Math.min(0.92, d.playerX));
+
+    // Road path
+    d.curveTimer -= dt;
+    if (d.curveTimer <= 0) {
+      d.targetCurve = (Math.random() - 0.5) * 1.6;
+      d.curveTimer = 1.4 + Math.random() * 2.2;
+    }
+    d.curve += (d.targetCurve - d.curve) * Math.min(1, 1.2 * dt);
+    d.hills = Math.sin(d.z * 0.0022) * 28;
+
+    d.z += d.speed * dt;
+    d.rpmPulse += dt * (0.8 + d.speed / 200);
+
+    // Traffic
+    d.spawnTimer -= dt;
+    if (d.spawnTimer <= 0 && d.traffic.length < 8) {
+      spawnTraffic(d);
+      d.spawnTimer = Math.max(0.45, 1.1 - state.level * 0.08);
+    }
+    for (const car of d.traffic) {
+      car.z += (car.speed - d.speed * 0.15) * dt * 0.35;
+      // relative approach
+      car.z -= d.speed * dt * 0.85;
+    }
+    d.traffic = d.traffic.filter(c => c.z > d.z - 40 && c.z < d.z + 1600);
+
+    // Collisions (near field)
+    for (const car of d.traffic) {
+      const rel = car.z - d.z;
+      if (rel > 8 && rel < 55) {
+        const scale = 1 - rel / 400;
+        if (Math.abs(car.x - d.playerX) < 0.28 * scale + 0.08) {
+          loseLife(car.kind === 'bus' ? 'Clipped an express bus.' : 'Traffic. Expensive bumper.');
+          car.z = d.z + 700;
+          return;
+        }
+      }
+    }
+
+    // Off-road scrape
+    if (Math.abs(d.playerX) > 0.78) {
+      d.speed = Math.max(30, d.speed - 90 * dt);
+      if (Math.abs(d.playerX) > 0.9 && Math.random() < dt * 1.5) {
+        loseLife('Guardrail. The city does not forgive.');
+        return;
+      }
+    }
+
+    if (d.z >= d.goal) {
+      arriveDestination();
+      return;
+    }
+
+    // Score trickle while flying
+    if (d.speed > 180) {
+      state.score += Math.floor(d.speed * dt * 0.08);
+      updateHUD();
+    } else {
+      updateHUD();
+    }
+
+    // Engine tick
+    if (Math.floor(d.rpmPulse * 6) !== Math.floor((d.rpmPulse - dt) * 6) && d.speed > 60) {
+      beep(90 + d.speed * 0.35, 0.03, 'sawtooth', 0.012);
+    }
+  }
+
   function updateParticles(dt) {
     for (const p of state.particles) {
       p.x += p.vx * dt;
@@ -711,105 +923,149 @@
     state.particles = state.particles.filter(p => p.life > 0);
   }
 
-  // --- Drawing (classic Frogger bands + NYC cast) ---
+  function update(dt) {
+    if (state.phase === 'drive') updateDrive(dt);
+    else updateCross(dt);
+  }
+
+  // --- Drawing ---
   const C = {
-    homeBg: '#2a0f4a',
-    homeBush: '#1a6b2a',
-    safe: '#b01e6e',
-    safeHi: '#d63a8a',
-    water: '#1c5fd4',
-    waterDeep: '#1548a8',
-    road: '#0c0c12',
-    dash: '#efc84a',
-    curb: '#e8dcc0'
+    garageBg: '#3d3f42',
+    pillar: '#6a6d72',
+    // Concrete sidewalk
+    safe: '#9b968c',
+    safeHi: '#b0aaa0',
+    safeLo: '#868178',
+    // East River — slate / olive murk
+    water: '#4a646c',
+    waterDeep: '#3a525a',
+    // NYC asphalt
+    road: '#2f2f32',
+    roadAlt: '#28282b',
+    dash: '#d8d2c0',
+    yellowLine: '#d4a017',
+    curb: '#c4a035'
   };
 
   function drawSafeBand(row, label) {
     const y = row * TILE;
     ctx.fillStyle = C.safe;
     ctx.fillRect(0, y, W, TILE);
-    // Classic Frogger scalloped grass edge
-    ctx.fillStyle = C.safeHi;
-    for (let x = 0; x < W; x += 10) {
-      ctx.fillRect(x, y, 6, 3);
-      ctx.fillRect(x + 3, y + TILE - 3, 6, 3);
+    // Concrete slab seams
+    ctx.fillStyle = C.safeLo;
+    for (let x = 0; x < W; x += 40) {
+      ctx.fillRect(x, y, 1, TILE);
     }
+    ctx.fillRect(0, y + TILE / 2, W, 1);
+    // Speckle
+    ctx.fillStyle = 'rgba(60,55,50,0.12)';
+    for (let x = 4; x < W; x += 11) {
+      ctx.fillRect(x, y + 6 + (x % 7), 2, 2);
+      ctx.fillRect(x + 5, y + 22 + (x % 5), 2, 2);
+    }
+    // Painted yellow curb edge
+    ctx.fillStyle = C.curb;
+    ctx.fillRect(0, y, W, 2);
+    ctx.fillRect(0, y + TILE - 2, W, 2);
     if (label) {
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.fillStyle = 'rgba(40,38,34,0.55)';
       ctx.font = '700 9px "General Sans", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(label, 8, y + 14);
+      ctx.fillText(label, 8, y + 15);
     }
   }
 
   function drawRoad(row) {
     const y = row * TILE;
-    ctx.fillStyle = C.road;
+    ctx.fillStyle = (row % 2 === 0) ? C.road : C.roadAlt;
     ctx.fillRect(0, y, W, TILE);
+    // Faded white lane dashes
     ctx.fillStyle = C.dash;
     const mid = y + TILE / 2 - 1;
-    for (let x = 4; x < W; x += 26) ctx.fillRect(x, mid, 12, 2);
-    ctx.fillStyle = C.curb;
-    ctx.fillRect(0, y, W, 2);
-    ctx.fillRect(0, y + TILE - 2, W, 2);
+    for (let x = 4; x < W; x += 28) ctx.fillRect(x, mid, 14, 2);
+    // Worn yellow edge stripe
+    ctx.fillStyle = C.yellowLine;
+    ctx.fillRect(0, y + 1, W, 1);
+    ctx.fillRect(0, y + TILE - 2, W, 1);
   }
 
   function drawRiver(row) {
     const y = row * TILE;
     ctx.fillStyle = (row % 2 === 0) ? C.water : C.waterDeep;
     ctx.fillRect(0, y, W, TILE);
-    // Chunky arcade ripples
-    ctx.fillStyle = 'rgba(180,220,255,0.22)';
-    const t = Math.floor(performance.now() / 180);
-    for (let x = ((t * 3) % 16) - 16; x < W; x += 16) {
-      ctx.fillRect(x, y + 8, 8, 2);
-      ctx.fillRect(x + 6, y + 20, 8, 2);
-      ctx.fillRect(x + 2, y + 30, 8, 2);
+    // Murky chop
+    ctx.fillStyle = 'rgba(200,210,205,0.12)';
+    const t = Math.floor(performance.now() / 220);
+    for (let x = ((t * 2) % 18) - 18; x < W; x += 18) {
+      ctx.fillRect(x, y + 10, 10, 2);
+      ctx.fillRect(x + 7, y + 22, 10, 2);
+      ctx.fillRect(x + 3, y + 32, 8, 1);
     }
+    // Slight green oil sheen
+    ctx.fillStyle = 'rgba(90,120,80,0.08)';
+    ctx.fillRect(0, y + 14, W, 4);
   }
 
-  function drawParkHomes() {
-    const y = 0;
-    ctx.fillStyle = C.homeBg;
-    ctx.fillRect(0, y, W, TILE);
+  function drawParkedCar(cx, cy, color, yours) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.fillStyle = color;
+    ctx.fillRect(-14, -8, 28, 16);
+    ctx.fillStyle = yours ? '#7ec8e3' : '#4a6a7a';
+    ctx.fillRect(-10, -6, 8, 6);
+    ctx.fillRect(2, -6, 8, 6);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-12, 6, 7, 3);
+    ctx.fillRect(5, 6, 7, 3);
+    if (yours) {
+      ctx.strokeStyle = '#efc84a';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-16, -10, 32, 20);
+      ctx.fillStyle = '#efc84a';
+      ctx.font = '700 7px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('YOURS', 0, -12);
+    }
+    ctx.restore();
+  }
 
-    // Blocky hedge between home alcoves
+  function drawGarage() {
+    const y = 0;
+    // Fluorescent concrete deck
+    ctx.fillStyle = C.garageBg;
+    ctx.fillRect(0, y, W, TILE);
+    ctx.fillStyle = 'rgba(255,245,200,0.06)';
+    ctx.fillRect(0, y, W, 6);
+
     for (let c = 0; c < COLS; c++) {
-      if (HOME_SLOTS.includes(c)) continue;
-      ctx.fillStyle = C.homeBush;
-      ctx.fillRect(c * TILE, y, TILE, TILE);
-      ctx.fillStyle = '#248c38';
-      for (let i = 0; i < 4; i++) {
-        ctx.fillRect(c * TILE + 4 + (i % 2) * 16, y + 6 + Math.floor(i / 2) * 14, 14, 10);
-      }
+      if (PARK_SLOTS.includes(c)) continue;
+      ctx.fillStyle = C.pillar;
+      ctx.fillRect(c * TILE + 8, y + 2, TILE - 16, TILE - 4);
+      ctx.fillStyle = '#55585e';
+      ctx.fillRect(c * TILE + 12, y + 6, TILE - 24, 8);
     }
 
-    HOME_SLOTS.forEach((c, i) => {
+    PARK_SLOTS.forEach((c) => {
       const x = c * TILE;
-      // Alcove recess
-      ctx.fillStyle = '#1a0830';
+      ctx.fillStyle = '#2a2c30';
       ctx.fillRect(x + 2, y + 4, TILE - 4, TILE - 6);
-      ctx.fillStyle = '#3d8f3a';
-      ctx.fillRect(x + 4, y + TILE - 10, TILE - 8, 6);
+      // Stall paint
+      ctx.strokeStyle = 'rgba(230,220,180,0.45)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 4, y + 6, TILE - 8, TILE - 10);
 
-      if (state.homes[i]) {
-        drawBanker(x + TILE / 2, y + TILE / 2 + 2, 0.72, true);
+      if (c === CAR_COL) {
+        drawParkedCar(x + TILE / 2, y + TILE / 2 + 2, '#1c2430', true);
       } else {
-        // Open bay like classic Frogger home
-        ctx.strokeStyle = '#efc84a';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x + 6, y + 8, TILE - 12, TILE - 16);
-        ctx.fillStyle = 'rgba(239,200,74,0.7)';
-        ctx.font = '700 8px "General Sans", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('HOME', x + TILE / 2, y + 22);
+        const colors = ['#6b2e2e', '#2e4570', '#3d5a3a', '#5a4e2e', '#4a4a4e'];
+        drawParkedCar(x + TILE / 2, y + TILE / 2 + 2, colors[c % colors.length], false);
       }
     });
 
-    ctx.fillStyle = '#efc84a';
+    ctx.fillStyle = 'rgba(230,220,180,0.75)';
     ctx.font = '700 9px "General Sans", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('CENTRAL PARK', 6, y + TILE - 4);
+    ctx.fillText('GARAGE  •  YOUR CAR', 6, y + TILE - 4);
   }
 
   function withFacing(x, y, w, h, dir, drawFn) {
@@ -829,27 +1085,24 @@
     const h = TILE - 12;
     const yy = y + 6;
     withFacing(x, yy, w, h, dir, (lx, ly, lw, lh) => {
-      // Flat arcade yellow cab — nose to the right in local space
-      ctx.fillStyle = '#f5c400';
+      // Medallion taxi yellow
+      ctx.fillStyle = '#f1c40f';
       ctx.fillRect(lx, ly + 6, lw, lh - 6);
-      ctx.fillStyle = '#1a1a1a';
+      ctx.fillStyle = '#2a2a2a';
       ctx.fillRect(lx + lw * 0.28, ly + 2, lw * 0.42, lh * 0.5);
-      ctx.fillStyle = '#7ec8e3';
+      ctx.fillStyle = '#5a8fa8';
       ctx.fillRect(lx + lw * 0.32, ly + 4, lw * 0.16, lh * 0.32);
       ctx.fillRect(lx + lw * 0.52, ly + 4, lw * 0.14, lh * 0.32);
-      // Roof light
-      ctx.fillStyle = '#fff8d0';
+      ctx.fillStyle = '#f5f0d8';
       ctx.fillRect(lx + lw * 0.42, ly, lw * 0.16, 4);
-      // Headlights at nose
-      ctx.fillStyle = '#fff6a8';
+      ctx.fillStyle = '#f0e6a0';
       ctx.fillRect(lx + lw - 4, ly + lh - 10, 3, 4);
-      // Wheels
-      ctx.fillStyle = '#111';
+      ctx.fillStyle = '#1a1a1a';
       ctx.fillRect(lx + 6, ly + lh - 3, 8, 4);
       ctx.fillRect(lx + lw - 14, ly + lh - 3, 8, 4);
-      // Checker strip
-      ctx.fillStyle = '#222';
-      for (let i = 0; i < 4; i++) ctx.fillRect(lx + 4 + i * 7, ly + lh - 12, 3, 3);
+      // TAXI door mark
+      ctx.fillStyle = 'rgba(30,30,30,0.35)';
+      ctx.fillRect(lx + lw * 0.15, ly + lh * 0.55, lw * 0.2, 3);
     });
   }
 
@@ -857,14 +1110,12 @@
     const h = TILE - 10;
     const yy = y + 5;
     withFacing(x, yy, w, h, dir, (lx, ly, lw, lh) => {
-      // NYC MTA local bus — white body, blue stripe, yellow destination
       ctx.fillStyle = '#f2f2f0';
       ctx.fillRect(lx, ly + 4, lw, lh - 4);
       ctx.fillStyle = '#0039a6';
       ctx.fillRect(lx, ly + lh * 0.42, lw, 7);
       ctx.fillStyle = '#1a1a1a';
       ctx.fillRect(lx, ly + lh - 8, lw, 8);
-      // Destination marquee at front (text drawn unflipped below)
       ctx.fillStyle = '#111';
       ctx.fillRect(lx + lw - 22, ly + 2, 20, 10);
       ctx.fillStyle = '#5eb0d4';
@@ -873,53 +1124,33 @@
       for (let i = 0; i < 4; i++) {
         ctx.fillRect(lx + 6 + i * ((lw - 30) / 4), ly + 8, 10, lh * 0.28);
       }
-      ctx.fillStyle = '#0039a6';
-      ctx.beginPath();
-      ctx.arc(lx + 12, ly + lh * 0.62, 6, 0, Math.PI * 2);
-      ctx.fill();
       ctx.fillStyle = '#fff6a8';
       ctx.fillRect(lx + lw - 5, ly + lh - 14, 3, 4);
       ctx.fillStyle = '#111';
       ctx.fillRect(lx + 10, ly + lh - 4, 10, 5);
       ctx.fillRect(lx + lw - 22, ly + lh - 4, 10, 5);
     });
-    // Labels stay readable regardless of travel direction
     const front = dir > 0 ? x + w - 12 : x + 12;
-    const badge = dir > 0 ? x + 12 : x + w - 12;
     ctx.fillStyle = '#f0c400';
     ctx.font = '700 7px "General Sans", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('M14', front, yy + 10);
-    ctx.fillStyle = '#fff';
-    ctx.fillText('M', badge, yy + h * 0.62 + 2.5);
   }
 
   function drawTruck(x, y, w, dir) {
     const h = TILE - 12;
     const yy = y + 6;
     withFacing(x, yy, w, h, dir, (lx, ly, lw, lh) => {
-      // Cab leads to the right in local space
       const cabW = lw * 0.32;
       const bedW = lw - cabW;
-      // Cargo bed
       ctx.fillStyle = '#6b7280';
       ctx.fillRect(lx, ly + 4, bedW, lh - 4);
-      ctx.fillStyle = '#4b5563';
-      ctx.fillRect(lx + 3, ly + 6, bedW - 6, 6);
-      // Cab
       ctx.fillStyle = '#c45c26';
       ctx.fillRect(lx + bedW, ly, cabW, lh);
       ctx.fillStyle = '#7ec8e3';
       ctx.fillRect(lx + bedW + 4, ly + 4, cabW - 8, lh * 0.38);
-      // Bumper / lights
-      ctx.fillStyle = '#222';
-      ctx.fillRect(lx + lw - 3, ly + lh - 12, 3, 8);
-      ctx.fillStyle = '#fff6a8';
-      ctx.fillRect(lx + lw - 4, ly + lh - 14, 3, 3);
-      // Wheels
       ctx.fillStyle = '#111';
       ctx.fillRect(lx + 8, ly + lh - 3, 9, 4);
-      ctx.fillRect(lx + bedW - 14, ly + lh - 3, 9, 4);
       ctx.fillRect(lx + lw - 14, ly + lh - 3, 9, 4);
     });
   }
@@ -937,7 +1168,6 @@
       ctx.lineTo(lx + lw * 0.45, ly + 4);
       ctx.lineTo(lx + lw - 6, ly + lh - 6);
       ctx.stroke();
-      // Messenger
       ctx.fillStyle = '#f5e6c8';
       ctx.fillRect(lx + lw * 0.4, ly, 8, 8);
       ctx.fillStyle = '#1a3a6a';
@@ -950,32 +1180,30 @@
     const yy = y + 7;
     withFacing(x, yy, w, h, dir, (lx, ly, lw, lh) => {
       if (kind === 'kayak') {
-        ctx.fillStyle = '#e85d04';
+        ctx.fillStyle = '#c45c26';
         ctx.fillRect(lx, ly + 6, lw, lh - 8);
-        ctx.fillStyle = '#f5e6c8';
+        ctx.fillStyle = '#e8c4a8';
         ctx.fillRect(lx + lw * 0.4, ly + 4, 8, 8);
         return;
       }
       if (kind === 'barge') {
-        // Chunky log-like barge
-        ctx.fillStyle = '#8b5a2b';
+        // Rust / working barge
+        ctx.fillStyle = '#5c5348';
         ctx.fillRect(lx, ly + 4, lw, lh - 4);
-        ctx.fillStyle = '#a9713a';
+        ctx.fillStyle = '#7a6a55';
         for (let i = 0; i < 3; i++) ctx.fillRect(lx + 6 + i * (lw / 3), ly + 8, lw / 4, 6);
-        ctx.fillStyle = '#efc84a';
-        ctx.fillRect(lx + 4, ly + 2, 10, 4);
+        ctx.fillStyle = '#8a4030';
+        ctx.fillRect(lx + 4, ly + 2, 12, 4);
         return;
       }
-      // NYC ferry — flat arcade boat
-      ctx.fillStyle = '#e8dcc0';
+      // NYC Ferry — white hull, orange accent
+      ctx.fillStyle = '#e8e6e0';
       ctx.fillRect(lx, ly + 8, lw, lh - 8);
-      ctx.fillStyle = '#1c4a7a';
+      ctx.fillStyle = '#2c5a7a';
       ctx.fillRect(lx + 6, ly, lw - 18, lh * 0.55);
-      ctx.fillStyle = '#7ec8e3';
-      for (let i = 0; i < 3; i++) {
-        ctx.fillRect(lx + 10 + i * 14, ly + 4, 10, lh * 0.28);
-      }
-      ctx.fillStyle = '#d44a45';
+      ctx.fillStyle = '#6a9ab0';
+      for (let i = 0; i < 3; i++) ctx.fillRect(lx + 10 + i * 14, ly + 4, 10, lh * 0.28);
+      ctx.fillStyle = '#e85d04';
       ctx.fillRect(lx + lw - 14, ly + 2, 10, 5);
     });
   }
@@ -986,96 +1214,63 @@
     ctx.scale(scale, scale);
     const bob = resting ? 0 : Math.sin(performance.now() / 160) * 1;
     ctx.translate(0, bob);
-
-    // Shadow
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.fillRect(-10, 12, 20, 4);
-
-    // Legs
     ctx.fillStyle = '#1a1f2a';
     ctx.fillRect(-7, 6, 5, 9);
     ctx.fillRect(2, 6, 5, 9);
-    // Shoes
     ctx.fillStyle = '#0d0d10';
     ctx.fillRect(-8, 13, 6, 3);
     ctx.fillRect(2, 13, 6, 3);
-
-    // Suit torso
     ctx.fillStyle = '#1e2430';
     ctx.fillRect(-9, -4, 18, 12);
-    // Shirt / tie
     ctx.fillStyle = '#f5f0e6';
     ctx.fillRect(-3, -4, 6, 10);
     ctx.fillStyle = '#b01030';
     ctx.fillRect(-1, -3, 2, 8);
-
-    // Briefcase (left hand)
     ctx.fillStyle = '#5a3a1a';
     ctx.fillRect(-14, 0, 6, 8);
     ctx.fillStyle = '#efc84a';
     ctx.fillRect(-13, 2, 4, 1);
-
-    // Head
     ctx.fillStyle = '#e6b89a';
     ctx.fillRect(-6, -14, 12, 10);
-    // Receding hair / side part
     ctx.fillStyle = '#2a2430';
     ctx.fillRect(-6, -15, 12, 4);
     ctx.fillRect(-6, -12, 3, 4);
-    // Glasses
     ctx.strokeStyle = '#222';
     ctx.lineWidth = 1;
     ctx.strokeRect(-5, -11, 4, 3);
     ctx.strokeRect(1, -11, 4, 3);
-    ctx.beginPath();
-    ctx.moveTo(-1, -9.5);
-    ctx.lineTo(1, -9.5);
-    ctx.stroke();
-    // Eyes
     ctx.fillStyle = '#111';
     ctx.fillRect(-3.5, -10, 1.5, 1.5);
     ctx.fillRect(2.5, -10, 1.5, 1.5);
-
-    // Arms
     ctx.fillStyle = '#1e2430';
     ctx.fillRect(-12, -2, 4, 8);
     ctx.fillRect(8, -2, 4, 8);
-
     ctx.restore();
-  }
-
-  function roundRect(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
   }
 
   function drawTimer() {
     const y = H - 5;
     const pct = Math.max(0, state.time / state.maxTime);
-    ctx.fillStyle = '#1a0830';
+    ctx.fillStyle = '#2a2c30';
     ctx.fillRect(4, y - 5, W - 8, 5);
-    ctx.fillStyle = pct < 0.25 ? '#ff3b5c' : '#39d98a';
+    ctx.fillStyle = pct < 0.25 ? '#c0392b' : '#d4a017';
     ctx.fillRect(4, y - 5, (W - 8) * pct, 5);
   }
 
-  function draw() {
+  function drawCross() {
     ctx.clearRect(0, 0, W, H);
 
     for (let r = 0; r < ROWS; r++) {
-      if (r === ROW.HOME) drawParkHomes();
+      if (r === ROW.GARAGE) drawGarage();
       else if (r === ROW.BANK) drawSafeBand(r, 'EAST RIVER PIER');
       else if (r >= ROW.RIVER_START && r <= ROW.RIVER_END) drawRiver(r);
       else if (r === ROW.MEDIAN) drawSafeBand(r, 'BROADWAY MEDIAN');
       else if (r >= ROW.ROAD_START && r <= ROW.ROAD_END) drawRoad(r);
-      else if (r === ROW.START) drawSafeBand(r, 'SOHO  •  START');
+      else if (r === ROW.START) drawSafeBand(r, 'CASINO EXIT  •  START');
     }
 
-    // Entities
     for (const lane of state.lanes) {
       const y = lane.row * TILE;
       for (const e of lane.entities) {
@@ -1088,17 +1283,17 @@
       }
     }
 
-    // Banker
     if (state.mode !== 'gameover' && !(state.mode === 'dead' && state.flash > 0 && Math.floor(state.flash * 20) % 2 === 0)) {
-      const f = state.frog;
-      const alpha = state.invuln > 0 && Math.floor(state.invuln * 16) % 2 === 0 ? 0.4 : 1;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      drawBanker(f.col * TILE + TILE / 2, f.row * TILE + TILE / 2 + 1, 1, false);
-      ctx.restore();
+      if (!(state.mode === 'win')) {
+        const f = state.frog;
+        const alpha = state.invuln > 0 && Math.floor(state.invuln * 16) % 2 === 0 ? 0.4 : 1;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        drawBanker(f.col * TILE + TILE / 2, f.row * TILE + TILE / 2 + 1, 1, false);
+        ctx.restore();
+      }
     }
 
-    // Particles
     for (const p of state.particles) {
       ctx.globalAlpha = Math.max(0, p.life * 2);
       ctx.fillStyle = p.color;
@@ -1109,18 +1304,197 @@
     if (state.mode === 'play' || state.mode === 'pause' || state.mode === 'dead') drawTimer();
 
     if (state.flash > 0) {
-      ctx.fillStyle = `rgba(255,59,92,${state.flash * 0.4})`;
+      ctx.fillStyle = `rgba(192,57,43,${state.flash * 0.35})`;
       ctx.fillRect(0, 0, W, H);
     }
 
     if (state.mode === 'pause') {
-      ctx.fillStyle = 'rgba(20,8,40,0.55)';
+      ctx.fillStyle = 'rgba(20,22,26,0.55)';
       ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = '#efc84a';
+      ctx.fillStyle = '#e8dcc0';
       ctx.font = '700 22px Zodiak, Georgia, serif';
       ctx.textAlign = 'center';
       ctx.fillText('Paused', W / 2, H / 2);
     }
+  }
+
+  function project(worldX, worldZ, camZ, curve, hill) {
+    const relZ = worldZ - camZ;
+    const scale = 220 / (220 + relZ);
+    const x = W / 2 + worldX * 180 * scale + curve * scale * 40;
+    const y = H * 0.42 + hill + relZ * 0.42 * scale + (1 - scale) * 220;
+    return { x, y, scale, relZ };
+  }
+
+  function drawDriveCar(x, y, scale, kind, player) {
+    const w = 54 * scale;
+    const h = 28 * scale;
+    const colors = {
+      taxi: '#f5c400',
+      sedan: '#4a5568',
+      bus: '#f2f2f0',
+      sports: '#b01030',
+      player: '#1a2430'
+    };
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(-w * 0.45, h * 0.35, w * 0.9, h * 0.2);
+    ctx.fillStyle = colors[kind] || '#555';
+    ctx.fillRect(-w / 2, -h / 2, w, h * 0.7);
+    ctx.fillStyle = player ? '#7ec8e3' : '#5a7a8a';
+    ctx.fillRect(-w * 0.35, -h * 0.45, w * 0.7, h * 0.35);
+    if (player) {
+      ctx.strokeStyle = '#efc84a';
+      ctx.lineWidth = Math.max(1, 2 * scale);
+      ctx.strokeRect(-w / 2, -h / 2, w, h * 0.7);
+    }
+    if (kind === 'taxi') {
+      ctx.fillStyle = '#fff8d0';
+      ctx.fillRect(-w * 0.1, -h * 0.55, w * 0.2, h * 0.12);
+    }
+    if (kind === 'bus') {
+      ctx.fillStyle = '#0039a6';
+      ctx.fillRect(-w / 2, 0, w, h * 0.15);
+    }
+    ctx.fillStyle = '#fff6a8';
+    ctx.fillRect(-w * 0.4, -h * 0.15, w * 0.12, h * 0.1);
+    ctx.fillRect(w * 0.28, -h * 0.15, w * 0.12, h * 0.1);
+    ctx.restore();
+  }
+
+  function drawDrive() {
+    const d = state.drive;
+    ctx.clearRect(0, 0, W, H);
+
+    // Overcast / dusk NYC sky
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.45);
+    sky.addColorStop(0, '#3a4555');
+    sky.addColorStop(0.55, '#6a7380');
+    sky.addColorStop(1, '#8a9098');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H * 0.5);
+
+    // Brick / limestone building silhouettes
+    for (let i = 0; i < 12; i++) {
+      const bx = ((i * 73 + d.z * 0.15) % (W + 80)) - 40;
+      const bh = 40 + ((i * 37) % 90);
+      const by = H * 0.42 - bh + d.hills * 0.2;
+      ctx.fillStyle = i % 3 === 0 ? '#5a4a3e' : i % 3 === 1 ? '#4a525c' : '#6a6058';
+      ctx.fillRect(bx, by, 36, bh);
+      ctx.fillStyle = 'rgba(220,200,140,0.22)';
+      for (let wy = 0; wy < bh - 10; wy += 10) {
+        if ((i + wy) % 3 === 0) ctx.fillRect(bx + 6, by + 6 + wy, 4, 3);
+      }
+    }
+
+    // Hazy horizon
+    ctx.fillStyle = 'rgba(180,170,150,0.12)';
+    ctx.fillRect(0, H * 0.38 + d.hills * 0.15, W, 18);
+
+    // Road segments (near to far drawn back-to-front)
+    const segs = 28;
+    for (let i = segs; i >= 0; i--) {
+      const z0 = d.z + i * 28;
+      const z1 = d.z + (i + 1) * 28;
+      const p0 = project(-1, z0, d.z, d.curve * (i / segs), d.hills);
+      const p1 = project(1, z0, d.z, d.curve * (i / segs), d.hills);
+      const q0 = project(-1, z1, d.z, d.curve * ((i + 1) / segs), d.hills);
+      const q1 = project(1, z1, d.z, d.curve * ((i + 1) / segs), d.hills);
+
+      const yTop = Math.min(p0.y, q0.y);
+      const yBot = Math.max(p0.y, q0.y);
+      if (yBot < H * 0.35 || yTop > H) continue;
+
+      // Sidewalk / jersey barrier shoulder
+      ctx.fillStyle = i % 2 === 0 ? '#8a857c' : '#7a756c';
+      ctx.beginPath();
+      ctx.moveTo(0, p0.y);
+      ctx.lineTo(p0.x, p0.y);
+      ctx.lineTo(q0.x, q0.y);
+      ctx.lineTo(0, q0.y);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(W, p1.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(q1.x, q1.y);
+      ctx.lineTo(W, q1.y);
+      ctx.fill();
+
+      // Asphalt
+      ctx.fillStyle = i % 2 === 0 ? '#353538' : '#2e2e31';
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.lineTo(q1.x, q1.y);
+      ctx.lineTo(q0.x, q0.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Lane dashes — faded white
+      if (i % 2 === 0) {
+        const mx0 = (p0.x + p1.x) / 2;
+        const mx1 = (q0.x + q1.x) / 2;
+        ctx.strokeStyle = 'rgba(220,210,190,0.55)';
+        ctx.lineWidth = Math.max(1, 3 * p0.scale);
+        ctx.beginPath();
+        ctx.moveTo(mx0, p0.y);
+        ctx.lineTo(mx1, q0.y);
+        ctx.stroke();
+      }
+    }
+
+    // Traffic (far to near)
+    const cars = [...d.traffic].sort((a, b) => b.z - a.z);
+    for (const car of cars) {
+      const p = project(car.x, car.z, d.z, d.curve, d.hills);
+      if (p.relZ < 20 || p.relZ > 900 || p.scale < 0.08) continue;
+      drawDriveCar(p.x, p.y, Math.min(1.4, p.scale * 1.8), car.kind, false);
+    }
+
+    // Player car
+    const bob = Math.sin(d.rpmPulse * 18) * (d.speed / 400);
+    const px = W / 2 + d.playerX * 150;
+    const py = H - 78 + bob;
+    const blink = d.invuln > 0 && Math.floor(d.invuln * 14) % 2 === 0;
+    if (!blink) drawDriveCar(px, py, 1.15, 'player', true);
+
+    // HUD strip
+    ctx.fillStyle = 'rgba(30,32,36,0.78)';
+    ctx.fillRect(0, 0, W, 36);
+    ctx.fillStyle = '#e8dcc0';
+    ctx.font = '700 12px "General Sans", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${state.destination.name.toUpperCase()}`, 10, 22);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#d8d2c0';
+    ctx.fillText(`${Math.round(d.speed)} MPH`, W - 10, 22);
+
+    // Speed bar
+    const sp = d.speed / d.maxSpeed;
+    ctx.fillStyle = '#2a2c30';
+    ctx.fillRect(10, H - 14, W - 20, 6);
+    ctx.fillStyle = sp > 0.85 ? '#c0392b' : '#d4a017';
+    ctx.fillRect(10, H - 14, (W - 20) * sp, 6);
+
+    if (d.crashFlash > 0) {
+      ctx.fillStyle = `rgba(192,57,43,${d.crashFlash * 0.45})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    if (state.mode === 'pause') {
+      ctx.fillStyle = 'rgba(20,22,26,0.55)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#e8dcc0';
+      ctx.font = '700 22px Zodiak, Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Paused', W / 2, H / 2);
+    }
+  }
+
+  function draw() {
+    if (state.phase === 'drive' && state.drive) drawDrive();
+    else drawCross();
   }
 
   function frame(ts) {
@@ -1133,7 +1507,6 @@
     requestAnimationFrame(frame);
   }
 
-  // --- Input ---
   const keyMap = {
     ArrowUp: 'up', w: 'up', W: 'up',
     ArrowDown: 'down', s: 'down', S: 'down',
@@ -1146,37 +1519,71 @@
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
-      if (state.mode === 'play') togglePause();
+      if (state.mode === 'play' || state.mode === 'drive') togglePause();
       else if (state.mode === 'pause') togglePause();
       return;
     }
     const dir = keyMap[e.key];
     if (!dir) return;
     e.preventDefault();
-    if (state.mode === 'title' || state.mode === 'gameover' || state.mode === 'win') {
+    state.keys[dir] = true;
+
+    if (state.mode === 'title' || state.mode === 'gameover' || state.mode === 'win' || state.mode === 'arrived') {
       startBtn.click();
       return;
     }
-    const [dx, dy] = dirDelta[dir];
-    tryMove(dx, dy);
+    if (state.phase === 'cross') {
+      const [dx, dy] = dirDelta[dir];
+      tryMove(dx, dy);
+    }
+  });
+  window.addEventListener('keyup', (e) => {
+    const dir = keyMap[e.key];
+    if (dir) state.keys[dir] = false;
   });
 
   document.querySelectorAll('[data-dir]').forEach(btn => {
-    const fire = (e) => {
+    const down = (e) => {
       e.preventDefault();
-      const [dx, dy] = dirDelta[btn.dataset.dir];
-      tryMove(dx, dy);
+      const dir = btn.dataset.dir;
+      state.keys[dir] = true;
+      if (state.phase === 'cross') {
+        const [dx, dy] = dirDelta[dir];
+        tryMove(dx, dy);
+      }
     };
-    btn.addEventListener('pointerdown', fire);
+    const up = () => { state.keys[btn.dataset.dir] = false; };
+    btn.addEventListener('pointerdown', down);
+    btn.addEventListener('pointerup', up);
+    btn.addEventListener('pointerleave', up);
   });
 
-  // Swipe
   let touchStart = null;
   canvas.addEventListener('pointerdown', (e) => {
     touchStart = { x: e.clientX, y: e.clientY };
     canvas.setPointerCapture(e.pointerId);
+    if (state.phase === 'drive') {
+      const rect = canvas.getBoundingClientRect();
+      const nx = (e.clientX - rect.left) / rect.width;
+      state.keys.left = nx < 0.4;
+      state.keys.right = nx > 0.6;
+      state.keys.up = true;
+    }
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (state.phase !== 'drive' || !touchStart) return;
+    const rect = canvas.getBoundingClientRect();
+    const nx = (e.clientX - rect.left) / rect.width;
+    state.keys.left = nx < 0.4;
+    state.keys.right = nx > 0.6;
+    state.keys.up = true;
   });
   canvas.addEventListener('pointerup', (e) => {
+    if (state.phase === 'drive') {
+      state.keys.left = state.keys.right = state.keys.up = state.keys.down = false;
+      touchStart = null;
+      return;
+    }
     if (!touchStart) return;
     const dx = e.clientX - touchStart.x;
     const dy = e.clientY - touchStart.y;
@@ -1187,12 +1594,13 @@
   });
 
   function togglePause() {
-    if (state.mode === 'play') {
+    if (state.mode === 'play' || state.mode === 'drive') {
+      state._resumeMode = state.mode;
       state.mode = 'pause';
       pauseBtn.textContent = 'Resume';
       beep(320, 0.06);
     } else if (state.mode === 'pause') {
-      state.mode = 'play';
+      state.mode = state._resumeMode || (state.phase === 'drive' ? 'drive' : 'play');
       pauseBtn.textContent = 'Pause';
       beep(480, 0.06);
     }
@@ -1208,38 +1616,42 @@
   startBtn.addEventListener('click', () => {
     ensureAudio();
     if (state.mode === 'win') {
+      beginDrive();
+      return;
+    }
+    if (state.mode === 'arrived') {
+      if (state.destination.href) {
+        window.location.href = state.destination.href;
+        return;
+      }
+      state.level += 1;
+      state.mode = 'play';
+      startCrossingLevel(state.level);
       overlay.hidden = true;
       pauseBtn.disabled = false;
       pauseBtn.textContent = 'Pause';
-      state.homes = Array(5).fill(false);
-      state.mode = 'play';
-      startLevel(state.level + 1);
-      beep(523, 0.08);
       return;
     }
     startGame();
   });
 
-  // Fit canvas to container while keeping integer-ish scale
   function fitCanvas() {
     const wrap = document.getElementById('canvasWrap');
     const aw = wrap.clientWidth - 8;
     const ah = wrap.clientHeight - 8;
     const scale = Math.min(aw / W, ah / H);
-    const dw = Math.floor(W * scale);
-    const dh = Math.floor(H * scale);
-    canvas.style.width = dw + 'px';
-    canvas.style.height = dh + 'px';
+    canvas.style.width = Math.floor(W * scale) + 'px';
+    canvas.style.height = Math.floor(H * scale) + 'px';
   }
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
 
-  // Boot ambience lanes
   state.lanes = buildLanes(1);
+  setPhaseUI();
   updateHUD();
   if (state.high > 0) {
     overlayText.textContent =
-      `Get the banker from SoHo to Central Park. Dodge cabs and MTA buses, hop ferries. Best: ${state.high}`;
+      `Leave the tables, cross Midtown to your car, then drive to the next stop. Best: ${state.high}`;
   }
   requestAnimationFrame(frame);
 })();
