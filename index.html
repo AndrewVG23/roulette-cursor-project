@@ -4707,8 +4707,7 @@
         from,
         to,
         start: performance.now(),
-        // Longer flight ≈ more display frames so the toss doesn't look stepped
-        duration: Math.min(1500, 820 + dist * 0.38),
+        duration: Math.min(980, 520 + dist * 0.26),
         arc: Math.min(260, 130 + dist * 0.16),
         spin: (Math.random() < 0.5 ? -1 : 1) * (2.4 + Math.random() * 2.2),
         tilt: 0.34 + Math.random() * 0.22,
