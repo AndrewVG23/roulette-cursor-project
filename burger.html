@@ -48,14 +48,15 @@
     }
     button { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .app {
-      max-width: 720px;
+      max-width: none;
+      width: 100%;
       height: 100dvh;
-      margin: 0 auto;
-      padding: var(--space-2);
+      margin: 0;
+      padding: 0;
       display: flex;
       flex-direction: column;
       min-height: 0;
-      gap: var(--space-2);
+      gap: 0;
     }
     .skip-link { position: absolute; left: -9999px; }
     .skip-link:focus {
@@ -64,22 +65,23 @@
       z-index: 20; border-radius: var(--radius-md);
     }
     .panel {
-      background: linear-gradient(180deg, rgba(23,48,39,.92), rgba(15,27,23,.96));
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-md);
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
       overflow: hidden;
       min-height: 0;
+      flex: 1;
       display: flex;
       flex-direction: column;
     }
     .panel-inner {
-      padding: var(--space-3);
+      padding: 0;
       flex: 1;
       min-height: 0;
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: 0;
     }
     .topbar {
       display: flex;
@@ -87,6 +89,9 @@
       justify-content: space-between;
       gap: var(--space-3);
       flex-shrink: 0;
+      padding: 6px 10px;
+      background: linear-gradient(180deg, rgba(15,27,23,.96), rgba(12,22,18,.92));
+      border-bottom: 1px solid rgba(255,255,255,.06);
     }
     .brand {
       display: flex;
@@ -196,11 +201,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: var(--radius-lg);
+      border-radius: 0;
       overflow: hidden;
       background: #1a1612;
-      border: 1px solid rgba(255,255,255,.06);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), inset 0 0 0 3px rgba(70,60,50,.4);
+      border: none;
+      box-shadow: none;
     }
     canvas {
       display: block;
@@ -249,11 +254,12 @@
       display: grid;
       gap: var(--space-2);
       flex-shrink: 0;
-      padding: var(--space-2);
-      background: linear-gradient(180deg, rgba(20,53,40,.78), rgba(12,26,21,.92));
-      border: 1px solid rgba(238,194,97,.18);
-      border-radius: 4px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 4px 14px rgba(0,0,0,.22);
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+      background: linear-gradient(180deg, rgba(20,53,40,.92), rgba(12,26,21,.98));
+      border: none;
+      border-top: 1px solid rgba(238,194,97,.18);
+      border-radius: 0;
+      box-shadow: none;
     }
     .control-row {
       display: flex;
@@ -344,17 +350,9 @@
       border-color: rgba(242,110,137,.75);
       box-shadow: 0 0 14px rgba(242,110,137,.4);
     }
-    .hint {
-      margin: 0;
-      text-align: center;
-      font-size: var(--text-xs);
-      color: var(--color-text-faint);
-      letter-spacing: .04em;
-    }
     @media (max-width: 520px) {
-      .app { padding: var(--space-1); gap: var(--space-1); }
-      .panel-inner { padding: var(--space-2); }
       .brand h1 { font-size: var(--text-base); }
+      .brand p { display: none; }
       .stat { min-width: 56px; padding: 4px 8px; }
       .controls .btn.ing { min-height: 64px; font-size: 0.65rem; }
       .ing-grid { gap: var(--space-1); }
@@ -391,12 +389,12 @@
 
         <div class="canvas-wrap" id="canvasWrap">
           <canvas id="game" width="560" height="420" aria-label="Night Shift Grill assembly line"></canvas>
-          <div class="overlay" id="overlay">
+          <div class="overlay" id="overlay" hidden>
             <div class="overlay-card">
-              <h2 id="overlayTitle">Night Shift Grill</h2>
-              <p id="overlayText">Match tickets with A S D F (any order). Perfect burgers pay $1. Angry customers might take a swing at you — keep your health up and the tip jar growing.</p>
+              <h2 id="overlayTitle">Knocked Out</h2>
+              <p id="overlayText"></p>
               <div class="control-row">
-                <button class="btn primary" id="startBtn" type="button">Clock In</button>
+                <button class="btn primary" id="startBtn" type="button">Again</button>
               </div>
             </div>
           </div>
@@ -404,13 +402,13 @@
 
         <div class="controls" aria-label="Game controls">
           <div class="control-row">
-            <button class="btn subtle" id="pauseBtn" type="button" disabled>Pause</button>
+            <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
             <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
+            <button class="btn primary" id="tossBtn" type="button" title="Trash this burger (X)">Toss · X</button>
             <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
             <a class="btn subtle" href="index.html">Tables</a>
           </div>
           <div class="ing-grid" id="ingGrid" aria-label="Slam ingredients"></div>
-          <p class="hint">A S D F · $1 a burger · don’t get punched</p>
         </div>
       </div>
     </main>
@@ -473,6 +471,7 @@
   const startBtn = document.getElementById('startBtn');
   const pauseBtn = document.getElementById('pauseBtn');
   const muteBtn = document.getElementById('muteBtn');
+  const tossBtn = document.getElementById('tossBtn');
   const moneyVal = document.getElementById('moneyVal');
   const levelVal = document.getElementById('levelVal');
   const healthVal = document.getElementById('healthVal');
@@ -482,11 +481,18 @@
   const ingGrid = document.getElementById('ingGrid');
   const MAX_HEALTH = 100;
 
-  const LINE_Y = 280;
+  const LINE_Y = 290;
   const STATION_X = 260;
   const STATION_W = 120;
   const BURGER_W = 76;
-  const MAX_TICKETS = 3;
+  const MAX_TICKETS = 1;
+  const GROSS_CHANCE = 0.24;
+  const GROSS_LINES = {
+    patty: ['GREEN MEAT', 'STILL MOOING', 'FLOOR PATTY'],
+    cheese: ['MOLD WHEEL', 'SWEATY SLICE', 'SOCK CHEESE'],
+    tomato: ['WEEVIL CUT', 'SLIME SLICE', 'FRIDGE SCIENCE'],
+    bacon: ['HAIR STRIP', 'GREY BACON', 'BAND-AID?']
+  };
   const SLAM_Y0 = 150;
   const DELIVER_X = W - 118;
   const CUSTOMER_X = W - 52;
@@ -650,16 +656,22 @@
     o.stop(t + 0.15);
   }
 
+  function layerId(x) {
+    return typeof x === 'string' ? x : x.id;
+  }
   function countOf(list, id) {
     let n = 0;
-    for (const x of list) if (x === id) n++;
+    for (const x of list) if (layerId(x) === id) n++;
     return n;
   }
   function canAccept(burger, ingId) {
     return countOf(burger.stack, ingId) < countOf(burger.recipe.stack, ingId);
   }
   function recipeComplete(burger) {
-    return burger.stack.length >= burger.recipe.stack.length;
+    return burger.stack.filter(x => layerId(x) !== 'top').length >= burger.recipe.stack.length;
+  }
+  function grossChance() {
+    return Math.min(0.38, GROSS_CHANCE + (state.level - 1) * 0.025);
   }
   const ingButtons = {};
   for (const ing of INGREDIENTS) {
@@ -704,9 +716,7 @@
     return pool[Math.floor(Math.random() * pool.length)];
   }
   function nextColor() {
-    const used = new Set(state.tickets.map(t => t.color));
-    const free = TICKET_COLORS.filter(c => !used.has(c));
-    return (free.length ? free : TICKET_COLORS)[Math.floor(Math.random() * (free.length || TICKET_COLORS.length))];
+    return TICKET_COLORS[Math.floor(Math.random() * TICKET_COLORS.length)];
   }
 
   function addTicket() {
@@ -720,6 +730,25 @@
     });
   }
 
+  function makeBurger(ticket, x = -BURGER_W) {
+    return {
+      ticketId: ticket.id,
+      color: ticket.color,
+      recipe: ticket.recipe,
+      x,
+      stack: [],
+      done: false,
+      sealed: false,
+      ruined: false,
+      tainted: false,
+      delivered: false,
+      tossed: false,
+      squash: 0,
+      bounce: 0,
+      grease: 0
+    };
+  }
+
   function spawnBurger() {
     let open = state.tickets.filter(t => !t.assigned);
     if (!open.length) {
@@ -729,20 +758,7 @@
     }
     const ticket = open[0];
     ticket.assigned = true;
-    state.burgers.push({
-      ticketId: ticket.id,
-      color: ticket.color,
-      recipe: ticket.recipe,
-      x: -BURGER_W,
-      stack: [],
-      done: false,
-      sealed: false,
-      ruined: false,
-      delivered: false,
-      squash: 0,
-      bounce: 0,
-      grease: 0
-    });
+    state.burgers.push(makeBurger(ticket));
   }
 
   function activeBurger() {
@@ -773,8 +789,9 @@
     setTimeout(() => btn.classList.remove('flash-ok', 'flash-bad'), 180);
   }
 
-  function spawnGoo(cx, y, ingId, amount = 10) {
-    const ing = ING_BY_ID[ingId];
+  function spawnGoo(cx, y, ingId, amount = 10, gross = false) {
+    const ing = ING_BY_ID[ingId] || ING_BY_ID.patty;
+    const sick = ['#6a8a30', '#4a6030', '#8a9a40', '#3a5028'];
     for (let i = 0; i < amount; i++) {
       const ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.2;
       const spd = 60 + Math.random() * 160;
@@ -785,17 +802,18 @@
         vy: Math.sin(ang) * spd - 40,
         r: 2 + Math.random() * 5,
         life: 0.35 + Math.random() * 0.45,
-        color: Math.random() > 0.45 ? ing.juice : ing.drip,
+        color: gross
+          ? sick[Math.floor(Math.random() * sick.length)]
+          : (Math.random() > 0.45 ? ing.juice : ing.drip),
         wobble: Math.random() * Math.PI
       });
     }
-    // Belt stain
     state.drips.push({
       x: cx + (Math.random() - 0.5) * 30,
       y: LINE_Y + 4 + Math.random() * 8,
       w: 10 + Math.random() * 22,
       h: 3 + Math.random() * 4,
-      color: ing.drip,
+      color: gross ? '#4a6030' : ing.drip,
       life: 2.2 + Math.random()
     });
   }
@@ -828,6 +846,7 @@
     flashBtn(ingId, !wrong);
     state.armPulse = 0.22;
 
+    const gross = !wrong && Math.random() < grossChance();
     const landY = stackTopY(burger);
     state.slams.push({
       ingId,
@@ -839,6 +858,7 @@
       rot: (Math.random() - 0.5) * 0.5,
       stretch: 1.35,
       wrong,
+      gross,
       phase: 'fall',
       t: 0
     });
@@ -847,8 +867,8 @@
 
   function stackTopY(b) {
     let y = LINE_Y - 8;
-    for (const id of b.stack) {
-      y -= layerGap(id);
+    for (const layer of b.stack) {
+      y -= layerGap(layerId(layer));
     }
     return y - 6;
   }
@@ -863,11 +883,11 @@
   }
 
   function impactSlam(slam) {
-    const { ingId, burger, wrong } = slam;
+    const { ingId, burger, wrong, gross } = slam;
     const cx = slam.x;
     const y = slam.targetY || LINE_Y - 20;
 
-    spawnGoo(cx, y, ingId, wrong ? 14 : 12);
+    spawnGoo(cx, y, ingId, wrong || gross ? 16 : 12, gross);
     squelch(ingId);
     state.armPulse = 0.12;
 
@@ -881,22 +901,30 @@
       burger.ruined = true;
       state.combo = 0;
       beep(100, 0.2, 'sawtooth', 0.05);
-      state.floatText.push({ x: cx, y: y - 30, text: 'RANCID!', life: 0.75, color: '#f26e89' });
-      // Damage waits for the customer's verdict — shift keeps rolling
+      state.floatText.push({ x: cx, y: y - 30, text: 'WRONG!', life: 0.75, color: '#f26e89' });
       return;
     }
 
-    burger.stack.push(ingId);
-    state.floatText.push({
-      x: cx + (Math.random() - 0.5) * 10,
-      y: y - 24,
-      text: ING_BY_ID[ingId].name.toUpperCase(),
-      life: 0.45,
-      color: ING_BY_ID[ingId].juice
-    });
+    burger.stack.push({ id: ingId, gross: !!gross });
+    if (gross) {
+      burger.tainted = true;
+      const lines = GROSS_LINES[ingId] || ['GROSS'];
+      const label = lines[Math.floor(Math.random() * lines.length)];
+      beep(90, 0.16, 'sawtooth', 0.05);
+      beep(60, 0.2, 'triangle', 0.04);
+      state.floatText.push({ x: cx, y: y - 34, text: label, life: 1.0, color: '#8fd96a' });
+      state.floatText.push({ x: cx, y: y - 52, text: 'TOSS IT!', life: 0.9, color: '#f0a46a' });
+    } else {
+      state.floatText.push({
+        x: cx + (Math.random() - 0.5) * 10,
+        y: y - 24,
+        text: ING_BY_ID[ingId].name.toUpperCase(),
+        life: 0.45,
+        color: ING_BY_ID[ingId].juice
+      });
+    }
 
     if (recipeComplete(burger)) {
-      // Auto-seal with a disgusting top bun slam
       burger.sealed = true;
       state.slams.push({
         ingId: 'top',
@@ -908,6 +936,7 @@
         rot: 0,
         stretch: 1.4,
         wrong: false,
+        gross: false,
         phase: 'fall',
         t: 0,
         finish: true
@@ -917,9 +946,53 @@
 
   function finishBurger(burger) {
     burger.done = true;
-    burger.stack.push('top');
+    burger.stack.push({ id: 'top', gross: false });
     burger.squash = 0.4;
-    // Score lands when the customer eats it
+  }
+
+  function tossableBurger() {
+    // Prefer slap-zone burger; else rightmost not-yet-served burger
+    const active = activeBurger();
+    if (active) return active;
+    let best = null;
+    let bestX = -Infinity;
+    for (const b of state.burgers) {
+      if (b.delivered || b.tossed) continue;
+      if (b.x > bestX) {
+        bestX = b.x;
+        best = b;
+      }
+    }
+    return best;
+  }
+
+  function tossBurger() {
+    if (state.mode !== 'play') return;
+    const b = tossableBurger();
+    if (!b) {
+      beep(160, 0.05, 'triangle', 0.03);
+      return;
+    }
+    const ticket = state.tickets.find(t => t.id === b.ticketId);
+    const cx = b.x + BURGER_W / 2;
+    b.tossed = true;
+    state.slams = state.slams.filter(s => s.burger !== b);
+    spawnGoo(cx, LINE_Y - 20, 'tomato', 14, true);
+    spawnGoo(cx, LINE_Y - 10, 'patty', 10, true);
+    beep(140, 0.08, 'square', 0.04);
+    beep(90, 0.12, 'sawtooth', 0.045);
+    state.floatText.push({ x: cx, y: LINE_Y - 60, text: 'IN THE BIN', life: 0.7, color: '#f0a46a' });
+    state.burgers = state.burgers.filter(x => x !== b);
+
+    // Same order — fresh bun immediately
+    if (ticket) {
+      ticket.assigned = true;
+      state.burgers.push(makeBurger(ticket, STATION_X - BURGER_W / 2 - 10));
+      state.floatText.push({
+        x: STATION_X, y: LINE_Y - 88,
+        text: 'NEW BUN', life: 0.65, color: '#d0a23a'
+      });
+    }
   }
 
   function pickLine(lines) {
@@ -1014,12 +1087,13 @@
     const c = state.customer;
     if (!c) return;
 
-    if (burger.done && !burger.ruined) {
+    const heldIds = burger.stack.map(layerId);
+    if (burger.done && !burger.ruined && !burger.tainted) {
       // Paid $1 a burger — tips of champions
       state.money += 1;
       state.served += 1;
       state.combo += 1;
-      c.held = [...burger.stack];
+      c.held = heldIds;
       c.heldScale = 1;
       setCustomerMood('happy');
       state.floatText.push({
@@ -1035,14 +1109,20 @@
         beep(440, 0.08); beep(660, 0.1); beep(880, 0.12);
       }
       updateHUD();
-      while (state.tickets.length < Math.min(MAX_TICKETS, 1 + Math.floor(state.level / 2))) addTicket();
+      if (state.tickets.length < MAX_TICKETS) addTicket();
     } else {
-      c.held = burger.stack.length ? [...burger.stack] : ['patty'];
+      c.held = heldIds.length ? heldIds : ['patty'];
       c.heldScale = 1;
       setCustomerMood('pissed');
       state.combo = 0;
       rageSound();
       state.flash = Math.max(state.flash, 0.2);
+      if (burger.tainted) {
+        state.floatText.push({
+          x: CUSTOMER_X, y: CUSTOMER_Y - 118,
+          text: 'THAT WAS RANCID', life: 1.0, color: '#8fd96a'
+        });
+      }
 
       // Random violence from an unhappy customer
       if (Math.random() < c.hurtChance) {
@@ -1084,8 +1164,8 @@
       const who = customer ? customer.name : 'A customer';
       showOverlay(
         'Knocked Out',
-        `${who} ended your shift. You banked $${state.money} on ${state.served} burgers. Best haul $${state.high}.`,
-        'Clock In Again'
+        `${who}. $${state.money} · best $${state.high}`,
+        'Again'
       );
       pauseBtn.disabled = true;
     }
@@ -1204,7 +1284,6 @@
     pauseBtn.disabled = false;
     pauseBtn.textContent = 'Pause';
     addTicket();
-    addTicket();
     updateHUD();
     beep(440, 0.08);
     beep(660, 0.1);
@@ -1296,8 +1375,7 @@
     if (state.flash > 0) state.flash -= dt;
 
     for (const t of state.tickets) t.age += dt;
-    const want = Math.min(MAX_TICKETS, 2 + (state.level >= 3 ? 1 : 0));
-    if (state.tickets.length < want) addTicket();
+    if (state.tickets.length < MAX_TICKETS) addTicket();
 
     state.spawnTimer -= dt;
     if (state.spawnTimer <= 0) {
@@ -1455,6 +1533,7 @@
     const squash = opts.squash || 0;
     const stretch = opts.stretch || 1;
     const rot = opts.rot || 0;
+    const gross = !!opts.gross;
     const ing = ING_BY_ID[ingId];
 
     c.save();
@@ -1463,10 +1542,9 @@
     c.scale(1 + squash * 0.45, stretch * (1 - squash * 0.35));
 
     if (ingId === 'top') {
-      // inline top bun for offscreen icons
       const w = 56 * scale;
       const h = 15 * scale;
-      c.fillStyle = '#d4a05a';
+      c.fillStyle = gross ? '#7a8a40' : '#d4a05a';
       c.beginPath();
       c.ellipse(0, 0, w / 2, h, 0, Math.PI, 0);
       c.fill();
@@ -1481,9 +1559,15 @@
       const h = 13 * scale;
       // Irregular grilled patty
       const grd = c.createRadialGradient(-6, -2, 2, 0, 0, w * 0.55);
-      grd.addColorStop(0, '#8a4a28');
-      grd.addColorStop(0.45, '#5c3018');
-      grd.addColorStop(1, '#3a1c0c');
+      if (gross) {
+        grd.addColorStop(0, '#6a7a28');
+        grd.addColorStop(0.45, '#3a4a18');
+        grd.addColorStop(1, '#2a3010');
+      } else {
+        grd.addColorStop(0, '#8a4a28');
+        grd.addColorStop(0.45, '#5c3018');
+        grd.addColorStop(1, '#3a1c0c');
+      }
       c.fillStyle = grd;
       c.beginPath();
       c.moveTo(-w / 2, 0);
@@ -1515,17 +1599,31 @@
       c.strokeStyle = 'rgba(120,50,20,0.5)';
       c.lineWidth = 1.2 * scale;
       c.stroke();
-      c.fillStyle = '#6a3010';
+      c.fillStyle = gross ? '#5a7030' : '#6a3010';
       c.beginPath();
       c.ellipse(w / 2 - 5 * scale, 3 * scale, 3.5 * scale, 2 * scale, 0.3, 0, Math.PI * 2);
       c.fill();
+      if (gross) {
+        c.fillStyle = 'rgba(120,160,50,0.7)';
+        for (const [mx, my] of [[-8, -2], [4, 1], [-2, 3], [10, -1]]) {
+          c.beginPath();
+          c.ellipse(mx * scale, my * scale, 3 * scale, 2 * scale, 0.5, 0, Math.PI * 2);
+          c.fill();
+        }
+      }
     } else if (ingId === 'cheese') {
       // Soft American slice, slightly melted
       const h = 9 * scale;
       const grd = c.createLinearGradient(0, -h, 0, h + 8);
-      grd.addColorStop(0, '#ffe08a');
-      grd.addColorStop(0.4, '#f0c24a');
-      grd.addColorStop(1, '#d49a28');
+      if (gross) {
+        grd.addColorStop(0, '#c8d060');
+        grd.addColorStop(0.4, '#8a9a30');
+        grd.addColorStop(1, '#5a6a20');
+      } else {
+        grd.addColorStop(0, '#ffe08a');
+        grd.addColorStop(0.4, '#f0c24a');
+        grd.addColorStop(1, '#d49a28');
+      }
       c.fillStyle = grd;
       c.beginPath();
       c.moveTo(-w / 2 + 2, -h / 2);
@@ -1543,18 +1641,32 @@
       c.strokeStyle = 'rgba(180,120,30,0.35)';
       c.lineWidth = 1;
       c.stroke();
-      c.fillStyle = '#e8a830';
+      c.fillStyle = gross ? '#6a8030' : '#e8a830';
       c.beginPath();
       c.ellipse(-w * 0.28, h / 2 + 7 * scale, 3 * scale, 5 * scale, 0.1, 0, Math.PI * 2);
       c.fill();
+      if (gross) {
+        c.fillStyle = '#3a4a18';
+        c.beginPath();
+        c.arc(-6 * scale, 0, 2.5 * scale, 0, Math.PI * 2);
+        c.arc(8 * scale, 2 * scale, 2 * scale, 0, Math.PI * 2);
+        c.fill();
+      }
     } else if (ingId === 'tomato') {
       // Cross-section tomato slice
       const r = 22 * scale;
       const skin = c.createRadialGradient(-4, -3, 2, 0, 0, r);
-      skin.addColorStop(0, '#ff6a55');
-      skin.addColorStop(0.55, '#d13a32');
-      skin.addColorStop(0.85, '#b02820');
-      skin.addColorStop(1, '#8e1e18');
+      if (gross) {
+        skin.addColorStop(0, '#9aaa50');
+        skin.addColorStop(0.55, '#6a7a30');
+        skin.addColorStop(0.85, '#4a5020');
+        skin.addColorStop(1, '#2a3010');
+      } else {
+        skin.addColorStop(0, '#ff6a55');
+        skin.addColorStop(0.55, '#d13a32');
+        skin.addColorStop(0.85, '#b02820');
+        skin.addColorStop(1, '#8e1e18');
+      }
       c.fillStyle = skin;
       c.beginPath();
       c.ellipse(0, 0, r, r * 0.42, 0, 0, Math.PI * 2);
@@ -1603,17 +1715,40 @@
         c.bezierCurveTo(-10 * scale, oy - 9 * scale, 10 * scale, oy + 6 * scale, w / 2 - 5, oy - 2);
         c.stroke();
       };
-      drawStrip(-2 * scale, '#a83822', '#f0d0a8');
-      drawStrip(3 * scale, '#8a2818', '#e8c090');
+      if (gross) {
+        drawStrip(-2 * scale, '#6a6a40', '#a0a878');
+        drawStrip(3 * scale, '#4a4a30', '#808860');
+      } else {
+        drawStrip(-2 * scale, '#a83822', '#f0d0a8');
+        drawStrip(3 * scale, '#8a2818', '#e8c090');
+      }
       c.fillStyle = 'rgba(255,230,190,0.45)';
       c.beginPath();
       c.ellipse(6 * scale, -4 * scale, 5 * scale, 1.6 * scale, -0.4, 0, Math.PI * 2);
       c.fill();
-      // Crispy tip
       c.fillStyle = '#5a1810';
       c.beginPath();
       c.ellipse(w / 2 - 3, 0, 2.5 * scale, 3 * scale, 0.2, 0, Math.PI * 2);
       c.fill();
+      if (gross) {
+        // Suspicious hair
+        c.strokeStyle = '#2a2a20';
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(-10 * scale, -4 * scale);
+        c.quadraticCurveTo(0, 6 * scale, 12 * scale, -2 * scale);
+        c.stroke();
+      }
+    }
+
+    if (gross) {
+      // Little flies
+      c.fillStyle = '#1a1a14';
+      for (const [fx, fy] of [[-16, -10], [14, -8], [2, -14]]) {
+        c.beginPath();
+        c.ellipse(fx * scale, fy * scale, 1.6 * scale, 1 * scale, 0.3, 0, Math.PI * 2);
+        c.fill();
+      }
     }
 
     c.restore();
@@ -2150,10 +2285,10 @@
     drawIngredientLayer(s.ingId, s.x, s.y, 1.05, {
       stretch: s.stretch,
       rot: s.rot * 0.15,
-      squash
+      squash,
+      gross: !!s.gross
     });
-    // Motion blur streak
-    ctx.fillStyle = 'rgba(255,220,160,0.12)';
+    ctx.fillStyle = s.gross ? 'rgba(140,180,60,0.18)' : 'rgba(255,220,160,0.12)';
     ctx.fillRect(s.x - 4, s.y - 40, 8, 36);
   }
 
@@ -2185,15 +2320,18 @@
     drawBottomBun(cx, y, 1, squash);
 
     for (let i = 0; i < b.stack.length; i++) {
-      const id = b.stack[i];
+      const layer = b.stack[i];
+      const id = layerId(layer);
+      const isGross = typeof layer === 'object' && layer.gross;
       y -= layerGap(id) * (1 - squash * 0.15);
       const layerSquash = i === b.stack.length - 1 ? squash : squash * 0.4;
-      drawIngredientLayer(id, cx, y, 1, { squash: layerSquash });
+      drawIngredientLayer(id, cx, y, 1, { squash: layerSquash, gross: isGross });
     }
 
-    // Dripping cheese / juice from stack
-    if (b.stack.includes('cheese') || b.stack.includes('tomato') || b.grease > 0.3) {
-      const dripCol = b.stack.includes('tomato') ? '#d13a32' : '#e8a830';
+    const hasCheese = countOf(b.stack, 'cheese') > 0;
+    const hasTomato = countOf(b.stack, 'tomato') > 0;
+    if (hasCheese || hasTomato || b.grease > 0.3 || b.tainted) {
+      const dripCol = b.tainted ? '#6a8a30' : hasTomato ? '#d13a32' : '#e8a830';
       ctx.fillStyle = dripCol;
       const dx = cx + 18;
       ctx.beginPath();
@@ -2201,7 +2339,15 @@
       ctx.fill();
     }
 
-    if (b.ruined) {
+    if (b.tainted) {
+      ctx.fillStyle = 'rgba(100,140,40,0.28)';
+      roundRect(b.x + 6, LINE_Y - 78, BURGER_W - 12, 78, 6);
+      ctx.fill();
+      ctx.fillStyle = '#c8e080';
+      ctx.font = '800 9px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GROSS', cx, LINE_Y - 70);
+    } else if (b.ruined) {
       ctx.fillStyle = 'rgba(242,110,137,0.32)';
       roundRect(b.x + 6, LINE_Y - 78, BURGER_W - 12, 78, 6);
       ctx.fill();
@@ -2212,125 +2358,130 @@
     }
   }
 
-  function drawTicket(ticket, index) {
+  function drawTicket(ticket) {
     const stack = ticket.recipe.stack;
-    const rowH = 28;
-    const tw = 168;
-    const th = 44 + stack.length * rowH + 10;
-    const gap = 10;
-    const total = state.tickets.length * tw + Math.max(0, state.tickets.length - 1) * gap;
-    const startX = (W - total) / 2;
-    const x = startX + index * (tw + gap);
-    const y = 12;
-    const sway = Math.sin(ticket.age * 2 + index) * 1.2;
+    const rowH = 42;
+    const tw = Math.min(420, W - 40);
+    const th = 58 + stack.length * rowH + 16;
+    const x = (W - tw) / 2;
+    const y = 8;
+    const sway = Math.sin(ticket.age * 1.6) * 1.5;
     const burger = state.burgers.find(bb => bb.ticketId === ticket.id);
     const have = burger ? burger.stack : [];
 
-    // Build checklist rows: one per required item, marking off matches in any order
     const usedHave = {};
     const rows = stack.map((ingId) => {
       const haveCount = countOf(have, ingId);
       const used = usedHave[ingId] || 0;
       const checked = used < haveCount;
-      if (checked) usedHave[ingId] = used + 1;
-      return { ingId, checked };
+      let gross = false;
+      if (checked) {
+        let n = 0;
+        for (const l of have) {
+          if (layerId(l) !== ingId) continue;
+          if (n === used) {
+            gross = !!(typeof l === 'object' && l.gross);
+            break;
+          }
+          n++;
+        }
+        usedHave[ingId] = used + 1;
+      }
+      return { ingId, checked, gross };
     });
 
     ctx.fillStyle = '#8a3030';
     ctx.beginPath();
-    ctx.arc(x + tw / 2, y + 4 + sway, 4, 0, Math.PI * 2);
+    ctx.arc(x + tw / 2, y + 6 + sway, 6, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.save();
     ctx.translate(0, sway);
 
-    // Paper receipt
     ctx.fillStyle = '#f7edd4';
-    roundRect(x, y + 8, tw, th, 4);
+    roundRect(x, y + 10, tw, th, 6);
     ctx.fill();
     ctx.fillStyle = ticket.color;
-    ctx.fillRect(x, y + 8, 7, th);
+    ctx.fillRect(x, y + 10, 10, th);
 
-    // Header
     ctx.fillStyle = '#2a2218';
-    ctx.font = '700 12px "General Sans", sans-serif';
+    ctx.font = '800 22px Zodiak, Georgia, serif';
     ctx.textAlign = 'left';
-    ctx.fillText(ticket.recipe.name.toUpperCase(), x + 14, y + 26);
+    ctx.fillText(ticket.recipe.name.toUpperCase(), x + 22, y + 38);
     ctx.fillStyle = '#7a6a50';
-    ctx.font = '600 9px "General Sans", sans-serif';
-    ctx.fillText('ADD (any order)', x + 14, y + 40);
+    ctx.font = '700 12px "General Sans", sans-serif';
+    ctx.fillText('ONE ORDER  ·  ANY ORDER  ·  TOSS GROSS WITH X', x + 22, y + 56);
 
-    // Dashed rule
-    ctx.strokeStyle = 'rgba(80,60,40,0.25)';
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = 'rgba(80,60,40,0.28)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
     ctx.beginPath();
-    ctx.moveTo(x + 12, y + 46);
-    ctx.lineTo(x + tw - 10, y + 46);
+    ctx.moveTo(x + 20, y + 64);
+    ctx.lineTo(x + tw - 16, y + 64);
     ctx.stroke();
     ctx.setLineDash([]);
 
     rows.forEach((row, i) => {
-      const ry = y + 52 + i * rowH;
+      const ry = y + 74 + i * rowH;
       const ing = ING_BY_ID[row.ingId];
 
-      // Checkbox
-      ctx.strokeStyle = row.checked ? '#3a8a4a' : '#6a5a40';
-      ctx.lineWidth = 1.5;
-      roundRect(x + 12, ry + 5, 14, 14, 2);
+      ctx.strokeStyle = row.gross ? '#6a8a30' : row.checked ? '#3a8a4a' : '#6a5a40';
+      ctx.lineWidth = 2;
+      roundRect(x + 20, ry + 8, 22, 22, 3);
       ctx.stroke();
       if (row.checked) {
-        ctx.fillStyle = '#3a8a4a';
-        ctx.fillRect(x + 14, ry + 7, 10, 10);
+        ctx.fillStyle = row.gross ? '#6a8a30' : '#3a8a4a';
+        ctx.fillRect(x + 23, ry + 11, 16, 16);
         ctx.strokeStyle = '#f7edd4';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(x + 16, ry + 12);
-        ctx.lineTo(x + 18.5, ry + 15);
-        ctx.lineTo(x + 23, ry + 9);
+        ctx.moveTo(x + 26, ry + 19);
+        ctx.lineTo(x + 30, ry + 23);
+        ctx.lineTo(x + 37, ry + 14);
         ctx.stroke();
       }
 
-      // Ingredient icon
-      const iconCx = x + 48;
-      const iconCy = ry + 12;
-      ctx.fillStyle = row.checked ? 'rgba(60,120,70,0.12)' : 'rgba(0,0,0,0.06)';
-      roundRect(iconCx - 16, iconCy - 10, 32, 20, 3);
+      const iconCx = x + 72;
+      const iconCy = ry + 19;
+      ctx.fillStyle = row.gross ? 'rgba(100,140,40,0.18)' : row.checked ? 'rgba(60,120,70,0.12)' : 'rgba(0,0,0,0.06)';
+      roundRect(iconCx - 28, iconCy - 14, 56, 28, 4);
       ctx.fill();
-      ctx.globalAlpha = row.checked ? 0.45 : 1;
-      drawIngredientLayer(row.ingId, iconCx, iconCy, 0.55);
+      ctx.globalAlpha = row.checked && !row.gross ? 0.45 : 1;
+      drawIngredientLayer(row.ingId, iconCx, iconCy, 0.85, { gross: row.gross });
       ctx.globalAlpha = 1;
 
-      // Name + key
-      ctx.fillStyle = row.checked ? '#6a8a6a' : '#2a2218';
-      ctx.font = '700 11px "General Sans", sans-serif';
+      ctx.fillStyle = row.gross ? '#4a6020' : row.checked ? '#6a8a6a' : '#2a2218';
+      ctx.font = '800 16px "General Sans", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(ing.name, x + 70, ry + 11);
-      ctx.fillStyle = row.checked ? '#8aaa8a' : '#8a6a30';
-      ctx.font = '800 10px "General Sans", sans-serif';
-      ctx.fillText(`KEY ${ing.key.toUpperCase()}`, x + 70, ry + 23);
+      ctx.fillText(ing.name, x + 110, ry + 16);
+      ctx.fillStyle = row.gross ? '#6a8030' : row.checked ? '#8aaa8a' : '#8a6a30';
+      ctx.font = '800 13px "General Sans", sans-serif';
+      ctx.fillText(row.gross ? 'DISGUSTING — TOSS' : `PRESS  ${ing.key.toUpperCase()}`, x + 110, ry + 34);
 
-      if (row.checked) {
-        ctx.strokeStyle = 'rgba(60,100,60,0.45)';
-        ctx.lineWidth = 1.5;
+      if (row.checked && !row.gross) {
+        ctx.strokeStyle = 'rgba(60,100,60,0.4)';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(x + 70, ry + 12);
-        ctx.lineTo(x + tw - 14, ry + 12);
+        ctx.moveTo(x + 110, ry + 18);
+        ctx.lineTo(x + tw - 24, ry + 18);
         ctx.stroke();
       }
     });
 
-    // Footer status
-    const left = stack.length - have.length;
-    ctx.fillStyle = burger && burger.ruined ? '#a03030'
+    const left = stack.length - have.filter(l => layerId(l) !== 'top').length;
+    ctx.fillStyle = burger && burger.tainted ? '#5a7020'
+      : burger && burger.ruined ? '#a03030'
       : burger && burger.done ? '#2a7a3a'
-      : left <= 0 && burger ? '#2a7a3a'
       : '#6a5a40';
-    ctx.font = '700 9px "General Sans", sans-serif';
+    ctx.font = '800 13px "General Sans", sans-serif';
     ctx.textAlign = 'center';
-    let status = ticket.assigned ? (burger && burger.ruined ? 'RUINED' : burger && burger.done ? 'DONE' : `${left} TO GO`) : 'WAITING';
-    if (burger && !burger.done && !burger.ruined && left === 0) status = 'SEALING…';
-    ctx.fillText(status, x + tw / 2, y + th + 4);
+    let status = `${left} TO GO`;
+    if (burger && burger.tainted) status = 'GROSS — HIT TOSS';
+    else if (burger && burger.ruined) status = 'RUINED — TOSS IT';
+    else if (burger && burger.done) status = 'HEADING TO PICKUP';
+    else if (burger && left === 0) status = 'SEALING…';
+    else if (!ticket.assigned) status = 'WAITING ON THE LINE';
+    ctx.fillText(status, x + tw / 2, y + th + 6);
 
     ctx.restore();
   }
@@ -2344,27 +2495,27 @@
     ctx.fillRect(0, 0, W, H);
 
     ctx.fillStyle = '#3a322c';
-    ctx.fillRect(0, 0, W, 155);
+    ctx.fillRect(0, 0, W, 220);
     ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     for (let x = 0; x < W; x += 28) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 155); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 220); ctx.stroke();
     }
-    for (let y = 0; y < 155; y += 20) {
+    for (let y = 0; y < 220; y += 20) {
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
     }
 
     for (const lx of [140, 280, 420]) {
-      const glow = ctx.createRadialGradient(lx, 150, 4, lx, 200, 70);
-      glow.addColorStop(0, 'rgba(255,180,80,0.22)');
+      const glow = ctx.createRadialGradient(lx, 200, 4, lx, 250, 70);
+      glow.addColorStop(0, 'rgba(255,180,80,0.18)');
       glow.addColorStop(1, 'rgba(255,180,80,0)');
       ctx.fillStyle = glow;
-      ctx.fillRect(lx - 70, 145, 140, 100);
+      ctx.fillRect(lx - 70, 195, 140, 90);
       ctx.fillStyle = '#c47830';
-      roundRect(lx - 18, 145, 36, 8, 2);
+      roundRect(lx - 18, 198, 36, 8, 2);
       ctx.fill();
     }
 
-    state.tickets.forEach((t, i) => drawTicket(t, i));
+    state.tickets.forEach((t) => drawTicket(t));
 
     ctx.fillStyle = '#2e342f';
     ctx.fillRect(0, LINE_Y + 18, W, H - LINE_Y - 18);
@@ -2516,6 +2667,11 @@
       }
       return;
     }
+    if (e.key === 'x' || e.key === 'X' || e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      tossBurger();
+      return;
+    }
     const ing = KEY_TO_ING[e.key];
     if (ing) {
       e.preventDefault();
@@ -2528,6 +2684,11 @@
     state.muted = !state.muted;
     muteBtn.setAttribute('aria-pressed', String(state.muted));
     muteBtn.textContent = state.muted ? 'Muted' : 'Sound';
+  });
+  tossBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    ensureAudio();
+    tossBurger();
   });
   startBtn.addEventListener('click', () => {
     ensureAudio();
@@ -2546,11 +2707,7 @@
   fitCanvas();
 
   paintButtonIcons();
-  updateHUD();
-  if (state.high > 0) {
-    overlayText.textContent =
-      `Match tickets any order. Earn $1 per perfect burger. Mad customers might clock you. Best haul: $${state.high}`;
-  }
+  startGame();
   requestAnimationFrame(frame);
 })();
   </script>
