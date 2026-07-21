@@ -624,6 +624,18 @@
     beep(660, 0.1);
   }
 
+  // Shared drive world scale — physics + render stay in the same units
+  const DW = {
+    ROAD: 1.0,       // asphalt half-width (lane X)
+    CURB: 1.14,      // concrete curb outer
+    WALK: 1.62,      // sidewalk outer
+    BUILD: 1.78,     // building face on lot line
+    LANE: 0.42,      // lane center offsets
+    MPH_Z: 11,       // world-Z units per mph per second
+    CAR_LEN: 28,     // collision length in Z
+    CAR_HALF_W: 0.2
+  };
+
   function beginDrive() {
     state.phase = 'drive';
     state.mode = 'drive';
@@ -631,12 +643,14 @@
     state.flash = 0;
     state.particles = [];
     state.destination = pickDestination(state.level);
-    const trip = 2600 + state.level * 320;
+    // Trip length in world-Z (~city blocks)
+    const trip = 3200 + state.level * 400;
     state.drive = {
       z: 0,
       goal: trip,
-      speed: 40,
-      maxSpeed: 300 + state.level * 20,
+      // speed is MPH — cohesive with HUD and traffic
+      speed: 28,
+      maxSpeed: 72 + state.level * 4,
       accel: 0,
       playerX: 0,
       velX: 0,
@@ -645,16 +659,18 @@
       yawVel: 0,
       pitch: 0,
       roll: 0,
+      susp: 0,
+      suspVel: 0,
       curve: 0,
       targetCurve: 0,
-      curveTimer: 0,
+      curveTimer: 1.5,
       hills: 0,
       traffic: [],
       props: [],
       buildings: [],
       nextPropZ: 40,
       nextBuildZ: 20,
-      spawnTimer: 0.5,
+      spawnTimer: 0.35,
       invuln: 1.4,
       rpmPulse: 0,
       crashFlash: 0,
@@ -663,10 +679,14 @@
       skid: 0,
       wheelSpin: 0,
       camX: 0,
-      camY: 46,
-      camBack: 110
+      camY: 42,
+      camBack: 118,
+      surface: 'asphalt',
+      rumble: 0
     };
-    seedCityBlocks(state.drive, 0, 1400);
+    seedCityBlocks(state.drive, 0, 1600);
+    // Seed a few cars already in frame so the street feels alive
+    for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
     setPhaseUI();
     overlay.hidden = true;
     pauseBtn.disabled = false;
@@ -678,38 +698,41 @@
   }
 
   function seedCityBlocks(d, fromZ, toZ) {
-    // Crappy midtown: stained brick, peeling paint, sad concrete
+    // Crappy midtown on a regular lot grid — buildings sit on the sidewalk lot line
     const facades = ['#4a3f38', '#3d4248', '#5a5048', '#2f353c', '#5c4a3a', '#3a4038', '#6a5a4a'];
-    for (let z = fromZ; z < toZ; z += 48 + Math.random() * 36) {
-      const h = 90 + Math.random() * 200;
-      const w = 0.65 + Math.random() * 0.55;
-      d.buildings.push({
-        z, side: -1, h, w,
-        color: facades[Math.floor(Math.random() * facades.length)],
-        windows: 2 + Math.floor(Math.random() * 3),
-        lean: (Math.random() - 0.5) * 0.04,
-        boarded: Math.random() > 0.62,
-        graffiti: Math.random() > 0.55
-      });
-      d.buildings.push({
-        z: z + 14 + Math.random() * 20, side: 1,
-        h: 80 + Math.random() * 180, w: 0.55 + Math.random() * 0.6,
-        color: facades[Math.floor(Math.random() * facades.length)],
-        windows: 2 + Math.floor(Math.random() * 3),
-        lean: (Math.random() - 0.5) * 0.04,
-        boarded: Math.random() > 0.62,
-        graffiti: Math.random() > 0.55
-      });
-    }
-    for (let z = fromZ + 30; z < toZ; z += 100 + Math.random() * 60) {
-      d.props.push({ z, side: -1, kind: 'light' });
-      d.props.push({ z: z + 18, side: 1, kind: 'light' });
-    }
-    for (let z = fromZ + 60; z < toZ; z += 160 + Math.random() * 100) {
-      d.props.push({ z, side: Math.random() > 0.5 ? 1 : -1, kind: 'hydrant' });
-      d.props.push({ z: z + 35, side: Math.random() > 0.5 ? 1 : -1, kind: 'dumpster' });
-      if (Math.random() > 0.4) d.props.push({ z: z + 70, side: 0, kind: 'crosswalk' });
-      if (Math.random() > 0.5) d.props.push({ z: z + 20, side: 0, kind: 'pothole' });
+    const lot = 56;
+    for (let z = Math.ceil(fromZ / lot) * lot; z < toZ; z += lot) {
+      const depth = 0.7 + (Math.abs(Math.sin(z * 0.02)) * 0.45);
+      for (const side of [-1, 1]) {
+        d.buildings.push({
+          z: z + (side < 0 ? 0 : lot * 0.35),
+          side,
+          h: 100 + (Math.abs(Math.cos(z * 0.011 + side)) * 160),
+          w: depth,
+          color: facades[Math.abs(Math.floor(z / lot) + side) % facades.length],
+          windows: 2 + (Math.abs(Math.floor(z / 30)) % 3),
+          lean: Math.sin(z * 0.01) * 0.025,
+          boarded: ((z / lot) | 0) % 5 === 0,
+          graffiti: ((z / lot) | 0) % 3 !== 0
+        });
+      }
+      // Street furniture locked to curb line
+      if (((z / lot) | 0) % 2 === 0) {
+        d.props.push({ z: z + 10, side: -1, kind: 'light' });
+        d.props.push({ z: z + 10, side: 1, kind: 'light' });
+      }
+      if (((z / lot) | 0) % 3 === 0) {
+        d.props.push({ z: z + 28, side: Math.sin(z) > 0 ? -1 : 1, kind: 'dumpster' });
+      }
+      if (((z / lot) | 0) % 4 === 0) {
+        d.props.push({ z: z + 40, side: Math.cos(z) > 0 ? 1 : -1, kind: 'hydrant' });
+      }
+      if (((z / lot) | 0) % 5 === 0) {
+        d.props.push({ z: z + lot * 0.5, side: 0, kind: 'crosswalk' });
+      }
+      if (((z / lot) | 0) % 2 === 1) {
+        d.props.push({ z: z + 22, side: 0, kind: 'pothole', x: Math.sin(z * 0.2) * DW.LANE });
+      }
     }
     d.nextBuildZ = toZ;
     d.nextPropZ = toZ;
@@ -719,8 +742,9 @@
     scoreVal.textContent = String(state.score);
     livesVal.textContent = String(state.lives);
     if (state.phase === 'drive' && state.drive) {
+      // Remaining distance in miles from world-Z / MPH scale
       const left = Math.max(0, state.drive.goal - state.drive.z);
-      levelVal.textContent = (left / 1000).toFixed(1);
+      levelVal.textContent = (left / (DW.MPH_Z * 55)).toFixed(1);
     } else {
       levelVal.textContent = String(state.level);
     }
@@ -1026,17 +1050,22 @@
     updateParticles(dt);
   }
 
-  // --- Drive update (low-poly city + momentum physics) ---
-  function spawnTraffic(d) {
-    const lane = [-0.52, 0, 0.52][Math.floor(Math.random() * 3)];
+  // --- Drive update (weighty MPH physics + shared world scale) ---
+  function spawnTraffic(d, aheadZ) {
+    const lane = [-DW.LANE, 0, DW.LANE][Math.floor(Math.random() * 3)];
     const kinds = ['taxi', 'sedan', 'bus', 'sports', 'van'];
+    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+    // Mostly slightly slower than cruise so packs feel catchable in the same MPH world
+    const base = kind === 'bus' ? 30 : kind === 'taxi' ? 42 : kind === 'sports' ? 48 : 38;
     d.traffic.push({
-      z: d.z + 820 + Math.random() * 600,
-      x: lane + (Math.random() - 0.5) * 0.06,
-      kind: kinds[Math.floor(Math.random() * kinds.length)],
-      speed: 70 + Math.random() * 100,
-      w: 0.24,
+      z: d.z + (aheadZ != null ? aheadZ : 420 + Math.random() * 640),
+      x: lane + (Math.random() - 0.5) * 0.04,
+      kind,
+      speed: Math.max(22, base + (Math.random() - 0.35) * 12),
+      halfW: kind === 'bus' ? 0.28 : DW.CAR_HALF_W,
+      len: kind === 'bus' ? 40 : DW.CAR_LEN,
       yaw: 0,
+      velX: 0,
       smashed: false
     });
   }
@@ -1090,24 +1119,28 @@
     const d = state.drive;
     if (!d || d.invuln > 0 || state.mode !== 'drive') return;
 
-    const ground = projectWorld(d.playerX, 0, d.z + 12, d);
-    const intensity = Math.min(1.4, 0.55 + d.speed / 260);
-    spawnCrashFX(ground.x, ground.y - 18 * ground.scale, Math.sign(impactX || (Math.random() - 0.5)), intensity);
+    const ground = projectWorld(d.playerX, 0, d.z + 14, d);
+    const intensity = Math.min(1.5, 0.4 + d.speed / 70);
+    spawnCrashFX(ground.x, ground.y - 16 * ground.scale, Math.sign(impactX || (Math.random() - 0.5)), intensity);
 
-    d.yawVel += (impactX || (Math.random() - 0.5)) * (6 + intensity * 5);
-    d.velX += -(impactX || 0) * 2.2 - Math.sign(d.playerX || 0.01) * 0.4;
-    d.speed *= 0.22;
-    d.camShake = 14 + intensity * 16;
-    d.crashT = 0.85;
-    d.crashFlash = 0.6;
-    d.skid = 1;
-    d.roll = (impactX || 0.2) * 0.35;
+    // Conservation-ish impulse: shove sideways, dump forward speed, spring the suspension
+    const hit = impactX || (Math.random() - 0.5);
+    d.yawVel += hit * (4 + intensity * 4);
+    d.velX += -hit * (1.1 + intensity * 0.6);
+    d.speed = Math.max(8, d.speed * (0.18 + Math.random() * 0.1));
+    d.suspVel -= 18 * intensity;
+    d.camShake = 12 + intensity * 14;
+    d.crashT = 0.9;
+    d.crashFlash = 0.65;
+    d.skid = 1.1;
+    d.roll = hit * 0.4;
 
     if (other) {
       other.smashed = true;
-      other.yaw = (Math.random() - 0.5) * 1.2;
-      other.z = d.z + 40;
-      other.x += (Math.random() - 0.5) * 0.4;
+      other.yaw = hit * 1.4 + (Math.random() - 0.5);
+      other.velX = -hit * 0.8;
+      other.speed *= 0.4;
+      other.z += 10;
     }
 
     loseLife(reason);
@@ -1117,9 +1150,10 @@
     const d = state.drive;
     if (!d) return;
 
-    if (d.camShake > 0) d.camShake = Math.max(0, d.camShake - 40 * dt);
+    if (d.camShake > 0) d.camShake = Math.max(0, d.camShake - 36 * dt);
     if (d.crashT > 0) d.crashT = Math.max(0, d.crashT - dt);
     if (d.skid > 0) d.skid = Math.max(0, d.skid - dt);
+    if (d.rumble > 0) d.rumble = Math.max(0, d.rumble - dt);
 
     if (state.mode === 'pause' || state.mode === 'gameover' || state.mode === 'arrived') {
       d.rpmPulse += dt;
@@ -1135,106 +1169,160 @@
     if (d.crashFlash > 0) d.crashFlash -= dt;
     if (state.flash > 0) state.flash -= dt;
 
-    // Momentum throttle
     const gas = state.keys.up ? 1 : 0;
     const brake = state.keys.down ? 1 : 0;
-    if (gas) d.accel = 165;
-    else if (brake) d.accel = -210;
-    else d.accel = -28;
-    d.speed = Math.max(18, Math.min(d.maxSpeed, d.speed + d.accel * dt));
-    // Nose pitch from accel/brake
-    const targetPitch = (d.accel > 40 ? -0.08 : d.accel < -80 ? 0.12 : 0) + (d.speed / d.maxSpeed) * 0.02;
-    d.pitch += (targetPitch - d.pitch) * Math.min(1, 6 * dt);
+    const speedNorm = d.speed / d.maxSpeed;
 
-    // Steering with grip falloff + lateral inertia
+    // Engine force falls off toward top speed; aero drag + rolling resistance
+    const engine = gas * 48 * (1 - speedNorm * 0.82);
+    const brakes = brake * 70;
+    const drag = 0.018 * d.speed * d.speed * 0.01 + 6.5 + (d.surface === 'curb' ? 14 : 0);
+    d.accel = engine - brakes - drag * 0.15;
+    d.speed = Math.max(0, Math.min(d.maxSpeed, d.speed + d.accel * dt));
+    // Idle creep so you don't stall dead in traffic unless hard-braking
+    if (!brake && d.speed < 12) d.speed += 18 * dt;
+
+    // Surface under the tires
+    const ax = Math.abs(d.playerX);
+    if (ax > DW.CURB) d.surface = 'barrier';
+    else if (ax > DW.ROAD * 0.92) d.surface = 'curb';
+    else d.surface = 'asphalt';
+    const gripMax = d.surface === 'asphalt' ? 11 : d.surface === 'curb' ? 4.2 : 1.5;
+
+    // Steering: input → wheel angle (less lock at speed) → lateral tire force
     let steerInput = 0;
     if (state.keys.left) steerInput -= 1;
     if (state.keys.right) steerInput += 1;
-    d.steer += (steerInput - d.steer) * Math.min(1, 10 * dt);
-    const grip = Math.max(0.35, 1.15 - d.speed / 420);
-    const steerForce = d.steer * (1.8 + d.speed * 0.004) * grip;
-    d.velX += steerForce * dt;
-    d.velX *= Math.pow(0.12, dt); // damping
-    // Road bank / curve force
-    d.velX -= d.curve * (d.speed / 300) * dt * 0.9;
-    d.playerX += d.velX * dt;
-    // Visual yaw from lateral slip
-    const slip = d.velX - d.steer * 0.6;
-    d.yawVel += (-d.steer * 1.4 - d.yaw * 4 + slip * 0.8) * dt;
-    d.yawVel *= Math.pow(0.08, dt);
-    d.yaw += d.yawVel * dt;
-    d.yaw = Math.max(-0.55, Math.min(0.55, d.yaw));
-    d.roll += ((-d.steer * 0.12 + d.velX * 0.04) - d.roll) * Math.min(1, 5 * dt);
+    d.steer += (steerInput - d.steer) * Math.min(1, 9 * dt);
+    const steerAuth = 0.55 + 0.45 * (1 - speedNorm); // high-speed understeer
+    const desiredLat = d.steer * steerAuth * (0.85 + d.speed * 0.012);
 
-    // Soft curb bounce
-    if (Math.abs(d.playerX) > 0.82) {
-      const over = d.playerX - Math.sign(d.playerX) * 0.82;
-      d.playerX -= over * 0.35;
-      d.velX *= -0.45;
-      d.speed = Math.max(24, d.speed - 70 * dt);
-      d.camShake = Math.max(d.camShake, 4);
-      d.skid = Math.max(d.skid, 0.25);
-      if (Math.abs(d.playerX) > 0.95) {
-        triggerDriveCrash('Jersey barrier. Low-poly meets concrete.', d.playerX, null);
+    // Road curvature pushes you wide (v²/r feel)
+    const curveForce = d.curve * (d.speed * d.speed) * 0.000035;
+    let latAccel = (desiredLat - d.velX) * 10 - curveForce;
+    latAccel = Math.max(-gripMax, Math.min(gripMax, latAccel));
+    d.velX += latAccel * dt;
+    // Tire scrub damping — stronger on asphalt
+    d.velX *= Math.exp(-(gripMax * 0.55) * dt);
+    d.playerX += d.velX * dt;
+
+    // Slip / yaw / body roll from real lateral accel
+    const slip = d.velX - desiredLat * 0.5;
+    d.skid = Math.max(d.skid, Math.abs(slip) > 0.55 ? 0.35 : 0);
+    d.yawVel += (-d.steer * 1.1 * steerAuth + slip * 1.3 - d.yaw * 5) * dt;
+    d.yawVel *= Math.exp(-6 * dt);
+    d.yaw = Math.max(-0.5, Math.min(0.5, d.yaw + d.yawVel * dt));
+    const targetRoll = -latAccel * 0.018 - d.steer * 0.06;
+    d.roll += (targetRoll - d.roll) * Math.min(1, 7 * dt);
+    const targetPitch = (d.accel > 8 ? -0.07 : d.accel < -20 ? 0.11 : 0) + d.susp * 0.02;
+    d.pitch += (targetPitch - d.pitch) * Math.min(1, 6 * dt);
+
+    // Suspension spring-damper
+    d.suspVel += (-d.susp * 70 - d.suspVel * 9) * dt;
+    d.susp += d.suspVel * dt;
+
+    // Concrete curb / jersey barrier response
+    if (d.surface === 'curb') {
+      d.speed = Math.max(0, d.speed - 28 * dt);
+      d.rumble = Math.max(d.rumble, 0.2);
+      d.suspVel -= 40 * dt * (1 + Math.random());
+      d.camShake = Math.max(d.camShake, 2.5);
+    }
+    if (ax > DW.ROAD * 0.92) {
+      const over = ax - DW.ROAD * 0.92;
+      d.velX -= Math.sign(d.playerX) * over * 8 * dt;
+    }
+    if (ax > DW.CURB + 0.02) {
+      // Hit the jersey barrier — elastic bounce then scrape
+      d.playerX = Math.sign(d.playerX) * DW.CURB;
+      d.velX *= -0.35;
+      d.speed = Math.max(6, d.speed * 0.72);
+      d.suspVel -= 12;
+      d.camShake = Math.max(d.camShake, 8);
+      d.skid = 1;
+      if (d.speed > 40 && Math.random() < dt * 3) {
+        triggerDriveCrash('Jersey barrier. Concrete always wins.', d.playerX, null);
         return;
       }
     }
-    d.playerX = Math.max(-0.96, Math.min(0.96, d.playerX));
+    d.playerX = Math.max(-DW.CURB - 0.02, Math.min(DW.CURB + 0.02, d.playerX));
 
-    // Road path — city blocks feel more angular
+    // Gentle block-scale road path (not random whip-steer)
     d.curveTimer -= dt;
     if (d.curveTimer <= 0) {
-      d.targetCurve = (Math.random() - 0.5) * (Math.random() > 0.7 ? 2.1 : 1.1);
-      d.curveTimer = 1.2 + Math.random() * 2.4;
+      // City grid: mostly straight, occasional bend
+      d.targetCurve = Math.random() > 0.62 ? (Math.random() - 0.5) * 1.35 : (Math.random() - 0.5) * 0.35;
+      d.curveTimer = 2.2 + Math.random() * 2.8;
     }
-    d.curve += (d.targetCurve - d.curve) * Math.min(1, 1.4 * dt);
-    d.hills = Math.sin(d.z * 0.0018) * 18 + Math.sin(d.z * 0.004) * 8;
+    d.curve += (d.targetCurve - d.curve) * Math.min(1, 0.9 * dt);
+    d.hills = Math.sin(d.z * 0.0015) * 12 + Math.sin(d.z * 0.0035) * 5;
 
-    d.z += d.speed * dt;
-    d.wheelSpin += d.speed * dt * 0.08;
-    d.rpmPulse += dt * (0.8 + d.speed / 200);
-    // Chase cam eases behind the car (3rd person)
-    d.camX += (d.playerX - d.camX) * Math.min(1, 3.2 * dt);
-    d.camY = 44 + d.speed * 0.012 + Math.abs(d.velX) * 1.5;
-
-    // Extend city ahead
-    if (d.z + 1200 > d.nextBuildZ) {
-      seedCityBlocks(d, d.nextBuildZ, d.nextBuildZ + 900);
+    // Pothole bumps when you roll over them
+    for (const pr of d.props) {
+      if (pr.kind !== 'pothole') continue;
+      const dz = pr.z - (d.z + 14);
+      if (dz > -8 && dz < 8 && Math.abs((pr.x || 0) - d.playerX) < 0.28) {
+        d.suspVel -= 22 + d.speed * 0.15;
+        d.rumble = 0.35;
+        d.camShake = Math.max(d.camShake, 3 + d.speed * 0.04);
+      }
     }
-    d.buildings = d.buildings.filter(b => b.z > d.z - 80);
-    d.props = d.props.filter(p => p.z > d.z - 60);
 
-    // Traffic
+    // Integrate world position from MPH
+    d.z += d.speed * DW.MPH_Z * dt;
+    d.wheelSpin += d.speed * dt * 0.35;
+    d.rpmPulse += dt * (0.7 + d.speed / 50);
+
+    // Chase cam: spring-follow for weight, lift slightly with speed
+    d.camX += (d.playerX - d.camX) * Math.min(1, 2.6 * dt);
+    const camTargetY = 40 + d.speed * 0.06 + Math.abs(d.velX) * 2.2 - d.susp * 0.4;
+    d.camY += (camTargetY - d.camY) * Math.min(1, 3 * dt);
+    d.camBack = 112 + d.speed * 0.15;
+
+    if (d.z + 1300 > d.nextBuildZ) {
+      seedCityBlocks(d, d.nextBuildZ, d.nextBuildZ + 1000);
+    }
+    d.buildings = d.buildings.filter(b => b.z > d.z - 100);
+    d.props = d.props.filter(p => p.z > d.z - 80);
+
+    // Traffic in absolute world MPH (same integrator as player)
     d.spawnTimer -= dt;
-    if (d.spawnTimer <= 0 && d.traffic.length < 10) {
+    if (d.spawnTimer <= 0 && d.traffic.length < 9) {
       spawnTraffic(d);
-      d.spawnTimer = Math.max(0.4, 1.05 - state.level * 0.08);
+      d.spawnTimer = Math.max(0.55, 1.2 - state.level * 0.07);
     }
     for (const car of d.traffic) {
       if (car.smashed) {
-        car.z += 40 * dt;
-        car.x += car.yaw * dt * 0.4;
+        car.z += car.speed * DW.MPH_Z * 0.35 * dt;
+        car.x += car.velX * dt;
+        car.velX *= Math.exp(-2 * dt);
+        car.yaw += car.velX * dt * 2;
       } else {
-        car.z += car.speed * dt * 0.15;
-        car.z -= d.speed * dt * 0.92;
+        car.z += car.speed * DW.MPH_Z * dt;
+        // Soft lane-keep
+        const lane = Math.round(car.x / DW.LANE) * DW.LANE;
+        car.x += (lane - car.x) * Math.min(1, 1.2 * dt);
       }
     }
-    d.traffic = d.traffic.filter(c => c.z > d.z - 50 && c.z < d.z + 1700);
+    d.traffic = d.traffic.filter(c => c.z > d.z - 80 && c.z < d.z + 1800);
 
-    // Collisions with impulse
+    // AABB-ish collision in world units
     for (const car of d.traffic) {
       if (car.smashed) continue;
-      const rel = car.z - d.z;
-      if (rel > 12 && rel < 62) {
-        const hitW = car.kind === 'bus' ? 0.34 : 0.26;
-        if (Math.abs(car.x - d.playerX) < hitW) {
+      const dz = car.z - (d.z + 10);
+      const hitLen = (car.len + DW.CAR_LEN) * 0.35;
+      if (dz > 0 && dz < hitLen) {
+        if (Math.abs(car.x - d.playerX) < car.halfW + DW.CAR_HALF_W) {
           const impactX = d.playerX - car.x;
-          triggerDriveCrash(
-            car.kind === 'bus' ? 'Bus vs banker. Bus wins.' : car.kind === 'taxi' ? 'Yellow cab reunion.' : 'Chrome confetti.',
-            impactX,
-            car
-          );
-          return;
+          const closing = d.speed - car.speed;
+          if (closing > 6 || Math.abs(impactX) < car.halfW) {
+            triggerDriveCrash(
+              car.kind === 'bus' ? 'Bus vs banker. Bus wins.' : car.kind === 'taxi' ? 'Yellow cab reunion.' : 'Chrome confetti.',
+              impactX,
+              car
+            );
+            return;
+          }
         }
       }
     }
@@ -1244,29 +1332,27 @@
       return;
     }
 
-    if (d.speed > 160) state.score += Math.floor(d.speed * dt * 0.09);
+    if (d.speed > 40) state.score += Math.floor(d.speed * dt * 0.2);
     updateHUD();
 
-    if (Math.floor(d.rpmPulse * 6) !== Math.floor((d.rpmPulse - dt) * 6) && d.speed > 50) {
-      beep(85 + d.speed * 0.4, 0.025, 'sawtooth', 0.01);
+    if (Math.floor(d.rpmPulse * 5) !== Math.floor((d.rpmPulse - dt) * 5) && d.speed > 20) {
+      beep(70 + d.speed * 1.1, 0.025, 'sawtooth', 0.01);
     }
-    // Tire squeal cue
-    if (Math.abs(d.velX) > 1.4 && Math.floor(d.rpmPulse * 10) !== Math.floor((d.rpmPulse - dt) * 10)) {
-      beep(180 + Math.abs(d.velX) * 40, 0.02, 'triangle', 0.015);
+    if (d.skid > 0.2 && Math.floor(d.rpmPulse * 9) !== Math.floor((d.rpmPulse - dt) * 9)) {
+      beep(160 + Math.abs(d.velX) * 50, 0.02, 'triangle', 0.014);
     }
 
-    // Skid smoke while sliding — at tire contact on the street
-    if ((Math.abs(d.velX) > 1.2 || d.skid > 0) && Math.random() < dt * 10) {
-      const tire = projectWorld(d.playerX + (Math.random() > 0.5 ? 0.08 : -0.08), 0, d.z + 6, d);
+    if ((Math.abs(slip) > 0.5 || d.skid > 0.15 || d.surface === 'curb') && Math.random() < dt * 12) {
+      const tire = projectWorld(d.playerX + (Math.random() > 0.5 ? 0.1 : -0.1), 0, d.z + 10, d);
       state.particles.push({
         type: 'smoke',
-        x: tire.x + (Math.random() - 0.5) * 10,
+        x: tire.x + (Math.random() - 0.5) * 8,
         y: tire.y,
-        vx: -d.velX * 8 + (Math.random() - 0.5) * 20,
-        vy: -10 - Math.random() * 20,
-        life: 0.35 + Math.random() * 0.3,
-        maxLife: 0.6,
-        size: 6 + Math.random() * 10
+        vx: -d.velX * 10 + (Math.random() - 0.5) * 16,
+        vy: -8 - Math.random() * 16,
+        life: 0.3 + Math.random() * 0.25,
+        maxLife: 0.55,
+        size: 5 + Math.random() * 9
       });
     }
 
@@ -1780,67 +1866,379 @@
     ctx.fillRect(4, y - 5, (W - 8) * pct, 5);
   }
 
-  function drawGhettoBuildings(rowStart, rowEnd, label) {
-    for (let r = rowStart; r <= rowEnd; r++) {
-      const y = r * TILE;
-      ctx.fillStyle = r % 2 === 0 ? '#2a2420' : '#241e1a';
-      ctx.fillRect(0, y, W, TILE);
-      // Brick / boarded storefronts
-      for (let c = 0; c < COLS; c++) {
-        const x = c * TILE;
-        const tone = 40 + ((c * 17 + r * 9) % 30);
-        ctx.fillStyle = `rgb(${tone},${tone - 8},${tone - 12})`;
-        ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
-        // Boarded window
-        if ((c + r) % 3 !== 0) {
-          ctx.fillStyle = '#3a3028';
-          ctx.fillRect(x + 8, y + 8, TILE - 16, TILE - 18);
-          ctx.strokeStyle = 'rgba(20,15,10,0.5)';
-          ctx.beginPath();
-          ctx.moveTo(x + 8, y + 8);
-          ctx.lineTo(x + TILE - 8, y + TILE - 10);
-          ctx.moveTo(x + TILE - 8, y + 8);
-          ctx.lineTo(x + 8, y + TILE - 10);
-          ctx.stroke();
-        } else {
-          // Neon liquor / bodega glow
-          ctx.fillStyle = (c % 2 === 0) ? 'rgba(200,40,60,0.35)' : 'rgba(40,180,90,0.28)';
-          ctx.fillRect(x + 6, y + 10, TILE - 12, 10);
-        }
-      }
-      // Graffiti tag
-      if (r === rowStart) {
-        ctx.fillStyle = 'rgba(180,60,160,0.45)';
-        ctx.font = '700 11px "General Sans", sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(label || 'BLOCK', 10, y + 16);
+  function drawBrickWall(x, y, w, h, seed) {
+    ctx.fillStyle = seed % 2 === 0 ? '#5a3a32' : '#4e342c';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(30,18,14,0.35)';
+    ctx.lineWidth = 1;
+    for (let by = y + 4; by < y + h; by += 5) {
+      ctx.beginPath();
+      ctx.moveTo(x, by);
+      ctx.lineTo(x + w, by);
+      ctx.stroke();
+      const off = ((by / 5) | 0) % 2 ? 6 : 0;
+      for (let bx = x + off; bx < x + w; bx += 12) {
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx, Math.min(by + 5, y + h));
+        ctx.stroke();
       }
     }
   }
 
-  function drawGhettoCurb(row, label) {
+  function drawBoardedWindow(x, y, w, h) {
+    ctx.fillStyle = '#3a3028';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(20,14,10,0.55)';
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.beginPath();
+    ctx.moveTo(x + 2, y + 2);
+    ctx.lineTo(x + w - 2, y + h - 2);
+    ctx.moveTo(x + w - 2, y + 2);
+    ctx.lineTo(x + 2, y + h - 2);
+    ctx.stroke();
+    // Plywood seams
+    ctx.strokeStyle = 'rgba(60,45,30,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2, y);
+    ctx.lineTo(x + w / 2, y + h);
+    ctx.stroke();
+  }
+
+  function drawSecurityGate(x, y, w, h) {
+    ctx.fillStyle = '#2a2a2e';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(120,120,130,0.45)';
+    ctx.lineWidth = 1;
+    for (let gx = x + 3; gx < x + w; gx += 4) {
+      ctx.beginPath();
+      ctx.moveTo(gx, y);
+      ctx.lineTo(gx, y + h);
+      ctx.stroke();
+    }
+    for (let gy = y + 3; gy < y + h; gy += 4) {
+      ctx.beginPath();
+      ctx.moveTo(x, gy);
+      ctx.lineTo(x + w, gy);
+      ctx.stroke();
+    }
+  }
+
+  function drawStoreSign(x, y, w, h, bg, fg, text) {
+    ctx.fillStyle = bg;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    ctx.fillStyle = fg;
+    ctx.font = `700 ${Math.max(7, Math.min(10, h - 2))}px "General Sans", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + w / 2, y + h / 2 + 0.5);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  function drawAbandonedStore(x, y, w, h, opts) {
+    const { brick = 1, signBg, signFg, name, gated = true, neon = null } = opts;
+    drawBrickWall(x, y, w, h, brick);
+    // Cornice
+    ctx.fillStyle = '#2a221c';
+    ctx.fillRect(x, y, w, 4);
+    // Signband
+    drawStoreSign(x + 3, y + 6, w - 6, 11, signBg, signFg, name);
+    if (neon) {
+      ctx.fillStyle = neon;
+      ctx.fillRect(x + 4, y + 6, w - 8, 2);
+    }
+    // Storefront
+    const winY = y + 20;
+    const winH = h - 24;
+    if (gated) {
+      drawSecurityGate(x + 4, winY, w - 8, winH);
+      // Partial boards behind gate
+      ctx.fillStyle = 'rgba(50,40,30,0.5)';
+      ctx.fillRect(x + 8, winY + 4, (w - 16) / 2 - 2, winH - 8);
+    } else {
+      drawBoardedWindow(x + 4, winY, w - 8, winH);
+    }
+    // Door recess
+    ctx.fillStyle = '#1a1612';
+    ctx.fillRect(x + w * 0.4, winY + 2, w * 0.2, winH - 2);
+    // CLOSED sticker
+    ctx.fillStyle = 'rgba(180,40,40,0.75)';
+    ctx.fillRect(x + w * 0.42, winY + winH * 0.35, w * 0.16, 7);
+    ctx.fillStyle = '#f0e6d0';
+    ctx.font = '700 6px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CLOSED', x + w * 0.5, winY + winH * 0.35 + 5.5);
+  }
+
+  function drawJunkyGasStation(x, y, w, h) {
+    // Lot asphalt under canopy
+    ctx.fillStyle = '#2e2e30';
+    ctx.fillRect(x, y, w, h);
+    // Oil stains
+    ctx.fillStyle = 'rgba(10,10,12,0.45)';
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.3, y + h * 0.7, 14, 5, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + w * 0.65, y + h * 0.55, 10, 4, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Canopy
+    ctx.fillStyle = '#6a2020';
+    ctx.fillRect(x + 4, y + 2, w - 8, 14);
+    ctx.fillStyle = '#8a3030';
+    ctx.fillRect(x + 4, y + 2, w - 8, 4);
+    // Faded brand
+    ctx.fillStyle = 'rgba(240,220,160,0.7)';
+    ctx.font = '700 9px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('QUIK-FILL', x + w / 2, y + 12);
+    // Price board busted
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(x + w - 28, y + 4, 20, 10);
+    ctx.fillStyle = '#c0392b';
+    ctx.font = '700 7px "General Sans", sans-serif';
+    ctx.fillText('$??', x + w - 18, y + 11);
+
+    // Support poles
+    ctx.fillStyle = '#4a4a4e';
+    ctx.fillRect(x + 10, y + 16, 4, h - 18);
+    ctx.fillRect(x + w - 14, y + 16, 4, h - 18);
+
+    // Convenience hut (boarded)
+    ctx.fillStyle = '#3a3834';
+    ctx.fillRect(x + w * 0.55, y + 18, w * 0.38, h - 22);
+    drawBoardedWindow(x + w * 0.55 + 4, y + 24, w * 0.38 - 8, 14);
+    ctx.fillStyle = 'rgba(200,40,40,0.5)';
+    ctx.font = '700 6px "General Sans", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('NO GAS', x + w * 0.58, y + h - 6);
+
+    // Pumps — rusty, taped
+    for (let i = 0; i < 2; i++) {
+      const px = x + 16 + i * 28;
+      const py = y + 22;
+      ctx.fillStyle = '#5a4a3a';
+      ctx.fillRect(px, py, 14, 20);
+      ctx.fillStyle = '#3a3028';
+      ctx.fillRect(px + 2, py + 3, 10, 8);
+      ctx.fillStyle = '#c9a227';
+      ctx.fillRect(px + 3, py + 12, 8, 2);
+      // Out of order tape
+      ctx.strokeStyle = '#f0c400';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px - 1, py + 2);
+      ctx.lineTo(px + 15, py + 18);
+      ctx.stroke();
+      // Hose on ground
+      ctx.strokeStyle = '#2a2a2a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px + 14, py + 16);
+      ctx.quadraticCurveTo(px + 22, py + 24, px + 10, py + 28);
+      ctx.stroke();
+    }
+
+    // Stack of tires
+    ctx.fillStyle = '#1a1a1a';
+    for (let t = 0; t < 3; t++) {
+      ctx.beginPath();
+      ctx.ellipse(x + w * 0.48, y + h - 6 - t * 5, 8, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawTopBlock() {
+    const y0 = 0;
+    const h = (GRILL.BUILD_TOP_END + 1) * TILE;
+    // Night sky peek
+    ctx.fillStyle = '#1a1520';
+    ctx.fillRect(0, y0, W, h);
+
+    // Row of abandoned businesses + gas station
+    drawAbandonedStore(0, y0 + 8, TILE * 2.2, h - 10, {
+      brick: 1, signBg: '#3a1818', signFg: '#e8a060', name: 'ROYAL CHICKEN', gated: true
+    });
+    drawJunkyGasStation(TILE * 2.15, y0 + 4, TILE * 3.3, h - 6);
+    drawAbandonedStore(TILE * 5.5, y0 + 8, TILE * 2.1, h - 10, {
+      brick: 2, signBg: '#1a2a1a', signFg: '#6dce7a', name: 'CHECK CASH', neon: 'rgba(80,220,100,0.45)', gated: true
+    });
+    drawAbandonedStore(TILE * 7.7, y0 + 8, TILE * 2.0, h - 10, {
+      brick: 3, signBg: '#2a2040', signFg: '#c9a0e8', name: 'VIDEO HUT', gated: false
+    });
+    drawAbandonedStore(TILE * 9.8, y0 + 8, TILE * 2.2, h - 10, {
+      brick: 4, signBg: '#402818', signFg: '#f0d080', name: 'PAWN PLUS', gated: true
+    });
+
+    // Graffiti on brick between signs
+    ctx.fillStyle = 'rgba(180,60,160,0.5)';
+    ctx.font = '700 10px "General Sans", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('SKR', TILE * 5.15, y0 + h - 14);
+    ctx.fillStyle = 'rgba(60,140,220,0.45)';
+    ctx.fillText('88', TILE * 9.5, y0 + 28);
+  }
+
+  function drawBottomBlock() {
+    const y0 = GRILL.BUILD_BOT_START * TILE;
+    const h = (ROWS - GRILL.BUILD_BOT_START) * TILE;
+    ctx.fillStyle = '#1e1a18';
+    ctx.fillRect(0, y0, W, h);
+
+    // Upper facade row of the strip (taller buildings)
+    drawBrickWall(0, y0, W, Math.min(TILE * 2, h * 0.45), 5);
+    // Windows on upper floors — mostly dark / busted
+    for (let c = 0; c < COLS; c++) {
+      const wx = c * TILE + 10;
+      const wy = y0 + 8;
+      if ((c * 3) % 5 === 0) {
+        ctx.fillStyle = 'rgba(220,180,80,0.12)';
+        ctx.fillRect(wx, wy, 12, 10);
+      } else {
+        drawBoardedWindow(wx, wy, 14, 12);
+      }
+    }
+
+    const storeY = y0 + Math.min(TILE * 2, h * 0.42);
+    const storeH = y0 + h - storeY - 2;
+
+    drawAbandonedStore(0, storeY, TILE * 2.4, storeH, {
+      brick: 6, signBg: '#401018', signFg: '#ff6a6a', name: 'DISCOUNT LIQUOR', neon: 'rgba(220,40,60,0.55)', gated: true
+    });
+    drawAbandonedStore(TILE * 2.5, storeY, TILE * 2.2, storeH, {
+      brick: 7, signBg: '#203040', signFg: '#f0d060', name: 'WE BUY GOLD', gated: true
+    });
+    drawAbandonedStore(TILE * 4.8, storeY, TILE * 2.5, storeH, {
+      brick: 8, signBg: '#203028', signFg: '#a0d0a8', name: 'FAMILY $', gated: false
+    });
+    drawAbandonedStore(TILE * 7.4, storeY, TILE * 2.3, storeH, {
+      brick: 9, signBg: '#302820', signFg: '#e0c8a0', name: 'LAUNDRO-', gated: true
+    });
+    drawAbandonedStore(TILE * 9.8, storeY, TILE * 2.2, storeH, {
+      brick: 10, signBg: '#1a2030', signFg: '#80b0e0', name: 'AUTO BODY', gated: true
+    });
+
+    // Hand-painted "OPEN 24 HRS" on liquor — flickering implication
+    ctx.fillStyle = 'rgba(255,220,120,0.35)';
+    ctx.font = '700 7px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('OPEN 24 HRS?', TILE * 1.2, storeY + storeH - 4);
+
+    // Dumpster alley gap
+    ctx.fillStyle = '#1a1814';
+    ctx.fillRect(TILE * 7.2, storeY + 4, 8, storeH - 6);
+    ctx.fillStyle = '#2a4a2a';
+    ctx.fillRect(TILE * 7.15, storeY + storeH - 18, 14, 12);
+    ctx.fillStyle = '#1a2a1a';
+    ctx.fillRect(TILE * 7.2, storeY + storeH - 16, 10, 4);
+  }
+
+  function drawGhettoCurb(row, label, props) {
     const y = row * TILE;
     ctx.fillStyle = '#6a655c';
     ctx.fillRect(0, y, W, TILE);
+    // Concrete slabs
     ctx.fillStyle = '#5a554c';
-    for (let x = 0; x < W; x += 36) ctx.fillRect(x, y, 1, TILE);
-    // Trash / cracks
-    ctx.fillStyle = 'rgba(20,18,14,0.35)';
-    ctx.fillRect(20, y + 10, 14, 6);
-    ctx.fillRect(200, y + 22, 18, 8);
-    ctx.fillRect(340, y + 8, 10, 12);
-    ctx.fillStyle = '#3a3830';
-    ctx.fillRect(80, y + 28, 40, 2);
-    ctx.fillRect(260, y + 12, 28, 2);
+    for (let x = 0; x < W; x += 40) ctx.fillRect(x, y, 1, TILE);
+    ctx.fillRect(0, y + TILE / 2, W, 1);
+    // Speckle
+    ctx.fillStyle = 'rgba(40,35,30,0.15)';
+    for (let i = 0; i < 18; i++) {
+      ctx.fillRect((i * 53) % W, y + 4 + (i * 7) % (TILE - 8), 2, 2);
+    }
+    // Cracks
+    ctx.strokeStyle = 'rgba(30,28,24,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(40, y + 6);
+    ctx.lineTo(70, y + 28);
+    ctx.lineTo(100, y + 16);
+    ctx.moveTo(300, y + 8);
+    ctx.lineTo(360, y + 30);
+    ctx.stroke();
+
+    // Street furniture
+    if (props === 'goal') {
+      // Hydrant
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(24, y + 14, 8, 16);
+      ctx.fillRect(20, y + 18, 16, 5);
+      // Shopping cart carcass
+      ctx.strokeStyle = '#6a6a6a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(150, y + 16, 22, 14);
+      ctx.fillStyle = '#4a4a4a';
+      ctx.fillRect(152, y + 18, 18, 8);
+      // Trash bags
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.ellipse(220, y + 26, 8, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(232, y + 28, 6, 4, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      // Newspaper box
+      ctx.fillStyle = '#1a3a6a';
+      ctx.fillRect(400, y + 12, 14, 20);
+      ctx.fillStyle = '#f0e6d0';
+      ctx.fillRect(402, y + 14, 10, 8);
+      // Milk crate
+      ctx.fillStyle = '#2a5a8a';
+      ctx.fillRect(90, y + 22, 12, 10);
+    } else if (props === 'start') {
+      // Payphone shell
+      ctx.fillStyle = '#3a3a42';
+      ctx.fillRect(50, y + 6, 16, 28);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(53, y + 12, 10, 12);
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(55, y + 26, 6, 3);
+      // Trash can overflowing
+      ctx.fillStyle = '#3a3a3a';
+      ctx.fillRect(180, y + 14, 14, 18);
+      ctx.fillStyle = '#2a4a2a';
+      ctx.fillRect(178, y + 10, 18, 8);
+      // Cardboard sign
+      ctx.fillStyle = '#c4a574';
+      ctx.fillRect(280, y + 18, 36, 12);
+      ctx.fillStyle = '#2a2010';
+      ctx.font = '700 6px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('WILL WORK', 298, y + 26);
+      // Orange cone
+      ctx.fillStyle = '#e85d04';
+      ctx.beginPath();
+      ctx.moveTo(360, y + 12);
+      ctx.lineTo(354, y + 32);
+      ctx.lineTo(366, y + 32);
+      ctx.fill();
+      // Bike frame locked to pole
+      ctx.fillStyle = '#6a6a6a';
+      ctx.fillRect(420, y + 8, 3, 26);
+      ctx.strokeStyle = '#2a5a8a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(418, y + 28, 5, 0, Math.PI * 2);
+      ctx.arc(430, y + 28, 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     // Yellow curb
     ctx.fillStyle = '#b8922a';
     ctx.fillRect(0, y, W, 2);
     ctx.fillRect(0, y + TILE - 2, W, 2);
+    // Curb chips
+    ctx.fillStyle = '#6a655c';
+    ctx.fillRect(60, y, 8, 2);
+    ctx.fillRect(200, y + TILE - 2, 12, 2);
+
     if (label) {
       ctx.fillStyle = 'rgba(230,220,190,0.55)';
       ctx.font = '700 9px "General Sans", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(label, 8, y + 14);
+      ctx.fillText(label, 8, y + 12);
     }
   }
 
@@ -1872,7 +2270,7 @@
   }
 
   function drawHooptyGoal() {
-    drawGhettoCurb(GRILL.GOAL, 'PARKING  •  YOUR CAR');
+    drawGhettoCurb(GRILL.GOAL, 'PARKING  •  YOUR CAR', 'goal');
     const x = GRILL.CAR_COL * TILE;
     const y = GRILL.GOAL * TILE;
     // Highlight stall
@@ -1964,21 +2362,15 @@
   }
 
   function drawGhettoCross() {
-    // Night alley sky above the block
-    const sky = ctx.createLinearGradient(0, 0, 0, GRILL.GOAL * TILE);
-    sky.addColorStop(0, '#1a1520');
-    sky.addColorStop(1, '#2a2220');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, W, GRILL.GOAL * TILE);
-
-    drawGhettoBuildings(0, GRILL.BUILD_TOP_END, 'LIQUOR');
+    drawTopBlock();
     drawHooptyGoal();
     for (let r = GRILL.ROAD_START; r <= GRILL.ROAD_END; r++) drawGhettoRoad(r);
-    drawGhettoCurb(GRILL.START, 'GRILL EXIT  •  START');
-    drawGhettoBuildings(GRILL.BUILD_BOT_START, ROWS - 1, 'OPEN 24 HRS');
+    drawGhettoCurb(GRILL.START, 'GRILL EXIT  •  START', 'start');
+    drawBottomBlock();
 
-    // Streetlight cones
-    ctx.fillStyle = 'rgba(220,180,80,0.06)';
+    // Flickery streetlight cones
+    const flicker = 0.05 + Math.sin(performance.now() / 400) * 0.015;
+    ctx.fillStyle = `rgba(220,180,80,${flicker})`;
     ctx.beginPath();
     ctx.moveTo(60, GRILL.START * TILE);
     ctx.lineTo(20, GRILL.GOAL * TILE);
@@ -1989,6 +2381,10 @@
     ctx.lineTo(360, GRILL.GOAL * TILE);
     ctx.lineTo(440, GRILL.GOAL * TILE);
     ctx.fill();
+
+    // Gas-station canopy spill onto the far curb
+    ctx.fillStyle = 'rgba(140,40,40,0.08)';
+    ctx.fillRect(TILE * 2.15, GRILL.GOAL * TILE, TILE * 3.3, 6);
 
     for (const lane of state.lanes) {
       for (const e of lane.entities) {
@@ -2243,7 +2639,8 @@
   }
 
   function drawBuilding(b, d) {
-    const edge = b.side < 0 ? -1.7 - b.w * 0.25 : 1.7 + b.w * 0.25;
+    // Buildings sit on the lot line just outside the sidewalk
+    const edge = b.side * (DW.BUILD + b.w * 0.15);
     const ground = projectWorld(edge, 0, b.z, d);
     if (ground.relZ < 40 || ground.relZ > 1400 || ground.scale < 0.04) return;
     const top = projectWorld(edge, b.h * 0.55, b.z, d);
@@ -2322,8 +2719,8 @@
 
   function drawStreetProp(pr, d) {
     if (pr.kind === 'crosswalk') {
-      const pL = projectWorld(-0.9, 0, pr.z, d);
-      const pR = projectWorld(0.9, 0, pr.z, d);
+      const pL = projectWorld(-DW.ROAD * 0.92, 0, pr.z, d);
+      const pR = projectWorld(DW.ROAD * 0.92, 0, pr.z, d);
       if (pL.relZ < 50 || pL.relZ > 900) return;
       ctx.fillStyle = 'rgba(210,200,180,0.5)';
       const stripes = 7;
@@ -2337,7 +2734,7 @@
       return;
     }
     if (pr.kind === 'pothole') {
-      const p = projectWorld((Math.sin(pr.z) * 0.35), 0, pr.z, d);
+      const p = projectWorld(pr.x != null ? pr.x : 0, 0, pr.z, d);
       if (p.relZ < 50 || p.relZ > 700) return;
       ctx.fillStyle = 'rgba(10,10,12,0.55)';
       ctx.beginPath();
@@ -2345,7 +2742,8 @@
       ctx.fill();
       return;
     }
-    const xWorld = pr.side * 1.25;
+    // Furniture lives on the concrete sidewalk strip
+    const xWorld = pr.side * ((DW.ROAD + DW.WALK) * 0.5);
     const p = projectWorld(xWorld, 0, pr.z, d);
     if (p.relZ < 45 || p.relZ > 1100) return;
     if (pr.kind === 'light') {
@@ -2432,11 +2830,12 @@
     const d = state.drive;
     ctx.clearRect(0, 0, W, H);
 
-    const shakeX = d.camShake ? (Math.random() - 0.5) * d.camShake : 0;
-    const shakeY = d.camShake ? (Math.random() - 0.5) * d.camShake * 0.65 : 0;
+    const shakeAmt = (d.camShake || 0) + (d.rumble || 0) * 5;
+    const shakeX = shakeAmt ? (Math.random() - 0.5) * shakeAmt : 0;
+    const shakeY = shakeAmt ? (Math.random() - 0.5) * shakeAmt * 0.65 : 0;
     ctx.save();
     ctx.translate(shakeX, shakeY);
-    ctx.rotate(d.roll * 0.06);
+    ctx.rotate(d.roll * 0.05);
 
     // Smoggy / overcast sky
     const sky = ctx.createLinearGradient(0, 0, 0, H * 0.5);
@@ -2453,34 +2852,35 @@
       const bh = 20 + ((i * 19) % 55);
       ctx.fillRect(bx, H * 0.42 - bh, 22 + (i % 3) * 6, bh);
     }
-    // Smog haze
     ctx.fillStyle = 'rgba(120,110,95,0.18)';
     ctx.fillRect(-30, H * 0.36, W + 60, 40);
 
-    // Ground fill so nothing is "empty" under the road
+    // Dirt lot / concrete base under everything near-camera
     const nearGround = projectWorld(0, 0, d.z - 40, d);
-    ctx.fillStyle = '#3a3834';
+    ctx.fillStyle = '#4a4640';
     ctx.fillRect(-30, nearGround.y - 4, W + 60, H);
 
-    // Road strips: start BEHIND the car so asphalt sits under the wheels
+    // Road strips use shared DW scale — start behind the car so asphalt is under the tires
     const segs = 40;
     const segLen = 26;
     for (let i = segs; i >= -5; i--) {
       const z0 = d.z + i * segLen;
       const z1 = d.z + (i + 1) * segLen;
-      const curb = 1.1;
-      const walk = 1.65;
-      const pL = projectWorld(-curb, 0, z0, d);
-      const pR = projectWorld(curb, 0, z0, d);
-      const qL = projectWorld(-curb, 0, z1, d);
-      const qR = projectWorld(curb, 0, z1, d);
-      const wL = projectWorld(-walk, 0, z0, d);
-      const wR = projectWorld(walk, 0, z0, d);
-      const vL = projectWorld(-walk, 0, z1, d);
-      const vR = projectWorld(walk, 0, z1, d);
+      const pL = projectWorld(-DW.ROAD, 0, z0, d);
+      const pR = projectWorld(DW.ROAD, 0, z0, d);
+      const qL = projectWorld(-DW.ROAD, 0, z1, d);
+      const qR = projectWorld(DW.ROAD, 0, z1, d);
+      const cL = projectWorld(-DW.CURB, 0, z0, d);
+      const cR = projectWorld(DW.CURB, 0, z0, d);
+      const dL = projectWorld(-DW.CURB, 0, z1, d);
+      const dR = projectWorld(DW.CURB, 0, z1, d);
+      const wL = projectWorld(-DW.WALK, 0, z0, d);
+      const wR = projectWorld(DW.WALK, 0, z0, d);
+      const vL = projectWorld(-DW.WALK, 0, z1, d);
+      const vR = projectWorld(DW.WALK, 0, z1, d);
 
-      // Sidewalks
-      ctx.fillStyle = i % 2 === 0 ? '#7a756c' : '#6e6960';
+      // Concrete sidewalk slabs
+      ctx.fillStyle = i % 2 === 0 ? '#8a857c' : '#7c776e';
       ctx.beginPath();
       ctx.moveTo(-20, wL.y);
       ctx.lineTo(wL.x, wL.y);
@@ -2493,26 +2893,63 @@
       ctx.lineTo(vR.x, vR.y);
       ctx.lineTo(W + 20, vR.y);
       ctx.fill();
+      // Slab seams
+      if (i % 2 === 0) {
+        ctx.strokeStyle = 'rgba(40,38,34,0.35)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(wL.x, wL.y);
+        ctx.lineTo(vL.x, vL.y);
+        ctx.moveTo(wR.x, wR.y);
+        ctx.lineTo(vR.x, vR.y);
+        ctx.stroke();
+      }
 
-      // Curb
-      ctx.fillStyle = '#a09040';
+      // Raised concrete curb (gray, not just paint)
+      ctx.fillStyle = i % 2 === 0 ? '#9a958c' : '#8e897f';
       ctx.beginPath();
       ctx.moveTo(wL.x, wL.y);
-      ctx.lineTo(pL.x, pL.y);
-      ctx.lineTo(qL.x, qL.y);
+      ctx.lineTo(cL.x, cL.y);
+      ctx.lineTo(dL.x, dL.y);
       ctx.lineTo(vL.x, vL.y);
       ctx.closePath();
       ctx.fill();
       ctx.beginPath();
       ctx.moveTo(wR.x, wR.y);
-      ctx.lineTo(pR.x, pR.y);
-      ctx.lineTo(qR.x, qR.y);
+      ctx.lineTo(cR.x, cR.y);
+      ctx.lineTo(dR.x, dR.y);
       ctx.lineTo(vR.x, vR.y);
       ctx.closePath();
       ctx.fill();
 
-      // Asphalt (patchy)
-      ctx.fillStyle = i % 2 === 0 ? '#2c2c30' : '#26262a';
+      // Jersey barrier lip at road edge
+      ctx.fillStyle = '#b8b0a0';
+      ctx.beginPath();
+      ctx.moveTo(cL.x, cL.y);
+      ctx.lineTo(pL.x, pL.y);
+      ctx.lineTo(qL.x, qL.y);
+      ctx.lineTo(dL.x, dL.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cR.x, cR.y);
+      ctx.lineTo(pR.x, pR.y);
+      ctx.lineTo(qR.x, qR.y);
+      ctx.lineTo(dR.x, dR.y);
+      ctx.closePath();
+      ctx.fill();
+      // Yellow curb paint on top edge
+      ctx.strokeStyle = 'rgba(196,160,53,0.7)';
+      ctx.lineWidth = Math.max(1, 1.5 * pL.scale);
+      ctx.beginPath();
+      ctx.moveTo(pL.x, pL.y);
+      ctx.lineTo(qL.x, qL.y);
+      ctx.moveTo(pR.x, pR.y);
+      ctx.lineTo(qR.x, qR.y);
+      ctx.stroke();
+
+      // Asphalt
+      ctx.fillStyle = i % 2 === 0 ? '#2c2c30' : '#252528';
       ctx.beginPath();
       ctx.moveTo(pL.x, pL.y);
       ctx.lineTo(pR.x, pR.y);
@@ -2521,7 +2958,7 @@
       ctx.closePath();
       ctx.fill();
 
-      // Worn yellow center
+      // Worn double yellow
       if (i % 2 === 0 && i > -4) {
         const m0 = projectWorld(0, 0, z0, d);
         const m1 = projectWorld(0, 0, z1, d);
@@ -2535,11 +2972,11 @@
         ctx.stroke();
       }
 
-      // Lane dashes
+      // Lane dashes at shared lane centers
       if (i % 3 === 0) {
         ctx.strokeStyle = 'rgba(190,180,160,0.3)';
         ctx.lineWidth = Math.max(1, 2 * pL.scale);
-        for (const lane of [-0.38, 0.38]) {
+        for (const lane of [-DW.LANE, DW.LANE]) {
           const a = projectWorld(lane, 0, z0, d);
           const bpt = projectWorld(lane, 0, z1, d);
           ctx.beginPath();
@@ -2568,8 +3005,8 @@
       });
     }
 
-    // Player car — projected onto the street (3rd person chase)
-    const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 700);
+    // Player car — on the road plane with suspension compression
+    const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const carZ = d.z + 14;
     const ground = projectWorld(d.playerX, 0, carZ, d);
     const blink = d.invuln > 0 && Math.floor(d.invuln * 14) % 2 === 0;
@@ -2578,7 +3015,7 @@
         player: true,
         yaw: d.yaw,
         pitch: d.pitch,
-        roll: d.roll + (d.crashT > 0 ? Math.sin(d.crashT * 40) * 0.25 : 0)
+        roll: d.roll + (d.crashT > 0 ? Math.sin(d.crashT * 40) * 0.2 : 0)
       });
     }
 
