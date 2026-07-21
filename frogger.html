@@ -148,11 +148,9 @@
       justify-content: center;
       border-radius: var(--radius-lg);
       overflow: hidden;
-      background:
-        linear-gradient(180deg, rgba(8,18,28,.55), transparent 28%),
-        linear-gradient(180deg, #0a1612, #08120f);
+      background: #12081c;
       border: 1px solid rgba(255,255,255,.06);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), inset 0 0 0 3px rgba(80,40,120,.35);
     }
     canvas {
       display: block;
@@ -160,7 +158,8 @@
       max-height: 100%;
       width: auto;
       height: auto;
-      image-rendering: auto;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
       touch-action: none;
     }
     .overlay {
@@ -307,7 +306,7 @@
         <div class="topbar">
           <div class="brand">
             <h1>NYC Crossing</h1>
-            <p>Frogger · Manhattan night</p>
+            <p>Frogger · Wall Street commute</p>
           </div>
           <div class="stats" aria-live="polite">
             <div class="stat">
@@ -330,10 +329,10 @@
           <canvas id="game" width="480" height="600" aria-label="NYC Crossing game board"></canvas>
           <div class="overlay" id="overlay">
             <div class="overlay-card">
-              <h2 id="overlayTitle">Cross Manhattan</h2>
-              <p id="overlayText">Dodge yellow cabs on Broadway, ride the East River ferries, and make it to Central Park. Arrow keys, WASD, or swipe.</p>
+              <h2 id="overlayTitle">Make the commute</h2>
+              <p id="overlayText">Get the banker from SoHo to Central Park. Dodge cabs and MTA buses, hop East River ferries. Arrow keys, WASD, or swipe.</p>
               <div class="control-row">
-                <button class="btn primary" id="startBtn" type="button">Start Crossing</button>
+                <button class="btn primary" id="startBtn" type="button">Start Commute</button>
               </div>
             </div>
           </div>
@@ -351,7 +350,7 @@
             <button class="btn dir down" type="button" data-dir="down" aria-label="Move down">▼</button>
             <button class="btn dir right" type="button" data-dir="right" aria-label="Move right">▶</button>
           </div>
-          <p class="hint">Arrows / WASD · swipe on the street · reach Central Park</p>
+          <p class="hint">Arrows / WASD · swipe · get the banker to Central Park</p>
         </div>
       </div>
     </main>
@@ -540,7 +539,7 @@
         localStorage.setItem('nycCrossingHigh', String(state.high));
       }
       showOverlay(
-        'Stuck in traffic',
+        'Late for the meeting',
         `${reason} Final score ${state.score}. Best ${state.high}.`,
         'Try Again'
       );
@@ -569,7 +568,7 @@
       updateHUD();
       showOverlay(
         `Level ${state.level} cleared`,
-        `Central Park secured. Score ${state.score}. Next rush hour is faster.`,
+        `Banker made it to the park. Score ${state.score}. Next rush hour is faster.`,
         'Next Avenue'
       );
       pauseBtn.disabled = true;
@@ -595,7 +594,7 @@
         return;
       }
       // Hit park fence / filled home
-      loseLife('You clipped the park fence.');
+      loseLife('Clipped the park hedge.');
       return;
     }
 
@@ -677,7 +676,7 @@
             if (lane.row >= ROW.RIVER_START && lane.row <= ROW.RIVER_END) {
               riding = { lane, e };
             } else if (lane.row >= ROW.ROAD_START && lane.row <= ROW.ROAD_END) {
-              loseLife('Yellow cab. Classic.');
+              loseLife(e.kind === 'bus' ? 'Hit by an MTA bus.' : e.kind === 'truck' ? 'Flattened by a truck.' : 'Yellow cab. Classic.');
               return;
             }
           }
@@ -712,53 +711,32 @@
     state.particles = state.particles.filter(p => p.life > 0);
   }
 
-  // --- Drawing ---
-  function drawSkyline() {
-    const g = ctx.createLinearGradient(0, 0, 0, TILE * 2.2);
-    g.addColorStop(0, '#0a1824');
-    g.addColorStop(1, '#0d1f18');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, TILE * 2.2);
+  // --- Drawing (classic Frogger bands + NYC cast) ---
+  const C = {
+    homeBg: '#2a0f4a',
+    homeBush: '#1a6b2a',
+    safe: '#b01e6e',
+    safeHi: '#d63a8a',
+    water: '#1c5fd4',
+    waterDeep: '#1548a8',
+    road: '#0c0c12',
+    dash: '#efc84a',
+    curb: '#e8dcc0'
+  };
 
-    // Buildings
-    const buildings = [
-      [0, 28, 36], [30, 48, 22], [55, 70, 40], [90, 42, 28],
-      [125, 95, 34], [155, 55, 26], [178, 120, 38], [210, 48, 30],
-      [235, 78, 36], [268, 50, 24], [290, 88, 40], [325, 44, 28],
-      [350, 100, 32], [380, 58, 26], [405, 72, 34], [438, 46, 42]
-    ];
-    for (const [x, h, w] of buildings) {
-      const top = TILE * 1.85 - h;
-      ctx.fillStyle = '#0b1518';
-      ctx.fillRect(x, top, w, h + 8);
-      // Windows
-      ctx.fillStyle = 'rgba(239,187,73,0.35)';
-      for (let wy = top + 6; wy < top + h - 4; wy += 8) {
-        for (let wx = x + 4; wx < x + w - 4; wx += 7) {
-          if (Math.random() > 0.35) ctx.fillRect(wx, wy, 3, 3);
-        }
-      }
-    }
-    // Empire-ish spire
-    ctx.fillStyle = '#101c20';
-    ctx.fillRect(178 + 14, TILE * 1.85 - 120 - 28, 10, 28);
-    ctx.fillRect(178 + 17, TILE * 1.85 - 120 - 40, 4, 14);
-  }
-
-  function drawSidewalk(row, label) {
+  function drawSafeBand(row, label) {
     const y = row * TILE;
-    const g = ctx.createLinearGradient(0, y, 0, y + TILE);
-    g.addColorStop(0, '#2a3d34');
-    g.addColorStop(1, '#1e2e27');
-    ctx.fillStyle = g;
+    ctx.fillStyle = C.safe;
     ctx.fillRect(0, y, W, TILE);
-    ctx.fillStyle = 'rgba(245,237,216,0.06)';
-    for (let x = 0; x < W; x += 16) {
-      ctx.fillRect(x, y + 2, 1, TILE - 4);
+    // Classic Frogger scalloped grass edge
+    ctx.fillStyle = C.safeHi;
+    for (let x = 0; x < W; x += 10) {
+      ctx.fillRect(x, y, 6, 3);
+      ctx.fillRect(x + 3, y + TILE - 3, 6, 3);
     }
     if (label) {
-      ctx.fillStyle = 'rgba(189,179,155,0.45)';
-      ctx.font = '600 10px "General Sans", sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.55)';
+      ctx.font = '700 9px "General Sans", sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(label, 8, y + 14);
     }
@@ -766,299 +744,302 @@
 
   function drawRoad(row) {
     const y = row * TILE;
-    ctx.fillStyle = '#1a1f24';
+    ctx.fillStyle = C.road;
     ctx.fillRect(0, y, W, TILE);
-    // Lane dashes
-    ctx.fillStyle = 'rgba(239,187,73,0.35)';
+    ctx.fillStyle = C.dash;
     const mid = y + TILE / 2 - 1;
-    for (let x = 6; x < W; x += 28) {
-      ctx.fillRect(x, mid, 14, 2);
-    }
-    // Curb
-    ctx.fillStyle = 'rgba(245,237,216,0.12)';
+    for (let x = 4; x < W; x += 26) ctx.fillRect(x, mid, 12, 2);
+    ctx.fillStyle = C.curb;
     ctx.fillRect(0, y, W, 2);
     ctx.fillRect(0, y + TILE - 2, W, 2);
   }
 
   function drawRiver(row) {
     const y = row * TILE;
-    const g = ctx.createLinearGradient(0, y, 0, y + TILE);
-    g.addColorStop(0, '#163a48');
-    g.addColorStop(0.5, '#1a4554');
-    g.addColorStop(1, '#123340');
-    ctx.fillStyle = g;
+    ctx.fillStyle = (row % 2 === 0) ? C.water : C.waterDeep;
     ctx.fillRect(0, y, W, TILE);
-    ctx.strokeStyle = 'rgba(160,210,220,0.12)';
-    ctx.lineWidth = 1;
-    const t = performance.now() / 1000;
-    for (let i = 0; i < 5; i++) {
-      const yy = y + 8 + i * 7;
-      ctx.beginPath();
-      for (let x = 0; x <= W; x += 8) {
-        const wave = Math.sin(x * 0.04 + t * 2 + i) * 1.5;
-        if (x === 0) ctx.moveTo(x, yy + wave);
-        else ctx.lineTo(x, yy + wave);
-      }
-      ctx.stroke();
+    // Chunky arcade ripples
+    ctx.fillStyle = 'rgba(180,220,255,0.22)';
+    const t = Math.floor(performance.now() / 180);
+    for (let x = ((t * 3) % 16) - 16; x < W; x += 16) {
+      ctx.fillRect(x, y + 8, 8, 2);
+      ctx.fillRect(x + 6, y + 20, 8, 2);
+      ctx.fillRect(x + 2, y + 30, 8, 2);
     }
   }
 
   function drawParkHomes() {
     const y = 0;
-    // Grass
-    const g = ctx.createLinearGradient(0, y, 0, y + TILE);
-    g.addColorStop(0, '#1a3d28');
-    g.addColorStop(1, '#143222');
-    ctx.fillStyle = g;
+    ctx.fillStyle = C.homeBg;
     ctx.fillRect(0, y, W, TILE);
 
-    // Fence between slots
+    // Blocky hedge between home alcoves
     for (let c = 0; c < COLS; c++) {
-      const isHome = HOME_SLOTS.includes(c);
-      if (!isHome) {
-        ctx.fillStyle = '#0f1f18';
-        ctx.fillRect(c * TILE, y, TILE, TILE);
-        // Iron fence
-        ctx.strokeStyle = 'rgba(208,162,58,0.35)';
-        ctx.lineWidth = 2;
-        for (let x = c * TILE + 6; x < (c + 1) * TILE; x += 8) {
-          ctx.beginPath();
-          ctx.moveTo(x, y + 8);
-          ctx.lineTo(x, y + TILE - 4);
-          ctx.stroke();
-        }
-        ctx.beginPath();
-        ctx.moveTo(c * TILE + 2, y + 14);
-        ctx.lineTo((c + 1) * TILE - 2, y + 14);
-        ctx.stroke();
+      if (HOME_SLOTS.includes(c)) continue;
+      ctx.fillStyle = C.homeBush;
+      ctx.fillRect(c * TILE, y, TILE, TILE);
+      ctx.fillStyle = '#248c38';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(c * TILE + 4 + (i % 2) * 16, y + 6 + Math.floor(i / 2) * 14, 14, 10);
       }
     }
 
     HOME_SLOTS.forEach((c, i) => {
       const x = c * TILE;
+      // Alcove recess
+      ctx.fillStyle = '#1a0830';
+      ctx.fillRect(x + 2, y + 4, TILE - 4, TILE - 6);
+      ctx.fillStyle = '#3d8f3a';
+      ctx.fillRect(x + 4, y + TILE - 10, TILE - 8, 6);
+
       if (state.homes[i]) {
-        // Filled — frog resting under a lamp
-        ctx.fillStyle = '#1f4a30';
-        ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
-        drawFrog(x + TILE / 2, y + TILE / 2 + 2, 0.75, true);
-        // Lamp
-        ctx.fillStyle = '#c9b896';
-        ctx.fillRect(x + TILE / 2 - 1, y + 4, 2, 12);
-        ctx.fillStyle = 'rgba(239,187,73,0.7)';
-        ctx.beginPath();
-        ctx.arc(x + TILE / 2, y + 4, 4, 0, Math.PI * 2);
-        ctx.fill();
+        drawBanker(x + TILE / 2, y + TILE / 2 + 2, 0.72, true);
       } else {
-        // Empty pad
-        ctx.fillStyle = 'rgba(113,209,137,0.18)';
-        ctx.beginPath();
-        ctx.ellipse(x + TILE / 2, y + TILE / 2 + 2, 14, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(113,209,137,0.45)';
-        ctx.stroke();
-        ctx.fillStyle = 'rgba(245,237,216,0.35)';
-        ctx.font = '700 9px "General Sans", sans-serif';
+        // Open bay like classic Frogger home
+        ctx.strokeStyle = '#efc84a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 6, y + 8, TILE - 12, TILE - 16);
+        ctx.fillStyle = 'rgba(239,200,74,0.7)';
+        ctx.font = '700 8px "General Sans", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('PARK', x + TILE / 2, y + 12);
+        ctx.fillText('HOME', x + TILE / 2, y + 22);
       }
     });
 
-    ctx.fillStyle = 'rgba(239,187,73,0.55)';
-    ctx.font = '600 9px "General Sans", sans-serif';
+    ctx.fillStyle = '#efc84a';
+    ctx.font = '700 9px "General Sans", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('CENTRAL PARK', 8, y + TILE - 6);
+    ctx.fillText('CENTRAL PARK', 6, y + TILE - 4);
+  }
+
+  function withFacing(x, y, w, h, dir, drawFn) {
+    ctx.save();
+    if (dir < 0) {
+      ctx.translate(x + w, y);
+      ctx.scale(-1, 1);
+      drawFn(0, 0, w, h);
+    } else {
+      ctx.translate(x, y);
+      drawFn(0, 0, w, h);
+    }
+    ctx.restore();
   }
 
   function drawTaxi(x, y, w, dir) {
-    const h = TILE - 10;
-    const yy = y + 5;
-    // Body
-    const g = ctx.createLinearGradient(x, yy, x, yy + h);
-    g.addColorStop(0, '#f0c84a');
-    g.addColorStop(1, '#c4921e');
-    ctx.fillStyle = g;
-    roundRect(x, yy + 4, w, h - 4, 4);
-    ctx.fill();
-    // Cabin
-    ctx.fillStyle = '#2a2418';
-    ctx.fillRect(x + w * 0.22, yy + 2, w * 0.45, h * 0.45);
-    ctx.fillStyle = 'rgba(160,200,220,0.5)';
-    ctx.fillRect(x + w * 0.25, yy + 4, w * 0.18, h * 0.3);
-    ctx.fillRect(x + w * 0.48, yy + 4, w * 0.16, h * 0.3);
-    // Roof light
-    ctx.fillStyle = '#f5edd8';
-    ctx.fillRect(x + w * 0.4, yy, w * 0.18, 4);
-    // Wheels
-    ctx.fillStyle = '#111';
-    ctx.beginPath();
-    ctx.arc(x + w * 0.22, yy + h, 4, 0, Math.PI * 2);
-    ctx.arc(x + w * 0.78, yy + h, 4, 0, Math.PI * 2);
-    ctx.fill();
-    // Checkers hint
-    ctx.fillStyle = 'rgba(20,20,20,0.25)';
-    for (let i = 0; i < 3; i++) ctx.fillRect(x + 6 + i * 6, yy + h - 8, 3, 3);
+    const h = TILE - 12;
+    const yy = y + 6;
+    withFacing(x, yy, w, h, dir, (lx, ly, lw, lh) => {
+      // Flat arcade yellow cab — nose to the right in local space
+      ctx.fillStyle = '#f5c400';
+      ctx.fillRect(lx, ly + 6, lw, lh - 6);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(lx + lw * 0.28, ly + 2, lw * 0.42, lh * 0.5);
+      ctx.fillStyle = '#7ec8e3';
+      ctx.fillRect(lx + lw * 0.32, ly + 4, lw * 0.16, lh * 0.32);
+      ctx.fillRect(lx + lw * 0.52, ly + 4, lw * 0.14, lh * 0.32);
+      // Roof light
+      ctx.fillStyle = '#fff8d0';
+      ctx.fillRect(lx + lw * 0.42, ly, lw * 0.16, 4);
+      // Headlights at nose
+      ctx.fillStyle = '#fff6a8';
+      ctx.fillRect(lx + lw - 4, ly + lh - 10, 3, 4);
+      // Wheels
+      ctx.fillStyle = '#111';
+      ctx.fillRect(lx + 6, ly + lh - 3, 8, 4);
+      ctx.fillRect(lx + lw - 14, ly + lh - 3, 8, 4);
+      // Checker strip
+      ctx.fillStyle = '#222';
+      for (let i = 0; i < 4; i++) ctx.fillRect(lx + 4 + i * 7, ly + lh - 12, 3, 3);
+    });
   }
 
-  function drawBus(x, y, w) {
-    const h = TILE - 8;
-    const yy = y + 4;
-    const g = ctx.createLinearGradient(x, yy, x, yy + h);
-    g.addColorStop(0, '#3d6b9a');
-    g.addColorStop(1, '#2a4a6e');
-    ctx.fillStyle = g;
-    roundRect(x, yy, w, h, 5);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(200,230,255,0.45)';
-    for (let i = 0; i < 4; i++) {
-      ctx.fillRect(x + 8 + i * (w / 4.5), yy + 6, w / 6, h * 0.4);
-    }
-    ctx.fillStyle = '#efbb49';
-    ctx.fillRect(x + 4, yy + h * 0.55, w - 8, 3);
-    ctx.fillStyle = '#111';
-    ctx.beginPath();
-    ctx.arc(x + 14, yy + h, 5, 0, Math.PI * 2);
-    ctx.arc(x + w - 14, yy + h, 5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function drawTruck(x, y, w) {
+  function drawBus(x, y, w, dir) {
     const h = TILE - 10;
     const yy = y + 5;
-    ctx.fillStyle = '#6b7280';
-    roundRect(x, yy + 2, w * 0.7, h - 2, 3);
-    ctx.fill();
-    ctx.fillStyle = '#8b5a2b';
-    roundRect(x + w * 0.68, yy, w * 0.32, h, 3);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(160,200,220,0.4)';
-    ctx.fillRect(x + w * 0.74, yy + 4, w * 0.18, h * 0.35);
-    ctx.fillStyle = '#111';
-    ctx.beginPath();
-    ctx.arc(x + 12, yy + h, 4, 0, Math.PI * 2);
-    ctx.arc(x + w * 0.55, yy + h, 4, 0, Math.PI * 2);
-    ctx.arc(x + w - 10, yy + h, 4, 0, Math.PI * 2);
-    ctx.fill();
+    withFacing(x, yy, w, h, dir, (lx, ly, lw, lh) => {
+      // NYC MTA local bus — white body, blue stripe, yellow destination
+      ctx.fillStyle = '#f2f2f0';
+      ctx.fillRect(lx, ly + 4, lw, lh - 4);
+      ctx.fillStyle = '#0039a6';
+      ctx.fillRect(lx, ly + lh * 0.42, lw, 7);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(lx, ly + lh - 8, lw, 8);
+      // Destination marquee at front (text drawn unflipped below)
+      ctx.fillStyle = '#111';
+      ctx.fillRect(lx + lw - 22, ly + 2, 20, 10);
+      ctx.fillStyle = '#5eb0d4';
+      ctx.fillRect(lx + lw - 12, ly + 14, 9, lh * 0.28);
+      ctx.fillStyle = '#7ec8e3';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(lx + 6 + i * ((lw - 30) / 4), ly + 8, 10, lh * 0.28);
+      }
+      ctx.fillStyle = '#0039a6';
+      ctx.beginPath();
+      ctx.arc(lx + 12, ly + lh * 0.62, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff6a8';
+      ctx.fillRect(lx + lw - 5, ly + lh - 14, 3, 4);
+      ctx.fillStyle = '#111';
+      ctx.fillRect(lx + 10, ly + lh - 4, 10, 5);
+      ctx.fillRect(lx + lw - 22, ly + lh - 4, 10, 5);
+    });
+    // Labels stay readable regardless of travel direction
+    const front = dir > 0 ? x + w - 12 : x + 12;
+    const badge = dir > 0 ? x + 12 : x + w - 12;
+    ctx.fillStyle = '#f0c400';
+    ctx.font = '700 7px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('M14', front, yy + 10);
+    ctx.fillStyle = '#fff';
+    ctx.fillText('M', badge, yy + h * 0.62 + 2.5);
+  }
+
+  function drawTruck(x, y, w, dir) {
+    const h = TILE - 12;
+    const yy = y + 6;
+    withFacing(x, yy, w, h, dir, (lx, ly, lw, lh) => {
+      // Cab leads to the right in local space
+      const cabW = lw * 0.32;
+      const bedW = lw - cabW;
+      // Cargo bed
+      ctx.fillStyle = '#6b7280';
+      ctx.fillRect(lx, ly + 4, bedW, lh - 4);
+      ctx.fillStyle = '#4b5563';
+      ctx.fillRect(lx + 3, ly + 6, bedW - 6, 6);
+      // Cab
+      ctx.fillStyle = '#c45c26';
+      ctx.fillRect(lx + bedW, ly, cabW, lh);
+      ctx.fillStyle = '#7ec8e3';
+      ctx.fillRect(lx + bedW + 4, ly + 4, cabW - 8, lh * 0.38);
+      // Bumper / lights
+      ctx.fillStyle = '#222';
+      ctx.fillRect(lx + lw - 3, ly + lh - 12, 3, 8);
+      ctx.fillStyle = '#fff6a8';
+      ctx.fillRect(lx + lw - 4, ly + lh - 14, 3, 3);
+      // Wheels
+      ctx.fillStyle = '#111';
+      ctx.fillRect(lx + 8, ly + lh - 3, 9, 4);
+      ctx.fillRect(lx + bedW - 14, ly + lh - 3, 9, 4);
+      ctx.fillRect(lx + lw - 14, ly + lh - 3, 9, 4);
+    });
   }
 
   function drawBike(x, y, w, dir) {
-    const yy = y + TILE / 2;
-    ctx.strokeStyle = '#71d189';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x + 8, yy + 6, 6, 0, Math.PI * 2);
-    ctx.arc(x + w - 8, yy + 6, 6, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x + 8, yy + 6);
-    ctx.lineTo(x + w / 2, yy - 4);
-    ctx.lineTo(x + w - 8, yy + 6);
-    ctx.stroke();
-    // Rider
-    ctx.fillStyle = '#f5edd8';
-    ctx.beginPath();
-    ctx.arc(x + w / 2, yy - 8, 4, 0, Math.PI * 2);
-    ctx.fill();
+    const h = TILE - 14;
+    const yy = y + 7;
+    withFacing(x, yy, w, h, dir, (lx, ly, lw, lh) => {
+      ctx.strokeStyle = '#39d98a';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(lx + 2, ly + lh - 10, 8, 8);
+      ctx.strokeRect(lx + lw - 10, ly + lh - 10, 8, 8);
+      ctx.beginPath();
+      ctx.moveTo(lx + 6, ly + lh - 6);
+      ctx.lineTo(lx + lw * 0.45, ly + 4);
+      ctx.lineTo(lx + lw - 6, ly + lh - 6);
+      ctx.stroke();
+      // Messenger
+      ctx.fillStyle = '#f5e6c8';
+      ctx.fillRect(lx + lw * 0.4, ly, 8, 8);
+      ctx.fillStyle = '#1a3a6a';
+      ctx.fillRect(lx + lw * 0.4, ly + 8, 8, 10);
+    });
   }
 
-  function drawFerry(x, y, w, kind) {
-    const h = TILE - 12;
-    const yy = y + 6;
-    if (kind === 'kayak') {
-      ctx.fillStyle = '#c45c26';
-      ctx.beginPath();
-      ctx.ellipse(x + w / 2, yy + h / 2, w / 2, h / 2.2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#f5edd8';
-      ctx.beginPath();
-      ctx.arc(x + w / 2, yy + h / 2 - 2, 3, 0, Math.PI * 2);
-      ctx.fill();
-      return;
-    }
-    if (kind === 'barge') {
-      ctx.fillStyle = '#5a4a3a';
-      roundRect(x, yy + 4, w, h - 2, 3);
-      ctx.fill();
-      ctx.fillStyle = '#8a7355';
-      ctx.fillRect(x + 6, yy, w - 12, 8);
-      ctx.fillStyle = 'rgba(239,187,73,0.4)';
-      ctx.fillRect(x + 10, yy + 2, 8, 4);
-      return;
-    }
-    // Staten Island / NYC ferry
-    const g = ctx.createLinearGradient(x, yy, x, yy + h);
-    g.addColorStop(0, '#f0e6d0');
-    g.addColorStop(1, '#c4b090');
-    ctx.fillStyle = g;
-    roundRect(x, yy + 6, w, h - 4, 6);
-    ctx.fill();
-    ctx.fillStyle = '#3a6a8a';
-    roundRect(x + 8, yy, w - 16, h * 0.55, 4);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(200,230,255,0.5)';
-    for (let i = 0; i < 3; i++) {
-      ctx.fillRect(x + 14 + i * ((w - 28) / 3), yy + 4, (w - 40) / 3, h * 0.3);
-    }
-    ctx.fillStyle = '#d44a45';
-    ctx.fillRect(x + w / 2 - 6, yy - 2, 12, 4);
+  function drawFerry(x, y, w, kind, dir) {
+    const h = TILE - 14;
+    const yy = y + 7;
+    withFacing(x, yy, w, h, dir, (lx, ly, lw, lh) => {
+      if (kind === 'kayak') {
+        ctx.fillStyle = '#e85d04';
+        ctx.fillRect(lx, ly + 6, lw, lh - 8);
+        ctx.fillStyle = '#f5e6c8';
+        ctx.fillRect(lx + lw * 0.4, ly + 4, 8, 8);
+        return;
+      }
+      if (kind === 'barge') {
+        // Chunky log-like barge
+        ctx.fillStyle = '#8b5a2b';
+        ctx.fillRect(lx, ly + 4, lw, lh - 4);
+        ctx.fillStyle = '#a9713a';
+        for (let i = 0; i < 3; i++) ctx.fillRect(lx + 6 + i * (lw / 3), ly + 8, lw / 4, 6);
+        ctx.fillStyle = '#efc84a';
+        ctx.fillRect(lx + 4, ly + 2, 10, 4);
+        return;
+      }
+      // NYC ferry — flat arcade boat
+      ctx.fillStyle = '#e8dcc0';
+      ctx.fillRect(lx, ly + 8, lw, lh - 8);
+      ctx.fillStyle = '#1c4a7a';
+      ctx.fillRect(lx + 6, ly, lw - 18, lh * 0.55);
+      ctx.fillStyle = '#7ec8e3';
+      for (let i = 0; i < 3; i++) {
+        ctx.fillRect(lx + 10 + i * 14, ly + 4, 10, lh * 0.28);
+      }
+      ctx.fillStyle = '#d44a45';
+      ctx.fillRect(lx + lw - 14, ly + 2, 10, 5);
+    });
   }
 
-  function drawFrog(cx, cy, scale = 1, resting = false) {
+  function drawBanker(cx, cy, scale = 1, resting = false) {
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(scale, scale);
-    const bob = resting ? 0 : Math.sin(performance.now() / 180) * 1.2;
+    const bob = resting ? 0 : Math.sin(performance.now() / 160) * 1;
     ctx.translate(0, bob);
 
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath();
-    ctx.ellipse(0, 12, 11, 4, 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillRect(-10, 12, 20, 4);
 
     // Legs
-    ctx.fillStyle = '#3f9a5d';
-    ctx.beginPath();
-    ctx.ellipse(-10, 6, 6, 3.5, -0.4, 0, Math.PI * 2);
-    ctx.ellipse(10, 6, 6, 3.5, 0.4, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = '#1a1f2a';
+    ctx.fillRect(-7, 6, 5, 9);
+    ctx.fillRect(2, 6, 5, 9);
+    // Shoes
+    ctx.fillStyle = '#0d0d10';
+    ctx.fillRect(-8, 13, 6, 3);
+    ctx.fillRect(2, 13, 6, 3);
 
-    // Body
-    const g = ctx.createRadialGradient(-2, -2, 2, 0, 0, 14);
-    g.addColorStop(0, '#8fd9a4');
-    g.addColorStop(1, '#3f9a5d');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(0, 2, 12, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Suit torso
+    ctx.fillStyle = '#1e2430';
+    ctx.fillRect(-9, -4, 18, 12);
+    // Shirt / tie
+    ctx.fillStyle = '#f5f0e6';
+    ctx.fillRect(-3, -4, 6, 10);
+    ctx.fillStyle = '#b01030';
+    ctx.fillRect(-1, -3, 2, 8);
 
-    // Belly
-    ctx.fillStyle = 'rgba(245,237,216,0.55)';
-    ctx.beginPath();
-    ctx.ellipse(0, 5, 7, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // Briefcase (left hand)
+    ctx.fillStyle = '#5a3a1a';
+    ctx.fillRect(-14, 0, 6, 8);
+    ctx.fillStyle = '#efc84a';
+    ctx.fillRect(-13, 2, 4, 1);
 
+    // Head
+    ctx.fillStyle = '#e6b89a';
+    ctx.fillRect(-6, -14, 12, 10);
+    // Receding hair / side part
+    ctx.fillStyle = '#2a2430';
+    ctx.fillRect(-6, -15, 12, 4);
+    ctx.fillRect(-6, -12, 3, 4);
+    // Glasses
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-5, -11, 4, 3);
+    ctx.strokeRect(1, -11, 4, 3);
+    ctx.beginPath();
+    ctx.moveTo(-1, -9.5);
+    ctx.lineTo(1, -9.5);
+    ctx.stroke();
     // Eyes
-    ctx.fillStyle = '#f5edd8';
-    ctx.beginPath();
-    ctx.arc(-5, -6, 4, 0, Math.PI * 2);
-    ctx.arc(5, -6, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#142018';
-    ctx.beginPath();
-    ctx.arc(-4.5, -6, 2, 0, Math.PI * 2);
-    ctx.arc(5.5, -6, 2, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.fillRect(-3.5, -10, 1.5, 1.5);
+    ctx.fillRect(2.5, -10, 1.5, 1.5);
 
-    // Tiny "NY" cap
-    ctx.fillStyle = '#1a3a6a';
-    ctx.beginPath();
-    ctx.ellipse(0, -10, 7, 3, 0, Math.PI, 0);
-    ctx.fill();
-    ctx.fillRect(-7, -11, 14, 3);
-    ctx.fillStyle = '#efbb49';
-    ctx.font = '700 5px "General Sans", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('NY', 0, -8.5);
+    // Arms
+    ctx.fillStyle = '#1e2430';
+    ctx.fillRect(-12, -2, 4, 8);
+    ctx.fillRect(8, -2, 4, 8);
 
     ctx.restore();
   }
@@ -1074,63 +1055,46 @@
   }
 
   function drawTimer() {
-    const y = H - 6;
+    const y = H - 5;
     const pct = Math.max(0, state.time / state.maxTime);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.fillRect(8, y - 4, W - 16, 4);
-    const g = ctx.createLinearGradient(8, 0, W - 8, 0);
-    g.addColorStop(0, '#d44a45');
-    g.addColorStop(0.5, '#efbb49');
-    g.addColorStop(1, '#71d189');
-    ctx.fillStyle = g;
-    ctx.fillRect(8, y - 4, (W - 16) * pct, 4);
+    ctx.fillStyle = '#1a0830';
+    ctx.fillRect(4, y - 5, W - 8, 5);
+    ctx.fillStyle = pct < 0.25 ? '#ff3b5c' : '#39d98a';
+    ctx.fillRect(4, y - 5, (W - 8) * pct, 5);
   }
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    drawSkyline();
 
     for (let r = 0; r < ROWS; r++) {
       if (r === ROW.HOME) drawParkHomes();
-      else if (r === ROW.BANK) drawSidewalk(r, 'PIER  •  EAST RIVER');
+      else if (r === ROW.BANK) drawSafeBand(r, 'EAST RIVER PIER');
       else if (r >= ROW.RIVER_START && r <= ROW.RIVER_END) drawRiver(r);
-      else if (r === ROW.MEDIAN) drawSidewalk(r, 'MEDIAN  •  BROADWAY');
+      else if (r === ROW.MEDIAN) drawSafeBand(r, 'BROADWAY MEDIAN');
       else if (r >= ROW.ROAD_START && r <= ROW.ROAD_END) drawRoad(r);
-      else if (r === ROW.START) drawSidewalk(r, 'SOHO SIDEWALK  •  START');
+      else if (r === ROW.START) drawSafeBand(r, 'SOHO  •  START');
     }
-
-    // Street labels on roads
-    ctx.save();
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = '#f5edd8';
-    ctx.font = '700 11px "General Sans", sans-serif';
-    ctx.textAlign = 'center';
-    const labels = { 8: 'HOUSTON', 9: 'CANAL', 10: 'SPRING', 11: 'BROOME', 12: 'GRAND' };
-    for (const [row, label] of Object.entries(labels)) {
-      ctx.fillText(label, W / 2, Number(row) * TILE + 24);
-    }
-    ctx.restore();
 
     // Entities
     for (const lane of state.lanes) {
       const y = lane.row * TILE;
       for (const e of lane.entities) {
         if (lane.row >= ROW.RIVER_START && lane.row <= ROW.RIVER_END) {
-          drawFerry(e.x, y, e.w, e.kind);
+          drawFerry(e.x, y, e.w, e.kind, lane.dir);
         } else if (e.kind === 'taxi') drawTaxi(e.x, y, e.w, lane.dir);
-        else if (e.kind === 'bus') drawBus(e.x, y, e.w);
-        else if (e.kind === 'truck') drawTruck(e.x, y, e.w);
+        else if (e.kind === 'bus') drawBus(e.x, y, e.w, lane.dir);
+        else if (e.kind === 'truck') drawTruck(e.x, y, e.w, lane.dir);
         else if (e.kind === 'bike') drawBike(e.x, y, e.w, lane.dir);
       }
     }
 
-    // Frog
+    // Banker
     if (state.mode !== 'gameover' && !(state.mode === 'dead' && state.flash > 0 && Math.floor(state.flash * 20) % 2 === 0)) {
       const f = state.frog;
       const alpha = state.invuln > 0 && Math.floor(state.invuln * 16) % 2 === 0 ? 0.4 : 1;
       ctx.save();
       ctx.globalAlpha = alpha;
-      drawFrog(f.col * TILE + TILE / 2, f.row * TILE + TILE / 2 + 1, 1, false);
+      drawBanker(f.col * TILE + TILE / 2, f.row * TILE + TILE / 2 + 1, 1, false);
       ctx.restore();
     }
 
@@ -1144,17 +1108,15 @@
 
     if (state.mode === 'play' || state.mode === 'pause' || state.mode === 'dead') drawTimer();
 
-    // Flash
     if (state.flash > 0) {
-      ctx.fillStyle = `rgba(242,110,137,${state.flash * 0.35})`;
+      ctx.fillStyle = `rgba(255,59,92,${state.flash * 0.4})`;
       ctx.fillRect(0, 0, W, H);
     }
 
-    // Pause tint
     if (state.mode === 'pause') {
-      ctx.fillStyle = 'rgba(7,16,13,0.45)';
+      ctx.fillStyle = 'rgba(20,8,40,0.55)';
       ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = '#f5edd8';
+      ctx.fillStyle = '#efc84a';
       ctx.font = '700 22px Zodiak, Georgia, serif';
       ctx.textAlign = 'center';
       ctx.fillText('Paused', W / 2, H / 2);
@@ -1277,7 +1239,7 @@
   updateHUD();
   if (state.high > 0) {
     overlayText.textContent =
-      `Dodge yellow cabs on Broadway, ride the East River ferries, and make it to Central Park. Best: ${state.high}`;
+      `Get the banker from SoHo to Central Park. Dodge cabs and MTA buses, hop ferries. Best: ${state.high}`;
   }
   requestAnimationFrame(frame);
 })();
