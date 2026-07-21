@@ -260,10 +260,11 @@
       background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.02)), linear-gradient(180deg, #3a2a18, #24180e);
       border-color: rgba(255,220,160,.2);
     }
-    .controls .btn.ing .glyph {
-      font-size: 1.15rem;
-      line-height: 1;
-      filter: saturate(1.1);
+    .controls .btn.ing .swatch {
+      width: 22px;
+      height: 8px;
+      border-radius: 2px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
     }
     .controls .btn.ing .key {
       font-size: 0.58rem;
@@ -372,14 +373,14 @@
   const H = 420;
 
   const INGREDIENTS = [
-    { id: 'patty',   name: 'Patty',   glyph: '🥩', key: '1', color: '#5c3420', edge: '#3a1e10' },
-    { id: 'cheese',  name: 'Cheese',  glyph: '🧀', key: '2', color: '#e8b84a', edge: '#c4922a' },
-    { id: 'lettuce', name: 'Lettuce', glyph: '🥬', key: '3', color: '#6fbf4a', edge: '#3f8a28' },
-    { id: 'tomato',  name: 'Tomato',  glyph: '🍅', key: '4', color: '#d6453d', edge: '#9e2822' },
-    { id: 'onion',   name: 'Onion',   glyph: '🧅', key: '5', color: '#e8d4a8', edge: '#bba67a' },
-    { id: 'pickle',  name: 'Pickle',  glyph: '🥒', key: '6', color: '#8fb83a', edge: '#5f7e22' },
-    { id: 'bacon',   name: 'Bacon',   glyph: '🥓', key: '7', color: '#c45a3a', edge: '#8a3220' },
-    { id: 'top',     name: 'Top Bun', glyph: '🍞', key: '8', color: '#d4a05a', edge: '#a87838' }
+    { id: 'patty',   name: 'Patty',   key: '1', color: '#5c3420', edge: '#3a1e10' },
+    { id: 'cheese',  name: 'Cheese',  key: '2', color: '#e8b84a', edge: '#c4922a' },
+    { id: 'lettuce', name: 'Lettuce', key: '3', color: '#6fbf4a', edge: '#3f8a28' },
+    { id: 'tomato',  name: 'Tomato',  key: '4', color: '#d6453d', edge: '#9e2822' },
+    { id: 'onion',   name: 'Onion',   key: '5', color: '#e8d4a8', edge: '#bba67a' },
+    { id: 'pickle',  name: 'Pickle',  key: '6', color: '#8fb83a', edge: '#5f7e22' },
+    { id: 'bacon',   name: 'Bacon',   key: '7', color: '#c45a3a', edge: '#8a3220' },
+    { id: 'top',     name: 'Top Bun', key: '8', color: '#d4a05a', edge: '#a87838' }
   ];
   const ING_BY_ID = Object.fromEntries(INGREDIENTS.map(i => [i.id, i]));
 
@@ -469,7 +470,7 @@
     btn.type = 'button';
     btn.className = 'btn ing';
     btn.dataset.ing = ing.id;
-    btn.innerHTML = `<span class="glyph" aria-hidden="true">${ing.glyph}</span><span>${ing.name}</span><span class="key">${ing.key}</span>`;
+    btn.innerHTML = `<span class="swatch" style="background:${ing.color};border:1px solid ${ing.edge}" aria-hidden="true"></span><span>${ing.name}</span><span class="key">${ing.key}</span>`;
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       slap(ing.id);
@@ -503,7 +504,7 @@
     if (state.tickets.length >= MAX_TICKETS) return;
     const recipe = pickRecipe();
     const ticket = {
-      id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+      id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       recipe,
       color: nextColor(),
       age: 0,
