@@ -76,6 +76,7 @@
       flex-direction: column;
     }
     .panel-inner {
+      position: relative;
       padding: 0;
       flex: 1;
       min-height: 0;
@@ -84,37 +85,20 @@
       gap: 0;
     }
     .topbar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      z-index: 3;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-end;
       gap: var(--space-3);
-      flex-shrink: 0;
-      padding: 6px 10px;
-      background: linear-gradient(180deg, rgba(15,27,23,.96), rgba(12,22,18,.92));
-      border-bottom: 1px solid rgba(255,255,255,.06);
+      padding: 8px 10px;
+      background: linear-gradient(180deg, rgba(8,12,10,.72), transparent);
+      border: none;
+      pointer-events: none;
     }
-    .brand {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-    }
-    .brand h1 {
-      margin: 0;
-      font-family: var(--font-display);
-      font-size: var(--text-lg);
-      font-weight: 700;
-      letter-spacing: .02em;
-      color: #f7ead0;
-      line-height: 1.1;
-    }
-    .brand p {
-      margin: 0;
-      font-size: var(--text-xs);
-      color: var(--color-text-muted);
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
+    .topbar .stats { pointer-events: auto; }
+    .brand { display: none; }
     .stats {
       display: flex;
       gap: var(--space-2);
@@ -195,12 +179,10 @@
       margin-top: 2px;
     }
     .canvas-wrap {
-      position: relative;
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: block;
       border-radius: 0;
       overflow: hidden;
       background: #1a1612;
@@ -209,10 +191,11 @@
     }
     canvas {
       display: block;
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+      object-fit: fill;
       image-rendering: auto;
       touch-action: none;
     }
@@ -251,13 +234,14 @@
       line-height: 1.45;
     }
     .controls {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 3;
       display: grid;
       gap: var(--space-2);
-      flex-shrink: 0;
-      padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
-      background: linear-gradient(180deg, rgba(20,53,40,.92), rgba(12,26,21,.98));
+      padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+      background: linear-gradient(0deg, rgba(8,12,10,.85), rgba(8,12,10,.4) 70%, transparent);
       border: none;
-      border-top: 1px solid rgba(238,194,97,.18);
       border-radius: 0;
       box-shadow: none;
     }
@@ -365,9 +349,9 @@
     <main id="main" class="panel">
       <div class="panel-inner">
         <div class="topbar">
-          <div class="brand">
+          <div class="brand" hidden>
             <h1>Night Shift Grill</h1>
-            <p>ASDF · any order · max 3</p>
+            <p></p>
           </div>
           <div class="stats" aria-live="polite">
             <div class="stat money-stat">
@@ -574,6 +558,7 @@
   const state = {
     mode: 'title',
     money: 0,
+    pendingTips: Number(localStorage.getItem('grillTipsPending') || 0),
     high: Number(localStorage.getItem('nightShiftGrillHigh') || 0),
     level: 1,
     health: MAX_HEALTH,
@@ -704,11 +689,10 @@
   }
 
   function beltSpeed() {
-    // Gentler ramp so the shift lasts
-    return 42 + (state.level - 1) * 6 + Math.min(22, state.served * 0.7);
+    return 95 + (state.level - 1) * 12 + Math.min(45, state.served * 1.4);
   }
   function spawnGap() {
-    return Math.max(1.8, 3.6 - (state.level - 1) * 0.1 - state.served * 0.01);
+    return Math.max(1.1, 2.4 - (state.level - 1) * 0.12 - state.served * 0.015);
   }
   function pickRecipe() {
     const unlock = Math.min(RECIPES.length, 3 + Math.floor((state.level - 1)) + Math.floor(state.served / 5));
@@ -1089,8 +1073,8 @@
 
     const heldIds = burger.stack.map(layerId);
     if (burger.done && !burger.ruined && !burger.tainted) {
-      // Paid $1 a burger — tips of champions
-      state.money += 1;
+      // Paid $1 a burger — tips bank for the casino purse
+      bankTip(1);
       state.served += 1;
       state.combo += 1;
       c.held = heldIds;
@@ -1264,8 +1248,17 @@
     c.closePath();
   }
 
+  function bankTip(amount) {
+    const n = Math.max(0, Math.round(amount));
+    if (n <= 0) return;
+    state.money += n;
+    state.pendingTips = Math.max(0, Math.round(Number(localStorage.getItem('grillTipsPending') || 0))) + n;
+    localStorage.setItem('grillTipsPending', String(state.pendingTips));
+  }
+
   function startGame() {
     state.money = 0;
+    state.pendingTips = Math.max(0, Math.round(Number(localStorage.getItem('grillTipsPending') || 0)));
     state.level = 1;
     state.health = MAX_HEALTH;
     state.served = 0;
@@ -1290,7 +1283,9 @@
   }
 
   function updateHUD() {
-    moneyVal.textContent = `$${state.money}`;
+    moneyVal.textContent = state.pendingTips > 0
+      ? `$${state.money} · $${state.pendingTips}→tables`
+      : `$${state.money}`;
     levelVal.textContent = String(state.level);
     healthVal.textContent = String(state.health);
     const pct = Math.max(0, Math.min(100, (state.health / MAX_HEALTH) * 100));
@@ -2696,17 +2691,14 @@
   });
 
   function fitCanvas() {
-    const wrap = document.getElementById('canvasWrap');
-    const aw = wrap.clientWidth - 8;
-    const ah = wrap.clientHeight - 8;
-    const scale = Math.min(aw / W, ah / H);
-    canvas.style.width = Math.floor(W * scale) + 'px';
-    canvas.style.height = Math.floor(H * scale) + 'px';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
   }
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
 
   paintButtonIcons();
+  overlay.hidden = true;
   startGame();
   requestAnimationFrame(frame);
 })();

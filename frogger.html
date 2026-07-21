@@ -76,6 +76,7 @@
       flex-direction: column;
     }
     .panel-inner {
+      position: relative;
       padding: 0;
       flex: 1;
       min-height: 0;
@@ -84,37 +85,20 @@
       gap: 0;
     }
     .topbar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      z-index: 3;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-end;
       gap: var(--space-3);
-      flex-shrink: 0;
-      padding: 6px 10px;
-      background: linear-gradient(180deg, rgba(15,27,23,.96), rgba(12,22,18,.92));
-      border-bottom: 1px solid rgba(255,255,255,.06);
+      padding: 8px 10px;
+      background: linear-gradient(180deg, rgba(8,12,10,.72), transparent);
+      border: none;
+      pointer-events: none;
     }
-    .brand {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-    }
-    .brand h1 {
-      margin: 0;
-      font-family: var(--font-display);
-      font-size: var(--text-lg);
-      font-weight: 700;
-      letter-spacing: .02em;
-      color: #f7ead0;
-      line-height: 1.1;
-    }
-    .brand p {
-      margin: 0;
-      font-size: var(--text-xs);
-      color: var(--color-text-muted);
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
+    .topbar .stats { pointer-events: auto; }
+    .brand { display: none; }
     .stats {
       display: flex;
       gap: var(--space-2);
@@ -145,12 +129,10 @@
       line-height: 1.2;
     }
     .canvas-wrap {
-      position: relative;
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: block;
       border-radius: 0;
       overflow: hidden;
       background: #1a1c20;
@@ -159,10 +141,11 @@
     }
     canvas {
       display: block;
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      max-height: none;
+      object-fit: fill;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
       touch-action: none;
@@ -202,13 +185,14 @@
       line-height: 1.45;
     }
     .controls {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      z-index: 3;
       display: grid;
       gap: var(--space-2);
-      flex-shrink: 0;
-      padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
-      background: linear-gradient(180deg, rgba(20,53,40,.92), rgba(12,26,21,.98));
+      padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+      background: linear-gradient(0deg, rgba(8,12,10,.82), rgba(8,12,10,.35) 70%, transparent);
       border: none;
-      border-top: 1px solid rgba(238,194,97,.18);
       border-radius: 0;
       box-shadow: none;
     }
@@ -309,9 +293,9 @@
     <main id="main" class="panel">
       <div class="panel-inner">
         <div class="topbar">
-          <div class="brand">
+          <div class="brand" hidden>
             <h1 id="brandTitle">Return to Your Car</h1>
-            <p id="brandSub">Cross the city · get to the garage</p>
+            <p id="brandSub"></p>
           </div>
           <div class="stats" aria-live="polite">
             <div class="stat">
@@ -356,7 +340,7 @@
             <button class="btn dir down" type="button" data-dir="down" aria-label="Move down">▼</button>
             <button class="btn dir right" type="button" data-dir="right" aria-label="Move right">▶</button>
           </div>
-          <p class="hint" id="hintText" hidden></p>
+          <p class="hint" id="hintText" hidden aria-hidden="true"></p>
         </div>
       </div>
     </main>
@@ -869,16 +853,11 @@
     const bonus = 120 + Math.floor(state.time * 2) + state.level * 20;
     state.score += bonus;
     updateHUD();
-    state.mode = 'win';
     beep(523, 0.08);
     beep(659, 0.1);
     beep(784, 0.16);
-    showOverlay(
-      isGrill() ? 'Keys in the hoopty' : 'Keys in the ignition',
-      `Score $${state.score}. Hit the streets — take EXIT GRILL or EXIT CASINO when you see the signs.`,
-      'Hit the Gas'
-    );
-    pauseBtn.disabled = true;
+    // No explainer — drop straight into the drive
+    beginDrive();
   }
 
   function takeExit(exit) {
@@ -897,7 +876,6 @@
       blurb: exit.blurb
     };
     updateHUD();
-    state.mode = 'arrived';
     if (state.score > state.high) {
       state.high = state.score;
       localStorage.setItem(highKey(), String(state.high));
@@ -905,12 +883,7 @@
     beep(523, 0.08);
     beep(784, 0.12);
     beep(1046, 0.18);
-    showOverlay(
-      `EXIT · ${exit.name}`,
-      `${exit.blurb} Score $${state.score}.`,
-      `Enter ${exit.name}`
-    );
-    pauseBtn.disabled = true;
+    if (exit.href) window.location.href = exit.href;
   }
 
   function tryMove(dx, dy) {
@@ -1326,23 +1299,29 @@
     if (ax > DW.CURB) d.surface = 'barrier';
     else if (ax > DW.ROAD * 0.92) d.surface = 'curb';
     else d.surface = 'asphalt';
-    const gripMax = d.surface === 'asphalt' ? 11 : d.surface === 'curb' ? 4.2 : 1.5;
+    const gripMax = d.surface === 'asphalt' ? 16 : d.surface === 'curb' ? 7 : 2.5;
 
-    // Steering: input → wheel angle (less lock at speed) → lateral tire force
+    // Steering: snappy arcade lane changes — hold left/right to slide across quickly
     let steerInput = 0;
     if (state.keys.left) steerInput -= 1;
     if (state.keys.right) steerInput += 1;
-    d.steer += (steerInput - d.steer) * Math.min(1, 9 * dt);
-    const steerAuth = 0.55 + 0.45 * (1 - speedNorm); // high-speed understeer
-    const desiredLat = d.steer * steerAuth * (0.85 + d.speed * 0.012);
+    d.steer += (steerInput - d.steer) * Math.min(1, 18 * dt);
+    // Keep authority high even at speed so dodging stays easy
+    const steerAuth = 0.92 + 0.08 * (1 - speedNorm);
+    const desiredLat = d.steer * steerAuth * (2.4 + d.speed * 0.028);
 
-    // Road curvature pushes you wide (v²/r feel)
-    const curveForce = d.curve * (d.speed * d.speed) * 0.000035;
-    let latAccel = (desiredLat - d.velX) * 10 - curveForce;
+    // Road curvature pushes you wide (v²/r feel) — mild so it doesn't fight the wheel
+    const curveForce = d.curve * (d.speed * d.speed) * 0.000018;
+    let latAccel = (desiredLat - d.velX) * 18 - curveForce;
     latAccel = Math.max(-gripMax, Math.min(gripMax, latAccel));
     d.velX += latAccel * dt;
-    // Tire scrub damping — stronger on asphalt
-    d.velX *= Math.exp(-(gripMax * 0.55) * dt);
+    // Light damping so the car keeps sliding while you hold a direction
+    const damp = steerInput !== 0 ? 0.18 : 0.45;
+    d.velX *= Math.exp(-(gripMax * damp) * dt);
+    // Direct lane assist while holding — makes left/right feel immediate
+    if (steerInput !== 0) {
+      d.playerX += steerInput * (1.55 + d.speed * 0.012) * dt;
+    }
     d.playerX += d.velX * dt;
 
     // Slip / yaw / body roll from real lateral accel
@@ -3455,8 +3434,9 @@
     if (state.phase === 'drive') {
       const rect = canvas.getBoundingClientRect();
       const nx = (e.clientX - rect.left) / rect.width;
-      state.keys.left = nx < 0.4;
-      state.keys.right = nx > 0.6;
+      // Wide touch bands — left half / right half steers
+      state.keys.left = nx < 0.48;
+      state.keys.right = nx > 0.52;
       state.keys.up = true;
     }
   });
@@ -3464,8 +3444,8 @@
     if (state.phase !== 'drive' || !touchStart) return;
     const rect = canvas.getBoundingClientRect();
     const nx = (e.clientX - rect.left) / rect.width;
-    state.keys.left = nx < 0.4;
-    state.keys.right = nx > 0.6;
+    state.keys.left = nx < 0.48;
+    state.keys.right = nx > 0.52;
     state.keys.up = true;
   });
   canvas.addEventListener('pointerup', (e) => {
@@ -3526,18 +3506,15 @@
   });
 
   function fitCanvas() {
-    const wrap = document.getElementById('canvasWrap');
-    const aw = wrap.clientWidth - 8;
-    const ah = wrap.clientHeight - 8;
-    const scale = Math.min(aw / W, ah / H);
-    canvas.style.width = Math.floor(W * scale) + 'px';
-    canvas.style.height = Math.floor(H * scale) + 'px';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
   }
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
 
   state.lanes = buildLanes(1);
   setPhaseUI();
+  overlay.hidden = true;
   startGame();
   requestAnimationFrame(frame);
 })();

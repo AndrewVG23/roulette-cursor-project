@@ -60,7 +60,7 @@
     }
     button, input { font: inherit; }
     button { cursor: pointer; }
-    .app { max-width: none; height: 100dvh; margin: 0; padding: var(--space-2); display: flex; flex-direction: column; min-height: 0; }
+    .app { max-width: none; height: 100dvh; margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 0; }
     .skip-link { position: absolute; left: -9999px; }
     .skip-link:focus { left: var(--space-4); top: var(--space-4); background: var(--color-surface); padding: var(--space-3); z-index: 20; border-radius: var(--radius-md); }
     .control-row .spacer { flex: 1; }
@@ -72,14 +72,14 @@
     .btn.warning { background: linear-gradient(180deg, #d88a54, #9d5427); color: #fff3e9; border-color: rgba(255,220,198,.24); }
     .btn.success { background: linear-gradient(180deg, #8fd9a4, #3f9a5d); color: #0b1a10; border-color: rgba(180,255,210,.28); }
     .icon-btn:hover, .btn:hover { transform: translateY(-1px); }
-    .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); gap: var(--space-2); align-items: stretch; }
+    .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(200px, 260px); gap: 0; align-items: stretch; }
     .layout.metrics-collapsed { grid-template-columns: minmax(0, 1fr); }
     .layout.metrics-collapsed .metrics-panel { display: none; }
     .metrics-panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
     .metrics-panel-head h2 { margin: 0; }
-    .panel { background: linear-gradient(180deg, rgba(23,48,39,.92), rgba(15,27,23,.96)); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
-    .panel-inner { padding: var(--space-4); flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-    .panel-inner.board-panel { padding: var(--space-2) var(--space-3); gap: var(--space-2); }
+    .panel { background: linear-gradient(180deg, rgba(23,48,39,.92), rgba(15,27,23,.96)); border: none; border-radius: 0; box-shadow: none; overflow: hidden; min-height: 0; display: flex; flex-direction: column; }
+    .panel-inner { padding: var(--space-2); flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    .panel-inner.board-panel { padding: var(--space-1) var(--space-2); gap: var(--space-1); }
     .panel h2, .panel h3 { margin: 0 0 var(--space-3); }
     .panel h2 { font-family: var(--font-display); font-size: var(--text-lg); }
     .lede { margin: 0 0 var(--space-4); color: var(--color-text-muted); font-size: var(--text-sm); max-width: 64ch; }
@@ -360,6 +360,16 @@
       pointer-events: auto;
     }
     .replay-banner[hidden] { display: none !important; }
+    .tips-banner {
+      top: auto;
+      bottom: 12px;
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg, rgba(40,70,50,.94), rgba(20,40,30,.96));
+      border-color: rgba(113,209,137,.35);
+    }
+    .tips-banner .replay-banner-label { color: #8fd9a4; }
     .replay-banner-label {
       font-family: var(--font-display); font-size: var(--text-xs); font-weight: 700;
       letter-spacing: .06em; text-transform: uppercase; color: #efbb49;
@@ -731,6 +741,9 @@
               <div class="replay-banner" id="replayBanner" hidden>
                 <span class="replay-banner-label">Watching replay</span>
                 <button class="btn subtle" id="exitReplayBtn" type="button">Exit</button>
+              </div>
+              <div class="replay-banner tips-banner" id="tipsBanner" hidden>
+                <span class="replay-banner-label" id="tipsBannerLabel">Grill tips added</span>
               </div>
               <button class="purse-stack" id="purseStack" type="button" aria-label="Your purse. Tap to change chip size.">
                 <div class="purse-chip-stacks" id="purseChipStack" aria-hidden="true"></div>
@@ -3353,6 +3366,23 @@
       return Math.max(1, Number(bankrollInput.value || 100));
     }
 
+    const GRILL_TIPS_KEY = 'grillTipsPending';
+    function takeGrillTips() {
+      const tips = Math.max(0, Math.round(Number(localStorage.getItem(GRILL_TIPS_KEY) || 0)));
+      if (tips > 0) localStorage.setItem(GRILL_TIPS_KEY, '0');
+      return tips;
+    }
+
+    function showGrillTipsBanner(tips) {
+      const banner = document.getElementById('tipsBanner');
+      const label = document.getElementById('tipsBannerLabel');
+      if (!banner || !label || tips <= 0) return;
+      label.textContent = `Night Shift tips +${purseFmt.format(tips)} added to your purse`;
+      banner.hidden = false;
+      clearTimeout(showGrillTipsBanner._t);
+      showGrillTipsBanner._t = setTimeout(() => { banner.hidden = true; }, 4200);
+    }
+
     const PURSE_DENOMS = [100, 25, 5, 1];
     const PURSE_STACK_MAX = 20;
     const PURSE_VISIBLE_MAX = 12;
@@ -3510,8 +3540,10 @@
 
     function resetPurse() {
       startingPurse = getStartingPurse();
-      purse = startingPurse;
+      const tips = takeGrillTips();
+      purse = startingPurse + tips;
       updatePurseDisplay();
+      if (tips > 0) showGrillTipsBanner(tips);
     }
 
     function hidePayoutOverlay() {
