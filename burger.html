@@ -261,11 +261,14 @@
       background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.02)), linear-gradient(180deg, #3a2a18, #24180e);
       border-color: rgba(255,220,160,.22);
     }
-    .controls .btn.ing .swatch {
-      width: 36px;
-      height: 14px;
-      border-radius: 3px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 2px 0 rgba(0,0,0,.35);
+    .controls .btn.ing .icon {
+      width: 52px;
+      height: 34px;
+      border-radius: 4px;
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,220,160,.18);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+      display: block;
     }
     .controls .btn.ing .key {
       display: inline-flex;
@@ -333,7 +336,7 @@
         <div class="topbar">
           <div class="brand">
             <h1>Night Shift Grill</h1>
-            <p>ASDF · slam the ticket · max 3</p>
+            <p>ASDF · any order · max 3</p>
           </div>
           <div class="stats" aria-live="polite">
             <div class="stat">
@@ -357,7 +360,7 @@
           <div class="overlay" id="overlay">
             <div class="overlay-card">
               <h2 id="overlayTitle">Night Shift Grill</h2>
-              <p id="overlayText">Tickets want up to 3 greasy layers. When a burger hits the station, mash A S D F to slam the right food down before it rolls off.</p>
+              <p id="overlayText">Match the ticket (any order) with A S D F. A hungry stranger waits at pickup — nail the order and they inhale it in one bite. Screw it up and they lose their mind.</p>
               <div class="control-row">
                 <button class="btn primary" id="startBtn" type="button">Clock In</button>
               </div>
@@ -369,11 +372,11 @@
           <div class="control-row">
             <button class="btn subtle" id="pauseBtn" type="button" disabled>Pause</button>
             <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
-            <a class="btn subtle" href="frogger.html">Car</a>
+            <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
             <a class="btn subtle" href="index.html">Tables</a>
           </div>
           <div class="ing-grid" id="ingGrid" aria-label="Slam ingredients"></div>
-          <p class="hint">A S D F · slam it wet · three layers max</p>
+          <p class="hint">A S D F · match the ticket · make the customer happy</p>
         </div>
       </div>
     </main>
@@ -443,11 +446,25 @@
   const ingGrid = document.getElementById('ingGrid');
 
   const LINE_Y = 280;
-  const STATION_X = 280;
+  const STATION_X = 260;
   const STATION_W = 120;
   const BURGER_W = 76;
   const MAX_TICKETS = 3;
   const SLAM_Y0 = 150;
+  const DELIVER_X = W - 118;
+  const CUSTOMER_X = W - 52;
+  const CUSTOMER_Y = LINE_Y - 8;
+
+  const CUSTOMERS = [
+    { id: 'vito', name: 'Vito', skin: '#e0b090', blush: '#e08a78', hair: '#2a1c14', hairStyle: 'slick', shirt: '#3a4a6a', accent: '#c0a060' },
+    { id: 'june', name: 'June', skin: '#c68642', blush: '#d47868', hair: '#1a0e08', hairStyle: 'afro', shirt: '#6a3a5a', accent: '#e8b050' },
+    { id: 'rex', name: 'Rex', skin: '#f0c8a8', blush: '#f0a090', hair: '#8a3a18', hairStyle: 'spike', shirt: '#2a5a3a', accent: '#d0d0d0' },
+    { id: 'mags', name: 'Mags', skin: '#dbb08a', blush: '#e09080', hair: '#4a2040', hairStyle: 'bob', shirt: '#8a3030', accent: '#f0d080' },
+    { id: 'ken', name: 'Ken', skin: '#8d5524', blush: '#c07060', hair: '#0e0a08', hairStyle: 'short', shirt: '#2a2a4a', accent: '#70a0d0' },
+    { id: 'bea', name: 'Bea', skin: '#f5d0b0', blush: '#f0a8a0', hair: '#c8a040', hairStyle: 'pony', shirt: '#4a6a8a', accent: '#f0a0c0' },
+    { id: 'oz', name: 'Oz', skin: '#d4a574', blush: '#d08070', hair: '#3a2a20', hairStyle: 'messy', shirt: '#5a3a20', accent: '#90c070' },
+    { id: 'pix', name: 'Pix', skin: '#e8c4a0', blush: '#e89888', hair: '#e8e0d0', hairStyle: 'cap', shirt: '#c04040', accent: '#204080' }
+  ];
 
   const state = {
     mode: 'title',
@@ -468,7 +485,8 @@
     armPulse: 0,
     muted: false,
     lastTs: 0,
-    combo: 0
+    combo: 0,
+    customer: null
   };
 
   let audioCtx = null;
@@ -532,6 +550,17 @@
     o.stop(t + 0.15);
   }
 
+  function countOf(list, id) {
+    let n = 0;
+    for (const x of list) if (x === id) n++;
+    return n;
+  }
+  function canAccept(burger, ingId) {
+    return countOf(burger.stack, ingId) < countOf(burger.recipe.stack, ingId);
+  }
+  function recipeComplete(burger) {
+    return burger.stack.length >= burger.recipe.stack.length;
+  }
   const ingButtons = {};
   for (const ing of INGREDIENTS) {
     const btn = document.createElement('button');
@@ -539,16 +568,27 @@
     btn.className = 'btn ing';
     btn.dataset.ing = ing.id;
     btn.setAttribute('aria-label', `Slam ${ing.name}, key ${ing.key.toUpperCase()}`);
-    btn.innerHTML =
-      `<span class="swatch" style="background:linear-gradient(180deg,${ing.juice},${ing.color});border:1px solid ${ing.edge}" aria-hidden="true"></span>` +
-      `<span>${ing.name}</span>` +
-      `<span class="key">${ing.key.toUpperCase()}</span>`;
+    const icon = document.createElement('canvas');
+    icon.className = 'icon';
+    icon.width = 104;
+    icon.height = 68;
+    icon.setAttribute('aria-hidden', 'true');
+    btn.appendChild(icon);
+    const label = document.createElement('span');
+    label.textContent = ing.name;
+    btn.appendChild(label);
+    const key = document.createElement('span');
+    key.className = 'key';
+    key.textContent = ing.key.toUpperCase();
+    btn.appendChild(key);
     btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       requestSlam(ing.id);
     });
     ingGrid.appendChild(btn);
     ingButtons[ing.id] = btn;
+    // Drawn after drawIngredientLayer is defined — see paintButtonIcons()
+    btn._icon = icon;
   }
 
   function beltSpeed() {
@@ -594,10 +634,10 @@
       recipe: ticket.recipe,
       x: -BURGER_W,
       stack: [],
-      nextIdx: 0,
       done: false,
       sealed: false,
       ruined: false,
+      delivered: false,
       squash: 0,
       bounce: 0,
       grease: 0
@@ -682,8 +722,8 @@
       return;
     }
 
-    const needed = burger.recipe.stack[burger.nextIdx];
-    const wrong = ingId !== needed;
+    // Order does not matter — only whether this ingredient is still needed
+    const wrong = !canAccept(burger, ingId);
     flashBtn(ingId, !wrong);
     state.armPulse = 0.22;
 
@@ -746,7 +786,6 @@
     }
 
     burger.stack.push(ingId);
-    burger.nextIdx += 1;
     state.floatText.push({
       x: cx + (Math.random() - 0.5) * 10,
       y: y - 24,
@@ -755,7 +794,7 @@
       color: ING_BY_ID[ingId].juice
     });
 
-    if (burger.nextIdx >= burger.recipe.stack.length) {
+    if (recipeComplete(burger)) {
       // Auto-seal with a disgusting top bun slam
       burger.sealed = true;
       state.slams.push({
@@ -779,24 +818,136 @@
     burger.done = true;
     burger.stack.push('top');
     burger.squash = 0.4;
-    const bonus = 50 + burger.recipe.stack.length * 18 + state.level * 6 + state.combo * 10;
-    state.score += bonus;
-    state.served += 1;
-    state.combo += 1;
-    state.floatText.push({ x: burger.x + BURGER_W / 2, y: LINE_Y - 70, text: `+${bonus}`, life: 0.95, color: '#71d189' });
-    spawnGoo(burger.x + BURGER_W / 2, LINE_Y - 40, 'cheese', 6);
-    spawnGoo(burger.x + BURGER_W / 2, LINE_Y - 40, 'patty', 4);
-    squelch('patty');
-    beep(520, 0.08);
-    beep(740, 0.1);
-    removeTicket(burger.ticketId);
-    if (state.served % 5 === 0) {
-      state.level += 1;
-      state.floatText.push({ x: W / 2, y: H / 2, text: `SHIFT ${state.level}`, life: 1.2, color: '#d0a23a' });
-      beep(440, 0.08); beep(660, 0.1); beep(880, 0.12);
+    // Score lands when the customer eats it
+  }
+
+  function pickCustomer(excludeId) {
+    const pool = CUSTOMERS.filter(c => c.id !== excludeId);
+    const base = (pool.length ? pool : CUSTOMERS)[Math.floor(Math.random() * (pool.length || CUSTOMERS.length))];
+    return {
+      ...base,
+      mood: 'idle', // idle | eager | happy | eating | pissed
+      t: 0,
+      bob: 0,
+      shake: 0,
+      steam: 0,
+      bite: 0,
+      chew: 0,
+      arm: 0,
+      held: null,       // snapshot stack while eating
+      heldScale: 1,
+      vein: 0,
+      brow: 0
+    };
+  }
+
+  function setCustomerMood(mood) {
+    const c = state.customer;
+    if (!c) return;
+    c.mood = mood;
+    c.t = 0;
+    if (mood === 'pissed') {
+      c.shake = 1;
+      c.steam = 1;
+      c.vein = 1;
+      c.brow = 1;
     }
-    updateHUD();
-    while (state.tickets.length < Math.min(MAX_TICKETS, 1 + Math.floor(state.level / 2))) addTicket();
+    if (mood === 'happy' || mood === 'eating') {
+      c.arm = 1;
+      c.steam = 0;
+    }
+  }
+
+  function chompSound() {
+    const ac = ensureAudio();
+    if (!ac) return;
+    const t = ac.currentTime;
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(180, t);
+    o.frequency.exponentialRampToValueAtTime(55, t + 0.12);
+    g.gain.setValueAtTime(0.06, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    o.connect(g);
+    g.connect(ac.destination);
+    o.start(t);
+    o.stop(t + 0.15);
+    // crunch noise
+    const buf = ac.createBuffer(1, ac.sampleRate * 0.08, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const n = ac.createBufferSource();
+    n.buffer = buf;
+    const ng = ac.createGain();
+    const f = ac.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 1200;
+    ng.gain.value = 0.07;
+    n.connect(f); f.connect(ng); ng.connect(ac.destination);
+    n.start(t + 0.02);
+  }
+
+  function rageSound() {
+    beep(90, 0.25, 'sawtooth', 0.06);
+    beep(70, 0.35, 'square', 0.04);
+    beep(140, 0.12, 'sawtooth', 0.05);
+  }
+
+  function deliverToCustomer(burger) {
+    if (burger.delivered) return;
+    burger.delivered = true;
+    const c = state.customer;
+    if (!c) return;
+
+    if (burger.done && !burger.ruined) {
+      // Correct — happy, then one-bite inhale
+      const bonus = 50 + burger.recipe.stack.length * 18 + state.level * 6 + state.combo * 10;
+      state.score += bonus;
+      state.served += 1;
+      state.combo += 1;
+      c.held = [...burger.stack];
+      c.heldScale = 1;
+      setCustomerMood('happy');
+      state.floatText.push({
+        x: CUSTOMER_X, y: CUSTOMER_Y - 90,
+        text: `+${bonus}`, life: 1.0, color: '#71d189'
+      });
+      state.floatText.push({
+        x: CUSTOMER_X, y: CUSTOMER_Y - 110,
+        text: `${c.name.toUpperCase()} LOVES IT`, life: 0.9, color: '#f0c869'
+      });
+      beep(520, 0.08);
+      beep(740, 0.1);
+      removeTicket(burger.ticketId);
+      if (state.served % 5 === 0) {
+        state.level += 1;
+        state.floatText.push({ x: W / 2, y: H / 2, text: `SHIFT ${state.level}`, life: 1.2, color: '#d0a23a' });
+        beep(440, 0.08); beep(660, 0.1); beep(880, 0.12);
+      }
+      updateHUD();
+      while (state.tickets.length < Math.min(MAX_TICKETS, 1 + Math.floor(state.level / 2))) addTicket();
+    } else {
+      // Wrong / incomplete — customer loses their mind
+      c.held = burger.stack.length ? [...burger.stack] : ['patty'];
+      c.heldScale = 1;
+      setCustomerMood('pissed');
+      state.combo = 0;
+      rageSound();
+      state.floatText.push({
+        x: CUSTOMER_X, y: CUSTOMER_Y - 95,
+        text: `${c.name.toUpperCase()} IS PISSED`, life: 1.1, color: '#f26e89'
+      });
+      if (!burger.ruined) {
+        // Incomplete — hadn't been struck yet
+        strike('Customer got a cold unfinished burger.');
+      } else {
+        // Already struck for wrong ingredient — still rage visually
+        state.flash = Math.max(state.flash, 0.25);
+      }
+      removeTicket(burger.ticketId);
+      updateHUD();
+    }
   }
 
   function removeTicket(id) {
@@ -835,6 +986,7 @@
     state.drips = [];
     state.floatText = [];
     state.spawnTimer = 0.8;
+    state.customer = pickCustomer();
     state.mode = 'play';
     overlay.hidden = true;
     pauseBtn.disabled = false;
@@ -886,6 +1038,8 @@
       f.y -= 30 * dt;
     }
     state.floatText = state.floatText.filter(f => f.life > 0);
+
+    updateCustomer(dt);
 
     // Slams animate even on title for flair? only in play/pause draw
     for (let i = state.slams.length - 1; i >= 0; i--) {
@@ -946,25 +1100,84 @@
     }
 
     const speed = beltSpeed();
+    const custBusy = state.customer && (state.customer.mood === 'eating' || state.customer.mood === 'happy' || state.customer.mood === 'pissed');
     for (const b of state.burgers) {
-      b.x += speed * dt;
+      // Pause at the window if customer is mid-reaction
+      if (custBusy && b.x >= DELIVER_X - 8) {
+        b.x = Math.min(b.x, DELIVER_X - 8);
+      } else {
+        b.x += speed * dt;
+      }
       if (b.bounce > 0) b.bounce -= dt;
       if (b.squash > 0) b.squash -= dt;
+
+      if (!b.delivered && b.x >= DELIVER_X && !custBusy) {
+        deliverToCustomer(b);
+      }
     }
 
     for (let i = state.burgers.length - 1; i >= 0; i--) {
       const b = state.burgers[i];
-      if (b.x > W + 24) {
-        if (!b.done) {
-          state.combo = 0;
-          if (!b.ruined) {
-            state.floatText.push({ x: W - 40, y: LINE_Y - 40, text: 'COLD!', life: 0.8, color: '#f0a46a' });
-            beep(140, 0.15, 'sawtooth', 0.045);
-            strike('Burger left incomplete.');
-          }
-          removeTicket(b.ticketId);
-        }
+      // Remove once handed off (held by customer) or past the window
+      if (b.delivered) {
         state.burgers.splice(i, 1);
+      } else if (b.x > W + 24) {
+        state.burgers.splice(i, 1);
+      }
+    }
+  }
+
+  function updateCustomer(dt) {
+    let c = state.customer;
+    if (!c) {
+      if (state.mode === 'title' || state.mode === 'gameover') {
+        state.customer = pickCustomer();
+        c = state.customer;
+      } else return;
+    }
+    c.bob += dt;
+    c.t += dt;
+    if (c.shake > 0) c.shake = Math.max(0, c.shake - dt * 0.7);
+    if (c.steam > 0 && c.mood === 'pissed') c.steam = Math.min(1.2, c.steam + dt * 0.15);
+    else if (c.steam > 0) c.steam = Math.max(0, c.steam - dt);
+
+    if (c.mood === 'idle') {
+      // Lean in when a burger is approaching
+      const approaching = state.burgers.some(b => b.x > STATION_X && !b.delivered);
+      if (approaching) c.mood = 'eager';
+    } else if (c.mood === 'eager') {
+      const approaching = state.burgers.some(b => b.x > STATION_X && !b.delivered);
+      if (!approaching) c.mood = 'idle';
+    } else if (c.mood === 'happy') {
+      if (c.t > 0.35) {
+        setCustomerMood('eating');
+        c.bite = 0;
+        chompSound();
+        spawnGoo(CUSTOMER_X - 8, CUSTOMER_Y - 40, 'patty', 8);
+        spawnGoo(CUSTOMER_X - 8, CUSTOMER_Y - 40, 'cheese', 6);
+      }
+    } else if (c.mood === 'eating') {
+      c.bite = Math.min(1, c.t / 0.28);
+      c.heldScale = Math.max(0, 1 - c.bite * 1.15);
+      c.chew = c.t;
+      if (c.t > 0.85) {
+        c.held = null;
+        // Swap in the next hungry stranger
+        state.customer = pickCustomer(c.id);
+      }
+    } else if (c.mood === 'pissed') {
+      c.brow = 1;
+      c.vein = 0.7 + Math.sin(c.t * 20) * 0.3;
+      // Fling the garbage burger
+      if (c.held && c.t > 0.2) {
+        c.heldScale = Math.max(0, 1 - (c.t - 0.2) * 2.5);
+        if (c.t > 0.45) {
+          spawnGoo(CUSTOMER_X - 20, CUSTOMER_Y - 50, 'tomato', 10);
+          c.held = null;
+        }
+      }
+      if (c.t > 1.35) {
+        state.customer = pickCustomer(c.id);
       }
     }
   }
@@ -1024,119 +1237,522 @@
     ctx.fill();
   }
 
-  function drawIngredientLayer(ingId, cx, y, scale = 1, opts = {}) {
+  function drawIngredientOn(c, ingId, cx, y, scale = 1, opts = {}) {
     const squash = opts.squash || 0;
     const stretch = opts.stretch || 1;
     const rot = opts.rot || 0;
     const ing = ING_BY_ID[ingId];
 
-    ctx.save();
-    ctx.translate(cx, y);
-    ctx.rotate(rot);
-    ctx.scale(1 + squash * 0.45, stretch * (1 - squash * 0.35));
+    c.save();
+    c.translate(cx, y);
+    c.rotate(rot);
+    c.scale(1 + squash * 0.45, stretch * (1 - squash * 0.35));
 
     if (ingId === 'top') {
-      drawTopBun(0, 0, scale, squash, 1);
-      ctx.restore();
+      // inline top bun for offscreen icons
+      const w = 56 * scale;
+      const h = 15 * scale;
+      c.fillStyle = '#d4a05a';
+      c.beginPath();
+      c.ellipse(0, 0, w / 2, h, 0, Math.PI, 0);
+      c.fill();
+      c.restore();
       return;
     }
-    if (!ing) { ctx.restore(); return; }
+    if (!ing) { c.restore(); return; }
 
     const w = 54 * scale;
-    const h = (ingId === 'patty' ? 12 : ingId === 'cheese' ? 8 : 7) * scale;
 
     if (ingId === 'patty') {
-      // Fat-marbled smash patty
-      ctx.fillStyle = ing.color;
-      roundRect(-w / 2, -h / 2, w, h, h / 2);
-      ctx.fill();
-      ctx.fillStyle = '#7a4428';
-      roundRect(-w / 2 + 3, -h / 2 + 2, w - 6, h - 4, h / 2);
-      ctx.fill();
-      // Grease sheen
-      ctx.fillStyle = 'rgba(255,200,120,0.22)';
-      roundRect(-w / 2 + 6, -h / 2 + 1, w * 0.45, 3, 2);
-      ctx.fill();
-      // Char marks
-      ctx.strokeStyle = 'rgba(20,10,5,0.45)';
-      ctx.lineWidth = 1.2;
-      for (let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo(-w / 2 + 8 + i * 14, -1);
-        ctx.lineTo(-w / 2 + 16 + i * 14, 2);
-        ctx.stroke();
+      const h = 13 * scale;
+      // Irregular grilled patty
+      const grd = c.createRadialGradient(-6, -2, 2, 0, 0, w * 0.55);
+      grd.addColorStop(0, '#8a4a28');
+      grd.addColorStop(0.45, '#5c3018');
+      grd.addColorStop(1, '#3a1c0c');
+      c.fillStyle = grd;
+      c.beginPath();
+      c.moveTo(-w / 2, 0);
+      c.bezierCurveTo(-w / 2, -h, -w * 0.2, -h * 1.05, 0, -h * 0.95);
+      c.bezierCurveTo(w * 0.25, -h * 1.05, w / 2, -h * 0.85, w / 2, 0);
+      c.bezierCurveTo(w / 2, h * 0.9, w * 0.2, h, 0, h * 0.95);
+      c.bezierCurveTo(-w * 0.25, h * 1.05, -w / 2, h * 0.85, -w / 2, 0);
+      c.closePath();
+      c.fill();
+      // Fat flecks
+      c.fillStyle = 'rgba(230,190,140,0.35)';
+      for (const [fx, fy, fr] of [[-10, -2, 2.2], [8, 1, 1.8], [-2, 3, 1.5], [14, -3, 1.4]]) {
+        c.beginPath();
+        c.ellipse(fx * scale, fy * scale, fr * scale, fr * 0.6 * scale, 0.4, 0, Math.PI * 2);
+        c.fill();
       }
-      // Juice bead
-      ctx.fillStyle = ing.juice;
-      ctx.beginPath();
-      ctx.ellipse(w / 2 - 4, 2, 3, 2, 0.3, 0, Math.PI * 2);
-      ctx.fill();
+      // Grill marks
+      c.strokeStyle = 'rgba(20,8,4,0.55)';
+      c.lineWidth = 1.6 * scale;
+      c.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        const gx = -w / 2 + 10 * scale + i * 11 * scale;
+        c.beginPath();
+        c.moveTo(gx, -h * 0.55);
+        c.lineTo(gx + 5 * scale, h * 0.55);
+        c.stroke();
+      }
+      // Juice rim
+      c.strokeStyle = 'rgba(120,50,20,0.5)';
+      c.lineWidth = 1.2 * scale;
+      c.stroke();
+      c.fillStyle = '#6a3010';
+      c.beginPath();
+      c.ellipse(w / 2 - 5 * scale, 3 * scale, 3.5 * scale, 2 * scale, 0.3, 0, Math.PI * 2);
+      c.fill();
     } else if (ingId === 'cheese') {
-      // Melted, drooping American
-      ctx.fillStyle = ing.color;
-      ctx.beginPath();
-      ctx.moveTo(-w / 2, -h / 2);
-      ctx.lineTo(w / 2, -h / 2 + 1);
-      ctx.lineTo(w / 2 + 8, h / 2 + 4);
-      ctx.quadraticCurveTo(w / 4, h / 2 + 10, 0, h / 2 + 3);
-      ctx.quadraticCurveTo(-w / 4, h / 2 + 12, -w / 2 - 8, h / 2 + 5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255,240,180,0.45)';
-      ctx.beginPath();
-      ctx.ellipse(-6, -1, 10, 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // Drip tip
-      ctx.fillStyle = ing.drip;
-      ctx.beginPath();
-      ctx.ellipse(-w / 3, h / 2 + 8, 3, 5, 0, 0, Math.PI * 2);
-      ctx.fill();
+      // Soft American slice, slightly melted
+      const h = 9 * scale;
+      const grd = c.createLinearGradient(0, -h, 0, h + 8);
+      grd.addColorStop(0, '#ffe08a');
+      grd.addColorStop(0.4, '#f0c24a');
+      grd.addColorStop(1, '#d49a28');
+      c.fillStyle = grd;
+      c.beginPath();
+      c.moveTo(-w / 2 + 2, -h / 2);
+      c.lineTo(w / 2 - 2, -h / 2 + 1);
+      c.lineTo(w / 2 + 6 * scale, h / 2 + 2);
+      c.quadraticCurveTo(w * 0.2, h / 2 + 9 * scale, 4 * scale, h / 2 + 4);
+      c.quadraticCurveTo(-w * 0.15, h / 2 + 11 * scale, -w / 2 - 7 * scale, h / 2 + 3);
+      c.closePath();
+      c.fill();
+      c.fillStyle = 'rgba(255,245,200,0.55)';
+      c.beginPath();
+      c.ellipse(-4 * scale, -h * 0.15, 12 * scale, 2.2 * scale, 0, 0, Math.PI * 2);
+      c.fill();
+      // Soft corner curl
+      c.strokeStyle = 'rgba(180,120,30,0.35)';
+      c.lineWidth = 1;
+      c.stroke();
+      c.fillStyle = '#e8a830';
+      c.beginPath();
+      c.ellipse(-w * 0.28, h / 2 + 7 * scale, 3 * scale, 5 * scale, 0.1, 0, Math.PI * 2);
+      c.fill();
     } else if (ingId === 'tomato') {
-      // Wet slab with seeds
-      ctx.fillStyle = ing.color;
-      roundRect(-w / 2 + 2, -h / 2, w - 4, h, h / 2);
+      // Cross-section tomato slice
+      const r = 22 * scale;
+      const skin = c.createRadialGradient(-4, -3, 2, 0, 0, r);
+      skin.addColorStop(0, '#ff6a55');
+      skin.addColorStop(0.55, '#d13a32');
+      skin.addColorStop(0.85, '#b02820');
+      skin.addColorStop(1, '#8e1e18');
+      c.fillStyle = skin;
+      c.beginPath();
+      c.ellipse(0, 0, r, r * 0.42, 0, 0, Math.PI * 2);
+      c.fill();
+      // Gel chambers
+      c.fillStyle = 'rgba(255,120,90,0.55)';
+      c.beginPath();
+      c.ellipse(0, 0, r * 0.72, r * 0.28, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = 'rgba(120,20,15,0.4)';
+      c.lineWidth = 1 * scale;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        c.beginPath();
+        c.moveTo(Math.cos(a) * 3 * scale, Math.sin(a) * 1.2 * scale);
+        c.lineTo(Math.cos(a) * r * 0.65, Math.sin(a) * r * 0.28);
+        c.stroke();
+      }
+      // Seeds
+      c.fillStyle = '#fff2c4';
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + 0.2;
+        c.beginPath();
+        c.ellipse(Math.cos(a) * r * 0.38, Math.sin(a) * r * 0.16, 1.6 * scale, 1.1 * scale, a, 0, Math.PI * 2);
+        c.fill();
+      }
+      // Wet highlight
+      c.fillStyle = 'rgba(255,220,200,0.35)';
+      c.beginPath();
+      c.ellipse(-6 * scale, -3 * scale, 8 * scale, 2.5 * scale, -0.3, 0, Math.PI * 2);
+      c.fill();
+    } else if (ingId === 'bacon') {
+      // Crispy wavy strip with meat/fat bands
+      const drawStrip = (oy, meat, fat) => {
+        c.lineCap = 'round';
+        c.strokeStyle = meat;
+        c.lineWidth = 6.5 * scale;
+        c.beginPath();
+        c.moveTo(-w / 2 + 2, oy);
+        c.bezierCurveTo(-12 * scale, oy - 8 * scale, 12 * scale, oy + 8 * scale, w / 2 - 2, oy - 1);
+        c.stroke();
+        c.strokeStyle = fat;
+        c.lineWidth = 2.4 * scale;
+        c.beginPath();
+        c.moveTo(-w / 2 + 5, oy - 1);
+        c.bezierCurveTo(-10 * scale, oy - 9 * scale, 10 * scale, oy + 6 * scale, w / 2 - 5, oy - 2);
+        c.stroke();
+      };
+      drawStrip(-2 * scale, '#a83822', '#f0d0a8');
+      drawStrip(3 * scale, '#8a2818', '#e8c090');
+      c.fillStyle = 'rgba(255,230,190,0.45)';
+      c.beginPath();
+      c.ellipse(6 * scale, -4 * scale, 5 * scale, 1.6 * scale, -0.4, 0, Math.PI * 2);
+      c.fill();
+      // Crispy tip
+      c.fillStyle = '#5a1810';
+      c.beginPath();
+      c.ellipse(w / 2 - 3, 0, 2.5 * scale, 3 * scale, 0.2, 0, Math.PI * 2);
+      c.fill();
+    }
+
+    c.restore();
+  }
+
+  function drawIngredientLayer(ingId, cx, y, scale = 1, opts = {}) {
+    drawIngredientOn(ctx, ingId, cx, y, scale, opts);
+  }
+
+  function paintButtonIcons() {
+    for (const ing of INGREDIENTS) {
+      const btn = ingButtons[ing.id];
+      if (!btn || !btn._icon) continue;
+      const ic = btn._icon;
+      const c = ic.getContext('2d');
+      c.clearRect(0, 0, ic.width, ic.height);
+      c.fillStyle = '#1a1410';
+      c.fillRect(0, 0, ic.width, ic.height);
+      // subtle plate
+      c.fillStyle = 'rgba(255,240,220,0.06)';
+      c.beginPath();
+      c.ellipse(ic.width / 2, ic.height * 0.62, 40, 10, 0, 0, Math.PI * 2);
+      c.fill();
+      drawIngredientOn(c, ing.id, ic.width / 2, ic.height * 0.52, 1.35, {});
+    }
+  }
+
+  function drawHair(c, hx, hy, mood) {
+    ctx.fillStyle = c.hair;
+    if (c.hairStyle === 'slick') {
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 16, 18, 12, 0, Math.PI, 0);
       ctx.fill();
-      ctx.fillStyle = ing.juice;
-      roundRect(-w / 2 + 6, -h / 2 + 1, w - 12, h - 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(hx - 18, hy - 10);
+      ctx.quadraticCurveTo(hx - 22, hy + 4, hx - 14, hy + 10);
+      ctx.lineTo(hx - 10, hy - 4);
       ctx.fill();
-      ctx.fillStyle = '#fff0c8';
-      for (let i = 0; i < 5; i++) {
+    } else if (c.hairStyle === 'afro') {
+      ctx.beginPath();
+      ctx.arc(hx, hy - 14, 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(hx - 12, hy - 8, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(hx + 12, hy - 8, 12, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (c.hairStyle === 'spike') {
+      for (let i = -2; i <= 2; i++) {
         ctx.beginPath();
-        ctx.arc(-14 + i * 7, (i % 2) * 2 - 0.5, 1.3, 0, Math.PI * 2);
+        ctx.moveTo(hx + i * 7 - 3, hy - 10);
+        ctx.lineTo(hx + i * 7, hy - 28 - Math.abs(i));
+        ctx.lineTo(hx + i * 7 + 3, hy - 10);
         ctx.fill();
       }
-      // Pulp rim
-      ctx.strokeStyle = 'rgba(90,10,10,0.35)';
-      ctx.lineWidth = 1;
-      roundRect(-w / 2 + 2, -h / 2, w - 4, h, h / 2);
-      ctx.stroke();
-    } else if (ingId === 'bacon') {
-      // Wavy greasy strip
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = ing.color;
-      ctx.lineWidth = 5 * scale;
       ctx.beginPath();
-      ctx.moveTo(-w / 2 + 2, 0);
-      ctx.bezierCurveTo(-10, -7, 10, 7, w / 2 - 2, -1);
-      ctx.stroke();
-      ctx.strokeStyle = '#f0c8a0';
-      ctx.lineWidth = 1.8 * scale;
+      ctx.ellipse(hx, hy - 12, 16, 8, 0, Math.PI, 0);
+      ctx.fill();
+    } else if (c.hairStyle === 'bob') {
       ctx.beginPath();
-      ctx.moveTo(-w / 2 + 4, -1);
-      ctx.bezierCurveTo(-8, -8, 12, 6, w / 2 - 4, -2);
-      ctx.stroke();
-      ctx.strokeStyle = '#6a2010';
-      ctx.lineWidth = 1.2 * scale;
+      ctx.ellipse(hx, hy - 8, 20, 18, 0, Math.PI, 0.15);
+      ctx.fill();
+      roundRect(hx - 20, hy - 10, 40, 22, 8);
+      ctx.fill();
+    } else if (c.hairStyle === 'pony') {
       ctx.beginPath();
-      ctx.moveTo(-w / 2 + 6, 2);
-      ctx.bezierCurveTo(-6, -3, 8, 8, w / 2 - 6, 1);
-      ctx.stroke();
-      // Fat glisten
-      ctx.fillStyle = 'rgba(255,230,190,0.5)';
+      ctx.ellipse(hx, hy - 14, 17, 11, 0, Math.PI, 0);
+      ctx.fill();
       ctx.beginPath();
-      ctx.ellipse(8, -3, 4, 1.5, -0.3, 0, Math.PI * 2);
+      ctx.ellipse(hx + 16, hy + 2, 6, 14, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (c.hairStyle === 'cap') {
+      ctx.fillStyle = c.accent;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 14, 18, 10, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.fillRect(hx - 20, hy - 16, 40, 6);
+      ctx.fillStyle = c.hair;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 10, 14, 6, 0, 0, Math.PI);
+      ctx.fill();
+    } else if (c.hairStyle === 'messy') {
+      for (let i = 0; i < 6; i++) {
+        const a = -Math.PI + i * 0.45;
+        ctx.beginPath();
+        ctx.ellipse(hx + Math.cos(a) * 12, hy - 12 + Math.sin(a) * 4, 7, 5, a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      // short
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 14, 17, 10, 0, Math.PI, 0);
       ctx.fill();
     }
+    // Anger hair puff
+    if (mood === 'pissed') {
+      ctx.fillStyle = c.hair;
+      ctx.beginPath();
+      ctx.arc(hx - 16, hy - 22, 5, 0, Math.PI * 2);
+      ctx.arc(hx + 15, hy - 24, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawCustomerWindow() {
+    // Pass window frame
+    ctx.fillStyle = '#1a221c';
+    ctx.fillRect(W - 96, LINE_Y - 130, 96, 170);
+    ctx.fillStyle = '#2a322c';
+    ctx.fillRect(W - 90, LINE_Y - 122, 84, 150);
+    // Window glow
+    const wg = ctx.createLinearGradient(W - 90, 0, W, 0);
+    wg.addColorStop(0, 'rgba(208,162,58,0.08)');
+    wg.addColorStop(1, 'rgba(208,162,58,0.02)');
+    ctx.fillStyle = wg;
+    ctx.fillRect(W - 90, LINE_Y - 122, 84, 150);
+
+    ctx.fillStyle = '#897f6d';
+    ctx.font = '700 8px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PICKUP', W - 48, LINE_Y - 112);
+
+    if (!state.customer) state.customer = pickCustomer();
+    drawCustomer(state.customer);
+  }
+
+  function drawCustomer(c) {
+    const shakeX = c.mood === 'pissed' ? Math.sin(c.t * 40) * 3.5 * c.shake : 0;
+    const bobY = Math.sin(c.bob * (c.mood === 'eager' ? 8 : 3)) * (c.mood === 'eager' ? 3 : 1.5);
+    const cx = CUSTOMER_X + shakeX;
+    const cy = CUSTOMER_Y + bobY;
+    const lean = c.mood === 'eager' ? -4 : c.mood === 'pissed' ? 2 : 0;
+
+    ctx.save();
+    ctx.translate(lean, 0);
+
+    // Body / shirt
+    ctx.fillStyle = c.shirt;
+    roundRect(cx - 22, cy - 18, 44, 52, 10);
+    ctx.fill();
+    ctx.fillStyle = c.accent;
+    ctx.fillRect(cx - 6, cy - 18, 12, 40);
+
+    // Arms
+    ctx.strokeStyle = c.skin;
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    const armUp = (c.mood === 'happy' || c.mood === 'eating') ? -0.9 * c.arm : c.mood === 'pissed' ? -0.5 : 0.15;
+    ctx.beginPath();
+    ctx.moveTo(cx - 18, cy - 8);
+    ctx.quadraticCurveTo(cx - 34, cy - 4 + armUp * 30, cx - 28, cy + 10 + armUp * 20);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 18, cy - 8);
+    ctx.quadraticCurveTo(cx + 34, cy - 2 + armUp * 28, cx + 30, cy + 8 + armUp * 18);
+    ctx.stroke();
+
+    // Held burger (before the chomp finishes / while raging)
+    if (c.held && c.heldScale > 0.05) {
+      const hx = c.mood === 'eating' || c.mood === 'happy'
+        ? cx - 4
+        : cx - 26;
+      const hy = c.mood === 'eating' || c.mood === 'happy'
+        ? cy - 38 - (1 - c.heldScale) * 8
+        : cy - 30 - c.t * 40;
+      const sc = 0.7 * c.heldScale;
+      ctx.save();
+      ctx.translate(hx, hy);
+      ctx.scale(sc, sc);
+      ctx.rotate(c.mood === 'pissed' ? c.t * 8 : 0);
+      drawBottomBun(0, 10, 1, 0);
+      let ly = 10;
+      for (const id of c.held) {
+        if (id === 'top') continue;
+        ly -= layerGap(id);
+        drawIngredientLayer(id, 0, ly, 1, {});
+      }
+      if (c.held.includes('top') || c.mood === 'happy' || c.mood === 'eating') {
+        ly -= 10;
+        drawTopBun(0, ly, 1, 0);
+      }
+      ctx.restore();
+    }
+
+    // Neck
+    ctx.fillStyle = c.skin;
+    ctx.fillRect(cx - 7, cy - 28, 14, 12);
+
+    // Head
+    const headY = cy - 48;
+    ctx.fillStyle = c.skin;
+    ctx.beginPath();
+    ctx.ellipse(cx, headY, 20, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawHair(c, cx, headY, c.mood);
+
+    // Ears
+    ctx.fillStyle = c.skin;
+    ctx.beginPath();
+    ctx.ellipse(cx - 20, headY + 2, 4, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 20, headY + 2, 4, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Face flush when pissed / happy
+    if (c.mood === 'pissed') {
+      ctx.fillStyle = 'rgba(220,40,40,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(cx, headY + 4, 18, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (c.mood === 'happy' || c.mood === 'eating') {
+      ctx.fillStyle = c.blush;
+      ctx.globalAlpha = 0.45;
+      ctx.beginPath();
+      ctx.ellipse(cx - 12, headY + 6, 5, 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 12, headY + 6, 5, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // Brows + eyes
+    if (c.mood === 'pissed') {
+      ctx.strokeStyle = '#2a1810';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, headY - 6);
+      ctx.lineTo(cx - 4, headY - 2);
+      ctx.moveTo(cx + 12, headY - 6);
+      ctx.lineTo(cx + 4, headY - 2);
+      ctx.stroke();
+      // Angry slits
+      ctx.strokeStyle = '#1a0c08';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 11, headY + 2);
+      ctx.lineTo(cx - 3, headY + 4);
+      ctx.moveTo(cx + 11, headY + 2);
+      ctx.lineTo(cx + 3, headY + 4);
+      ctx.stroke();
+      // Vein
+      ctx.strokeStyle = `rgba(180,40,60,${0.5 + c.vein * 0.4})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx + 10, headY - 14);
+      ctx.lineTo(cx + 14, headY - 8);
+      ctx.lineTo(cx + 11, headY - 4);
+      ctx.stroke();
+    } else if (c.mood === 'happy' || c.mood === 'eating') {
+      // Happy closed crescents
+      ctx.strokeStyle = '#2a1810';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(cx - 7, headY + 1, 4, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.arc(cx + 7, headY + 1, 4, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+    } else {
+      // Idle / eager eyes
+      ctx.fillStyle = '#fff8f0';
+      ctx.beginPath();
+      ctx.ellipse(cx - 7, headY + 1, 5, 5.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 7, headY + 1, 5, 5.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1a120c';
+      const look = c.mood === 'eager' ? -2 : 0;
+      ctx.beginPath();
+      ctx.arc(cx - 7 + look, headY + 1.5, 2.4, 0, Math.PI * 2);
+      ctx.arc(cx + 7 + look, headY + 1.5, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx - 6 + look, headY, 1, 0, Math.PI * 2);
+      ctx.arc(cx + 8 + look, headY, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Mouth
+    ctx.strokeStyle = '#5a2018';
+    ctx.fillStyle = '#5a2018';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    if (c.mood === 'eating') {
+      // Massive chomp
+      const open = 6 + c.bite * 10;
+      ctx.fillStyle = '#3a1010';
+      ctx.beginPath();
+      ctx.ellipse(cx, headY + 12, 10, open, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Teeth
+      ctx.fillStyle = '#f5ecd8';
+      ctx.fillRect(cx - 7, headY + 12 - open * 0.5, 14, 3);
+      // Chew wobble after bite
+      if (c.bite >= 1) {
+        ctx.strokeStyle = '#5a2018';
+        ctx.beginPath();
+        ctx.arc(cx, headY + 14, 7, 0.2, Math.PI - 0.2);
+        ctx.stroke();
+      }
+    } else if (c.mood === 'happy') {
+      ctx.beginPath();
+      ctx.arc(cx, headY + 10, 8, 0.15, Math.PI - 0.15);
+      ctx.stroke();
+      // little tongue tip of joy
+      ctx.fillStyle = '#e07070';
+      ctx.beginPath();
+      ctx.ellipse(cx, headY + 15, 3, 2, 0, 0, Math.PI);
+      ctx.fill();
+    } else if (c.mood === 'pissed') {
+      // Snarl
+      ctx.strokeStyle = '#4a1010';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 9, headY + 14);
+      ctx.quadraticCurveTo(cx, headY + 8, cx + 9, headY + 14);
+      ctx.stroke();
+      // Teeth grit
+      ctx.fillStyle = '#f0e8d8';
+      ctx.fillRect(cx - 6, headY + 11, 3, 4);
+      ctx.fillRect(cx + 3, headY + 11, 3, 4);
+    } else if (c.mood === 'eager') {
+      ctx.beginPath();
+      ctx.ellipse(cx, headY + 13, 4, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, headY + 13);
+      ctx.quadraticCurveTo(cx, headY + 15, cx + 5, headY + 13);
+      ctx.stroke();
+    }
+
+    // Steam plumes when pissed
+    if (c.mood === 'pissed' && c.steam > 0) {
+      ctx.strokeStyle = `rgba(200,80,80,${0.35 + c.steam * 0.25})`;
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const sx = cx - 10 + i * 10;
+        const sy = headY - 26 - (c.t * 30 + i * 8) % 24;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy + 10);
+        ctx.quadraticCurveTo(sx + 3, sy + 5, sx, sy);
+        ctx.stroke();
+      }
+    }
+
+    // Name tag
+    ctx.fillStyle = 'rgba(20,24,22,0.75)';
+    roundRect(cx - 24, cy + 30, 48, 14, 3);
+    ctx.fill();
+    ctx.fillStyle = c.mood === 'pissed' ? '#f26e89' : c.mood === 'happy' || c.mood === 'eating' ? '#71d189' : '#e8dcc0';
+    ctx.font = '700 9px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(c.name.toUpperCase(), cx, cy + 40);
 
     ctx.restore();
   }
@@ -1209,14 +1825,28 @@
   }
 
   function drawTicket(ticket, index) {
-    const tw = 148;
-    const th = 108;
-    const gap = 12;
+    const stack = ticket.recipe.stack;
+    const rowH = 28;
+    const tw = 168;
+    const th = 44 + stack.length * rowH + 10;
+    const gap = 10;
     const total = state.tickets.length * tw + Math.max(0, state.tickets.length - 1) * gap;
     const startX = (W - total) / 2;
     const x = startX + index * (tw + gap);
-    const y = 16;
-    const sway = Math.sin(ticket.age * 2 + index) * 1.5;
+    const y = 12;
+    const sway = Math.sin(ticket.age * 2 + index) * 1.2;
+    const burger = state.burgers.find(bb => bb.ticketId === ticket.id);
+    const have = burger ? burger.stack : [];
+
+    // Build checklist rows: one per required item, marking off matches in any order
+    const usedHave = {};
+    const rows = stack.map((ingId) => {
+      const haveCount = countOf(have, ingId);
+      const used = usedHave[ingId] || 0;
+      const checked = used < haveCount;
+      if (checked) usedHave[ingId] = used + 1;
+      return { ingId, checked };
+    });
 
     ctx.fillStyle = '#8a3030';
     ctx.beginPath();
@@ -1225,46 +1855,95 @@
 
     ctx.save();
     ctx.translate(0, sway);
-    ctx.fillStyle = '#f3e6c8';
+
+    // Paper receipt
+    ctx.fillStyle = '#f7edd4';
     roundRect(x, y + 8, tw, th, 4);
     ctx.fill();
     ctx.fillStyle = ticket.color;
-    ctx.fillRect(x, y + 8, 6, th);
+    ctx.fillRect(x, y + 8, 7, th);
 
+    // Header
     ctx.fillStyle = '#2a2218';
     ctx.font = '700 12px "General Sans", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(ticket.recipe.name.toUpperCase(), x + 14, y + 28);
-    ctx.fillStyle = '#6a5e48';
+    ctx.fillText(ticket.recipe.name.toUpperCase(), x + 14, y + 26);
+    ctx.fillStyle = '#7a6a50';
     ctx.font = '600 9px "General Sans", sans-serif';
-    ctx.fillText(`${ticket.recipe.stack.length} LAYER` + (ticket.recipe.stack.length > 1 ? 'S' : ''), x + 14, y + 42);
+    ctx.fillText('ADD (any order)', x + 14, y + 40);
 
-    const stack = ticket.recipe.stack;
-    const cx = x + tw / 2;
-    let ly = y + 96;
-    drawBottomBun(cx, ly, 0.5);
-    const b = state.burgers.find(bb => bb.ticketId === ticket.id);
-    for (let i = 0; i < stack.length; i++) {
-      ly -= layerGap(stack[i]) * 0.5;
-      const done = b && i < b.nextIdx;
-      ctx.globalAlpha = done ? 0.3 : 1;
-      drawIngredientLayer(stack[i], cx, ly, 0.5);
-      ctx.globalAlpha = 1;
-    }
-    if (b && b.done) {
-      ly -= 6;
-      drawTopBun(cx, ly, 0.5);
-    }
+    // Dashed rule
+    ctx.strokeStyle = 'rgba(80,60,40,0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(x + 12, y + 46);
+    ctx.lineTo(x + tw - 10, y + 46);
+    ctx.stroke();
+    ctx.setLineDash([]);
 
-    if (b && !b.done && !b.ruined) {
-      const next = ING_BY_ID[b.recipe.stack[b.nextIdx]];
-      if (next) {
-        ctx.fillStyle = '#8a3030';
-        ctx.font = '700 10px "General Sans", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`SLAM ${next.key.toUpperCase()} · ${next.name.toUpperCase()}`, x + tw / 2, y + th + 2);
+    rows.forEach((row, i) => {
+      const ry = y + 52 + i * rowH;
+      const ing = ING_BY_ID[row.ingId];
+
+      // Checkbox
+      ctx.strokeStyle = row.checked ? '#3a8a4a' : '#6a5a40';
+      ctx.lineWidth = 1.5;
+      roundRect(x + 12, ry + 5, 14, 14, 2);
+      ctx.stroke();
+      if (row.checked) {
+        ctx.fillStyle = '#3a8a4a';
+        ctx.fillRect(x + 14, ry + 7, 10, 10);
+        ctx.strokeStyle = '#f7edd4';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x + 16, ry + 12);
+        ctx.lineTo(x + 18.5, ry + 15);
+        ctx.lineTo(x + 23, ry + 9);
+        ctx.stroke();
       }
-    }
+
+      // Ingredient icon
+      const iconCx = x + 48;
+      const iconCy = ry + 12;
+      ctx.fillStyle = row.checked ? 'rgba(60,120,70,0.12)' : 'rgba(0,0,0,0.06)';
+      roundRect(iconCx - 16, iconCy - 10, 32, 20, 3);
+      ctx.fill();
+      ctx.globalAlpha = row.checked ? 0.45 : 1;
+      drawIngredientLayer(row.ingId, iconCx, iconCy, 0.55);
+      ctx.globalAlpha = 1;
+
+      // Name + key
+      ctx.fillStyle = row.checked ? '#6a8a6a' : '#2a2218';
+      ctx.font = '700 11px "General Sans", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(ing.name, x + 70, ry + 11);
+      ctx.fillStyle = row.checked ? '#8aaa8a' : '#8a6a30';
+      ctx.font = '800 10px "General Sans", sans-serif';
+      ctx.fillText(`KEY ${ing.key.toUpperCase()}`, x + 70, ry + 23);
+
+      if (row.checked) {
+        ctx.strokeStyle = 'rgba(60,100,60,0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x + 70, ry + 12);
+        ctx.lineTo(x + tw - 14, ry + 12);
+        ctx.stroke();
+      }
+    });
+
+    // Footer status
+    const left = stack.length - have.length;
+    ctx.fillStyle = burger && burger.ruined ? '#a03030'
+      : burger && burger.done ? '#2a7a3a'
+      : left <= 0 && burger ? '#2a7a3a'
+      : '#6a5a40';
+    ctx.font = '700 9px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    let status = ticket.assigned ? (burger && burger.ruined ? 'RUINED' : burger && burger.done ? 'DONE' : `${left} TO GO`) : 'WAITING';
+    if (burger && !burger.done && !burger.ruined && left === 0) status = 'SEALING…';
+    ctx.fillText(status, x + tw / 2, y + th + 4);
+
     ctx.restore();
   }
 
@@ -1383,18 +2062,7 @@
     }
     ctx.globalAlpha = 1;
 
-    ctx.fillStyle = '#1a221c';
-    ctx.fillRect(W - 28, LINE_Y - 90, 28, 120);
-    ctx.fillStyle = 'rgba(113,209,137,0.15)';
-    ctx.fillRect(W - 24, LINE_Y - 80, 16, 90);
-    ctx.fillStyle = '#71d189';
-    ctx.font = '700 9px "General Sans", sans-serif';
-    ctx.save();
-    ctx.translate(W - 12, LINE_Y - 20);
-    ctx.rotate(-Math.PI / 2);
-    ctx.textAlign = 'center';
-    ctx.fillText('SERVE', 0, 0);
-    ctx.restore();
+    drawCustomerWindow();
 
     if (state.flash > 0) {
       ctx.fillStyle = `rgba(242,110,137,${state.flash * 0.4})`;
@@ -1482,10 +2150,11 @@
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
 
+  paintButtonIcons();
   updateHUD();
   if (state.high > 0) {
     overlayText.textContent =
-      `Mash A S D F to slam greasy layers onto tickets — 3 max. Best: ${state.high}`;
+      `Match the ticket, any order. Customers eat perfect burgers in one bite — and explode if you mess up. Best: ${state.high}`;
   }
   requestAnimationFrame(frame);
 })();
