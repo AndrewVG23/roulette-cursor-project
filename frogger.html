@@ -1343,7 +1343,8 @@
     if (d.surface === 'curb') {
       d.speed = Math.max(0, d.speed - 28 * dt);
       d.rumble = Math.max(d.rumble, 0.2);
-      d.suspVel -= 40 * dt * (1 + Math.random());
+      // Periodic thump tied to wheel speed — reads as rumble strip, not noise
+      d.suspVel -= 40 * dt * (1 + Math.sin(d.wheelSpin * 2.6) * 0.6);
       d.camShake = Math.max(d.camShake, 2.5);
     }
     if (ax > DW.ROAD * 0.92) {
@@ -1485,8 +1486,18 @@
         }
       } else {
         car.z += car.speed * DW.MPH_Z * dt;
-        const lane = Math.round(car.x / DW.LANE) * DW.LANE;
-        car.x += (lane - car.x) * Math.min(1, 1.2 * dt);
+        // Occasional lazy lane change keeps traffic feeling alive
+        car.laneT = (car.laneT != null ? car.laneT : 2 + Math.random() * 6) - dt;
+        if (car.laneT <= 0) {
+          const cur = Math.round(car.x / DW.LANE);
+          if (Math.random() < 0.4) {
+            car.targetLane = Math.max(-1, Math.min(1, cur + (Math.random() < 0.5 ? -1 : 1))) * DW.LANE;
+          }
+          car.laneT = 5 + Math.random() * 7;
+        }
+        const lane = car.targetLane != null ? car.targetLane : Math.round(car.x / DW.LANE) * DW.LANE;
+        car.x += (lane - car.x) * Math.min(1, 1.1 * dt);
+        car.yaw = (lane - car.x) * -0.5;
       }
     }
     d.traffic = d.traffic.filter(c => c.z > d.z - 80 && c.z < d.z + 1800);
@@ -2652,7 +2663,9 @@
     const ahead = wz - d.z;
     if (ahead > 0) {
       rx += d.curve * ahead * ahead * 0.014;
-      ry += (d.hills || 0) * Math.min(1, ahead / 500) * 0.28;
+      // Smoothstep easing so hills roll in without a kink
+      const ht = Math.min(1, ahead / 600);
+      ry += (d.hills || 0) * (ht * ht * (3 - 2 * ht)) * 0.3;
     }
 
     if (rz < 12) rz = 12;
@@ -2662,6 +2675,12 @@
     // Horizon sits mid-frame; near ground drops toward the bottom
     const y = H * 0.46 - ry * scale;
     return { x, y, scale, relZ: rz };
+  }
+
+  // Blend two [r,g,b] colors — used for atmospheric haze with distance
+  function hazeMix(c, f, t) {
+    const k = Math.max(0, Math.min(1, t));
+    return `rgb(${Math.round(c[0] + (f[0] - c[0]) * k)},${Math.round(c[1] + (f[1] - c[1]) * k)},${Math.round(c[2] + (f[2] - c[2]) * k)})`;
   }
 
   function shade(hex, amt) {
@@ -2855,6 +2874,10 @@
     const edge = b.side * (DW.BUILD + b.w * 0.15);
     const ground = projectWorld(edge, 0, b.z, d);
     if (ground.relZ < 40 || ground.relZ > 1400 || ground.scale < 0.04) return;
+    // Fade in from the haze instead of popping
+    const fade = Math.max(0, Math.min(1, (1400 - ground.relZ) / 320));
+    ctx.save();
+    ctx.globalAlpha = fade;
     const top = projectWorld(edge, b.h * 0.55, b.z, d);
     const bw = (50 + b.w * 80) * ground.scale;
     const bh = Math.max(8, ground.y - top.y);
@@ -2927,6 +2950,7 @@
         ctx.strokeRect(x - 6 * ground.scale, fy, 8 * ground.scale, 10 * ground.scale);
       }
     }
+    ctx.restore();
   }
 
   function drawRoadExit(ex, d) {
@@ -2992,6 +3016,8 @@
     const postTop = projectWorld(postX, 55, signZ, d);
     if (post.relZ > 60 && post.relZ < 1000 && post.scale > 0.06) {
       const s = post.scale;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, (1000 - post.relZ) / 240));
       ctx.fillStyle = '#3a3a40';
       ctx.fillRect(post.x - 2 * s, postTop.y, 4 * s, post.y - postTop.y);
       const bw = 72 * s;
@@ -3028,6 +3054,7 @@
       }
       ctx.closePath();
       ctx.fill();
+      ctx.restore();
     }
   }
 
@@ -3036,7 +3063,8 @@
       const pL = projectWorld(-DW.ROAD * 0.92, 0, pr.z, d);
       const pR = projectWorld(DW.ROAD * 0.92, 0, pr.z, d);
       if (pL.relZ < 50 || pL.relZ > 900) return;
-      ctx.fillStyle = 'rgba(210,200,180,0.5)';
+      const cwA = Math.max(0, Math.min(1, (900 - pL.relZ) / 220));
+      ctx.fillStyle = `rgba(210,200,180,${0.5 * cwA})`;
       const stripes = 7;
       for (let i = 0; i < stripes; i++) {
         const t0 = i / stripes;
@@ -3060,6 +3088,8 @@
     const xWorld = pr.side * ((DW.ROAD + DW.WALK) * 0.5);
     const p = projectWorld(xWorld, 0, pr.z, d);
     if (p.relZ < 45 || p.relZ > 1100) return;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, (1100 - p.relZ) / 260));
     if (pr.kind === 'light') {
       const top = projectWorld(xWorld, 55, pr.z, d);
       ctx.strokeStyle = '#2a2a30';
@@ -3091,6 +3121,7 @@
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
       ctx.fillRect(p.x - 4 * p.scale, p.y - 20 * p.scale, 3 * p.scale, 16 * p.scale);
     }
+    ctx.restore();
   }
 
   function drawDriveParticles() {
@@ -3144,40 +3175,75 @@
     const d = state.drive;
     ctx.clearRect(0, 0, W, H);
 
-    const shakeAmt = (d.camShake || 0) + (d.rumble || 0) * 5;
-    const shakeX = shakeAmt ? (Math.random() - 0.5) * shakeAmt : 0;
-    const shakeY = shakeAmt ? (Math.random() - 0.5) * shakeAmt * 0.65 : 0;
+    // Smooth camera sway — layered sines instead of per-frame random jitter
+    const st = performance.now() / 1000;
+    const shakeAmt = (d.camShake || 0) * 0.8 + (d.rumble || 0) * 3;
+    const shakeX = shakeAmt ? (Math.sin(st * 37) * 0.6 + Math.sin(st * 59 + 1.3) * 0.4) * shakeAmt * 0.55 : 0;
+    const shakeY = shakeAmt ? (Math.sin(st * 43 + 0.7) * 0.6 + Math.sin(st * 67) * 0.4) * shakeAmt * 0.4 : 0;
     ctx.save();
     ctx.translate(shakeX, shakeY);
     ctx.rotate(d.roll * 0.05);
 
-    // Smoggy / overcast sky
+    // Smoggy dusk sky, brightest at the horizon
     const sky = ctx.createLinearGradient(0, 0, 0, H * 0.5);
-    sky.addColorStop(0, '#2a3038');
-    sky.addColorStop(0.55, '#5a6068');
-    sky.addColorStop(1, '#7a7870');
+    sky.addColorStop(0, '#232830');
+    sky.addColorStop(0.5, '#4c525c');
+    sky.addColorStop(0.85, '#6e6a62');
+    sky.addColorStop(1, '#807a6e');
     ctx.fillStyle = sky;
     ctx.fillRect(-30, -30, W + 60, H * 0.55);
 
-    // Far crappy skyline
+    // Hazy moon
+    const moonGlow = ctx.createRadialGradient(W * 0.72, H * 0.13, 4, W * 0.72, H * 0.13, 60);
+    moonGlow.addColorStop(0, 'rgba(235,230,210,0.5)');
+    moonGlow.addColorStop(0.25, 'rgba(220,215,195,0.12)');
+    moonGlow.addColorStop(1, 'rgba(220,215,195,0)');
+    ctx.fillStyle = moonGlow;
+    ctx.fillRect(W * 0.72 - 60, H * 0.13 - 60, 120, 120);
+
+    // Skyline — two parallax layers that lean into the curve
+    const skySway = -d.curve * 60 - (d.camX || 0) * 6;
+    ctx.fillStyle = '#3a3f47';
+    for (let i = 0; i < 16; i++) {
+      const bx = ((i * 61 + d.z * 0.012 + skySway * 0.4) % (W + 90) + W + 90) % (W + 90) - 45;
+      const bh = 14 + ((i * 23) % 34);
+      ctx.fillRect(bx, H * 0.42 - bh - (d.hills || 0) * 0.06, 26 + (i % 4) * 7, bh);
+    }
     ctx.fillStyle = '#2e333a';
     for (let i = 0; i < 20; i++) {
-      const bx = ((i * 47 + d.z * 0.03) % (W + 70)) - 35;
+      const bx = ((i * 47 + d.z * 0.03 + skySway) % (W + 70) + W + 70) % (W + 70) - 35;
       const bh = 20 + ((i * 19) % 55);
-      ctx.fillRect(bx, H * 0.42 - bh, 22 + (i % 3) * 6, bh);
+      const bw2 = 22 + (i % 3) * 6;
+      const by = H * 0.42 - bh - (d.hills || 0) * 0.1;
+      ctx.fillRect(bx, by, bw2, bh);
+      // Sparse lit windows
+      ctx.fillStyle = 'rgba(210,180,110,0.25)';
+      for (let wI = (i * 7) % 3; wI < 5; wI += 2) {
+        ctx.fillRect(bx + 4 + (wI % 3) * 7, by + 6 + Math.floor(wI / 3) * 12 + (i % 5) * 4, 3, 4);
+      }
+      ctx.fillStyle = '#2e333a';
     }
-    ctx.fillStyle = 'rgba(120,110,95,0.18)';
-    ctx.fillRect(-30, H * 0.36, W + 60, 40);
+    // Ground haze band swallowing the skyline bases
+    const hazeBand = ctx.createLinearGradient(0, H * 0.3, 0, H * 0.46);
+    hazeBand.addColorStop(0, 'rgba(126,120,108,0)');
+    hazeBand.addColorStop(1, 'rgba(126,120,108,0.55)');
+    ctx.fillStyle = hazeBand;
+    ctx.fillRect(-30, H * 0.3, W + 60, H * 0.17);
 
     // Smooth ground base
     const nearGround = projectWorld(0, 0, d.z - 40, d);
     ctx.fillStyle = '#5a564e';
     ctx.fillRect(-30, nearGround.y - 4, W + 60, H);
 
-    // Smooth cohesive street — no slab/checker blocks
-    const segs = 48;
+    // Smooth cohesive street with atmospheric perspective on every surface
+    const segs = 62;
     const segLen = 22;
     const zBase = Math.floor(d.z / segLen) * segLen;
+    const FOG = [126, 120, 108];
+    const ASPHALT = [42, 42, 46];
+    const WALKC = [138, 134, 128];
+    const CURBC = [168, 164, 156];
+    const fogFar = segs * segLen;
     for (let i = segs; i >= -5; i--) {
       const z0 = zBase + i * segLen;
       const z1 = z0 + segLen;
@@ -3189,9 +3255,12 @@
       const wR = projectWorld(DW.WALK, 0, z0, d);
       const vL = projectWorld(-DW.WALK, 0, z1, d);
       const vR = projectWorld(DW.WALK, 0, z1, d);
+      // Haze factor — surfaces dissolve toward the fog color with distance
+      const fogT = Math.pow(Math.max(0, Math.min(1, pL.relZ / fogFar)), 1.4) * 0.85;
+      const paintA = 1 - fogT;
 
       // Continuous sidewalk
-      ctx.fillStyle = '#8a8680';
+      ctx.fillStyle = hazeMix(WALKC, FOG, fogT);
       ctx.beginPath();
       ctx.moveTo(-20, wL.y);
       ctx.lineTo(wL.x, wL.y);
@@ -3206,7 +3275,7 @@
       ctx.fill();
 
       // Thin continuous curb lip
-      ctx.fillStyle = '#a8a49c';
+      ctx.fillStyle = hazeMix(CURBC, FOG, fogT);
       ctx.beginPath();
       ctx.moveTo(wL.x, wL.y);
       ctx.lineTo(pL.x, pL.y);
@@ -3223,7 +3292,7 @@
       ctx.fill();
 
       // Solid asphalt
-      ctx.fillStyle = '#2a2a2e';
+      ctx.fillStyle = hazeMix(ASPHALT, FOG, fogT);
       ctx.beginPath();
       ctx.moveTo(pL.x, pL.y);
       ctx.lineTo(pR.x, pR.y);
@@ -3232,8 +3301,8 @@
       ctx.closePath();
       ctx.fill();
 
-      // Soft shoulder paint
-      ctx.strokeStyle = 'rgba(210,200,170,0.28)';
+      // Soft shoulder paint, fading into the haze
+      ctx.strokeStyle = `rgba(210,200,170,${0.28 * paintA})`;
       ctx.lineWidth = Math.max(1, 1.5 * pL.scale);
       ctx.beginPath();
       ctx.moveTo(pL.x, pL.y);
@@ -3245,7 +3314,7 @@
       // Continuous double yellow
       const m0 = projectWorld(0, 0, z0, d);
       const m1 = projectWorld(0, 0, z1, d);
-      ctx.strokeStyle = 'rgba(196,160,53,0.42)';
+      ctx.strokeStyle = `rgba(196,160,53,${0.42 * paintA})`;
       ctx.lineWidth = Math.max(1, 2 * pL.scale);
       ctx.beginPath();
       ctx.moveTo(m0.x - 3 * pL.scale, m0.y);
@@ -3256,7 +3325,7 @@
 
       // Soft dashed lane marks
       if (Math.floor(z0 / (segLen * 3)) % 2 === 0) {
-        ctx.strokeStyle = 'rgba(200,195,180,0.22)';
+        ctx.strokeStyle = `rgba(200,195,180,${0.22 * paintA})`;
         ctx.lineWidth = Math.max(1, 1.8 * pL.scale);
         for (const lane of [-DW.LANE, DW.LANE]) {
           const a = projectWorld(lane, 0, z0, d);
@@ -3280,12 +3349,15 @@
     const exits = [...(d.exits || [])].sort((a, b) => b.z - a.z);
     for (const ex of exits) drawRoadExit(ex, d);
 
-    // Traffic on the road plane
+    // Traffic on the road plane — emerges from the haze instead of popping
     const cars = [...d.traffic].sort((a, b) => b.z - a.z);
     for (const car of cars) {
       const fly = car.flyY || 0;
       const p = projectWorld(car.x, fly, car.z, d);
-      if (p.relZ < 30 || p.relZ > 1200 || p.scale < 0.06) continue;
+      if (p.relZ < 30 || p.relZ > 1250 || p.scale < 0.05) continue;
+      const carFade = Math.max(0, Math.min(1, (1250 - p.relZ) / 280));
+      ctx.save();
+      ctx.globalAlpha = carFade;
       drawLowPolyCar(p.x, p.y, Math.min(1.35, p.scale * 0.55), car.kind, {
         yaw: car.yaw || 0,
         roll: car.smashed ? (car.roll || 0) : 0,
@@ -3296,11 +3368,38 @@
         bodyScale: car.bodyScale || 1,
         roof: car.roof || 1
       });
+      // Taillight glow on live cars ahead
+      if (!car.smashed && car.z > d.z + 40) {
+        const gw = 22 * p.scale;
+        const glow = ctx.createRadialGradient(p.x, p.y - 10 * p.scale, 1, p.x, p.y - 10 * p.scale, gw);
+        glow.addColorStop(0, `rgba(255,60,50,${0.2 * carFade})`);
+        glow.addColorStop(1, 'rgba(255,60,50,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(p.x - gw, p.y - 10 * p.scale - gw, gw * 2, gw * 2);
+      }
+      ctx.restore();
     }
 
     // Player car — on the road plane with suspension compression
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const carZ = d.z + 14;
+
+    // Headlight pool washing the asphalt ahead of the hood
+    const beam = projectWorld(d.playerX + d.curve * 0.4, 0, carZ + 130, d);
+    const beamNear = projectWorld(d.playerX, 0, carZ + 30, d);
+    const bg = ctx.createRadialGradient(beam.x, beam.y, 2, beam.x, beam.y, Math.max(30, 150 * beam.scale * 3));
+    bg.addColorStop(0, 'rgba(255,240,190,0.14)');
+    bg.addColorStop(0.6, 'rgba(255,240,190,0.05)');
+    bg.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.fillStyle = bg;
+    ctx.beginPath();
+    ctx.moveTo(beamNear.x - 30 * beamNear.scale * 3, beamNear.y);
+    ctx.lineTo(beam.x - 60 * beam.scale * 3, beam.y);
+    ctx.lineTo(beam.x + 60 * beam.scale * 3, beam.y);
+    ctx.lineTo(beamNear.x + 30 * beamNear.scale * 3, beamNear.y);
+    ctx.closePath();
+    ctx.fill();
+
     const ground = projectWorld(d.playerX, 0, carZ, d);
     const blink = d.invuln > 0 && Math.floor(d.invuln * 14) % 2 === 0;
     if (!blink) {

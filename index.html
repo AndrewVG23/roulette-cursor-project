@@ -3367,6 +3367,7 @@
     }
 
     const GRILL_TIPS_KEY = 'grillTipsPending';
+    let sessionGrillTips = 0;
     function takeGrillTips() {
       const tips = Math.max(0, Math.round(Number(localStorage.getItem(GRILL_TIPS_KEY) || 0)));
       if (tips > 0) localStorage.setItem(GRILL_TIPS_KEY, '0');
@@ -3539,9 +3540,10 @@
     }
 
     function resetPurse() {
-      startingPurse = getStartingPurse();
       const tips = takeGrillTips();
-      purse = startingPurse + tips;
+      sessionGrillTips += tips;
+      startingPurse = getStartingPurse() + sessionGrillTips;
+      purse = startingPurse;
       updatePurseDisplay();
       if (tips > 0) showGrillTipsBanner(tips);
     }
