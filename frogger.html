@@ -336,7 +336,7 @@
           <div class="overlay" id="overlay">
             <div class="overlay-card">
               <h2 id="overlayTitle">Return to your car</h2>
-              <p id="overlayText">Leave the tables, cross Midtown, and reach your parked car. Then drive to the next stop. Arrow keys, WASD, or swipe.</p>
+              <p id="overlayText">Cross to your car, then hit the streets. Drive until you take EXIT GRILL or EXIT CASINO. Arrow keys, WASD, or swipe.</p>
               <div class="control-row">
                 <button class="btn primary" id="startBtn" type="button">Leave the Tables</button>
               </div>
@@ -372,10 +372,14 @@
   const H = ROWS * TILE;
 
   const DESTINATIONS = [
-    { id: 'tables', name: 'The Tables', href: 'index.html', blurb: 'Back to the casino floor.' },
-    { id: 'grill', name: 'Night Shift Grill', href: 'burger.html', blurb: 'Late-night burgers on the line.' },
-    { id: 'soho', name: 'SoHo Lounge', href: 'index.html', blurb: 'A quieter room uptown.' },
-    { id: 'pier', name: 'East River Club', href: 'index.html', blurb: 'Private tables by the water.' }
+    { id: 'casino', name: 'CASINO', href: 'index.html', blurb: 'Back to the tables.' },
+    { id: 'grill', name: 'GRILL', href: 'burger.html', blurb: 'Late-night burgers on the line.' }
+  ];
+
+  // Highway exits you can take during the night drive
+  const ROAD_EXITS = [
+    { id: 'grill', name: 'GRILL', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' },
+    { id: 'casino', name: 'CASINO', href: 'index.html', blurb: 'The casino — back to the tables.' }
   ];
 
   const canvas = document.getElementById('game');
@@ -486,21 +490,21 @@
   }
 
   function pickDestination(level) {
-    // After leaving the grill, don't route straight back to burgers
-    if (isGrill()) {
-      const exits = DESTINATIONS.filter(d => d.id !== 'grill');
-      return exits[(level - 1) % exits.length];
-    }
     return DESTINATIONS[(level - 1) % DESTINATIONS.length];
+  }
+
+  function nextRoadExit(d) {
+    if (!d || !d.exits) return null;
+    return d.exits.find(e => !e.taken && e.z > d.z - 20) || null;
   }
 
   function setPhaseUI() {
     if (state.phase === 'drive') {
       brandTitle.textContent = 'Night Drive';
-      brandSub.textContent = `Chase cam · ${state.destination.name}`;
-      meterLabel.textContent = 'Mi';
+      brandSub.textContent = 'Open road · take EXIT GRILL or CASINO';
+      meterLabel.textContent = 'Exit';
       livesLabel.textContent = 'HP';
-      hintText.textContent = 'Steer · gas · smash sends them flying · watch HP & cash';
+      hintText.textContent = 'Steer into the exit ramp when you see the sign';
       dpad.classList.add('drive-mode');
     } else if (isGrill()) {
       brandTitle.textContent = 'Leave the Grill';
@@ -651,13 +655,10 @@
     state.invuln = 0;
     state.flash = 0;
     state.particles = [];
-    state.destination = pickDestination(state.level);
-    // Trip length in world-Z (~city blocks)
-    const trip = 3200 + state.level * 400;
+    state.destination = null;
     state.drive = {
       z: 0,
-      goal: trip,
-      // speed is MPH — cohesive with HUD and traffic
+      goal: Infinity, // open road — ends only when you take an exit
       speed: 28,
       maxSpeed: 72 + state.level * 4,
       accel: 0,
@@ -677,8 +678,11 @@
       traffic: [],
       props: [],
       buildings: [],
+      exits: [],
       nextPropZ: 40,
       nextBuildZ: 20,
+      nextExitZ: 4200,
+      exitIndex: 0,
       spawnTimer: 0.35,
       invuln: 1.4,
       rpmPulse: 0,
@@ -693,10 +697,11 @@
       surface: 'asphalt',
       rumble: 0,
       hp: 100,
-      maxHp: 100
+      maxHp: 100,
+      approachingExit: null
     };
     seedCityBlocks(state.drive, 0, 1600);
-    // Seed a few cars already in frame so the street feels alive
+    seedRoadExits(state.drive, 0, 12000);
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
     setPhaseUI();
     overlay.hidden = true;
@@ -706,6 +711,32 @@
     beep(392, 0.08);
     beep(523, 0.1);
     beep(784, 0.14);
+  }
+
+  function seedRoadExits(d, fromZ, toZ) {
+    // Place GRILL / CASINO exits along the road — steer onto the ramp to take one
+    let z = Math.max(fromZ, d.nextExitZ || 4200);
+    while (z < toZ) {
+      const def = ROAD_EXITS[d.exitIndex % ROAD_EXITS.length];
+      d.exitIndex += 1;
+      // Prefer right-side exits; occasional left
+      const side = Math.random() > 0.22 ? 1 : -1;
+      d.exits.push({
+        z,
+        side,
+        id: def.id,
+        name: def.name,
+        href: def.href,
+        blurb: def.blurb,
+        taken: false,
+        // Ramp window in world-Z
+        startZ: z - 90,
+        endZ: z + 70
+      });
+      // ~8–14s apart at cruise
+      z += 4800 + Math.random() * 3200;
+    }
+    d.nextExitZ = z;
   }
 
   function seedCityBlocks(d, fromZ, toZ) {
@@ -752,8 +783,14 @@
   function updateHUD() {
     scoreVal.textContent = state.phase === 'drive' ? `$${state.score}` : String(state.score);
     if (state.phase === 'drive' && state.drive) {
-      const left = Math.max(0, state.drive.goal - state.drive.z);
-      levelVal.textContent = (left / (DW.MPH_Z * 55)).toFixed(1);
+      const ex = nextRoadExit(state.drive);
+      if (ex) {
+        const dist = Math.max(0, ex.z - state.drive.z);
+        const mi = (dist / (DW.MPH_Z * 55)).toFixed(1);
+        levelVal.textContent = `${ex.name} ${mi}`;
+      } else {
+        levelVal.textContent = '—';
+      }
       livesVal.textContent = String(Math.max(0, Math.ceil(state.drive.hp)));
       livesPips.innerHTML = '';
       const pips = 5;
@@ -840,20 +877,29 @@
     beep(523, 0.08);
     beep(659, 0.1);
     beep(784, 0.16);
-    // Grill leave and midtown both continue into a night drive
-    state.destination = pickDestination(state.level);
     showOverlay(
       isGrill() ? 'Keys in the hoopty' : 'Keys in the ignition',
-      isGrill()
-        ? `You crossed the block. Score ${state.score}. Next: drive to ${state.destination.name}.`
-        : `You made it to your car. Score ${state.score}. Next: drive to ${state.destination.name}.`,
+      `Score $${state.score}. Hit the streets — take EXIT GRILL or EXIT CASINO when you see the signs.`,
       'Hit the Gas'
     );
     pauseBtn.disabled = true;
   }
 
-  function arriveDestination() {
-    state.score += 250 + state.level * 40;
+  function takeExit(exit) {
+    if (!exit || exit.taken || state.mode !== 'drive') return;
+    exit.taken = true;
+    const d = state.drive;
+    if (d) {
+      d.speed = Math.max(10, d.speed * 0.55);
+      d.approachingExit = exit;
+    }
+    state.score += 180 + state.level * 30;
+    state.destination = {
+      id: exit.id,
+      name: exit.name,
+      href: exit.href,
+      blurb: exit.blurb
+    };
     updateHUD();
     state.mode = 'arrived';
     if (state.score > state.high) {
@@ -864,9 +910,9 @@
     beep(784, 0.12);
     beep(1046, 0.18);
     showOverlay(
-      `Arrived · ${state.destination.name}`,
-      `${state.destination.blurb} Score ${state.score}. Keep the night going, or park it here.`,
-      'Enter'
+      `EXIT · ${exit.name}`,
+      `${exit.blurb} Score $${state.score}.`,
+      `Enter ${exit.name}`
     );
     pauseBtn.disabled = true;
   }
@@ -1323,8 +1369,28 @@
     if (d.z + 1300 > d.nextBuildZ) {
       seedCityBlocks(d, d.nextBuildZ, d.nextBuildZ + 1000);
     }
+    if (d.z + 1600 > d.nextExitZ) {
+      seedRoadExits(d, d.nextExitZ, d.nextExitZ + 1600);
+    }
     d.buildings = d.buildings.filter(b => b.z > d.z - 100);
     d.props = d.props.filter(p => p.z > d.z - 80);
+    d.exits = d.exits.filter(e => e.z > d.z - 200);
+
+    // Take EXIT · GRILL / CASINO — steer onto the ramp in the exit window
+    d.approachingExit = null;
+    for (const ex of d.exits) {
+      if (ex.taken) continue;
+      if (d.z >= ex.startZ && d.z <= ex.endZ) {
+        d.approachingExit = ex;
+        const onRamp = ex.side > 0
+          ? d.playerX > DW.ROAD * 0.55
+          : d.playerX < -DW.ROAD * 0.55;
+        if (onRamp) {
+          takeExit(ex);
+          return;
+        }
+      }
+    }
 
     // Traffic in absolute world MPH (same integrator as player)
     d.spawnTimer -= dt;
@@ -1375,11 +1441,6 @@
           }
         }
       }
-    }
-
-    if (d.z >= d.goal) {
-      arriveDestination();
-      return;
     }
 
     if (d.speed > 40) state.score += Math.floor(d.speed * dt * 0.2);
@@ -2767,6 +2828,108 @@
     }
   }
 
+  function drawRoadExit(ex, d) {
+    if (ex.taken) return;
+    const side = ex.side || 1;
+    // Ramp gore — asphalt peeling off the right/left shoulder
+    const zA = ex.startZ;
+    const zB = ex.z;
+    const zC = ex.endZ;
+    const roadEdge = side * DW.ROAD;
+    const rampOut = side * (DW.WALK + 0.35);
+
+    const segs = [
+      [zA, roadEdge * 0.85, roadEdge],
+      [zB, roadEdge, rampOut],
+      [zC, rampOut * 0.9, rampOut]
+    ];
+    for (let i = 0; i < segs.length - 1; i++) {
+      const [z0, xIn0, xOut0] = segs[i];
+      const [z1, xIn1, xOut1] = segs[i + 1];
+      const a = projectWorld(xIn0, 0, z0, d);
+      const b = projectWorld(xOut0, 0, z0, d);
+      const c = projectWorld(xOut1, 0, z1, d);
+      const e = projectWorld(xIn1, 0, z1, d);
+      if (a.relZ < 40 || a.relZ > 1100) continue;
+      ctx.fillStyle = i === 0 ? '#2a2a2e' : '#323238';
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.lineTo(e.x, e.y);
+      ctx.closePath();
+      ctx.fill();
+      // White edge line
+      ctx.strokeStyle = 'rgba(220,210,190,0.55)';
+      ctx.lineWidth = Math.max(1, 2 * a.scale);
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.stroke();
+    }
+
+    // Painted EXIT arrow on asphalt
+    const arrowZ = ex.z - 25;
+    const ax = side * (DW.ROAD * 0.72);
+    const tip = projectWorld(ax + side * 0.12, 0, arrowZ + 12, d);
+    const left = projectWorld(ax - side * 0.08, 0, arrowZ - 8, d);
+    const right = projectWorld(ax + side * 0.22, 0, arrowZ - 8, d);
+    if (tip.relZ > 50 && tip.relZ < 900) {
+      ctx.fillStyle = 'rgba(230,220,180,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(tip.x, tip.y);
+      ctx.lineTo(left.x, left.y);
+      ctx.lineTo(right.x, right.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Green highway gantry sign
+    const signZ = ex.z - 40;
+    const postX = side * (DW.CURB + 0.05);
+    const post = projectWorld(postX, 0, signZ, d);
+    const postTop = projectWorld(postX, 55, signZ, d);
+    if (post.relZ > 60 && post.relZ < 1000 && post.scale > 0.06) {
+      const s = post.scale;
+      ctx.fillStyle = '#3a3a40';
+      ctx.fillRect(post.x - 2 * s, postTop.y, 4 * s, post.y - postTop.y);
+      const bw = 72 * s;
+      const bh = 28 * s;
+      const bx = side > 0 ? post.x - bw + 4 * s : post.x - 4 * s;
+      const by = postTop.y + 2 * s;
+      ctx.fillStyle = '#1a5c36';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = 'rgba(240,240,240,0.7)';
+      ctx.lineWidth = Math.max(1, 1.5 * s);
+      ctx.strokeRect(bx, by, bw, bh);
+      ctx.fillStyle = '#f5f5f0';
+      ctx.font = `700 ${Math.max(8, 11 * s)}px "General Sans", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('EXIT', bx + bw / 2, by + bh * 0.38);
+      ctx.fillStyle = '#f0c400';
+      ctx.font = `700 ${Math.max(9, 13 * s)}px "General Sans", sans-serif`;
+      ctx.fillText(ex.name, bx + bw / 2, by + bh * 0.78);
+
+      // Side panel arrow
+      ctx.fillStyle = '#f5f5f0';
+      const aw = 10 * s;
+      const ah = 10 * s;
+      const ax0 = side > 0 ? bx + bw - 14 * s : bx + 4 * s;
+      ctx.beginPath();
+      if (side > 0) {
+        ctx.moveTo(ax0, by + bh / 2);
+        ctx.lineTo(ax0 - aw, by + bh / 2 - ah / 2);
+        ctx.lineTo(ax0 - aw, by + bh / 2 + ah / 2);
+      } else {
+        ctx.moveTo(ax0, by + bh / 2);
+        ctx.lineTo(ax0 + aw, by + bh / 2 - ah / 2);
+        ctx.lineTo(ax0 + aw, by + bh / 2 + ah / 2);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
   function drawStreetProp(pr, d) {
     if (pr.kind === 'crosswalk') {
       const pL = projectWorld(-DW.ROAD * 0.92, 0, pr.z, d);
@@ -3051,6 +3214,10 @@
     const props = [...d.props].sort((a, b) => b.z - a.z);
     for (const pr of props) drawStreetProp(pr, d);
 
+    // EXIT ramps + gantry signs
+    const exits = [...(d.exits || [])].sort((a, b) => b.z - a.z);
+    for (const ex of exits) drawRoadExit(ex, d);
+
     // Traffic on the road plane
     const cars = [...d.traffic].sort((a, b) => b.z - a.z);
     for (const car of cars) {
@@ -3086,10 +3253,18 @@
     // HUD
     ctx.fillStyle = 'rgba(20,22,28,0.8)';
     ctx.fillRect(0, 0, W, 36);
-    ctx.fillStyle = '#e8dcc0';
+    const upcoming = nextRoadExit(d);
+    ctx.fillStyle = d.approachingExit ? '#7dce7a' : '#e8dcc0';
     ctx.font = '700 12px "General Sans", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`${state.destination.name.toUpperCase()}`, 10, 22);
+    if (d.approachingExit) {
+      ctx.fillText(`TAKE EXIT → ${d.approachingExit.name}`, 10, 22);
+    } else if (upcoming) {
+      const mi = ((upcoming.z - d.z) / (DW.MPH_Z * 55)).toFixed(1);
+      ctx.fillText(`NEXT EXIT  ${upcoming.name}  ${mi} mi`, 10, 22);
+    } else {
+      ctx.fillText('OPEN ROAD', 10, 22);
+    }
     ctx.textAlign = 'right';
     ctx.fillStyle = '#d8d2c0';
     ctx.fillText(`${Math.round(d.speed)} MPH`, W - 10, 22);
@@ -3248,7 +3423,7 @@
       return;
     }
     if (state.mode === 'arrived') {
-      if (state.destination.href) {
+      if (state.destination && state.destination.href) {
         window.location.href = state.destination.href;
         return;
       }
@@ -3280,12 +3455,12 @@
   if (isGrill()) {
     overlayTitle.textContent = 'Clock out';
     overlayText.textContent = state.high > 0
-      ? `Cross the junker lanes to your car, then drive to the next stop. Best: ${state.high}`
-      : 'Dash from the grill to your hoopty across the street — then hit the gas for a night drive.';
+      ? `Dash to your car, then drive until EXIT GRILL or CASINO. Best: $${state.high}`
+      : 'Dash to your hoopty, hit the gas, and take EXIT GRILL or EXIT CASINO when you see the signs.';
     startBtn.textContent = 'Leave the Grill';
   } else if (state.high > 0) {
     overlayText.textContent =
-      `Leave the tables, cross Midtown to your car, then drive to the next stop. Best: ${state.high}`;
+      `Cross to your car, then drive until you take EXIT GRILL or CASINO. Best: $${state.high}`;
   }
   requestAnimationFrame(frame);
 })();
