@@ -191,11 +191,14 @@
       display: grid;
       gap: var(--space-2);
       padding: 8px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+      padding-left: 56px;
       background: linear-gradient(0deg, rgba(8,12,10,.82), rgba(8,12,10,.35) 70%, transparent);
       border: none;
       border-radius: 0;
       box-shadow: none;
+      pointer-events: none;
     }
+    .controls .btn { pointer-events: auto; }
     .control-row {
       display: flex;
       flex-wrap: wrap;
@@ -235,18 +238,74 @@
       border-color: rgba(239,187,73,.42);
     }
     .controls .btn:active { transform: translateY(0); }
-    .controls .btn.dir {
-      width: 56px;
-      min-width: 56px;
-      height: 52px;
+    .help-btn {
+      position: absolute;
+      left: max(10px, env(safe-area-inset-left, 0px));
+      bottom: max(10px, env(safe-area-inset-bottom, 0px));
+      z-index: 6;
+      width: 44px;
+      height: 44px;
       padding: 0;
+      border-radius: 50%;
+      font-family: var(--font-display);
       font-size: 1.25rem;
+      font-weight: 700;
       line-height: 1;
+      color: #f7ead0;
+      background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
+      border: 1px solid rgba(255,238,198,.28);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 3px 10px rgba(0,0,0,.35);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .help-btn[aria-expanded="true"] {
+      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
+      border-color: rgba(255,210,200,.35);
+    }
+    .help-panel {
+      position: absolute;
+      left: max(10px, env(safe-area-inset-left, 0px));
+      bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+      z-index: 6;
+      width: min(280px, calc(100vw - 20px));
+      padding: 12px 14px 14px;
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(18,28,24,.96), rgba(10,16,14,.98));
+      border: 1px solid rgba(238,194,97,.28);
+      box-shadow: 0 12px 32px rgba(0,0,0,.45);
+      display: grid;
+      gap: 10px;
+    }
+    .help-panel[hidden] { display: none; }
+    .help-panel .hint {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+      line-height: 1.4;
+      text-align: left;
+    }
+    .help-panel .btn.dir {
+      width: 52px;
+      min-width: 52px;
+      height: 48px;
+      padding: 0;
+      border-radius: 3px;
+      font-size: 1.15rem;
+      line-height: 1;
+      font-weight: 700;
+      color: #f7ead0;
+      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
+      border: 1px solid rgba(255,238,198,.22);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 2px 5px rgba(0,0,0,.24);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .dpad {
       display: grid;
-      grid-template-columns: repeat(3, 56px);
-      grid-template-rows: repeat(2, 52px);
+      grid-template-columns: repeat(3, 52px);
+      grid-template-rows: repeat(2, 48px);
       gap: var(--space-2);
       justify-content: center;
     }
@@ -256,7 +315,6 @@
     .dpad .right { grid-column: 3; grid-row: 2; }
     .dpad.drive-mode .up,
     .dpad.drive-mode .down { opacity: 0.35; pointer-events: none; }
-    .hint { display: none; }
     .lives-pips {
       display: flex;
       gap: 4px;
@@ -279,11 +337,13 @@
       .brand p { display: none; }
       .stat { min-width: 56px; padding: 4px 8px; }
       .controls .btn { min-height: 48px; }
-      .controls .btn.dir { width: 52px; min-width: 52px; height: 48px; }
+      .controls .btn.dir { width: 48px; min-width: 48px; height: 44px; }
       .dpad {
-        grid-template-columns: repeat(3, 52px);
-        grid-template-rows: repeat(2, 48px);
+        grid-template-columns: repeat(3, 48px);
+        grid-template-rows: repeat(2, 44px);
       }
+      .help-btn { width: 40px; height: 40px; font-size: 1.1rem; }
+      .help-panel { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
     }
   </style>
 </head>
@@ -327,6 +387,17 @@
           </div>
         </div>
 
+        <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel">?</button>
+        <div class="help-panel" id="helpPanel" hidden role="dialog" aria-label="Controls">
+          <p class="hint" id="hintText"></p>
+          <div class="dpad" id="dpad" aria-label="Direction pad">
+            <button class="btn dir up" type="button" data-dir="up" aria-label="Move up">▲</button>
+            <button class="btn dir left" type="button" data-dir="left" aria-label="Move left">◀</button>
+            <button class="btn dir down" type="button" data-dir="down" aria-label="Move down">▼</button>
+            <button class="btn dir right" type="button" data-dir="right" aria-label="Move right">▶</button>
+          </div>
+        </div>
+
         <div class="controls" aria-label="Game controls">
           <div class="control-row">
             <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
@@ -334,13 +405,6 @@
             <a class="btn subtle" href="burger.html">Grill</a>
             <a class="btn subtle" href="index.html">Tables</a>
           </div>
-          <div class="dpad" id="dpad" aria-label="Direction pad">
-            <button class="btn dir up" type="button" data-dir="up" aria-label="Move up">▲</button>
-            <button class="btn dir left" type="button" data-dir="left" aria-label="Move left">◀</button>
-            <button class="btn dir down" type="button" data-dir="down" aria-label="Move down">▼</button>
-            <button class="btn dir right" type="button" data-dir="right" aria-label="Move right">▶</button>
-          </div>
-          <p class="hint" id="hintText" hidden aria-hidden="true"></p>
         </div>
       </div>
     </main>
@@ -383,6 +447,18 @@
   const livesLabel = document.getElementById('livesLabel');
   const hintText = document.getElementById('hintText');
   const dpad = document.getElementById('dpad');
+  const helpBtn = document.getElementById('helpBtn');
+  const helpPanel = document.getElementById('helpPanel');
+
+  function setHelpOpen(open) {
+    helpPanel.hidden = !open;
+    helpBtn.setAttribute('aria-expanded', String(open));
+    helpBtn.setAttribute('aria-label', open ? 'Hide controls' : 'Show controls');
+  }
+
+  function toggleHelp() {
+    setHelpOpen(helpPanel.hidden);
+  }
 
   // Midtown crossing (full board)
   const ROW = {
@@ -1383,65 +1459,89 @@
     // Soft smash: launch the other car, chip HP + cash. Hard wreck only when requested / HP dies.
     const hard = !!opts.hard;
 
+    const isCop = !!(other && other.kind === 'police');
     if (other) {
       // Full spin-out + crunch — car launches skyward with heavy yaw/roll
       other.smashed = true;
       other.crush = 0.15;
       other.spinT = 0;
-      other.velX = dir * (4.2 + intensity * 5) + (Math.random() - 0.5);
-      other.yawVel = dir * (18 + intensity * 20) + (Math.random() - 0.5) * 8;
+      other.velX = dir * (4.8 + intensity * 5.5) + (Math.random() - 0.5);
+      other.yawVel = dir * (22 + intensity * 24) + (Math.random() - 0.5) * 8;
       other.yaw = dir * 0.9;
-      other.rollVel = dir * (11 + intensity * 13);
+      other.rollVel = dir * (14 + intensity * 15);
       other.roll = dir * 0.4;
-      other.flyVel = 22 + intensity * 22;
-      other.flyY = 6;
-      other.speed = Math.max(12, d.speed * 0.7 + 20 + Math.random() * 26);
+      other.flyVel = 28 + intensity * 26;
+      other.flyY = 8;
+      other.speed = Math.max(12, d.speed * 0.7 + 24 + Math.random() * 30);
       other.z += 8;
-      // Slow-mo beat + camera lunge so the launch reads big
-      d.slowMo = 0.45;
-      d.zoomPunch = 1;
+      // Slow-mo beat + camera lunge + flash so the launch reads huge
+      d.slowMo = 0.6;
+      d.zoomPunch = 1.5;
+      d.crashFlash = Math.max(d.crashFlash, 0.35);
       const hitP = projectWorld(other.x, 0, other.z, d);
+      // Explosion flash at the impact point
+      state.particles.push({
+        type: 'flash',
+        x: hitP.x, y: hitP.y - 14 * hitP.scale,
+        vx: 0, vy: 0,
+        life: 0.32, maxLife: 0.32,
+        size: 110 * Math.min(1.6, 0.7 + hitP.scale)
+      });
+      // Fireball puffs rolling up out of the hit
+      for (let i = 0; i < 6; i++) {
+        state.particles.push({
+          type: 'smoke',
+          x: hitP.x + (Math.random() - 0.5) * 20,
+          y: hitP.y - 10 * hitP.scale,
+          vx: (Math.random() - 0.5) * 60 + dir * 30,
+          vy: -40 - Math.random() * 70,
+          life: 0.35 + Math.random() * 0.35,
+          maxLife: 0.7,
+          size: 10 + Math.random() * 16,
+          color: i < 3 ? '#e8722a' : '#c4471e'
+        });
+      }
       // Body panels tearing off
-      for (let i = 0; i < 16 + intensity * 10; i++) {
+      for (let i = 0; i < 22 + intensity * 12; i++) {
         const ang = Math.random() * Math.PI * 2;
-        const sp = 80 + Math.random() * 220 * intensity;
+        const sp = 90 + Math.random() * 260 * intensity;
         state.particles.push({
           type: 'shard',
           x: hitP.x, y: hitP.y - 10 * hitP.scale,
-          vx: Math.cos(ang) * sp + dir * 110,
-          vy: Math.sin(ang) * sp - 90 - Math.random() * 170,
+          vx: Math.cos(ang) * sp + dir * 130,
+          vy: Math.sin(ang) * sp - 110 - Math.random() * 200,
           rot: Math.random() * Math.PI,
-          rotV: (Math.random() - 0.5) * 22,
-          life: 0.8 + Math.random() * 0.9,
-          maxLife: 1.6,
-          size: 5 + Math.random() * 13 * intensity,
+          rotV: (Math.random() - 0.5) * 26,
+          life: 0.8 + Math.random() * 1,
+          maxLife: 1.8,
+          size: 5 + Math.random() * 14 * intensity,
           color: Math.random() > 0.35 ? (other.color || '#4a5560') : '#2a2a30',
           sides: 3 + Math.floor(Math.random() * 2)
         });
       }
       // Spark fountain out of the impact point
-      for (let i = 0; i < 14; i++) {
-        const ang = -Math.PI * (0.15 + Math.random() * 0.7);
-        const sp = 160 + Math.random() * 320;
+      for (let i = 0; i < 20; i++) {
+        const ang = -Math.PI * (0.1 + Math.random() * 0.8);
+        const sp = 180 + Math.random() * 380;
         state.particles.push({
           type: 'spark',
           x: hitP.x, y: hitP.y - 8 * hitP.scale,
-          vx: Math.cos(ang) * sp + dir * 80,
+          vx: Math.cos(ang) * sp + dir * 90,
           vy: Math.sin(ang) * sp,
-          life: 0.25 + Math.random() * 0.35,
-          maxLife: 0.6,
+          life: 0.25 + Math.random() * 0.4,
+          maxLife: 0.65,
           color: Math.random() > 0.4 ? '#ffe08a' : '#ff9040'
         });
       }
-      // Floating cost tag
+      // Floating tag: cop hits pay a bounty, everyone else sends a bill
       state.particles.push({
         type: 'text',
-        text: '-$10  -5 HP',
+        text: isCop ? '+$50  -5 HP' : '-$10  -5 HP',
         x: hitP.x, y: hitP.y - 40 * hitP.scale,
         vx: 0, vy: -46,
-        life: 1.1, maxLife: 1.1,
-        size: 15,
-        color: '#ff6a5a'
+        life: 1.2, maxLife: 1.2,
+        size: isCop ? 17 : 15,
+        color: isCop ? '#7dce7a' : '#ff6a5a'
       });
     }
 
@@ -1457,16 +1557,26 @@
     d.roll = -dir * (hard ? 0.4 : 0.12);
     d.invuln = hard ? 1.4 : 0.85;
 
-    // Car smashes cost a flat $10 and 5 HP; hard wrecks (barrier) hit harder
+    // Car smashes cost a flat $10 and 5 HP — unless it's a cop, which pays $50.
+    // Hard wrecks (barrier) still hit harder.
     const dmg = hard ? 35 + Math.floor(Math.random() * 25) : 5;
-    const fine = hard ? 80 + Math.floor(Math.random() * 120) : 10;
     d.hp = Math.max(0, d.hp - dmg);
-    state.score = Math.max(0, state.score - fine);
+    if (isCop) {
+      state.score += 50;
+    } else {
+      const fine = hard ? 80 + Math.floor(Math.random() * 120) : 10;
+      state.score = Math.max(0, state.score - fine);
+    }
     beep(110, 0.08, 'sawtooth', 0.05);
     beep(70, 0.12, 'square', 0.04);
     if (other) {
       beep(200, 0.05, 'square', 0.045);
       beep(48, 0.2, 'sawtooth', 0.05);
+    }
+    if (isCop) {
+      // Cash-register chirp on the bounty
+      beep(880, 0.06, 'square', 0.04);
+      beep(1320, 0.09, 'square', 0.035);
     }
     updateHUD();
 
@@ -1592,11 +1702,11 @@
     // Long sweeping city bends — hold a heading for a while, ease slowly
     d.curveTimer -= dt;
     if (d.curveTimer <= 0) {
-      // Mostly straight blocks; rare gentle bend
-      d.targetCurve = Math.random() > 0.78
-        ? (Math.random() - 0.5) * 0.55
-        : (Math.random() - 0.5) * 0.12;
-      d.curveTimer = 6 + Math.random() * 8;
+      // Mostly straight blocks; rare, shallow bend
+      d.targetCurve = Math.random() > 0.86
+        ? (Math.random() - 0.5) * 0.34
+        : (Math.random() - 0.5) * 0.07;
+      d.curveTimer = 8 + Math.random() * 10;
     }
     d.curve += (d.targetCurve - d.curve) * Math.min(1, 0.22 * dt);
     d.hills = Math.sin(d.z * 0.0006) * 6 + Math.sin(d.z * 0.0015) * 2;
@@ -1730,7 +1840,10 @@
           const closing = d.speed - car.speed;
           if (closing > 6 || Math.abs(impactX) < car.halfW) {
             triggerDriveCrash(
-              car.kind === 'bus' ? 'Clipped a bus.' : car.kind === 'taxi' ? 'Cab got launched.' : 'Sent them flying.',
+              car.kind === 'police' ? 'NYPD launched. $50 bounty.'
+                : car.kind === 'bus' ? 'Clipped a bus.'
+                : car.kind === 'taxi' ? 'Cab got launched.'
+                : 'Sent them flying.',
               impactX,
               car
             );
@@ -1784,6 +1897,8 @@
         p.vx *= Math.pow(0.5, dt);
       } else if (p.type === 'text') {
         p.vy *= Math.pow(0.3, dt);
+      } else if (p.type === 'flash') {
+        // Stationary — just burns out
       } else {
         p.vy += 120 * dt;
       }
@@ -3109,12 +3224,6 @@
       ctx.fillStyle = blink ? '#3a7cff' : '#e74c3c';
       ctx.fillRect(w * 0.02, midY - roofH - 2 * s, w * 0.08, 3 * s);
     }
-    if (player) {
-      ctx.strokeStyle = '#efc84a';
-      ctx.lineWidth = Math.max(1.5, 2 * s);
-      ctx.strokeRect(-rearW * 0.9, rearY - h * 0.4, rearW * 1.8, h * 0.55);
-    }
-
     if (smashed || crush > 0.1) {
       ctx.strokeStyle = 'rgba(0,0,0,0.55)';
       ctx.lineWidth = 1.5 + crush;
@@ -3431,10 +3540,20 @@
         ctx.stroke();
       } else if (p.type === 'smoke') {
         ctx.globalAlpha = a * 0.35;
-        ctx.fillStyle = '#6a6a72';
+        ctx.fillStyle = p.color || '#6a6a72';
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size || 10, 0, Math.PI * 2);
         ctx.fill();
+      } else if (p.type === 'flash') {
+        // Expanding explosion glare
+        const r = (p.size || 90) * (1.3 - a * 0.9);
+        const g = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, r);
+        g.addColorStop(0, `rgba(255,235,180,${0.85 * a})`);
+        g.addColorStop(0.35, `rgba(255,160,60,${0.5 * a})`);
+        g.addColorStop(1, 'rgba(255,120,40,0)');
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = g;
+        ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
       } else if (p.type === 'text') {
         ctx.globalAlpha = Math.min(1, a * 1.6);
         ctx.font = `800 ${p.size || 15}px "General Sans", sans-serif`;
@@ -3751,9 +3870,21 @@
   };
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
-      if (state.mode === 'play' || state.mode === 'drive') togglePause();
-      else if (state.mode === 'pause') togglePause();
+    if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+      e.preventDefault();
+      toggleHelp();
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (!helpPanel.hidden) {
+        setHelpOpen(false);
+        return;
+      }
+      if (state.mode === 'play' || state.mode === 'drive' || state.mode === 'pause') togglePause();
+      return;
+    }
+    if (e.key === 'p' || e.key === 'P') {
+      if (state.mode === 'play' || state.mode === 'drive' || state.mode === 'pause') togglePause();
       return;
     }
     const dir = keyMap[e.key];
@@ -3845,6 +3976,16 @@
     state.muted = !state.muted;
     muteBtn.setAttribute('aria-pressed', String(state.muted));
     muteBtn.textContent = state.muted ? 'Muted' : 'Sound';
+  });
+
+  helpBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleHelp();
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (helpPanel.hidden) return;
+    if (helpPanel.contains(e.target) || helpBtn.contains(e.target)) return;
+    setHelpOpen(false);
   });
 
   startBtn.addEventListener('click', () => {
