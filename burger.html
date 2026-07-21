@@ -256,6 +256,50 @@
       border: 2px solid rgba(160,20,30,.35);
       box-shadow: 0 4px 0 rgba(120,16,30,.4);
     }
+    .help-btn {
+      position: absolute;
+      left: max(10px, env(safe-area-inset-left, 0px));
+      bottom: max(10px, env(safe-area-inset-bottom, 0px));
+      z-index: 6;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border-radius: 50%;
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1;
+      color: #fff7ef;
+      background: linear-gradient(180deg, #4a2228, #2a1014);
+      border: 2px solid rgba(246,239,228,.28);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 3px 0 rgba(60,8,12,.55);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .help-btn[aria-expanded="true"] {
+      background: linear-gradient(180deg, #f04048, #c8102e);
+      border-color: rgba(255,230,220,.45);
+    }
+    .help-panel {
+      position: absolute;
+      left: max(10px, env(safe-area-inset-left, 0px));
+      bottom: calc(58px + env(safe-area-inset-bottom, 0px));
+      z-index: 6;
+      width: min(300px, calc(100vw - 20px));
+      padding: 12px 14px 14px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(42,16,20,.97), rgba(20,8,10,.98));
+      border: 2px solid rgba(246,239,228,.22);
+      box-shadow: 0 12px 32px rgba(40,8,12,.5);
+      display: grid;
+      gap: 8px;
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+      line-height: 1.45;
+    }
+    .help-panel[hidden] { display: none; }
+    .help-panel strong { color: #fff7ef; font-weight: 800; }
     .controls {
       position: absolute;
       left: 0; right: 0; bottom: 0;
@@ -263,6 +307,7 @@
       display: grid;
       gap: var(--space-2);
       padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+      padding-left: 56px;
       background:
         linear-gradient(0deg, rgba(28,8,12,.94), rgba(28,8,12,.55) 55%, transparent),
         repeating-linear-gradient(90deg, #c8102e 0 14px, #f6efe4 14px 28px);
@@ -273,6 +318,7 @@
       border-radius: 0;
       box-shadow: none;
     }
+    body:not(.help-open) .controls .btn.ing .key { display: none; }
     .control-row {
       display: flex;
       flex-wrap: wrap;
@@ -417,11 +463,18 @@
           </div>
         </div>
 
+        <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel">?</button>
+        <div class="help-panel" id="helpPanel" hidden role="dialog" aria-label="Controls">
+          <div><strong>A / S / D / F</strong> — slam Patty, Cheese, Tomato, Bacon</div>
+          <div><strong>X</strong> — toss a ruined or gross burger</div>
+          <div>Match the ticket order, then the bun seals itself. Tap the ingredient buttons if you skip the keys.</div>
+        </div>
+
         <div class="controls" aria-label="Game controls">
           <div class="control-row">
             <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
             <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
-            <button class="btn primary" id="tossBtn" type="button" title="Trash this burger (X)">Toss · X</button>
+            <button class="btn primary" id="tossBtn" type="button" title="Trash this burger">Toss</button>
             <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
             <a class="btn subtle" href="index.html">Tables</a>
           </div>
@@ -496,7 +549,19 @@
   const billCanvas = document.getElementById('billCanvas');
   const billCtx = billCanvas.getContext('2d');
   const ingGrid = document.getElementById('ingGrid');
+  const helpBtn = document.getElementById('helpBtn');
+  const helpPanel = document.getElementById('helpPanel');
   const MAX_HEALTH = 100;
+
+  function setHelpOpen(open) {
+    helpPanel.hidden = !open;
+    helpBtn.setAttribute('aria-expanded', String(open));
+    helpBtn.setAttribute('aria-label', open ? 'Hide controls' : 'Show controls');
+    document.body.classList.toggle('help-open', open);
+  }
+  function toggleHelp() {
+    setHelpOpen(helpPanel.hidden);
+  }
 
   const LINE_Y = 290;
   const STATION_X = 260;
@@ -517,74 +582,74 @@
 
   const CUSTOMERS = [
     {
-      id: 'vito', name: 'Vito', title: 'the Thumb',
-      skin: '#e0b090', blush: '#e08a78', hair: '#2a1c14', hairStyle: 'slick', shirt: '#3a4a6a', accent: '#c0a060',
-      props: ['mustache', 'goldchain'], hurtChance: 0.7, dmg: [10, 16],
-      happy: ['Thatsa my boy.', 'I kiss the grill for this.', 'Nonna would weep.'],
-      pissed: ['You wanna sleep with the fries?', 'I know a dumpster.', 'Disrespect the meat?!']
+      id: 'pat', name: 'Pat', title: 'Guest',
+      skin: '#e0b090', blush: '#e08a78', hair: '#3a2a20', hairStyle: 'short', shirt: '#4a3038', accent: '#c8102e',
+      quirk: 'antenna', hurtChance: 0.55, dmg: [8, 14],
+      happy: ['Yes. The round is correct.', 'I have repaid the cow.', 'Soft won today.'],
+      pissed: ['This contains Thursday.', 'Return my silence.', 'Wrong temperature of no.']
     },
     {
-      id: 'june', name: 'June', title: 'PhD Chew',
-      skin: '#c68642', blush: '#d47868', hair: '#1a0e08', hairStyle: 'afro', shirt: '#6a3a5a', accent: '#e8b050',
-      props: ['glasses', 'earrings'], hurtChance: 0.45, dmg: [6, 12],
-      happy: ['Peer-reviewed delicious.', 'My thesis was wrong. This is right.', 'Tenure for the chef!'],
-      pissed: ['Methodologically unsound.', 'Cite your sources… in the trash.', 'I am writing a one-star abstract.']
+      id: 'sam', name: 'Sam', title: 'Regular',
+      skin: '#c68642', blush: '#d47868', hair: '#1a0e08', hairStyle: 'bob', shirt: '#3a3a48', accent: '#e8b050',
+      quirk: 'monobrow', hurtChance: 0.5, dmg: [7, 12],
+      happy: ['Mm. Horizontal.', 'My elbows approve.', 'It hummed correctly.'],
+      pissed: ['I will remember this in reverse.', 'The bun lied.', 'Put it back in the idea.']
     },
     {
-      id: 'rex', name: 'Rex', title: 'Sk8r Patty',
-      skin: '#f0c8a8', blush: '#f0a090', hair: '#8a3a18', hairStyle: 'spike', shirt: '#2a5a3a', accent: '#d0d0d0',
-      props: ['scar'], hurtChance: 0.6, dmg: [8, 14],
-      happy: ['Dude. DUDE.', 'That slapped harder than concrete.', 'Gnarly grease, bro.'],
-      pissed: ['Bogus build, man!', 'I ate better from a trash lid.', 'Kickflip this order into the sun.']
+      id: 'jo', name: 'Jo', title: 'Local',
+      skin: '#f0c8a8', blush: '#f0a090', hair: '#8a3a18', hairStyle: 'spike', shirt: '#2a4a3a', accent: '#d0d0d0',
+      quirk: 'dot', hurtChance: 0.6, dmg: [8, 13],
+      happy: ['Good shapes inside.', 'I left my shadow outside.', 'Cheese did a kindness.'],
+      pissed: ['My bones disagree.', 'This is a hallway food.', 'Please unmake it.']
     },
     {
-      id: 'mags', name: 'Mags', title: 'Drama Queen',
-      skin: '#dbb08a', blush: '#e09080', hair: '#4a2040', hairStyle: 'bob', shirt: '#8a3030', accent: '#f0d080',
-      props: ['lipstick', 'earrings'], hurtChance: 0.75, dmg: [9, 15],
-      happy: ['I am ASCENDING.', 'Call my agent. This burger is a role.', 'Standing ovation. Standing.'],
-      pissed: ['RUINED. Like my third marriage.', 'I will scream in three languages.', 'This is a hate crime against cheese.']
+      id: 'lee', name: 'Lee', title: 'Unit',
+      skin: '#dbb08a', blush: '#e09080', hair: '#4a3040', hairStyle: 'pony', shirt: '#6a3038', accent: '#f0d080',
+      quirk: 'square', hurtChance: 0.7, dmg: [9, 15],
+      happy: ['Accepted by mouth.', 'The napkin clapped.', 'I am briefly taller.'],
+      pissed: ['No stack of that.', 'It tasted like waiting.', 'I invoice the air.']
     },
     {
-      id: 'ken', name: 'Ken', title: 'Night Cop',
-      skin: '#8d5524', blush: '#c07060', hair: '#0e0a08', hairStyle: 'short', shirt: '#2a2a4a', accent: '#70a0d0',
-      props: ['mustache', 'badge'], hurtChance: 0.55, dmg: [8, 13],
-      happy: ['Off the record: perfect.', 'I am not crying. Grease in my eye.', 'You are free to go… eat more.'],
-      pissed: ['Step out of the kitchen.', 'That order is under arrest.', 'I have a taser and a napkin.']
+      id: 'kim', name: 'Kim', title: 'Neighbor',
+      skin: '#8d5524', blush: '#c07060', hair: '#0e0a08', hairStyle: 'short', shirt: '#2a2a3a', accent: '#70a0d0',
+      quirk: 'tinyhat', hurtChance: 0.55, dmg: [8, 13],
+      happy: ['Warm geometry.', 'I parked my thoughts.', 'Bacon said hello first.'],
+      pissed: ['Send a quieter burger.', 'This offends the floor.', 'Count me as elsewhere.']
     },
     {
-      id: 'bea', name: 'Bea', title: 'Yoga Menace',
-      skin: '#f5d0b0', blush: '#f0a8a0', hair: '#c8a040', hairStyle: 'pony', shirt: '#4a6a8a', accent: '#f0a0c0',
-      props: ['blush', 'earrings'], hurtChance: 0.4, dmg: [5, 11],
-      happy: ['My chakras just burped.', 'Namaste to the patty.', 'I feel aligned and greasy.'],
-      pissed: ['This blocked my third eye.', 'Unwholesome. Deeply.', 'I will downward-dog your tip jar.']
+      id: 'riley', name: 'Riley', title: 'Citizen',
+      skin: '#f5d0b0', blush: '#f0a8a0', hair: '#c8a040', hairStyle: 'messy', shirt: '#4a5a6a', accent: '#f0a0c0',
+      quirk: 'freckles', hurtChance: 0.4, dmg: [5, 11],
+      happy: ['I swallowed a small win.', 'The sesame winked.', 'Okay forever for a minute.'],
+      pissed: ['It blinked wrong.', 'Hold this apology.', 'I preferred the rumor.']
     },
     {
-      id: 'oz', name: 'Oz', title: 'Conspiracy Dad',
-      skin: '#d4a574', blush: '#d08070', hair: '#3a2a20', hairStyle: 'messy', shirt: '#5a3a20', accent: '#90c070',
-      props: ['stubble', 'glasses'], hurtChance: 0.5, dmg: [7, 12],
-      happy: ['They don’t want you to know about this flavor.', 'Paid in full. Watched by none.', 'Birds aren’t real. This burger is.'],
-      pissed: ['This was made by lizards.', 'I filmed this. For evidence.', 'The bun is a psy-op.']
+      id: 'casey', name: 'Casey', title: 'Soft One',
+      skin: '#d4a574', blush: '#d08070', hair: '#3a2a20', hairStyle: 'bob', shirt: '#5a4030', accent: '#90c070',
+      quirk: 'mustache', hurtChance: 0.5, dmg: [7, 12],
+      happy: ['Flavor parked here.', 'I owe the grill a wave.', 'Tomato behaved.'],
+      pissed: ['Undo the chew.', 'This is sideways nutrition.', 'I brought the wrong face.']
     },
     {
-      id: 'pix', name: 'Pix', title: 'Streamer',
-      skin: '#e8c4a0', blush: '#e89888', hair: '#e8e0d0', hairStyle: 'cap', shirt: '#c04040', accent: '#204080',
-      props: ['headset'], hurtChance: 0.65, dmg: [8, 14],
-      happy: ['CHAT IS THIS REAL', 'Subs for the chef PogChamp', 'Clipping that bite. Instantly.'],
-      pissed: ['L BUILD L BUILD', 'I’m raiding the health inspector.', 'Ratio’d by a tomato. Unreal.']
+      id: 'morgan', name: 'Morgan', title: 'Etc.',
+      skin: '#e8c4a0', blush: '#e89888', hair: '#e8e0d0', hairStyle: 'cap', shirt: '#a04040', accent: '#304080',
+      quirk: 'glasses', hurtChance: 0.65, dmg: [8, 14],
+      happy: ['Signal received in stomach.', 'Bun was honest.', 'I forgot my other complaint.'],
+      pissed: ['Error: meat.', 'Recalculate the bite.', 'My receipt is emotional.']
     },
     {
-      id: 'dolores', name: 'Dolores', title: 'Coupon Hawk',
-      skin: '#e8c8b0', blush: '#e0a090', hair: '#6a6a70', hairStyle: 'bob', shirt: '#5a6a4a', accent: '#d0b060',
-      props: ['glasses', 'purse'], hurtChance: 0.8, dmg: [6, 10],
-      happy: ['Worth every imaginary coupon.', 'I will tell the church group.', 'Stackable savings… on joy.'],
-      pissed: ['I want a manager AND a priest.', 'This voids my emotional warranty.', 'I clipped a coupon for dignity.']
+      id: 'taylor', name: 'Taylor', title: 'Probably',
+      skin: '#e8c8b0', blush: '#e0a090', hair: '#6a6a70', hairStyle: 'short', shirt: '#4a5a40', accent: '#d0b060',
+      quirk: 'scar', hurtChance: 0.75, dmg: [6, 11],
+      happy: ['Nice little stack event.', 'I am full of minor joy.', 'The plate understood me.'],
+      pissed: ['Cancel the concept.', 'I taste a hallway.', 'Bring me a different yesterday.']
     },
     {
-      id: 'tank', name: 'Tank', title: 'Gym Ghost',
-      skin: '#c9a07a', blush: '#d07868', hair: '#1a1410', hairStyle: 'short', shirt: '#303038', accent: '#e04040',
-      props: ['stubble', 'bandana'], hurtChance: 0.85, dmg: [12, 18],
-      happy: ['Macros immaculate.', 'Protein? Present.', 'I will skip leg day for this.'],
-      pissed: ['Bro. BRO.', 'That’s not gains. That’s grief.', 'Spot me… throwing this at you.']
+      id: 'alex', name: 'Alex', title: 'Human?',
+      skin: '#c9a07a', blush: '#d07868', hair: '#1a1410', hairStyle: 'spike', shirt: '#303038', accent: '#e04040',
+      quirk: 'antenna', hurtChance: 0.8, dmg: [11, 17],
+      happy: ['Protein happened.', 'I will tell the ceiling.', 'Grease is a language.'],
+      pissed: ['Bro is a feeling and I have it.', 'That was anti-food.', 'I leave through the wall.']
     }
   ];
 
@@ -1899,40 +1964,21 @@
   }
 
   function drawCustomerWindow() {
-    const wx = W - 108;
-    const wy = LINE_Y - 142;
-    // Cute 3D booth with red awning
+    const wx = W - 100;
+    const wy = LINE_Y - 130;
     ctx.fillStyle = '#2a1418';
-    roundRect(wx, wy + 18, 104, 168, 14);
+    roundRect(wx, wy, 96, 160, 10);
     ctx.fill();
-    // Depth side
-    ctx.fillStyle = '#1a0c10';
-    ctx.beginPath();
-    ctx.moveTo(wx + 104, wy + 24);
-    ctx.lineTo(W, wy + 34);
-    ctx.lineTo(W, wy + 186);
-    ctx.lineTo(wx + 104, wy + 186);
-    ctx.closePath();
+    ctx.fillStyle = '#f0e4d4';
+    roundRect(wx + 6, wy + 22, 84, 130, 8);
     ctx.fill();
-    // Cream interior
-    const ig = ctx.createLinearGradient(wx, 0, W, 0);
-    ig.addColorStop(0, '#fff4ea');
-    ig.addColorStop(1, '#e8d4c4');
-    ctx.fillStyle = ig;
-    roundRect(wx + 8, wy + 36, 88, 140, 12);
-    ctx.fill();
-    // Red striped awning
     ctx.fillStyle = '#c8102e';
-    roundRect(wx - 4, wy + 8, 112, 28, 8);
+    roundRect(wx, wy, 96, 20, 8);
     ctx.fill();
-    ctx.fillStyle = '#f6efe4';
-    for (let i = 0; i < 6; i++) {
-      ctx.fillRect(wx + 4 + i * 18, wy + 10, 9, 24);
-    }
     ctx.fillStyle = '#fff8f0';
     ctx.font = '800 10px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('PICKUP', wx + 52, wy + 27);
+    ctx.fillText('PICKUP', wx + 48, wy + 14);
 
     if (!state.customer) state.customer = pickCustomer();
     drawCustomer(state.customer);
@@ -1948,26 +1994,25 @@
     ctx.save();
     ctx.translate(lean, 0);
 
-    // Chibi body
+    // Simple body
     ctx.fillStyle = c.shirt;
-    roundRect(cx - 20, cy - 14, 40, 46, 14);
+    roundRect(cx - 18, cy - 12, 36, 42, 10);
     ctx.fill();
     ctx.fillStyle = c.accent;
-    roundRect(cx - 5, cy - 14, 10, 34, 4);
-    ctx.fill();
+    ctx.fillRect(cx - 4, cy - 12, 8, 30);
 
     // Arms
     ctx.strokeStyle = c.skin;
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 7;
     ctx.lineCap = 'round';
     const armUp = (c.mood === 'happy' || c.mood === 'eating') ? -0.9 * c.arm : c.mood === 'pissed' ? -0.5 : 0.15;
     ctx.beginPath();
-    ctx.moveTo(cx - 16, cy - 4);
-    ctx.quadraticCurveTo(cx - 32, cy + armUp * 30, cx - 26, cy + 12 + armUp * 18);
+    ctx.moveTo(cx - 14, cy - 2);
+    ctx.quadraticCurveTo(cx - 28, cy + armUp * 28, cx - 24, cy + 12 + armUp * 16);
     ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(cx + 16, cy - 4);
-    ctx.quadraticCurveTo(cx + 32, cy + 2 + armUp * 28, cx + 28, cy + 10 + armUp * 16);
+    ctx.moveTo(cx + 14, cy - 2);
+    ctx.quadraticCurveTo(cx + 28, cy + 2 + armUp * 26, cx + 24, cy + 10 + armUp * 14);
     ctx.stroke();
 
     // Held burger (before the chomp finishes / while raging)
@@ -1997,25 +2042,12 @@
       ctx.restore();
     }
 
-    // Neck
+    // Neck + head
     ctx.fillStyle = c.skin;
-    roundRect(cx - 6, cy - 24, 12, 12, 4);
-    ctx.fill();
-
-    // Bigger cute head
-    const headY = cy - 50;
-    ctx.fillStyle = 'rgba(40,10,14,0.15)';
+    ctx.fillRect(cx - 5, cy - 22, 10, 10);
+    const headY = cy - 48;
     ctx.beginPath();
-    ctx.ellipse(cx + 1, headY + 3, 23, 25, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = c.skin;
-    ctx.beginPath();
-    ctx.ellipse(cx, headY, 22, 24, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Soft cheek highlights
-    ctx.fillStyle = 'rgba(255,255,255,0.22)';
-    ctx.beginPath();
-    ctx.ellipse(cx - 8, headY - 6, 7, 4, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(cx, headY, 20, 22, 0, 0, Math.PI * 2);
     ctx.fill();
 
     drawHair(c, cx, headY, c.mood);
@@ -2023,22 +2055,21 @@
     // Ears
     ctx.fillStyle = c.skin;
     ctx.beginPath();
-    ctx.ellipse(cx - 20, headY + 2, 4, 6, 0, 0, Math.PI * 2);
-    ctx.ellipse(cx + 20, headY + 2, 4, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 18, headY + 2, 3.5, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 18, headY + 2, 3.5, 5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Face flush when pissed / happy
     if (c.mood === 'pissed') {
-      ctx.fillStyle = 'rgba(220,40,40,0.35)';
+      ctx.fillStyle = 'rgba(220,40,40,0.28)';
       ctx.beginPath();
-      ctx.ellipse(cx, headY + 4, 18, 18, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, headY + 4, 16, 16, 0, 0, Math.PI * 2);
       ctx.fill();
     } else if (c.mood === 'happy' || c.mood === 'eating') {
       ctx.fillStyle = c.blush;
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha = 0.4;
       ctx.beginPath();
-      ctx.ellipse(cx - 12, headY + 6, 5, 3, 0, 0, Math.PI * 2);
-      ctx.ellipse(cx + 12, headY + 6, 5, 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx - 11, headY + 6, 4, 2.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 11, headY + 6, 4, 2.5, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     }
@@ -2153,8 +2184,7 @@
       ctx.stroke();
     }
 
-    // Character props
-    drawCustomerProps(c, cx, headY, cy);
+    drawOddQuirk(c, cx, headY);
 
     // Steam plumes when pissed
     if (c.mood === 'pissed' && c.steam > 0) {
@@ -2189,40 +2219,73 @@
       drawSpeechBubble(cx - 58, headY - 48, c.line, c.mood === 'pissed' ? '#3a1518' : '#1a2820', c.lineLife);
     }
 
-    // Cute name tag
+    // Simple name + odd title
     ctx.fillStyle = '#c8102e';
-    roundRect(cx - 38, cy + 28, 76, 24, 10);
+    roundRect(cx - 34, cy + 30, 68, 22, 8);
     ctx.fill();
     ctx.fillStyle = '#fff8f0';
-    ctx.font = '700 10px Fredoka, Nunito, sans-serif';
+    ctx.font = '700 11px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(c.name.toUpperCase(), cx, cy + 39);
-    ctx.fillStyle = c.mood === 'pissed' ? '#ffd0d4' : c.mood === 'happy' || c.mood === 'eating' ? '#d8ffe0' : '#ffe8d8';
+    ctx.fillText(c.name, cx, cy + 40);
+    ctx.fillStyle = '#ffd8d0';
     ctx.font = '700 8px Nunito, sans-serif';
-    ctx.fillText(c.title, cx, cy + 48);
+    ctx.fillText(c.title, cx, cy + 49);
 
     ctx.restore();
   }
 
-  function drawCustomerProps(c, cx, headY, cy) {
-    const props = c.props || [];
-    if (props.includes('mustache')) {
+  function drawOddQuirk(c, cx, headY) {
+    const q = c.quirk;
+    if (q === 'antenna') {
+      ctx.strokeStyle = '#8a9098';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + 6, headY - 20);
+      ctx.lineTo(cx + 10, headY - 34);
+      ctx.stroke();
+      ctx.fillStyle = c.accent;
+      ctx.beginPath();
+      ctx.arc(cx + 10, headY - 36, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (q === 'monobrow') {
       ctx.strokeStyle = c.hair;
-      ctx.lineWidth = 2.2;
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, headY - 6);
+      ctx.lineTo(cx + 12, headY - 6);
+      ctx.stroke();
+    } else if (q === 'dot') {
+      ctx.fillStyle = '#2a1810';
+      ctx.beginPath();
+      ctx.arc(cx, headY - 8, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (q === 'square') {
+      ctx.strokeStyle = '#1a120c';
+      ctx.lineWidth = 1.8;
+      ctx.strokeRect(cx - 12, headY - 2, 8, 8);
+      ctx.strokeRect(cx + 4, headY - 2, 8, 8);
+    } else if (q === 'tinyhat') {
+      ctx.fillStyle = c.accent;
+      roundRect(cx - 10, headY - 28, 20, 8, 2);
+      ctx.fill();
+      ctx.fillRect(cx - 6, headY - 34, 12, 8);
+    } else if (q === 'freckles') {
+      ctx.fillStyle = 'rgba(120,60,40,0.45)';
+      for (const [fx, fy] of [[-8, 6], [-4, 8], [6, 5], [10, 7], [0, 9]]) {
+        ctx.beginPath();
+        ctx.arc(cx + fx, headY + fy, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (q === 'mustache') {
+      ctx.strokeStyle = c.hair;
+      ctx.lineWidth = 2.4;
       ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(cx - 8, headY + 8);
-      ctx.quadraticCurveTo(cx - 3, headY + 12, cx, headY + 9);
-      ctx.quadraticCurveTo(cx + 3, headY + 12, cx + 8, headY + 8);
+      ctx.quadraticCurveTo(cx, headY + 12, cx + 8, headY + 8);
       ctx.stroke();
-    }
-    if (props.includes('stubble')) {
-      ctx.fillStyle = 'rgba(40,30,25,0.25)';
-      ctx.beginPath();
-      ctx.ellipse(cx, headY + 12, 12, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    if (props.includes('glasses')) {
+    } else if (q === 'glasses') {
       ctx.strokeStyle = '#2a2a2a';
       ctx.lineWidth = 1.8;
       ctx.beginPath();
@@ -2231,91 +2294,12 @@
       ctx.moveTo(cx - 1, headY + 1);
       ctx.lineTo(cx + 1, headY + 1);
       ctx.stroke();
-    }
-    if (props.includes('earrings')) {
-      ctx.fillStyle = c.accent;
-      ctx.beginPath();
-      ctx.arc(cx - 20, headY + 8, 2.2, 0, Math.PI * 2);
-      ctx.arc(cx + 20, headY + 8, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    if (props.includes('goldchain')) {
-      ctx.strokeStyle = '#d0a23a';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx, cy - 6, 10, 0.2, Math.PI - 0.2);
-      ctx.stroke();
-      ctx.fillStyle = '#efbb49';
-      ctx.beginPath();
-      ctx.moveTo(cx, cy + 2);
-      ctx.lineTo(cx - 4, cy + 8);
-      ctx.lineTo(cx + 4, cy + 8);
-      ctx.closePath();
-      ctx.fill();
-    }
-    if (props.includes('badge')) {
-      ctx.fillStyle = '#c0c8d0';
-      ctx.beginPath();
-      ctx.moveTo(cx + 12, cy - 10);
-      ctx.lineTo(cx + 18, cy - 6);
-      ctx.lineTo(cx + 16, cy + 2);
-      ctx.lineTo(cx + 8, cy + 2);
-      ctx.lineTo(cx + 6, cy - 6);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#4050a0';
-      ctx.beginPath();
-      ctx.arc(cx + 12, cy - 3, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    if (props.includes('headset')) {
-      ctx.strokeStyle = '#2a2a30';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(cx, headY - 4, 18, Math.PI * 1.1, Math.PI * 1.9);
-      ctx.stroke();
-      ctx.fillStyle = '#303040';
-      ctx.beginPath();
-      ctx.ellipse(cx - 20, headY + 2, 5, 8, 0, 0, Math.PI * 2);
-      ctx.ellipse(cx + 20, headY + 2, 5, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = c.accent;
-      ctx.fillRect(cx + 16, headY + 8, 3, 10);
-    }
-    if (props.includes('scar')) {
-      ctx.strokeStyle = 'rgba(140,60,50,0.7)';
+    } else if (q === 'scar') {
+      ctx.strokeStyle = 'rgba(140,60,50,0.65)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(cx + 6, headY - 4);
       ctx.lineTo(cx + 12, headY + 6);
-      ctx.stroke();
-    }
-    if (props.includes('lipstick') && (c.mood === 'idle' || c.mood === 'eager' || c.mood === 'happy')) {
-      ctx.strokeStyle = '#c04050';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(cx, headY + 12, 5, 0.15, Math.PI - 0.15);
-      ctx.stroke();
-    }
-    if (props.includes('bandana')) {
-      ctx.fillStyle = '#c04040';
-      ctx.beginPath();
-      ctx.ellipse(cx, headY - 12, 18, 8, 0, Math.PI, 0);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx + 14, headY - 10);
-      ctx.lineTo(cx + 24, headY - 4);
-      ctx.lineTo(cx + 16, headY - 6);
-      ctx.fill();
-    }
-    if (props.includes('purse')) {
-      ctx.fillStyle = '#5a4030';
-      roundRect(cx + 22, cy + 4, 14, 16, 3);
-      ctx.fill();
-      ctx.strokeStyle = '#c0a060';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(cx + 29, cy + 4, 5, Math.PI, 0);
       ctx.stroke();
     }
   }
@@ -2370,54 +2354,31 @@
     ctx.fillRect(s.x - 4, s.y - 40, 8, 36);
   }
 
-  function burgerDepth(x) {
-    // Near station = larger; toward pickup = slightly smaller (3D depth)
-    const t = Math.max(0, Math.min(1, x / (W - 40)));
-    return 1.12 - t * 0.28;
-  }
-
-  function burgerGroundY(x) {
-    // Conveyor rises slightly toward the back-right pickup
-    return LINE_Y - 6 + (x / W) * -10;
-  }
-
   function drawBurger(b) {
     const bounce = b.bounce > 0 ? Math.sin(b.bounce * 28) * 5 : 0;
     const squash = b.squash > 0 ? b.squash / 0.35 : 0;
-    const scale = burgerDepth(b.x);
     const cx = b.x + BURGER_W / 2;
-    const gy = burgerGroundY(b.x);
-    let y = gy - 10 * scale + bounce;
-
-    ctx.save();
-    ctx.translate(cx, gy);
-    ctx.scale(scale, scale * 0.92);
-    ctx.translate(-cx, -gy);
+    let y = LINE_Y - 8 + bounce;
 
     if (b.grease > 0) {
       ctx.fillStyle = `rgba(90,50,10,${0.15 + b.grease * 0.25})`;
       ctx.beginPath();
-      ctx.ellipse(cx, gy + 14, 30 + b.grease * 16, 7 + b.grease * 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, LINE_Y + 12, 28 + b.grease * 14, 6 + b.grease * 2, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Soft plate with thickness
-    ctx.fillStyle = 'rgba(40,20,20,0.3)';
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
     ctx.beginPath();
-    ctx.ellipse(cx + 2, gy + 14, 36, 9, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, LINE_Y + 10, 34, 7, 0, 0, Math.PI * 2);
     ctx.fill();
-    const plate = ctx.createRadialGradient(cx - 8, gy + 4, 4, cx, gy + 10, 40);
-    plate.addColorStop(0, '#fffaf2');
-    plate.addColorStop(0.7, '#efe0d0');
-    plate.addColorStop(1, '#d8c4b0');
-    ctx.fillStyle = plate;
+    ctx.fillStyle = '#f2e8dc';
     ctx.beginPath();
-    ctx.ellipse(cx, gy + 10, 38, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, LINE_Y + 8, 36, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = b.color;
-    ctx.lineWidth = 3.5;
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.ellipse(cx, gy + 10, 40, 11, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, LINE_Y + 8, 38, 9, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     drawBottomBun(cx, y, 1, squash);
@@ -2428,7 +2389,7 @@
       const isGross = typeof layer === 'object' && layer.gross;
       y -= layerGap(id) * (1 - squash * 0.15);
       const layerSquash = i === b.stack.length - 1 ? squash : squash * 0.4;
-      drawIngredientLayer(id, cx, y, 1.05, { squash: layerSquash, gross: isGross });
+      drawIngredientLayer(id, cx, y, 1, { squash: layerSquash, gross: isGross });
     }
 
     const hasCheese = countOf(b.stack, 'cheese') > 0;
@@ -2436,30 +2397,28 @@
     if (hasCheese || hasTomato || b.grease > 0.3 || b.tainted) {
       const dripCol = b.tainted ? '#6a8a30' : hasTomato ? '#d13a32' : '#e8a830';
       ctx.fillStyle = dripCol;
-      const dx = cx + 18;
       ctx.beginPath();
-      ctx.ellipse(dx, gy - 4 + Math.sin(b.x * 0.08) * 2, 2.5, 5, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 18, LINE_Y - 4 + Math.sin(b.x * 0.08) * 2, 2.5, 5, 0, 0, Math.PI * 2);
       ctx.fill();
     }
 
     if (b.tainted) {
-      ctx.fillStyle = 'rgba(100,140,40,0.28)';
-      roundRect(cx - 34, gy - 86, 68, 78, 10);
+      ctx.fillStyle = 'rgba(100,140,40,0.25)';
+      roundRect(b.x + 8, LINE_Y - 78, BURGER_W - 16, 72, 8);
       ctx.fill();
       ctx.fillStyle = '#5a7020';
       ctx.font = '800 10px Fredoka, Nunito, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('GROSS', cx, gy - 76);
+      ctx.fillText('GROSS', cx, LINE_Y - 68);
     } else if (b.ruined) {
-      ctx.fillStyle = 'rgba(227,28,35,0.22)';
-      roundRect(cx - 34, gy - 86, 68, 78, 10);
+      ctx.fillStyle = 'rgba(227,28,35,0.2)';
+      roundRect(b.x + 8, LINE_Y - 78, BURGER_W - 16, 72, 8);
       ctx.fill();
     } else if (b.done) {
-      ctx.fillStyle = 'rgba(80,180,100,0.18)';
-      roundRect(cx - 34, gy - 86, 68, 78, 10);
+      ctx.fillStyle = 'rgba(80,180,100,0.16)';
+      roundRect(b.x + 8, LINE_Y - 78, BURGER_W - 16, 72, 8);
       ctx.fill();
     }
-    ctx.restore();
   }
 
   function drawTicket(ticket) {
@@ -2497,48 +2456,28 @@
     ctx.save();
     ctx.translate(0, sway);
 
-    // Hanging clip
-    ctx.fillStyle = '#8a9098';
-    roundRect(x + tw / 2 - 10, y, 20, 12, 3);
-    ctx.fill();
     ctx.fillStyle = '#c8102e';
     ctx.beginPath();
-    ctx.arc(x + tw / 2, y + 4, 4, 0, Math.PI * 2);
+    ctx.arc(x + tw / 2, y + 6, 5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Soft paper shadow (3D hang)
-    ctx.fillStyle = 'rgba(40,10,14,0.28)';
-    roundRect(x + 4, y + 18, tw, th, 12);
-    ctx.fill();
-
-    // Kraft bag / pad style ticket
-    const paper = ctx.createLinearGradient(x, y, x, y + th);
-    paper.addColorStop(0, '#fffaf2');
-    paper.addColorStop(1, '#f0e4d4');
-    ctx.fillStyle = paper;
-    roundRect(x, y + 14, tw, th, 12);
+    ctx.fillStyle = '#fff8f0';
+    roundRect(x, y + 12, tw, th, 10);
     ctx.fill();
     ctx.strokeStyle = '#c8102e';
-    ctx.lineWidth = 3;
-    roundRect(x, y + 14, tw, th, 12);
+    ctx.lineWidth = 2.5;
+    roundRect(x, y + 12, tw, th, 10);
     ctx.stroke();
-
-    // Red brand stamp
-    ctx.fillStyle = '#c8102e';
-    roundRect(x + 12, y + 22, 70, 18, 6);
-    ctx.fill();
-    ctx.fillStyle = '#fff8f0';
-    ctx.font = '800 10px Fredoka, Nunito, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('ORDER UP', x + 47, y + 35);
+    ctx.fillStyle = ticket.color;
+    ctx.fillRect(x, y + 12, 8, th);
 
     ctx.fillStyle = '#2a1410';
     ctx.font = '700 20px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(ticket.recipe.name, x + 92, y + 38);
+    ctx.fillText(ticket.recipe.name, x + 20, y + 38);
     ctx.fillStyle = '#8a6a60';
     ctx.font = '800 11px Nunito, sans-serif';
-    ctx.fillText('ANY ORDER  ·  TOSS GROSS WITH X', x + 92, y + 54);
+    ctx.fillText('ANY ORDER  ·  TOSS GROSS WITH X', x + 20, y + 54);
 
     rows.forEach((row, i) => {
       const ry = y + 68 + i * rowH;
@@ -2576,7 +2515,11 @@
       ctx.fillText(ing.name, x + 106, ry + 14);
       ctx.fillStyle = row.gross ? '#6a8030' : '#c8102e';
       ctx.font = '800 12px Nunito, sans-serif';
-      ctx.fillText(row.gross ? 'EWW — TOSS IT' : `HIT  ${ing.key.toUpperCase()}`, x + 106, ry + 30);
+      const helpOpen = document.body.classList.contains('help-open');
+      ctx.fillText(
+        row.gross ? 'EWW — TOSS IT' : (helpOpen ? `HIT  ${ing.key.toUpperCase()}` : 'NEXT'),
+        x + 106, ry + 30
+      );
     });
 
     const left = stack.length - have.filter(l => layerId(l) !== 'top').length;
@@ -2609,181 +2552,56 @@
   }
 
   function drawKitchenScene() {
-    // Warm room wash
-    const room = ctx.createLinearGradient(0, 0, 0, H);
-    room.addColorStop(0, '#5a3038');
-    room.addColorStop(0.35, '#3a1c22');
-    room.addColorStop(1, '#1a0c10');
-    ctx.fillStyle = room;
+    // Flat warm room
+    ctx.fillStyle = '#3a1c22';
     ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#4a282e';
+    ctx.fillRect(0, 0, W, 70);
 
-    // Back wall checkers (perspective band)
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(0, 40);
-    ctx.lineTo(W, 55);
-    ctx.lineTo(W, 210);
-    ctx.lineTo(0, 230);
-    ctx.closePath();
-    ctx.clip();
-    drawCheckeredWall(-20, 40, W + 20, 240, 26);
-    ctx.fillStyle = 'rgba(40,10,14,0.28)';
-    ctx.fillRect(0, 40, W, 200);
-    ctx.restore();
+    // One simple checker strip on the wall
+    drawCheckeredWall(0, 70, W, 130, 28);
+    ctx.fillStyle = 'rgba(40,10,14,0.2)';
+    ctx.fillRect(0, 70, W, 60);
 
-    // Ceiling strip + cute hanging lights
-    ctx.fillStyle = '#2a1418';
-    ctx.fillRect(0, 0, W, 48);
-    for (const lx of [120, 260, 400]) {
-      ctx.strokeStyle = '#8a9098';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(lx, 20);
-      ctx.lineTo(lx, 58);
-      ctx.stroke();
-      const glow = ctx.createRadialGradient(lx, 78, 2, lx, 90, 55);
-      glow.addColorStop(0, 'rgba(255,210,140,0.45)');
-      glow.addColorStop(1, 'rgba(255,180,80,0)');
+    // Soft warm light blobs (minimal)
+    for (const lx of [160, 340]) {
+      const glow = ctx.createRadialGradient(lx, 200, 4, lx, 230, 60);
+      glow.addColorStop(0, 'rgba(255,180,100,0.16)');
+      glow.addColorStop(1, 'rgba(255,180,100,0)');
       ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.ellipse(lx, 90, 55, 28, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fff0c8';
-      ctx.beginPath();
-      ctx.ellipse(lx, 64, 14, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#c8102e';
-      roundRect(lx - 10, 56, 20, 8, 3);
-      ctx.fill();
+      ctx.fillRect(lx - 60, 180, 120, 80);
     }
 
-    // Brand sign on the left wall (stays clear of order ticket)
-    ctx.fillStyle = '#111';
-    roundRect(10, 58, 118, 52, 12);
-    ctx.fill();
-    ctx.strokeStyle = '#c8102e';
-    ctx.lineWidth = 3;
-    roundRect(10, 58, 118, 52, 12);
-    ctx.stroke();
-    ctx.fillStyle = '#c8102e';
-    ctx.fillRect(18, 66, 102, 3);
-    ctx.fillStyle = '#f6efe4';
-    ctx.font = '700 11px Fredoka, Nunito, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('NIGHT SHIFT', 69, 88);
-    ctx.fillText('GRILL', 69, 102);
+    // Solid floor + counter
+    ctx.fillStyle = '#241014';
+    ctx.fillRect(0, LINE_Y + 18, W, H - LINE_Y - 18);
+    ctx.fillStyle = '#b0b8c0';
+    ctx.fillRect(0, LINE_Y + 18, W, 12);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(0, LINE_Y + 18, W, 3);
 
-    // Perspective floor (trapezoid checkers)
-    const floorTop = LINE_Y + 8;
+    // Simple conveyor belt
+    ctx.fillStyle = '#2a2e34';
+    roundRect(10, LINE_Y - 14, W - 108, 38, 6);
+    ctx.fill();
+    ctx.fillStyle = '#1a1e24';
+    roundRect(16, LINE_Y - 8, W - 120, 26, 4);
+    ctx.fill();
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(0, floorTop);
-    ctx.lineTo(W, floorTop - 12);
-    ctx.lineTo(W, H);
-    ctx.lineTo(0, H);
-    ctx.closePath();
+    roundRect(16, LINE_Y - 8, W - 120, 26, 4);
     ctx.clip();
-    for (let r = 0; r < 12; r++) {
-      for (let c = -2; c < 18; c++) {
-        const s = 34;
-        ctx.fillStyle = ((r + c) % 2 === 0) ? '#a01020' : '#ebe0d2';
-        ctx.fillRect(c * s - (r * 4), floorTop + r * (s * 0.55), s, s * 0.55 + 1);
-      }
-    }
-    ctx.fillStyle = 'rgba(20,6,8,0.35)';
-    ctx.fillRect(0, floorTop, W, H - floorTop);
-    ctx.restore();
-
-    // Stainless counter edge (3D slab under belt)
-    const cy = LINE_Y + 22;
-    ctx.fillStyle = '#9aa2aa';
-    ctx.beginPath();
-    ctx.moveTo(0, cy);
-    ctx.lineTo(W, cy - 10);
-    ctx.lineTo(W, cy + 28);
-    ctx.lineTo(0, cy + 38);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = '#c5ccd4';
-    ctx.beginPath();
-    ctx.moveTo(0, cy);
-    ctx.lineTo(W, cy - 10);
-    ctx.lineTo(W, cy + 4);
-    ctx.lineTo(0, cy + 14);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.fillRect(0, cy + 2, W, 3);
-
-    // Little peanut piles (cute Five Guys nod)
-    for (const [px, py] of [[36, cy + 18], [70, cy + 22], [W - 150, cy + 12]]) {
-      ctx.fillStyle = '#d4a574';
-      for (let i = 0; i < 5; i++) {
-        ctx.beginPath();
-        ctx.ellipse(px + i * 5, py + (i % 2) * 2, 4, 2.6, 0.3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // 3D perspective conveyor (trapezoid belt)
-    ctx.fillStyle = '#3a4048';
-    ctx.beginPath();
-    ctx.moveTo(12, LINE_Y + 18);
-    ctx.lineTo(W - 100, LINE_Y + 4);
-    ctx.lineTo(W - 108, LINE_Y - 28);
-    ctx.lineTo(20, LINE_Y - 10);
-    ctx.closePath();
-    ctx.fill();
-    // Belt face
-    const belt = ctx.createLinearGradient(0, LINE_Y - 20, 0, LINE_Y + 20);
-    belt.addColorStop(0, '#2a2e34');
-    belt.addColorStop(0.5, '#1a1e24');
-    belt.addColorStop(1, '#12161a');
-    ctx.fillStyle = belt;
-    ctx.beginPath();
-    ctx.moveTo(24, LINE_Y + 12);
-    ctx.lineTo(W - 106, LINE_Y - 2);
-    ctx.lineTo(W - 112, LINE_Y - 22);
-    ctx.lineTo(28, LINE_Y - 6);
-    ctx.closePath();
-    ctx.fill();
-    // Moving stripes
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(24, LINE_Y + 12);
-    ctx.lineTo(W - 106, LINE_Y - 2);
-    ctx.lineTo(W - 112, LINE_Y - 22);
-    ctx.lineTo(28, LINE_Y - 6);
-    ctx.closePath();
-    ctx.clip();
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-    ctx.lineWidth = 10;
-    for (let x = -60 + state.beltOffset; x < W; x += 36) {
-      ctx.beginPath();
-      ctx.moveTo(x, LINE_Y + 20);
-      ctx.lineTo(x + 40, LINE_Y - 30);
-      ctx.stroke();
-    }
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    for (let x = -40 + state.beltOffset; x < W; x += 36) ctx.fillRect(x, LINE_Y - 8, 14, 26);
     for (const d of state.drips) {
       ctx.globalAlpha = Math.min(1, d.life * 0.5);
       ctx.fillStyle = d.color;
       ctx.beginPath();
-      ctx.ellipse(d.x, d.y - 4, d.w / 2, d.h / 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(d.x, d.y, d.w / 2, d.h / 2, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
     ctx.restore();
-
-    // Steel rails
-    ctx.strokeStyle = '#d0d6dc';
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(22, LINE_Y - 8);
-    ctx.lineTo(W - 110, LINE_Y - 24);
-    ctx.moveTo(18, LINE_Y + 14);
-    ctx.lineTo(W - 104, LINE_Y);
-    ctx.stroke();
   }
 
   function draw() {
@@ -2793,39 +2611,28 @@
 
     const sl = STATION_X - STATION_W / 2;
     const active = state.mode === 'play' ? activeBurger() : null;
-    // Cute 3D slam pad
-    ctx.fillStyle = 'rgba(40,10,14,0.25)';
-    roundRect(sl + 4, LINE_Y - 90, STATION_W, 100, 16);
+    ctx.fillStyle = active ? 'rgba(200,16,46,0.18)' : 'rgba(246,239,228,0.08)';
+    roundRect(sl, LINE_Y - 96, STATION_W, 100, 10);
     ctx.fill();
-    const pad = ctx.createLinearGradient(sl, LINE_Y - 100, sl, LINE_Y + 10);
-    pad.addColorStop(0, active ? 'rgba(255,240,230,0.55)' : 'rgba(255,240,230,0.22)');
-    pad.addColorStop(1, active ? 'rgba(200,16,46,0.28)' : 'rgba(200,16,46,0.1)');
-    ctx.fillStyle = pad;
-    roundRect(sl, LINE_Y - 96, STATION_W, 104, 16);
-    ctx.fill();
-    ctx.strokeStyle = active ? '#c8102e' : 'rgba(246,239,228,0.35)';
-    ctx.lineWidth = 3;
-    roundRect(sl, LINE_Y - 96, STATION_W, 104, 16);
+    ctx.strokeStyle = active ? '#c8102e' : 'rgba(246,239,228,0.28)';
+    ctx.lineWidth = 2;
+    roundRect(sl, LINE_Y - 96, STATION_W, 100, 10);
     ctx.stroke();
     ctx.fillStyle = active ? '#c8102e' : '#c09088';
-    ctx.font = '800 11px Fredoka, Nunito, sans-serif';
+    ctx.font = '800 10px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(active ? 'SLAM ZONE' : 'BUILD HERE', STATION_X, LINE_Y - 80);
+    ctx.fillText(active ? 'SLAM ZONE' : 'STATION', STATION_X, LINE_Y - 80);
 
-    // Cute press arm
     const armDrop = state.armPulse > 0 ? 10 * (state.armPulse / 0.22) : 0;
-    ctx.strokeStyle = '#a8b0b8';
-    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#8a9098';
+    ctx.lineWidth = 6;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(STATION_X, 150);
-    ctx.lineTo(STATION_X, LINE_Y - 102 + armDrop);
+    ctx.lineTo(STATION_X, LINE_Y - 100 + armDrop);
     ctx.stroke();
     ctx.fillStyle = '#c8102e';
-    roundRect(STATION_X - 28, LINE_Y - 112 + armDrop, 56, 18, 8);
-    ctx.fill();
-    ctx.fillStyle = '#f6efe4';
-    roundRect(STATION_X - 22, LINE_Y - 106 + armDrop, 44, 8, 4);
+    roundRect(STATION_X - 24, LINE_Y - 108 + armDrop, 48, 14, 4);
     ctx.fill();
 
     const sorted = [...state.burgers].sort((a, b) => a.x - b.x);
@@ -2906,7 +2713,20 @@
   }
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+    if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+      e.preventDefault();
+      toggleHelp();
+      return;
+    }
+    if (e.key === 'Escape') {
+      if (!helpPanel.hidden) {
+        setHelpOpen(false);
+        return;
+      }
+      if (state.mode === 'play' || state.mode === 'pause') togglePause();
+      return;
+    }
+    if (e.key === 'p' || e.key === 'P') {
       if (state.mode === 'play' || state.mode === 'pause') togglePause();
       return;
     }
@@ -2927,6 +2747,16 @@
       e.preventDefault();
       requestSlam(ing);
     }
+  });
+
+  helpBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleHelp();
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (helpPanel.hidden) return;
+    if (helpPanel.contains(e.target) || helpBtn.contains(e.target)) return;
+    setHelpOpen(false);
   });
 
   pauseBtn.addEventListener('click', togglePause);
