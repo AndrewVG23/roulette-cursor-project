@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>NYC Crossing</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
+  <style>
+    :root, [data-theme="light"] {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
+      --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem;
+      --color-bg: #0d1512; --color-surface: #13211b; --color-surface-2: #173027;
+      --color-border: #2c473c; --color-text: #f5edd8; --color-text-muted: #bdb39b;
+      --color-text-faint: #897f6d; --color-primary: #d0a23a;
+      --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-xl: 1rem; --radius-full: 9999px;
+      --shadow-sm: 0 2px 4px rgba(0,0,0,.28); --shadow-md: 0 12px 30px rgba(0,0,0,.34);
+      --font-display: 'Zodiak', Georgia, serif;
+      --font-body: 'General Sans', 'Inter', sans-serif;
+      --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    * { box-sizing: border-box; }
+    html {
+      height: 100%;
+      -webkit-text-size-adjust: 100%;
+      touch-action: manipulation;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: var(--font-body);
+      color: var(--color-text);
+      background:
+        radial-gradient(ellipse 90% 50% at 50% -10%, rgba(208,162,58,.12), transparent 45%),
+        radial-gradient(circle at 80% 20%, rgba(90,140,180,.06), transparent 30%),
+        linear-gradient(180deg, #0d1512, #07100d 60%);
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+    button { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .app {
+      max-width: 720px;
+      height: 100dvh;
+      margin: 0 auto;
+      padding: var(--space-2);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      gap: var(--space-2);
+    }
+    .skip-link { position: absolute; left: -9999px; }
+    .skip-link:focus {
+      left: var(--space-4); top: var(--space-4);
+      background: var(--color-surface); padding: var(--space-3);
+      z-index: 20; border-radius: var(--radius-md);
+    }
+    .panel {
+      background: linear-gradient(180deg, rgba(23,48,39,.92), rgba(15,27,23,.96));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-inner {
+      padding: var(--space-3);
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      flex-shrink: 0;
+    }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .brand h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 700;
+      letter-spacing: .02em;
+      color: #f7ead0;
+      line-height: 1.1;
+    }
+    .brand p {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .stats {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .stat {
+      min-width: 64px;
+      padding: 6px 10px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, rgba(20,53,40,.78), rgba(12,26,21,.92));
+      border: 1px solid rgba(238,194,97,.18);
+      text-align: center;
+    }
+    .stat .label {
+      display: block;
+      font-size: 0.65rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--color-text-faint);
+    }
+    .stat .value {
+      display: block;
+      font-family: var(--font-display);
+      font-size: var(--text-base);
+      font-weight: 700;
+      color: var(--color-primary);
+      line-height: 1.2;
+    }
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background:
+        linear-gradient(180deg, rgba(8,18,28,.55), transparent 28%),
+        linear-gradient(180deg, #0a1612, #08120f);
+      border: 1px solid rgba(255,255,255,.06);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      image-rendering: auto;
+      touch-action: none;
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+      background: rgba(7,16,13,.72);
+      backdrop-filter: blur(4px);
+      z-index: 2;
+      transition: opacity var(--transition);
+    }
+    .overlay[hidden] { display: none; }
+    .overlay-card {
+      width: min(100%, 340px);
+      text-align: center;
+      padding: var(--space-6) var(--space-5);
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(23,48,39,.96), rgba(12,26,21,.98));
+      border: 1px solid rgba(238,194,97,.28);
+      box-shadow: var(--shadow-md), 0 0 40px rgba(208,162,58,.08);
+    }
+    .overlay-card h2 {
+      margin: 0 0 var(--space-2);
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      color: #f7ead0;
+    }
+    .overlay-card p {
+      margin: 0 0 var(--space-5);
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      line-height: 1.45;
+    }
+    .controls {
+      display: grid;
+      gap: var(--space-2);
+      flex-shrink: 0;
+      padding: var(--space-2);
+      background: linear-gradient(180deg, rgba(20,53,40,.78), rgba(12,26,21,.92));
+      border: 1px solid rgba(238,194,97,.18);
+      border-radius: 4px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 4px 14px rgba(0,0,0,.22);
+    }
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
+      justify-content: center;
+    }
+    .controls .btn {
+      min-height: 52px;
+      min-width: 72px;
+      padding: var(--space-2) var(--space-4);
+      border-radius: 3px;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #f7ead0;
+      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
+      border: 1px solid rgba(255,238,198,.22);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.24);
+      transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+    }
+    .controls .btn.primary {
+      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
+      color: #fff6e3;
+      border-color: rgba(255,210,200,.28);
+    }
+    .controls .btn.subtle {
+      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
+    }
+    .controls .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(239,187,73,.42);
+    }
+    .controls .btn:active { transform: translateY(0); }
+    .controls .btn.dir {
+      width: 56px;
+      min-width: 56px;
+      height: 52px;
+      padding: 0;
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 56px);
+      grid-template-rows: repeat(2, 52px);
+      gap: var(--space-2);
+      justify-content: center;
+    }
+    .dpad .up { grid-column: 2; grid-row: 1; }
+    .dpad .left { grid-column: 1; grid-row: 2; }
+    .dpad .down { grid-column: 2; grid-row: 2; }
+    .dpad .right { grid-column: 3; grid-row: 2; }
+    .hint {
+      margin: 0;
+      text-align: center;
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+      letter-spacing: .04em;
+    }
+    .lives-pips {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .lives-pips span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(208,162,58,.25);
+      border: 1px solid rgba(208,162,58,.35);
+    }
+    .lives-pips span.on {
+      background: var(--color-primary);
+      box-shadow: 0 0 6px rgba(208,162,58,.45);
+    }
+    @media (max-width: 520px) {
+      .app { padding: var(--space-1); gap: var(--space-1); }
+      .panel-inner { padding: var(--space-2); }
+      .brand h1 { font-size: var(--text-base); }
+      .stat { min-width: 56px; padding: 4px 8px; }
+      .controls .btn { min-height: 48px; }
+      .controls .btn.dir { width: 52px; min-width: 52px; height: 48px; }
+      .dpad {
+        grid-template-columns: repeat(3, 52px);
+        grid-template-rows: repeat(2, 48px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="app">
+    <main id="main" class="panel">
+      <div class="panel-inner">
+        <div class="topbar">
+          <div class="brand">
+            <h1>NYC Crossing</h1>
+            <p>Frogger · Manhattan night</p>
+          </div>
+          <div class="stats" aria-live="polite">
+            <div class="stat">
+              <span class="label">Score</span>
+              <span class="value" id="scoreVal">0</span>
+            </div>
+            <div class="stat">
+              <span class="label">Level</span>
+              <span class="value" id="levelVal">1</span>
+            </div>
+            <div class="stat">
+              <span class="label">Lives</span>
+              <span class="value" id="livesVal">3</span>
+              <div class="lives-pips" id="livesPips" aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="canvas-wrap" id="canvasWrap">
+          <canvas id="game" width="480" height="600" aria-label="NYC Crossing game board"></canvas>
+          <div class="overlay" id="overlay">
+            <div class="overlay-card">
+              <h2 id="overlayTitle">Cross Manhattan</h2>
+              <p id="overlayText">Dodge yellow cabs on Broadway, ride the East River ferries, and make it to Central Park. Arrow keys, WASD, or swipe.</p>
+              <div class="control-row">
+                <button class="btn primary" id="startBtn" type="button">Start Crossing</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls" aria-label="Game controls">
+          <div class="control-row">
+            <button class="btn subtle" id="pauseBtn" type="button" disabled>Pause</button>
+            <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
+            <a class="btn subtle" href="index.html" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Roulette</a>
+          </div>
+          <div class="dpad" aria-label="Direction pad">
+            <button class="btn dir up" type="button" data-dir="up" aria-label="Move up">▲</button>
+            <button class="btn dir left" type="button" data-dir="left" aria-label="Move left">◀</button>
+            <button class="btn dir down" type="button" data-dir="down" aria-label="Move down">▼</button>
+            <button class="btn dir right" type="button" data-dir="right" aria-label="Move right">▶</button>
+          </div>
+          <p class="hint">Arrows / WASD · swipe on the street · reach Central Park</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+(() => {
+  const COLS = 12;
+  const ROWS = 14;
+  const TILE = 40;
+  const W = COLS * TILE;
+  const H = ROWS * TILE;
+
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const overlayTitle = document.getElementById('overlayTitle');
+  const overlayText = document.getElementById('overlayText');
+  const startBtn = document.getElementById('startBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const muteBtn = document.getElementById('muteBtn');
+  const scoreVal = document.getElementById('scoreVal');
+  const levelVal = document.getElementById('levelVal');
+  const livesVal = document.getElementById('livesVal');
+  const livesPips = document.getElementById('livesPips');
+
+  // Row types from top (0) to bottom (13)
+  // 0: park homes, 1: park bank, 2-6: river, 7: median, 8-12: roads, 13: sidewalk start
+  const ROW = {
+    HOME: 0,
+    BANK: 1,
+    RIVER_START: 2,
+    RIVER_END: 6,
+    MEDIAN: 7,
+    ROAD_START: 8,
+    ROAD_END: 12,
+    START: 13
+  };
+
+  const HOME_SLOTS = [1, 3, 5, 7, 9];
+  const state = {
+    mode: 'title', // title | play | pause | dead | win | gameover
+    score: 0,
+    high: Number(localStorage.getItem('nycCrossingHigh') || 0),
+    level: 1,
+    lives: 3,
+    homes: Array(5).fill(false),
+    frog: { col: 5.5, row: ROW.START, onFerry: null },
+    lanes: [],
+    time: 45,
+    maxTime: 45,
+    hopCooldown: 0,
+    invuln: 0,
+    flash: 0,
+    particles: [],
+    muted: false,
+    lastTs: 0,
+    reachedRows: new Set([ROW.START])
+  };
+
+  // --- Audio (tiny beeps, no assets) ---
+  let audioCtx = null;
+  function ensureAudio() {
+    if (state.muted) return null;
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function beep(freq, dur, type = 'square', vol = 0.04) {
+    const ac = ensureAudio();
+    if (!ac) return;
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g);
+    g.connect(ac.destination);
+    const t = ac.currentTime;
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t);
+    o.stop(t + dur);
+  }
+
+  function buildLanes(level) {
+    const speed = 1 + (level - 1) * 0.18;
+    const lanes = [];
+
+    // River ferries (rows 2-6) — riding these keeps you afloat
+    const riverSpecs = [
+      { row: 2, dir: 1, speed: 1.1 * speed, gap: 220, len: 2.4, kind: 'ferry' },
+      { row: 3, dir: -1, speed: 1.35 * speed, gap: 200, len: 1.8, kind: 'barge' },
+      { row: 4, dir: 1, speed: 0.95 * speed, gap: 240, len: 2.8, kind: 'ferry' },
+      { row: 5, dir: -1, speed: 1.5 * speed, gap: 180, len: 1.6, kind: 'kayak' },
+      { row: 6, dir: 1, speed: 1.2 * speed, gap: 210, len: 2.2, kind: 'barge' }
+    ];
+
+    // Roads (rows 8-12)
+    const roadSpecs = [
+      { row: 8, dir: -1, speed: 1.6 * speed, gap: 170, len: 1.1, kind: 'taxi' },
+      { row: 9, dir: 1, speed: 1.2 * speed, gap: 200, len: 1.8, kind: 'bus' },
+      { row: 10, dir: -1, speed: 2.0 * speed, gap: 150, len: 0.9, kind: 'bike' },
+      { row: 11, dir: 1, speed: 1.4 * speed, gap: 185, len: 1.2, kind: 'taxi' },
+      { row: 12, dir: -1, speed: 1.1 * speed, gap: 220, len: 2.0, kind: 'truck' }
+    ];
+
+    for (const spec of [...riverSpecs, ...roadSpecs]) {
+      const entities = [];
+      const lenPx = spec.len * TILE;
+      const count = Math.ceil((W + spec.gap) / spec.gap) + 1;
+      for (let i = 0; i < count; i++) {
+        entities.push({
+          x: i * spec.gap + (spec.dir > 0 ? -lenPx : W),
+          w: lenPx,
+          kind: spec.kind
+        });
+      }
+      lanes.push({ ...spec, entities, lenPx });
+    }
+    return lanes;
+  }
+
+  function resetFrog() {
+    state.frog = { col: 5.5, row: ROW.START, onFerry: null };
+    state.time = state.maxTime;
+    state.hopCooldown = 0;
+    state.invuln = 0.6;
+    state.reachedRows = new Set([ROW.START]);
+  }
+
+  function startLevel(level) {
+    state.level = level;
+    state.maxTime = Math.max(28, 45 - (level - 1) * 2);
+    state.lanes = buildLanes(level);
+    if (level === 1) state.homes = Array(5).fill(false);
+    resetFrog();
+    updateHUD();
+  }
+
+  function startGame() {
+    state.score = 0;
+    state.lives = 3;
+    state.mode = 'play';
+    startLevel(1);
+    overlay.hidden = true;
+    pauseBtn.disabled = false;
+    pauseBtn.textContent = 'Pause';
+    beep(440, 0.08);
+    beep(660, 0.1);
+  }
+
+  function updateHUD() {
+    scoreVal.textContent = String(state.score);
+    levelVal.textContent = String(state.level);
+    livesVal.textContent = String(state.lives);
+    livesPips.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      const s = document.createElement('span');
+      if (i < state.lives) s.classList.add('on');
+      livesPips.appendChild(s);
+    }
+  }
+
+  function showOverlay(title, text, btnLabel) {
+    overlayTitle.textContent = title;
+    overlayText.textContent = text;
+    startBtn.textContent = btnLabel;
+    overlay.hidden = false;
+  }
+
+  function loseLife(reason) {
+    if (state.mode !== 'play' || state.invuln > 0) return;
+    state.lives -= 1;
+    state.flash = 0.35;
+    spawnSplash(state.frog.col * TILE, state.frog.row * TILE + TILE / 2);
+    beep(120, 0.2, 'sawtooth', 0.05);
+    updateHUD();
+    if (state.lives <= 0) {
+      state.mode = 'gameover';
+      if (state.score > state.high) {
+        state.high = state.score;
+        localStorage.setItem('nycCrossingHigh', String(state.high));
+      }
+      showOverlay(
+        'Stuck in traffic',
+        `${reason} Final score ${state.score}. Best ${state.high}.`,
+        'Try Again'
+      );
+      pauseBtn.disabled = true;
+    } else {
+      state.mode = 'dead';
+      setTimeout(() => {
+        if (state.mode === 'dead') {
+          resetFrog();
+          state.mode = 'play';
+        }
+      }, 700);
+    }
+  }
+
+  function fillHome(slotIndex) {
+    state.homes[slotIndex] = true;
+    const bonus = 50 + Math.floor(state.time * 2) + state.level * 10;
+    state.score += bonus;
+    beep(523, 0.08);
+    beep(784, 0.12);
+    updateHUD();
+    if (state.homes.every(Boolean)) {
+      state.score += 200 + state.level * 50;
+      state.mode = 'win';
+      updateHUD();
+      showOverlay(
+        `Level ${state.level} cleared`,
+        `Central Park secured. Score ${state.score}. Next rush hour is faster.`,
+        'Next Avenue'
+      );
+      pauseBtn.disabled = true;
+    } else {
+      resetFrog();
+    }
+  }
+
+  function tryMove(dx, dy) {
+    if (state.mode !== 'play' || state.hopCooldown > 0) return;
+    const f = state.frog;
+    const nc = f.col + dx;
+    const nr = f.row + dy;
+    if (nc < 0 || nc > COLS - 1 || nr < 0 || nr > ROWS - 1) return;
+
+    if (nr === ROW.HOME) {
+      const slot = HOME_SLOTS.findIndex(c => Math.abs(nc - c) < 0.6);
+      if (slot >= 0 && !state.homes[slot]) {
+        f.col = HOME_SLOTS[slot];
+        f.row = nr;
+        f.onFerry = null;
+        fillHome(slot);
+        return;
+      }
+      // Hit park fence / filled home
+      loseLife('You clipped the park fence.');
+      return;
+    }
+
+    f.col = Math.max(0, Math.min(COLS - 1, nc));
+    f.row = nr;
+    f.onFerry = null;
+    state.hopCooldown = 0.12;
+    beep(280 + (ROWS - nr) * 18, 0.05, 'triangle', 0.03);
+
+    if (!state.reachedRows.has(nr) && nr < ROW.START) {
+      state.reachedRows.add(nr);
+      state.score += 10;
+      updateHUD();
+    }
+  }
+
+  function spawnSplash(x, y) {
+    for (let i = 0; i < 10; i++) {
+      state.particles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 80,
+        vy: (Math.random() - 0.5) * 80 - 20,
+        life: 0.4 + Math.random() * 0.3,
+        color: Math.random() > 0.5 ? '#efbb49' : '#71d189'
+      });
+    }
+  }
+
+  function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+    return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+  }
+
+  function update(dt) {
+    if (state.mode !== 'play') {
+      // still drift lanes for ambience on title
+      if (state.mode === 'title' || state.mode === 'pause' || state.mode === 'gameover' || state.mode === 'win') {
+        for (const lane of state.lanes) {
+          for (const e of lane.entities) {
+            e.x += lane.dir * lane.speed * 40 * dt * 0.35;
+            if (lane.dir > 0 && e.x > W + 20) e.x -= lane.gap * Math.ceil((W + lane.gap) / lane.gap);
+            if (lane.dir < 0 && e.x + e.w < -20) e.x += lane.gap * Math.ceil((W + lane.gap) / lane.gap);
+          }
+        }
+      }
+      updateParticles(dt);
+      return;
+    }
+
+    state.time -= dt;
+    if (state.hopCooldown > 0) state.hopCooldown -= dt;
+    if (state.invuln > 0) state.invuln -= dt;
+    if (state.flash > 0) state.flash -= dt;
+    if (state.time <= 0) {
+      loseLife('The light changed — time ran out.');
+      return;
+    }
+
+    const f = state.frog;
+    const frogPad = 6;
+    const fx = f.col * TILE + frogPad;
+    const fy = f.row * TILE + frogPad;
+    const fw = TILE - frogPad * 2;
+    const fh = TILE - frogPad * 2;
+
+    // Move lanes
+    let riding = null;
+    for (const lane of state.lanes) {
+      for (const e of lane.entities) {
+        e.x += lane.dir * lane.speed * 40 * dt;
+        if (lane.dir > 0 && e.x > W + 40) e.x = -e.w - (lane.gap - e.w) * Math.random() * 0.2;
+        if (lane.dir < 0 && e.x + e.w < -40) e.x = W + (lane.gap - e.w) * Math.random() * 0.2;
+      }
+
+      if (f.row === lane.row) {
+        for (const e of lane.entities) {
+          const ey = lane.row * TILE + 4;
+          const eh = TILE - 8;
+          if (rectsOverlap(fx, fy, fw, fh, e.x, ey, e.w, eh)) {
+            if (lane.row >= ROW.RIVER_START && lane.row <= ROW.RIVER_END) {
+              riding = { lane, e };
+            } else if (lane.row >= ROW.ROAD_START && lane.row <= ROW.ROAD_END) {
+              loseLife('Yellow cab. Classic.');
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    // River logic
+    if (f.row >= ROW.RIVER_START && f.row <= ROW.RIVER_END) {
+      if (!riding) {
+        loseLife('You fell in the East River.');
+        return;
+      }
+      f.col += (riding.lane.dir * riding.lane.speed * 40 * dt) / TILE;
+      f.onFerry = riding;
+      if (f.col < -0.2 || f.col > COLS - 0.8) {
+        loseLife('Swept past the pier.');
+        return;
+      }
+    }
+
+    updateParticles(dt);
+  }
+
+  function updateParticles(dt) {
+    for (const p of state.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 120 * dt;
+      p.life -= dt;
+    }
+    state.particles = state.particles.filter(p => p.life > 0);
+  }
+
+  // --- Drawing ---
+  function drawSkyline() {
+    const g = ctx.createLinearGradient(0, 0, 0, TILE * 2.2);
+    g.addColorStop(0, '#0a1824');
+    g.addColorStop(1, '#0d1f18');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, TILE * 2.2);
+
+    // Buildings
+    const buildings = [
+      [0, 28, 36], [30, 48, 22], [55, 70, 40], [90, 42, 28],
+      [125, 95, 34], [155, 55, 26], [178, 120, 38], [210, 48, 30],
+      [235, 78, 36], [268, 50, 24], [290, 88, 40], [325, 44, 28],
+      [350, 100, 32], [380, 58, 26], [405, 72, 34], [438, 46, 42]
+    ];
+    for (const [x, h, w] of buildings) {
+      const top = TILE * 1.85 - h;
+      ctx.fillStyle = '#0b1518';
+      ctx.fillRect(x, top, w, h + 8);
+      // Windows
+      ctx.fillStyle = 'rgba(239,187,73,0.35)';
+      for (let wy = top + 6; wy < top + h - 4; wy += 8) {
+        for (let wx = x + 4; wx < x + w - 4; wx += 7) {
+          if (Math.random() > 0.35) ctx.fillRect(wx, wy, 3, 3);
+        }
+      }
+    }
+    // Empire-ish spire
+    ctx.fillStyle = '#101c20';
+    ctx.fillRect(178 + 14, TILE * 1.85 - 120 - 28, 10, 28);
+    ctx.fillRect(178 + 17, TILE * 1.85 - 120 - 40, 4, 14);
+  }
+
+  function drawSidewalk(row, label) {
+    const y = row * TILE;
+    const g = ctx.createLinearGradient(0, y, 0, y + TILE);
+    g.addColorStop(0, '#2a3d34');
+    g.addColorStop(1, '#1e2e27');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y, W, TILE);
+    ctx.fillStyle = 'rgba(245,237,216,0.06)';
+    for (let x = 0; x < W; x += 16) {
+      ctx.fillRect(x, y + 2, 1, TILE - 4);
+    }
+    if (label) {
+      ctx.fillStyle = 'rgba(189,179,155,0.45)';
+      ctx.font = '600 10px "General Sans", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, 8, y + 14);
+    }
+  }
+
+  function drawRoad(row) {
+    const y = row * TILE;
+    ctx.fillStyle = '#1a1f24';
+    ctx.fillRect(0, y, W, TILE);
+    // Lane dashes
+    ctx.fillStyle = 'rgba(239,187,73,0.35)';
+    const mid = y + TILE / 2 - 1;
+    for (let x = 6; x < W; x += 28) {
+      ctx.fillRect(x, mid, 14, 2);
+    }
+    // Curb
+    ctx.fillStyle = 'rgba(245,237,216,0.12)';
+    ctx.fillRect(0, y, W, 2);
+    ctx.fillRect(0, y + TILE - 2, W, 2);
+  }
+
+  function drawRiver(row) {
+    const y = row * TILE;
+    const g = ctx.createLinearGradient(0, y, 0, y + TILE);
+    g.addColorStop(0, '#163a48');
+    g.addColorStop(0.5, '#1a4554');
+    g.addColorStop(1, '#123340');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y, W, TILE);
+    ctx.strokeStyle = 'rgba(160,210,220,0.12)';
+    ctx.lineWidth = 1;
+    const t = performance.now() / 1000;
+    for (let i = 0; i < 5; i++) {
+      const yy = y + 8 + i * 7;
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 8) {
+        const wave = Math.sin(x * 0.04 + t * 2 + i) * 1.5;
+        if (x === 0) ctx.moveTo(x, yy + wave);
+        else ctx.lineTo(x, yy + wave);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawParkHomes() {
+    const y = 0;
+    // Grass
+    const g = ctx.createLinearGradient(0, y, 0, y + TILE);
+    g.addColorStop(0, '#1a3d28');
+    g.addColorStop(1, '#143222');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, y, W, TILE);
+
+    // Fence between slots
+    for (let c = 0; c < COLS; c++) {
+      const isHome = HOME_SLOTS.includes(c);
+      if (!isHome) {
+        ctx.fillStyle = '#0f1f18';
+        ctx.fillRect(c * TILE, y, TILE, TILE);
+        // Iron fence
+        ctx.strokeStyle = 'rgba(208,162,58,0.35)';
+        ctx.lineWidth = 2;
+        for (let x = c * TILE + 6; x < (c + 1) * TILE; x += 8) {
+          ctx.beginPath();
+          ctx.moveTo(x, y + 8);
+          ctx.lineTo(x, y + TILE - 4);
+          ctx.stroke();
+        }
+        ctx.beginPath();
+        ctx.moveTo(c * TILE + 2, y + 14);
+        ctx.lineTo((c + 1) * TILE - 2, y + 14);
+        ctx.stroke();
+      }
+    }
+
+    HOME_SLOTS.forEach((c, i) => {
+      const x = c * TILE;
+      if (state.homes[i]) {
+        // Filled — frog resting under a lamp
+        ctx.fillStyle = '#1f4a30';
+        ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+        drawFrog(x + TILE / 2, y + TILE / 2 + 2, 0.75, true);
+        // Lamp
+        ctx.fillStyle = '#c9b896';
+        ctx.fillRect(x + TILE / 2 - 1, y + 4, 2, 12);
+        ctx.fillStyle = 'rgba(239,187,73,0.7)';
+        ctx.beginPath();
+        ctx.arc(x + TILE / 2, y + 4, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Empty pad
+        ctx.fillStyle = 'rgba(113,209,137,0.18)';
+        ctx.beginPath();
+        ctx.ellipse(x + TILE / 2, y + TILE / 2 + 2, 14, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(113,209,137,0.45)';
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(245,237,216,0.35)';
+        ctx.font = '700 9px "General Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('PARK', x + TILE / 2, y + 12);
+      }
+    });
+
+    ctx.fillStyle = 'rgba(239,187,73,0.55)';
+    ctx.font = '600 9px "General Sans", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('CENTRAL PARK', 8, y + TILE - 6);
+  }
+
+  function drawTaxi(x, y, w, dir) {
+    const h = TILE - 10;
+    const yy = y + 5;
+    // Body
+    const g = ctx.createLinearGradient(x, yy, x, yy + h);
+    g.addColorStop(0, '#f0c84a');
+    g.addColorStop(1, '#c4921e');
+    ctx.fillStyle = g;
+    roundRect(x, yy + 4, w, h - 4, 4);
+    ctx.fill();
+    // Cabin
+    ctx.fillStyle = '#2a2418';
+    ctx.fillRect(x + w * 0.22, yy + 2, w * 0.45, h * 0.45);
+    ctx.fillStyle = 'rgba(160,200,220,0.5)';
+    ctx.fillRect(x + w * 0.25, yy + 4, w * 0.18, h * 0.3);
+    ctx.fillRect(x + w * 0.48, yy + 4, w * 0.16, h * 0.3);
+    // Roof light
+    ctx.fillStyle = '#f5edd8';
+    ctx.fillRect(x + w * 0.4, yy, w * 0.18, 4);
+    // Wheels
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(x + w * 0.22, yy + h, 4, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.78, yy + h, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // Checkers hint
+    ctx.fillStyle = 'rgba(20,20,20,0.25)';
+    for (let i = 0; i < 3; i++) ctx.fillRect(x + 6 + i * 6, yy + h - 8, 3, 3);
+  }
+
+  function drawBus(x, y, w) {
+    const h = TILE - 8;
+    const yy = y + 4;
+    const g = ctx.createLinearGradient(x, yy, x, yy + h);
+    g.addColorStop(0, '#3d6b9a');
+    g.addColorStop(1, '#2a4a6e');
+    ctx.fillStyle = g;
+    roundRect(x, yy, w, h, 5);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(200,230,255,0.45)';
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(x + 8 + i * (w / 4.5), yy + 6, w / 6, h * 0.4);
+    }
+    ctx.fillStyle = '#efbb49';
+    ctx.fillRect(x + 4, yy + h * 0.55, w - 8, 3);
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(x + 14, yy + h, 5, 0, Math.PI * 2);
+    ctx.arc(x + w - 14, yy + h, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawTruck(x, y, w) {
+    const h = TILE - 10;
+    const yy = y + 5;
+    ctx.fillStyle = '#6b7280';
+    roundRect(x, yy + 2, w * 0.7, h - 2, 3);
+    ctx.fill();
+    ctx.fillStyle = '#8b5a2b';
+    roundRect(x + w * 0.68, yy, w * 0.32, h, 3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(160,200,220,0.4)';
+    ctx.fillRect(x + w * 0.74, yy + 4, w * 0.18, h * 0.35);
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(x + 12, yy + h, 4, 0, Math.PI * 2);
+    ctx.arc(x + w * 0.55, yy + h, 4, 0, Math.PI * 2);
+    ctx.arc(x + w - 10, yy + h, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawBike(x, y, w, dir) {
+    const yy = y + TILE / 2;
+    ctx.strokeStyle = '#71d189';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x + 8, yy + 6, 6, 0, Math.PI * 2);
+    ctx.arc(x + w - 8, yy + 6, 6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + 8, yy + 6);
+    ctx.lineTo(x + w / 2, yy - 4);
+    ctx.lineTo(x + w - 8, yy + 6);
+    ctx.stroke();
+    // Rider
+    ctx.fillStyle = '#f5edd8';
+    ctx.beginPath();
+    ctx.arc(x + w / 2, yy - 8, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawFerry(x, y, w, kind) {
+    const h = TILE - 12;
+    const yy = y + 6;
+    if (kind === 'kayak') {
+      ctx.fillStyle = '#c45c26';
+      ctx.beginPath();
+      ctx.ellipse(x + w / 2, yy + h / 2, w / 2, h / 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f5edd8';
+      ctx.beginPath();
+      ctx.arc(x + w / 2, yy + h / 2 - 2, 3, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+    if (kind === 'barge') {
+      ctx.fillStyle = '#5a4a3a';
+      roundRect(x, yy + 4, w, h - 2, 3);
+      ctx.fill();
+      ctx.fillStyle = '#8a7355';
+      ctx.fillRect(x + 6, yy, w - 12, 8);
+      ctx.fillStyle = 'rgba(239,187,73,0.4)';
+      ctx.fillRect(x + 10, yy + 2, 8, 4);
+      return;
+    }
+    // Staten Island / NYC ferry
+    const g = ctx.createLinearGradient(x, yy, x, yy + h);
+    g.addColorStop(0, '#f0e6d0');
+    g.addColorStop(1, '#c4b090');
+    ctx.fillStyle = g;
+    roundRect(x, yy + 6, w, h - 4, 6);
+    ctx.fill();
+    ctx.fillStyle = '#3a6a8a';
+    roundRect(x + 8, yy, w - 16, h * 0.55, 4);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(200,230,255,0.5)';
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(x + 14 + i * ((w - 28) / 3), yy + 4, (w - 40) / 3, h * 0.3);
+    }
+    ctx.fillStyle = '#d44a45';
+    ctx.fillRect(x + w / 2 - 6, yy - 2, 12, 4);
+  }
+
+  function drawFrog(cx, cy, scale = 1, resting = false) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+    const bob = resting ? 0 : Math.sin(performance.now() / 180) * 1.2;
+    ctx.translate(0, bob);
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(0, 12, 11, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Legs
+    ctx.fillStyle = '#3f9a5d';
+    ctx.beginPath();
+    ctx.ellipse(-10, 6, 6, 3.5, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(10, 6, 6, 3.5, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body
+    const g = ctx.createRadialGradient(-2, -2, 2, 0, 0, 14);
+    g.addColorStop(0, '#8fd9a4');
+    g.addColorStop(1, '#3f9a5d');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 12, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Belly
+    ctx.fillStyle = 'rgba(245,237,216,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(0, 5, 7, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes
+    ctx.fillStyle = '#f5edd8';
+    ctx.beginPath();
+    ctx.arc(-5, -6, 4, 0, Math.PI * 2);
+    ctx.arc(5, -6, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#142018';
+    ctx.beginPath();
+    ctx.arc(-4.5, -6, 2, 0, Math.PI * 2);
+    ctx.arc(5.5, -6, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tiny "NY" cap
+    ctx.fillStyle = '#1a3a6a';
+    ctx.beginPath();
+    ctx.ellipse(0, -10, 7, 3, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(-7, -11, 14, 3);
+    ctx.fillStyle = '#efbb49';
+    ctx.font = '700 5px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('NY', 0, -8.5);
+
+    ctx.restore();
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function drawTimer() {
+    const y = H - 6;
+    const pct = Math.max(0, state.time / state.maxTime);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(8, y - 4, W - 16, 4);
+    const g = ctx.createLinearGradient(8, 0, W - 8, 0);
+    g.addColorStop(0, '#d44a45');
+    g.addColorStop(0.5, '#efbb49');
+    g.addColorStop(1, '#71d189');
+    ctx.fillStyle = g;
+    ctx.fillRect(8, y - 4, (W - 16) * pct, 4);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    drawSkyline();
+
+    for (let r = 0; r < ROWS; r++) {
+      if (r === ROW.HOME) drawParkHomes();
+      else if (r === ROW.BANK) drawSidewalk(r, 'PIER  •  EAST RIVER');
+      else if (r >= ROW.RIVER_START && r <= ROW.RIVER_END) drawRiver(r);
+      else if (r === ROW.MEDIAN) drawSidewalk(r, 'MEDIAN  •  BROADWAY');
+      else if (r >= ROW.ROAD_START && r <= ROW.ROAD_END) drawRoad(r);
+      else if (r === ROW.START) drawSidewalk(r, 'SOHO SIDEWALK  •  START');
+    }
+
+    // Street labels on roads
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = '#f5edd8';
+    ctx.font = '700 11px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    const labels = { 8: 'HOUSTON', 9: 'CANAL', 10: 'SPRING', 11: 'BROOME', 12: 'GRAND' };
+    for (const [row, label] of Object.entries(labels)) {
+      ctx.fillText(label, W / 2, Number(row) * TILE + 24);
+    }
+    ctx.restore();
+
+    // Entities
+    for (const lane of state.lanes) {
+      const y = lane.row * TILE;
+      for (const e of lane.entities) {
+        if (lane.row >= ROW.RIVER_START && lane.row <= ROW.RIVER_END) {
+          drawFerry(e.x, y, e.w, e.kind);
+        } else if (e.kind === 'taxi') drawTaxi(e.x, y, e.w, lane.dir);
+        else if (e.kind === 'bus') drawBus(e.x, y, e.w);
+        else if (e.kind === 'truck') drawTruck(e.x, y, e.w);
+        else if (e.kind === 'bike') drawBike(e.x, y, e.w, lane.dir);
+      }
+    }
+
+    // Frog
+    if (state.mode !== 'gameover' && !(state.mode === 'dead' && state.flash > 0 && Math.floor(state.flash * 20) % 2 === 0)) {
+      const f = state.frog;
+      const alpha = state.invuln > 0 && Math.floor(state.invuln * 16) % 2 === 0 ? 0.4 : 1;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      drawFrog(f.col * TILE + TILE / 2, f.row * TILE + TILE / 2 + 1, 1, false);
+      ctx.restore();
+    }
+
+    // Particles
+    for (const p of state.particles) {
+      ctx.globalAlpha = Math.max(0, p.life * 2);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 3, 3);
+    }
+    ctx.globalAlpha = 1;
+
+    if (state.mode === 'play' || state.mode === 'pause' || state.mode === 'dead') drawTimer();
+
+    // Flash
+    if (state.flash > 0) {
+      ctx.fillStyle = `rgba(242,110,137,${state.flash * 0.35})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Pause tint
+    if (state.mode === 'pause') {
+      ctx.fillStyle = 'rgba(7,16,13,0.45)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#f5edd8';
+      ctx.font = '700 22px Zodiak, Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Paused', W / 2, H / 2);
+    }
+  }
+
+  function frame(ts) {
+    if (!state.lastTs) state.lastTs = ts;
+    let dt = (ts - state.lastTs) / 1000;
+    state.lastTs = ts;
+    dt = Math.min(dt, 0.05);
+    update(dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+
+  // --- Input ---
+  const keyMap = {
+    ArrowUp: 'up', w: 'up', W: 'up',
+    ArrowDown: 'down', s: 'down', S: 'down',
+    ArrowLeft: 'left', a: 'left', A: 'left',
+    ArrowRight: 'right', d: 'right', D: 'right'
+  };
+  const dirDelta = {
+    up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0]
+  };
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+      if (state.mode === 'play') togglePause();
+      else if (state.mode === 'pause') togglePause();
+      return;
+    }
+    const dir = keyMap[e.key];
+    if (!dir) return;
+    e.preventDefault();
+    if (state.mode === 'title' || state.mode === 'gameover' || state.mode === 'win') {
+      startBtn.click();
+      return;
+    }
+    const [dx, dy] = dirDelta[dir];
+    tryMove(dx, dy);
+  });
+
+  document.querySelectorAll('[data-dir]').forEach(btn => {
+    const fire = (e) => {
+      e.preventDefault();
+      const [dx, dy] = dirDelta[btn.dataset.dir];
+      tryMove(dx, dy);
+    };
+    btn.addEventListener('pointerdown', fire);
+  });
+
+  // Swipe
+  let touchStart = null;
+  canvas.addEventListener('pointerdown', (e) => {
+    touchStart = { x: e.clientX, y: e.clientY };
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointerup', (e) => {
+    if (!touchStart) return;
+    const dx = e.clientX - touchStart.x;
+    const dy = e.clientY - touchStart.y;
+    touchStart = null;
+    if (Math.hypot(dx, dy) < 24) return;
+    if (Math.abs(dx) > Math.abs(dy)) tryMove(dx > 0 ? 1 : -1, 0);
+    else tryMove(0, dy > 0 ? 1 : -1);
+  });
+
+  function togglePause() {
+    if (state.mode === 'play') {
+      state.mode = 'pause';
+      pauseBtn.textContent = 'Resume';
+      beep(320, 0.06);
+    } else if (state.mode === 'pause') {
+      state.mode = 'play';
+      pauseBtn.textContent = 'Pause';
+      beep(480, 0.06);
+    }
+  }
+
+  pauseBtn.addEventListener('click', togglePause);
+  muteBtn.addEventListener('click', () => {
+    state.muted = !state.muted;
+    muteBtn.setAttribute('aria-pressed', String(state.muted));
+    muteBtn.textContent = state.muted ? 'Muted' : 'Sound';
+  });
+
+  startBtn.addEventListener('click', () => {
+    ensureAudio();
+    if (state.mode === 'win') {
+      overlay.hidden = true;
+      pauseBtn.disabled = false;
+      pauseBtn.textContent = 'Pause';
+      state.homes = Array(5).fill(false);
+      state.mode = 'play';
+      startLevel(state.level + 1);
+      beep(523, 0.08);
+      return;
+    }
+    startGame();
+  });
+
+  // Fit canvas to container while keeping integer-ish scale
+  function fitCanvas() {
+    const wrap = document.getElementById('canvasWrap');
+    const aw = wrap.clientWidth - 8;
+    const ah = wrap.clientHeight - 8;
+    const scale = Math.min(aw / W, ah / H);
+    const dw = Math.floor(W * scale);
+    const dh = Math.floor(H * scale);
+    canvas.style.width = dw + 'px';
+    canvas.style.height = dh + 'px';
+  }
+  window.addEventListener('resize', fitCanvas);
+  fitCanvas();
+
+  // Boot ambience lanes
+  state.lanes = buildLanes(1);
+  updateHUD();
+  if (state.high > 0) {
+    overlayText.textContent =
+      `Dodge yellow cabs on Broadway, ride the East River ferries, and make it to Central Park. Best: ${state.high}`;
+  }
+  requestAnimationFrame(frame);
+})();
+  </script>
+</body>
+</html>

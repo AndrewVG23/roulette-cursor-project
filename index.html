@@ -722,6 +722,7 @@
                 </div>
               </div>
               <button class="btn subtle metrics-toggle" id="metricsToggle" type="button" aria-expanded="false" aria-controls="metricsPanel">Metrics</button>
+              <a class="btn subtle" href="frogger.html" title="NYC Crossing" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Arcade</a>
             </div>
           </div>
           <div class="roulette-wrap" id="rouletteWrap">
@@ -1648,10 +1649,12 @@
         if (!p.deflectorChecked && p.orbit <= WHEEL_PHYS.deflectorOrbit) {
           p.deflectorChecked = true;
           // Deflector diamonds sit every 45deg (HUD angle 45k - 67.5, matching
-          // the 3D hardware); a near pass scatters the ball
+          // the 3D hardware); a near pass scatters the ball. Only a grounded
+          // ball can strike one: if it crosses the band mid-hop it sails
+          // clean over the diamond, because impulses need contact
           const m = normalizeDeg(p.ballAngle + 67.5) % 45;
           const dist = Math.min(m, 45 - m);
-          if (dist < 11) {
+          if (dist < 11 && p.height < 1.5) {
             const dir = Math.random() < 0.15 ? -1 : 1;
             p.ballVel *= (0.25 + Math.random() * 0.3) * dir;
             p.vy = 220 + Math.random() * 180;
@@ -1698,7 +1701,9 @@
         if (p.lastFretIdx === null) p.lastFretIdx = fretIdx;
         if (fretIdx !== p.lastFretIdx) {
           p.lastFretIdx = fretIdx;
-          if (p.height < 2.5 && Math.abs(rel) > p.settleSpeed * 1.4) {
+          // A fret can only redirect the ball when it is actually down in
+          // the ring (touching); crossing a fret line mid-hop is free flight
+          if (p.height < 0.8 && Math.abs(rel) > p.settleSpeed * 1.4) {
             // Clipped a fret: it still pops, but the mass soaks up most of
             // the rolling energy on every hit
             const rest = 0.16 + Math.random() * 0.24;
@@ -4669,43 +4674,45 @@
     }
 
     let chipDropAnims = [];
-    const CHIP_TOSS_FLIGHT = 0.6;
+    // Most of the clip is airborne so the arc gets plenty of frames
+    const CHIP_TOSS_FLIGHT = 0.72;
     // Landing bounce train: each hop keeps ~40% of the previous height and a
     // shrinking share of the landing window, like a real clay chip
     const CHIP_BOUNCES = [
-      { frac: 0.34, h: 11 },
-      { frac: 0.25, h: 4.6 },
-      { frac: 0.18, h: 2.0 },
-      { frac: 0.13, h: 0.9 },
-      { frac: 0.1, h: 0.35 }
+      { frac: 0.32, h: 18 },
+      { frac: 0.24, h: 7.5 },
+      { frac: 0.18, h: 3.4 },
+      { frac: 0.14, h: 1.5 },
+      { frac: 0.12, h: 0.55 }
     ];
     // Contact moments within the landing window and how hard each hit lands
     const CHIP_CONTACTS = [
       { at: 0, s: 1 },
-      { at: 0.34, s: 0.62 },
-      { at: 0.59, s: 0.44 },
-      { at: 0.77, s: 0.3 },
-      { at: 0.9, s: 0.2 }
+      { at: 0.32, s: 0.64 },
+      { at: 0.56, s: 0.46 },
+      { at: 0.74, s: 0.32 },
+      { at: 0.88, s: 0.2 }
     ];
 
     function queueChipDrop(mesh) {
       // Toss arc: the chip flies in from the player's edge of the table and
       // lands exactly on its final stack position, every time
       const to = mesh.position.clone();
-      const fromX = to.x * 0.18 + (Math.random() - 0.5) * 70;
-      const from = new THREE.Vector3(fromX, FELT_Y + 26, BOARD_H / 2 + 150);
+      const fromX = to.x * 0.12 + (Math.random() - 0.5) * 90;
+      const from = new THREE.Vector3(fromX, FELT_Y + 52, BOARD_H / 2 + 210);
       const dist = from.distanceTo(to);
       chipDropAnims.push({
         mesh,
         from,
         to,
         start: performance.now(),
-        duration: Math.min(860, 460 + dist * 0.22),
-        arc: Math.min(135, 56 + dist * 0.085),
-        spin: (Math.random() < 0.5 ? -1 : 1) * (1.6 + Math.random() * 1.4),
-        tilt: 0.2 + Math.random() * 0.16,
+        // Longer flight ≈ more display frames so the toss doesn't look stepped
+        duration: Math.min(1500, 820 + dist * 0.38),
+        arc: Math.min(260, 130 + dist * 0.16),
+        spin: (Math.random() < 0.5 ? -1 : 1) * (2.4 + Math.random() * 2.2),
+        tilt: 0.34 + Math.random() * 0.22,
         wobblePhase: Math.random() * Math.PI * 2,
-        wobbleTurns: 1.4 + Math.random() * 1.1,
+        wobbleTurns: 2.1 + Math.random() * 1.4,
         baseRotY: mesh.rotation.y
       });
       mesh.position.copy(from);
@@ -4719,18 +4726,20 @@
         if (!m.parent) return false;
         const t = Math.min(1, (now - a.start) / a.duration);
         if (t < CHIP_TOSS_FLIGHT) {
-          // Ballistic flight: constant ground speed, parabolic height, a
-          // frisbee spin, and a precessing coin-flutter that flattens out
-          // exactly at touchdown
+          // Ballistic flight: slight ease on the ground track, tall parabola,
+          // frisbee spin, and a precessing coin-flutter that flattens at touchdown
           const p = t / CHIP_TOSS_FLIGHT;
-          m.position.x = a.from.x + (a.to.x - a.from.x) * p;
-          m.position.z = a.from.z + (a.to.z - a.from.z) * p;
+          // Smoothstep keeps velocity continuous at the ends (less steppy feel)
+          const g = p * p * (3 - 2 * p);
+          m.position.x = a.from.x + (a.to.x - a.from.x) * g;
+          m.position.z = a.from.z + (a.to.z - a.from.z) * g;
+          // Height stays on raw p so the apex stays centered in the toss
           m.position.y = a.from.y + (a.to.y - a.from.y) * p + a.arc * 4 * p * (1 - p);
           const flutter = a.tilt * Math.sin(p * Math.PI);
           const ph = a.wobblePhase + p * a.wobbleTurns * Math.PI * 2;
           m.rotation.x = flutter * Math.cos(ph);
           m.rotation.z = flutter * Math.sin(ph);
-          m.rotation.y = a.baseRotY + a.spin * (1 - p) * (1 - p);
+          m.rotation.y = a.baseRotY + a.spin * Math.PI * 2 * (1 - p) * (1 - p);
           m.scale.set(1, 1, 1);
         } else {
           // Touchdown: a train of decaying parabolic hops. Each contact gets
@@ -4779,20 +4788,39 @@
       });
     }
 
+    function addChipMesh(key, target, stackIndex, stackCount, chipAmount) {
+      const built = createChipMesh(key, target, stackIndex, stackCount, chipAmount);
+      built.chip.userData.betKey = key;
+      built.chip.userData.stackIndex = stackIndex;
+      chipGroup.add(built.chip);
+      return built.chip;
+    }
+
     function renderChips3D(animateKey = null) {
       if (!chipGroup || settling) return;
+
+      // New placements only append the tossed chip so in-flight tosses keep playing.
+      if (animateKey != null) {
+        const target = allTargets.find((t) => t.key === animateKey);
+        if (!target) return;
+        const chipAmounts = chipAmountsForKey(animateKey);
+        const stackCount = chipAmounts.length;
+        if (!stackCount) return;
+        const i = stackCount - 1;
+        const mesh = addChipMesh(animateKey, target, i, stackCount, chipAmounts[i]);
+        queueChipDrop(mesh);
+        return;
+      }
+
       while (chipGroup.children.length) chipGroup.remove(chipGroup.children[0]);
       placements.forEach((_count, key) => {
-        const target = allTargets.find(t => t.key === key);
+        const target = allTargets.find((t) => t.key === key);
         if (!target) return;
         const chipAmounts = chipAmountsForKey(key);
         const stackCount = chipAmounts.length;
         if (!stackCount) return;
         for (let i = 0; i < stackCount; i++) {
-          const chipAmount = chipAmounts[i];
-          const built = createChipMesh(key, target, i, stackCount, chipAmount);
-          chipGroup.add(built.chip);
-          if (key === animateKey && i === stackCount - 1) queueChipDrop(built.chip);
+          addChipMesh(key, target, i, stackCount, chipAmounts[i]);
         }
       });
     }
