@@ -324,7 +324,7 @@
               <span class="value" id="levelVal">1</span>
             </div>
             <div class="stat">
-              <span class="label">Lives</span>
+              <span class="label" id="livesLabel">Lives</span>
               <span class="value" id="livesVal">3</span>
               <div class="lives-pips" id="livesPips" aria-hidden="true"></div>
             </div>
@@ -393,6 +393,7 @@
   const brandTitle = document.getElementById('brandTitle');
   const brandSub = document.getElementById('brandSub');
   const meterLabel = document.getElementById('meterLabel');
+  const livesLabel = document.getElementById('livesLabel');
   const hintText = document.getElementById('hintText');
   const dpad = document.getElementById('dpad');
 
@@ -485,6 +486,11 @@
   }
 
   function pickDestination(level) {
+    // After leaving the grill, don't route straight back to burgers
+    if (isGrill()) {
+      const exits = DESTINATIONS.filter(d => d.id !== 'grill');
+      return exits[(level - 1) % exits.length];
+    }
     return DESTINATIONS[(level - 1) % DESTINATIONS.length];
   }
 
@@ -493,18 +499,21 @@
       brandTitle.textContent = 'Night Drive';
       brandSub.textContent = `Chase cam · ${state.destination.name}`;
       meterLabel.textContent = 'Mi';
-      hintText.textContent = '3rd person · steer · gas · survive the crappy streets';
+      livesLabel.textContent = 'HP';
+      hintText.textContent = 'Steer · gas · smash sends them flying · watch HP & cash';
       dpad.classList.add('drive-mode');
     } else if (isGrill()) {
       brandTitle.textContent = 'Leave the Grill';
       brandSub.textContent = 'Bad block · four lanes · get to your car';
       meterLabel.textContent = 'Level';
+      livesLabel.textContent = 'Lives';
       hintText.textContent = 'Arrows / WASD · dash across · hoopty is across the street';
       dpad.classList.remove('drive-mode');
     } else {
       brandTitle.textContent = 'Return to Your Car';
       brandSub.textContent = 'Cross the city · get to the garage';
       meterLabel.textContent = 'Level';
+      livesLabel.textContent = 'Lives';
       hintText.textContent = 'Arrows / WASD · swipe · cross Midtown to your car';
       dpad.classList.remove('drive-mode');
     }
@@ -682,7 +691,9 @@
       camY: 42,
       camBack: 118,
       surface: 'asphalt',
-      rumble: 0
+      rumble: 0,
+      hp: 100,
+      maxHp: 100
     };
     seedCityBlocks(state.drive, 0, 1600);
     // Seed a few cars already in frame so the street feels alive
@@ -739,20 +750,28 @@
   }
 
   function updateHUD() {
-    scoreVal.textContent = String(state.score);
-    livesVal.textContent = String(state.lives);
+    scoreVal.textContent = state.phase === 'drive' ? `$${state.score}` : String(state.score);
     if (state.phase === 'drive' && state.drive) {
-      // Remaining distance in miles from world-Z / MPH scale
       const left = Math.max(0, state.drive.goal - state.drive.z);
       levelVal.textContent = (left / (DW.MPH_Z * 55)).toFixed(1);
+      livesVal.textContent = String(Math.max(0, Math.ceil(state.drive.hp)));
+      livesPips.innerHTML = '';
+      const pips = 5;
+      const filled = Math.ceil((state.drive.hp / state.drive.maxHp) * pips);
+      for (let i = 0; i < pips; i++) {
+        const s = document.createElement('span');
+        if (i < filled) s.classList.add('on');
+        livesPips.appendChild(s);
+      }
     } else {
+      livesVal.textContent = String(state.lives);
       levelVal.textContent = String(state.level);
-    }
-    livesPips.innerHTML = '';
-    for (let i = 0; i < 3; i++) {
-      const s = document.createElement('span');
-      if (i < state.lives) s.classList.add('on');
-      livesPips.appendChild(s);
+      livesPips.innerHTML = '';
+      for (let i = 0; i < 3; i++) {
+        const s = document.createElement('span');
+        if (i < state.lives) s.classList.add('on');
+        livesPips.appendChild(s);
+      }
     }
   }
 
@@ -804,6 +823,12 @@
           state.mode = 'play';
         }
       }, 700);
+    } else if (state.phase === 'drive' && state.drive && state.lives > 0) {
+      // Survived the wreck — limp on with patched HP
+      state.drive.hp = Math.max(35, Math.floor(state.drive.maxHp * 0.45));
+      state.drive.invuln = 2.2;
+      state.drive.speed = Math.min(state.drive.speed, 22);
+      updateHUD();
     }
   }
 
@@ -815,23 +840,15 @@
     beep(523, 0.08);
     beep(659, 0.1);
     beep(784, 0.16);
-    if (isGrill()) {
-      if (state.score > state.high) {
-        state.high = state.score;
-        localStorage.setItem(highKey(), String(state.high));
-      }
-      showOverlay(
-        'Keys in the hoopty',
-        `You crossed the block. Score ${state.score}. Clock out, or run it back.`,
-        'Clock Out'
-      );
-    } else {
-      showOverlay(
-        'Keys in the ignition',
-        `You made it to your car. Score ${state.score}. Next: drive to ${state.destination.name}.`,
-        'Hit the Gas'
-      );
-    }
+    // Grill leave and midtown both continue into a night drive
+    state.destination = pickDestination(state.level);
+    showOverlay(
+      isGrill() ? 'Keys in the hoopty' : 'Keys in the ignition',
+      isGrill()
+        ? `You crossed the block. Score ${state.score}. Next: drive to ${state.destination.name}.`
+        : `You made it to your car. Score ${state.score}. Next: drive to ${state.destination.name}.`,
+      'Hit the Gas'
+    );
     pauseBtn.disabled = true;
   }
 
@@ -841,7 +858,7 @@
     state.mode = 'arrived';
     if (state.score > state.high) {
       state.high = state.score;
-      localStorage.setItem('returnToCarHigh', String(state.high));
+      localStorage.setItem(highKey(), String(state.high));
     }
     beep(523, 0.08);
     beep(784, 0.12);
@@ -1065,7 +1082,10 @@
       halfW: kind === 'bus' ? 0.28 : DW.CAR_HALF_W,
       len: kind === 'bus' ? 40 : DW.CAR_LEN,
       yaw: 0,
+      yawVel: 0,
       velX: 0,
+      flyY: 0,
+      flyVel: 0,
       smashed: false
     });
   }
@@ -1115,35 +1135,54 @@
     }
   }
 
-  function triggerDriveCrash(reason, impactX, other) {
+  function triggerDriveCrash(reason, impactX, other, opts = {}) {
     const d = state.drive;
     if (!d || d.invuln > 0 || state.mode !== 'drive') return;
 
     const ground = projectWorld(d.playerX, 0, d.z + 14, d);
     const intensity = Math.min(1.5, 0.4 + d.speed / 70);
-    spawnCrashFX(ground.x, ground.y - 16 * ground.scale, Math.sign(impactX || (Math.random() - 0.5)), intensity);
+    const hit = impactX || (Math.random() - 0.5) || 0.3;
+    const dir = Math.sign(hit) || (Math.random() < 0.5 ? -1 : 1);
+    spawnCrashFX(ground.x, ground.y - 16 * ground.scale, dir, intensity);
 
-    // Conservation-ish impulse: shove sideways, dump forward speed, spring the suspension
-    const hit = impactX || (Math.random() - 0.5);
-    d.yawVel += hit * (4 + intensity * 4);
-    d.velX += -hit * (1.1 + intensity * 0.6);
-    d.speed = Math.max(8, d.speed * (0.18 + Math.random() * 0.1));
-    d.suspVel -= 18 * intensity;
-    d.camShake = 12 + intensity * 14;
-    d.crashT = 0.9;
-    d.crashFlash = 0.65;
-    d.skid = 1.1;
-    d.roll = hit * 0.4;
+    // Soft smash: launch the other car, chip HP + cash. Hard wreck only when requested / HP dies.
+    const hard = !!opts.hard;
 
     if (other) {
       other.smashed = true;
-      other.yaw = hit * 1.4 + (Math.random() - 0.5);
-      other.velX = -hit * 0.8;
-      other.speed *= 0.4;
-      other.z += 10;
+      other.velX = dir * (2.8 + intensity * 3.2) + (Math.random() - 0.5) * 0.8;
+      other.yawVel = dir * (6 + intensity * 8) + (Math.random() - 0.5) * 3;
+      other.yaw = dir * 0.6;
+      other.flyVel = 9 + intensity * 12;
+      other.flyY = 2;
+      other.speed = Math.max(8, d.speed * 0.55 + 10 + Math.random() * 20);
+      other.z += 6;
     }
 
-    loseLife(reason);
+    // Player: nudge, brief slowdown — not a full wipeout
+    d.yawVel += -dir * (1.2 + intensity * 1.4);
+    d.velX += -dir * (0.45 + intensity * 0.35);
+    d.speed = Math.max(14, d.speed * (hard ? 0.22 : 0.72 + Math.random() * 0.1));
+    d.suspVel -= (hard ? 18 : 7) * intensity;
+    d.camShake = (hard ? 12 : 5) + intensity * (hard ? 14 : 6);
+    d.crashT = hard ? 0.9 : 0.35;
+    d.crashFlash = hard ? 0.65 : 0.28;
+    d.skid = hard ? 1.1 : 0.45;
+    d.roll = -dir * (hard ? 0.4 : 0.12);
+    d.invuln = hard ? 1.4 : 0.85;
+
+    const dmg = hard ? 35 + Math.floor(Math.random() * 25) : 8 + Math.floor(Math.random() * 10);
+    const fine = hard ? 80 + Math.floor(Math.random() * 120) : 25 + Math.floor(Math.random() * 55);
+    d.hp = Math.max(0, d.hp - dmg);
+    state.score = Math.max(0, state.score - fine);
+    beep(110, 0.08, 'sawtooth', 0.05);
+    beep(70, 0.12, 'square', 0.04);
+    updateHUD();
+
+    if (hard || d.hp <= 0) {
+      if (d.hp <= 0) d.hp = 0;
+      loseLife(d.hp <= 0 ? `${reason} Car's done — out of HP.` : reason);
+    }
   }
 
   function updateDrive(dt) {
@@ -1240,22 +1279,24 @@
       d.suspVel -= 12;
       d.camShake = Math.max(d.camShake, 8);
       d.skid = 1;
-      if (d.speed > 40 && Math.random() < dt * 3) {
-        triggerDriveCrash('Jersey barrier. Concrete always wins.', d.playerX, null);
-        return;
+      if (d.speed > 45 && Math.random() < dt * 2.2) {
+        triggerDriveCrash('Jersey barrier. Concrete always wins.', d.playerX, null, { hard: true });
+        if (state.mode !== 'drive') return;
       }
     }
     d.playerX = Math.max(-DW.CURB - 0.02, Math.min(DW.CURB + 0.02, d.playerX));
 
-    // Gentle block-scale road path (not random whip-steer)
+    // Long sweeping city bends — hold a heading for a while, ease slowly
     d.curveTimer -= dt;
     if (d.curveTimer <= 0) {
-      // City grid: mostly straight, occasional bend
-      d.targetCurve = Math.random() > 0.62 ? (Math.random() - 0.5) * 1.35 : (Math.random() - 0.5) * 0.35;
-      d.curveTimer = 2.2 + Math.random() * 2.8;
+      // Mostly straight blocks; rare gentle bend
+      d.targetCurve = Math.random() > 0.78
+        ? (Math.random() - 0.5) * 0.55
+        : (Math.random() - 0.5) * 0.12;
+      d.curveTimer = 6 + Math.random() * 8;
     }
-    d.curve += (d.targetCurve - d.curve) * Math.min(1, 0.9 * dt);
-    d.hills = Math.sin(d.z * 0.0015) * 12 + Math.sin(d.z * 0.0035) * 5;
+    d.curve += (d.targetCurve - d.curve) * Math.min(1, 0.22 * dt);
+    d.hills = Math.sin(d.z * 0.0009) * 8 + Math.sin(d.z * 0.0022) * 3;
 
     // Pothole bumps when you roll over them
     for (const pr of d.props) {
@@ -1293,20 +1334,27 @@
     }
     for (const car of d.traffic) {
       if (car.smashed) {
-        car.z += car.speed * DW.MPH_Z * 0.35 * dt;
+        car.z += car.speed * DW.MPH_Z * 0.55 * dt;
         car.x += car.velX * dt;
-        car.velX *= Math.exp(-2 * dt);
-        car.yaw += car.velX * dt * 2;
+        car.velX *= Math.exp(-1.1 * dt);
+        car.yawVel = (car.yawVel || 0) * Math.exp(-0.8 * dt);
+        car.yaw += (car.yawVel || car.velX * 2) * dt;
+        car.flyVel = (car.flyVel || 0) - 22 * dt;
+        car.flyY = Math.max(0, (car.flyY || 0) + car.flyVel * dt);
+        if (car.flyY === 0 && car.flyVel < 0) {
+          car.flyVel *= -0.35;
+          if (Math.abs(car.flyVel) < 2) car.flyVel = 0;
+        }
+        car.speed *= Math.exp(-0.4 * dt);
       } else {
         car.z += car.speed * DW.MPH_Z * dt;
-        // Soft lane-keep
         const lane = Math.round(car.x / DW.LANE) * DW.LANE;
         car.x += (lane - car.x) * Math.min(1, 1.2 * dt);
       }
     }
     d.traffic = d.traffic.filter(c => c.z > d.z - 80 && c.z < d.z + 1800);
 
-    // AABB-ish collision in world units
+    // AABB-ish collision — smash sends them flying; rarely a hard wreck
     for (const car of d.traffic) {
       if (car.smashed) continue;
       const dz = car.z - (d.z + 10);
@@ -1316,12 +1364,14 @@
           const impactX = d.playerX - car.x;
           const closing = d.speed - car.speed;
           if (closing > 6 || Math.abs(impactX) < car.halfW) {
+            const hard = closing > 38 && Math.random() < 0.12;
             triggerDriveCrash(
-              car.kind === 'bus' ? 'Bus vs banker. Bus wins.' : car.kind === 'taxi' ? 'Yellow cab reunion.' : 'Chrome confetti.',
+              car.kind === 'bus' ? 'Clipped a bus.' : car.kind === 'taxi' ? 'Cab got launched.' : 'Sent them flying.',
               impactX,
-              car
+              car,
+              { hard }
             );
-            return;
+            if (state.mode !== 'drive') return;
           }
         }
       }
@@ -2466,11 +2516,11 @@
     let ry = wy - camY;
     let rz = wz - camZ;
 
-    // Road curves bend the world ahead of the car
+    // Gentle road bend ahead — kept mild so the asphalt doesn't whip
     const ahead = wz - d.z;
     if (ahead > 0) {
-      rx += d.curve * ahead * ahead * 0.028;
-      ry += (d.hills || 0) * Math.min(1, ahead / 400) * 0.35;
+      rx += d.curve * ahead * ahead * 0.014;
+      ry += (d.hills || 0) * Math.min(1, ahead / 500) * 0.28;
     }
 
     if (rz < 12) rz = 12;
@@ -2860,12 +2910,15 @@
     ctx.fillStyle = '#4a4640';
     ctx.fillRect(-30, nearGround.y - 4, W + 60, H);
 
-    // Road strips use shared DW scale — start behind the car so asphalt is under the tires
+    // Road strips locked to world-Z so asphalt/slabs don't crawl under the tires
     const segs = 40;
     const segLen = 26;
+    // Align segment grid to world so pattern is stationary in space
+    const zBase = Math.floor(d.z / segLen) * segLen;
     for (let i = segs; i >= -5; i--) {
-      const z0 = d.z + i * segLen;
-      const z1 = d.z + (i + 1) * segLen;
+      const z0 = zBase + i * segLen;
+      const z1 = z0 + segLen;
+      const stripe = Math.floor(z0 / segLen);
       const pL = projectWorld(-DW.ROAD, 0, z0, d);
       const pR = projectWorld(DW.ROAD, 0, z0, d);
       const qL = projectWorld(-DW.ROAD, 0, z1, d);
@@ -2880,7 +2933,7 @@
       const vR = projectWorld(DW.WALK, 0, z1, d);
 
       // Concrete sidewalk slabs
-      ctx.fillStyle = i % 2 === 0 ? '#8a857c' : '#7c776e';
+      ctx.fillStyle = stripe % 2 === 0 ? '#8a857c' : '#7c776e';
       ctx.beginPath();
       ctx.moveTo(-20, wL.y);
       ctx.lineTo(wL.x, wL.y);
@@ -2894,7 +2947,7 @@
       ctx.lineTo(W + 20, vR.y);
       ctx.fill();
       // Slab seams
-      if (i % 2 === 0) {
+      if (stripe % 2 === 0) {
         ctx.strokeStyle = 'rgba(40,38,34,0.35)';
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -2905,8 +2958,8 @@
         ctx.stroke();
       }
 
-      // Raised concrete curb (gray, not just paint)
-      ctx.fillStyle = i % 2 === 0 ? '#9a958c' : '#8e897f';
+      // Raised concrete curb
+      ctx.fillStyle = stripe % 2 === 0 ? '#9a958c' : '#8e897f';
       ctx.beginPath();
       ctx.moveTo(wL.x, wL.y);
       ctx.lineTo(cL.x, cL.y);
@@ -2922,7 +2975,7 @@
       ctx.closePath();
       ctx.fill();
 
-      // Jersey barrier lip at road edge
+      // Jersey barrier lip
       ctx.fillStyle = '#b8b0a0';
       ctx.beginPath();
       ctx.moveTo(cL.x, cL.y);
@@ -2938,7 +2991,6 @@
       ctx.lineTo(dR.x, dR.y);
       ctx.closePath();
       ctx.fill();
-      // Yellow curb paint on top edge
       ctx.strokeStyle = 'rgba(196,160,53,0.7)';
       ctx.lineWidth = Math.max(1, 1.5 * pL.scale);
       ctx.beginPath();
@@ -2948,8 +3000,8 @@
       ctx.lineTo(qR.x, qR.y);
       ctx.stroke();
 
-      // Asphalt
-      ctx.fillStyle = i % 2 === 0 ? '#2c2c30' : '#252528';
+      // Asphalt — solid world-locked tone (no crawling checker)
+      ctx.fillStyle = '#28282c';
       ctx.beginPath();
       ctx.moveTo(pL.x, pL.y);
       ctx.lineTo(pR.x, pR.y);
@@ -2957,12 +3009,17 @@
       ctx.lineTo(qL.x, qL.y);
       ctx.closePath();
       ctx.fill();
+      // Subtle fixed grain so segments don't look identical blanks
+      if (stripe % 4 === 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.015)';
+        ctx.fill();
+      }
 
-      // Worn double yellow
-      if (i % 2 === 0 && i > -4) {
+      // Continuous double yellow (every segment — stationary in world)
+      {
         const m0 = projectWorld(0, 0, z0, d);
         const m1 = projectWorld(0, 0, z1, d);
-        ctx.strokeStyle = 'rgba(180,140,30,0.55)';
+        ctx.strokeStyle = 'rgba(180,140,30,0.5)';
         ctx.lineWidth = Math.max(1, 2.2 * pL.scale);
         ctx.beginPath();
         ctx.moveTo(m0.x - 3 * pL.scale, m0.y);
@@ -2972,9 +3029,9 @@
         ctx.stroke();
       }
 
-      // Lane dashes at shared lane centers
-      if (i % 3 === 0) {
-        ctx.strokeStyle = 'rgba(190,180,160,0.3)';
+      // Lane dashes — on for half of each world dash period
+      if (Math.floor(z0 / (segLen * 2)) % 2 === 0) {
+        ctx.strokeStyle = 'rgba(190,180,160,0.32)';
         ctx.lineWidth = Math.max(1, 2 * pL.scale);
         for (const lane of [-DW.LANE, DW.LANE]) {
           const a = projectWorld(lane, 0, z0, d);
@@ -2997,10 +3054,13 @@
     // Traffic on the road plane
     const cars = [...d.traffic].sort((a, b) => b.z - a.z);
     for (const car of cars) {
-      const p = projectWorld(car.x, 0, car.z, d);
+      const fly = car.flyY || 0;
+      const p = projectWorld(car.x, fly, car.z, d);
       if (p.relZ < 30 || p.relZ > 1200 || p.scale < 0.06) continue;
       drawLowPolyCar(p.x, p.y, Math.min(1.35, p.scale * 0.55), car.kind, {
         yaw: car.yaw || 0,
+        roll: car.smashed ? (car.yaw || 0) * 0.35 : 0,
+        pitch: car.smashed ? Math.min(0.6, fly * 0.04) : 0,
         smashed: car.smashed
       });
     }
@@ -3184,10 +3244,6 @@
   startBtn.addEventListener('click', () => {
     ensureAudio();
     if (state.mode === 'win') {
-      if (isGrill()) {
-        window.location.href = 'burger.html';
-        return;
-      }
       beginDrive();
       return;
     }
@@ -3224,8 +3280,8 @@
   if (isGrill()) {
     overlayTitle.textContent = 'Clock out';
     overlayText.textContent = state.high > 0
-      ? `Four fast lanes of junkers. Dash to your hoopty across the street. Best: ${state.high}`
-      : 'Four fast lanes of junkers on a bad block. Dash from the grill to your hoopty across the street.';
+      ? `Cross the junker lanes to your car, then drive to the next stop. Best: ${state.high}`
+      : 'Dash from the grill to your hoopty across the street — then hit the gas for a night drive.';
     startBtn.textContent = 'Leave the Grill';
   } else if (state.high > 0) {
     overlayText.textContent =
