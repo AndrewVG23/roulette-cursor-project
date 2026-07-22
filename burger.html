@@ -555,7 +555,8 @@
 
   const LINE_Y = 290;
   const STATION_X = 260;
-  const STATION_W = 120;
+  const STATION_W = 200;
+  const STATION_W_ACTIVE = 228;
   const BURGER_W = 76;
   const MAX_TICKETS = 1;
   const GROSS_CHANCE = 0.24;
@@ -903,6 +904,7 @@
     lastTs: 0,
     combo: 0,
     customer: null,
+    dropperX: STATION_X,
     hurtFlash: 0,
     screenShake: 0
   };
@@ -1016,7 +1018,7 @@
   }
 
   function beltSpeed() {
-    return 95 + (state.level - 1) * 12 + Math.min(45, state.served * 1.4);
+    return 145 + (state.level - 1) * 16 + Math.min(65, state.served * 1.85);
   }
   function spawnGap() {
     return Math.max(1.1, 2.4 - (state.level - 1) * 0.12 - state.served * 0.015);
@@ -1079,7 +1081,6 @@
     let bestDist = Infinity;
     for (const b of state.burgers) {
       if (b.done || b.ruined || b.sealed) continue;
-      // Don't accept while a slam is mid-flight for this burger
       if (state.slams.some(s => s.burger === b)) continue;
       const cx = b.x + BURGER_W / 2;
       if (cx < left || cx > right) continue;
@@ -1090,6 +1091,29 @@
       }
     }
     return best;
+  }
+
+  function plateInZone() {
+    const left = STATION_X - STATION_W / 2;
+    const right = STATION_X + STATION_W / 2;
+    let best = null;
+    let bestDist = Infinity;
+    for (const b of state.burgers) {
+      if (b.done || b.ruined || b.delivered || b.tossed) continue;
+      const cx = b.x + BURGER_W / 2;
+      if (cx < left || cx > right) continue;
+      const d = Math.abs(cx - STATION_X);
+      if (d < bestDist) {
+        bestDist = d;
+        best = b;
+      }
+    }
+    return best;
+  }
+
+  function dropperTargetX() {
+    const b = activeBurger() || plateInZone();
+    return b ? b.x + BURGER_W / 2 : STATION_X;
   }
 
   function flashBtn(id, ok) {
@@ -1139,7 +1163,7 @@
       state.slams.push({
         ingId,
         burger: null,
-        x: STATION_X,
+        x: state.dropperX,
         y: SLAM_Y0,
         vy: 0,
         rot: (Math.random() - 0.5) * 0.4,
@@ -1587,6 +1611,7 @@
     state.screenShake = 0;
     state.spawnTimer = 0.8;
     state.customer = pickCustomer();
+    state.dropperX = STATION_X;
     state.mode = 'play';
     overlay.hidden = true;
     pauseBtn.disabled = false;
@@ -1618,6 +1643,9 @@
     if (state.armPulse > 0) state.armPulse -= dt;
     if (state.hurtFlash > 0) state.hurtFlash -= dt;
     if (state.screenShake > 0) state.screenShake = Math.max(0, state.screenShake - dt * 1.8);
+
+    const dropTarget = dropperTargetX();
+    state.dropperX += (dropTarget - state.dropperX) * Math.min(1, dt * 16);
 
     // Always animate goo / drips a bit
     for (const g of state.goo) {
@@ -3153,24 +3181,31 @@
 
     const sl = STATION_X - STATION_W / 2;
     const active = state.mode === 'play' ? activeBurger() : null;
-    ctx.fillStyle = active ? 'rgba(200,16,46,0.18)' : 'rgba(246,239,228,0.08)';
-    roundRect(sl, LINE_Y - 96, STATION_W, 100, 10);
+    const tracked = plateInZone();
+    const zoneW = tracked ? STATION_W_ACTIVE : STATION_W;
+    const zoneX = tracked ? state.dropperX - zoneW / 2 : sl;
+    const zoneH = tracked ? 112 : 100;
+    const zoneY = LINE_Y - (tracked ? 102 : 96);
+    ctx.fillStyle = active ? 'rgba(200,16,46,0.22)' : tracked ? 'rgba(200,16,46,0.12)' : 'rgba(246,239,228,0.08)';
+    roundRect(zoneX, zoneY, zoneW, zoneH, 10);
     ctx.fill();
-    ctx.strokeStyle = active ? '#c8102e' : 'rgba(246,239,228,0.28)';
-    ctx.lineWidth = 2;
-    roundRect(sl, LINE_Y - 96, STATION_W, 100, 10);
+    ctx.strokeStyle = active ? '#c8102e' : tracked ? 'rgba(200,16,46,0.55)' : 'rgba(246,239,228,0.28)';
+    ctx.lineWidth = active ? 3 : 2;
+    roundRect(zoneX, zoneY, zoneW, zoneH, 10);
     ctx.stroke();
 
+    const armX = state.dropperX;
     const armDrop = state.armPulse > 0 ? 10 * (state.armPulse / 0.22) : 0;
+    const armBaseY = LINE_Y - 100 + armDrop;
     ctx.strokeStyle = '#8a9098';
     ctx.lineWidth = 6;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(STATION_X, 150);
-    ctx.lineTo(STATION_X, LINE_Y - 100 + armDrop);
+    ctx.moveTo(armX, 150);
+    ctx.lineTo(armX, armBaseY);
     ctx.stroke();
     ctx.fillStyle = '#c8102e';
-    roundRect(STATION_X - 24, LINE_Y - 108 + armDrop, 48, 14, 4);
+    roundRect(armX - 24, armBaseY - 8, 48, 14, 4);
     ctx.fill();
 
     const sorted = [...state.burgers].sort((a, b) => a.x - b.x);

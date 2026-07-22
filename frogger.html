@@ -369,7 +369,7 @@
               <span class="label" id="meterLabel">Level</span>
               <span class="value" id="levelVal">1</span>
             </div>
-            <div class="stat">
+            <div class="stat" id="livesStat">
               <span class="label" id="livesLabel">Lives</span>
               <span class="value" id="livesVal">3</span>
               <div class="lives-pips" id="livesPips" aria-hidden="true"></div>
@@ -446,7 +446,8 @@
   const ROAD_EXITS = [
     { id: 'grill', name: 'GRILL', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' },
     { id: 'casino', name: 'CASINO', href: 'index.html', blurb: 'The casino — back to the tables.' },
-    { id: 'craps', name: 'CRAPS', href: 'craps.html', blurb: 'The craps pit.' }
+    { id: 'craps', name: 'CRAPS', href: 'craps.html', blurb: 'The craps pit.' },
+    { id: 'hospital', name: 'ER', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' }
   ];
 
   // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
@@ -536,6 +537,7 @@
     ],
     exits: [
       { n: 900, e: 2.30, side: -1, id: 'casino', name: 'CASINO', mapLabel: 'Casino', href: 'index.html', blurb: 'The casino — back to the tables.' },
+      { n: 1000, e: -2.10, side: -1, id: 'hospital', name: 'ER', mapLabel: 'Hospital', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
       { n: 1200, e: 0.25, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' }
     ]
   };
@@ -1140,6 +1142,7 @@
   const muteBtn = document.getElementById('muteBtn');
   const levelVal = document.getElementById('levelVal');
   const livesVal = document.getElementById('livesVal');
+  const livesStat = document.getElementById('livesStat');
   const livesPips = document.getElementById('livesPips');
   const brandTitle = document.getElementById('brandTitle');
   const brandSub = document.getElementById('brandSub');
@@ -1198,6 +1201,7 @@
   const ENTER_IDS = ['grill', 'casino', 'craps'];
   const ENTER_PARAM = params.get('enter');
   const ENTER_ID = ENTER_IDS.includes(ENTER_PARAM) ? ENTER_PARAM : null;
+  const RESUME_DRIVE = params.get('resumeDrive') === '1';
   const SCENARIO = ENTER_ID ? 'enter' : (params.get('from') === 'grill' ? 'grill' : 'midtown');
 
   // Your car sits in one bay; other bays are pillars / strangers' cars
@@ -1309,10 +1313,11 @@
       brandTitle.textContent = 'Night Drive';
       brandSub.textContent = 'Gold Coast · stop at red · steer to turn';
       meterLabel.textContent = 'Lap';
-      livesLabel.textContent = 'HP';
-      hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · R replay · Share last 5 sec';
+      if (livesStat) livesStat.hidden = true;
+      hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · ER exit heals · R replay · Share last 5 sec';
       dpad.classList.add('drive-mode');
     } else if (isEnter()) {
+      if (livesStat) livesStat.hidden = false;
       const dest = state.entryDest;
       brandTitle.textContent = dest ? `Enter ${dest.name}` : 'Enter';
       brandSub.textContent = 'Cross the street · reach the door';
@@ -1321,6 +1326,7 @@
       hintText.textContent = 'Arrows / WASD · swipe · get inside';
       dpad.classList.remove('drive-mode');
     } else if (isGrill()) {
+      if (livesStat) livesStat.hidden = false;
       brandTitle.textContent = 'Leave the Grill';
       brandSub.textContent = 'Bad block · four lanes · get to your car';
       meterLabel.textContent = 'Level';
@@ -1328,6 +1334,7 @@
       hintText.textContent = 'Arrows / WASD · dash across · hoopty is across the street';
       dpad.classList.remove('drive-mode');
     } else {
+      if (livesStat) livesStat.hidden = false;
       brandTitle.textContent = 'Return to Your Car';
       brandSub.textContent = 'Cross the city · get to the garage';
       meterLabel.textContent = 'Level';
@@ -1791,15 +1798,6 @@
       const pathLen = d.route ? d.route.length : 1;
       const pct = Math.min(99, Math.round((wrapRouteZ(d.z, pathLen) / pathLen) * 100));
       levelVal.textContent = `Lap ${d.lap || 1} · ${pct}%`;
-      livesVal.textContent = String(Math.max(0, Math.ceil(state.drive.hp)));
-      livesPips.innerHTML = '';
-      const pips = 5;
-      const filled = Math.ceil((state.drive.hp / state.drive.maxHp) * pips);
-      for (let i = 0; i < pips; i++) {
-        const s = document.createElement('span');
-        if (i < filled) s.classList.add('on');
-        livesPips.appendChild(s);
-      }
     } else {
       livesVal.textContent = String(state.lives);
       levelVal.textContent = String(state.level);
@@ -2315,8 +2313,37 @@
     window.location.href = dest.href;
   }
 
+  function takeHospitalExit(exit) {
+    if (!exit || exit.taken || state.mode !== 'drive' || !state.drive) return;
+    exit.taken = true;
+    const d = state.drive;
+    d.speed = Math.max(10, d.speed * 0.55);
+    d.approachingExit = exit;
+    try {
+      sessionStorage.setItem('hospital-admit', JSON.stringify({
+        from: 'drive',
+        hp: d.hp,
+        maxHp: d.maxHp,
+        who: 'The highway'
+      }));
+      sessionStorage.setItem('drive-checkpoint', JSON.stringify({
+        drive: replaySnapDrive(d),
+        lives: state.lives,
+        level: state.level,
+        score: state.score
+      }));
+    } catch (_) { /* ignore quota errors */ }
+    beep(392, 0.08);
+    beep(523, 0.1);
+    window.location.href = 'hospital.html';
+  }
+
   function takeExit(exit) {
     if (!exit || exit.taken || state.mode !== 'drive') return;
+    if (exit.id === 'hospital') {
+      takeHospitalExit(exit);
+      return;
+    }
     exit.taken = true;
     const d = state.drive;
     if (d) {
@@ -2343,6 +2370,118 @@
     beep(784, 0.12);
     state.drive = null;
     startEntryCross(estab);
+  }
+
+  function resumeDriveFromHospital() {
+    let data;
+    try {
+      const raw = sessionStorage.getItem('drive-resume');
+      if (!raw) return false;
+      sessionStorage.removeItem('drive-resume');
+      data = JSON.parse(raw);
+    } catch (_) {
+      return false;
+    }
+    if (!data || !data.drive) return false;
+
+    const route = compileNightDriveRoute(NIGHT_DRIVE_MAP);
+    state.phase = 'drive';
+    state.mode = 'drive';
+    state.lives = data.lives ?? 3;
+    state.level = data.level ?? 1;
+    state.score = data.score ?? 0;
+    state.invuln = 0;
+    state.flash = 0;
+    state.particles = [];
+    state.destination = null;
+    state.replay.buffer = [];
+    state.replay.playing = false;
+    state.replay.clip = null;
+    state.replay.savedLive = null;
+
+    state.drive = {
+      z: 0,
+      goal: route.length,
+      lap: data.drive.lap || 1,
+      signals: route.signals,
+      atSignal: null,
+      signalFineCd: 0,
+      signalFlash: 0,
+      flashingSignalZ: null,
+      route,
+      legs: route.legs.map(l => ({ ...l, done: false })),
+      legIndex: 0,
+      awaitTurn: null,
+      turnFlash: 0,
+      speed: 28,
+      maxSpeed: 72 + state.level * 4,
+      accel: 0,
+      playerX: 0,
+      velX: 0,
+      steer: 0,
+      yaw: 0,
+      yawVel: 0,
+      pitch: 0,
+      roll: 0,
+      susp: 0,
+      suspVel: 0,
+      curve: 0,
+      targetCurve: 0,
+      curveTimer: 0,
+      hills: 0,
+      traffic: [],
+      props: [],
+      buildings: [],
+      landmarks: [],
+      landmarksSeeded: false,
+      exits: [],
+      nextPropZ: 40,
+      nextBuildZ: 0,
+      routeEnvSeeded: false,
+      nextExitZ: route.length,
+      exitIndex: 0,
+      spawnTimer: 0.35,
+      invuln: 1.4,
+      bumpCd: 0,
+      rpmPulse: 0,
+      crashFlash: 0,
+      camShake: 0,
+      crashT: 0,
+      skid: 0,
+      wheelSpin: 0,
+      camX: 0,
+      camY: 42,
+      camBack: 118,
+      surface: 'asphalt',
+      rumble: 0,
+      hp: 100,
+      maxHp: 100,
+      approachingExit: null,
+      chaser: null,
+      chaserSpawnT: 4,
+      replayClock: 0,
+      slowMo: 0,
+      zoomPunch: 0
+    };
+    replayApplyDrive(state.drive, data.drive);
+    seedChicagoLandmarks(state.drive);
+    const resumeZ = state.drive.z || 0;
+    seedCityBlocks(state.drive, Math.max(0, resumeZ - 240), Math.min(route.length, resumeZ + 1400));
+    state.drive.routeEnvSeeded = true;
+    seedMapExits(state.drive, route);
+    for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
+
+    overlay.hidden = true;
+    pauseBtn.disabled = false;
+    pauseBtn.textContent = 'Pause';
+    setPhaseUI();
+    updateHUD();
+    updateReplayButton();
+    updateShareReplayButton();
+    beep(440, 0.08);
+    beep(554, 0.1);
+    beep(659, 0.12);
+    return true;
   }
 
   function spawnHopDust(col, row) {
@@ -6757,7 +6896,7 @@
       const bh = 28 * s;
       const bx = side > 0 ? post.x - bw + 4 * s : post.x - 4 * s;
       const by = postTop.y + 2 * s;
-      ctx.fillStyle = '#1a5c36';
+      ctx.fillStyle = ex.id === 'hospital' ? '#1a4a6e' : '#1a5c36';
       ctx.fillRect(bx, by, bw, bh);
       ctx.strokeStyle = 'rgba(240,240,240,0.7)';
       ctx.lineWidth = Math.max(1, 1.5 * s);
@@ -7714,18 +7853,15 @@
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const carZ = d.z + 14;
     const ground = projectWorld(d.playerX, 0, carZ, d);
-    const blink = d.invuln > 0 && Math.floor(d.invuln * 14) % 2 === 0;
-    if (!blink) {
-      drawLowPolyCar(ground.x, ground.y + bob, Math.min(1.4, ground.scale * 0.58), 'player', {
-        player: true,
-        yaw: d.yaw,
-        pitch: d.pitch,
-        roll: d.roll + (d.crashT > 0 ? Math.sin(d.crashT * 40) * 0.2 : 0),
-        wheelSpin: d.wheelSpin || 0,
-        color: '#1a2430',
-        trim: '#0e1418'
-      });
-    }
+    drawLowPolyCar(ground.x, ground.y + bob, Math.min(1.4, ground.scale * 0.58), 'player', {
+      player: true,
+      yaw: d.yaw,
+      pitch: d.pitch,
+      roll: d.roll + (d.crashT > 0 ? Math.sin(d.crashT * 40) * 0.2 : 0),
+      wheelSpin: d.wheelSpin || 0,
+      color: '#1a2430',
+      trim: '#0e1418'
+    });
 
     // Cruiser on your bumper draws over the player (closer to camera)
     if (d.chaser && d.chaser.z < d.z + 14) drawChaserCar(d);
@@ -8051,7 +8187,9 @@
 
   setPhaseUI();
   overlay.hidden = true;
-  if (ENTER_ID && ESTABLISHMENTS[ENTER_ID]) {
+  if (RESUME_DRIVE && resumeDriveFromHospital()) {
+    // resumed night drive after ER discharge
+  } else if (ENTER_ID && ESTABLISHMENTS[ENTER_ID]) {
     startEntryCross(ESTABLISHMENTS[ENTER_ID]);
   } else {
     state.lanes = buildLanes(1);

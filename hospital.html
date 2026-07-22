@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>County General — ER</title>
+  <title>County General — Medication Time</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="wallet.css">
   <script src="wallet.js"></script>
@@ -19,7 +19,6 @@
       --color-text: #eef8ff;
       --color-text-muted: #b8d4e8;
       --color-text-faint: #7aa8c4;
-      --color-primary: #2a9fd6;
       --font-display: 'Fredoka', 'Nunito', system-ui, sans-serif;
       --font-body: 'Nunito', 'Fredoka', system-ui, sans-serif;
       --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -39,77 +38,57 @@
       touch-action: manipulation;
     }
     button, a.btn { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; text-decoration: none; }
-    .app {
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
+    .app { height: 100dvh; display: flex; flex-direction: column; min-height: 0; }
     .topbar {
       position: absolute;
       top: 0; left: 0; right: 0;
       z-index: 3;
       display: flex;
-      justify-content: flex-end;
+      justify-content: center;
       gap: var(--space-2);
       padding: 10px 12px;
       background: linear-gradient(180deg, rgba(8,24,32,.78), transparent);
       pointer-events: none;
     }
-    .stat {
-      min-width: 72px;
-      padding: 7px 11px;
-      border-radius: 14px;
+    .scoreboard {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 18px;
+      border-radius: 18px;
       background: linear-gradient(180deg, rgba(255,255,255,.12), transparent 40%), linear-gradient(180deg, #163040, #0c1820);
       border: 2px solid rgba(184,212,232,.22);
       box-shadow: 0 4px 0 rgba(4,16,24,.45);
-      text-align: center;
       pointer-events: auto;
     }
-    .stat .label {
-      display: block;
+    .scoreboard .team {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      font-weight: 700;
+      min-width: 1.2ch;
+      text-align: center;
+    }
+    .scoreboard .team.you { color: #6ee0a8; }
+    .scoreboard .team.cpu { color: #ff9ab0; }
+    .scoreboard .dash {
+      font-size: var(--text-sm);
+      color: var(--color-text-faint);
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+    .scoreboard .meta {
+      margin-left: 8px;
+      padding-left: 10px;
+      border-left: 1px solid rgba(184,212,232,.2);
       font-size: 0.68rem;
       letter-spacing: .06em;
       text-transform: uppercase;
       font-weight: 800;
       color: var(--color-text-faint);
+      line-height: 1.3;
     }
-    .stat .value {
-      display: block;
-      font-family: var(--font-display);
-      font-size: var(--text-base);
-      font-weight: 700;
-      line-height: 1.2;
-    }
-    .stat.wide { min-width: 130px; text-align: left; }
-    .recovery-bar {
-      margin-top: 4px;
-      height: 12px;
-      border-radius: 999px;
-      background: rgba(0,0,0,.45);
-      border: 1px solid rgba(255,255,255,.14);
-      overflow: hidden;
-    }
-    .recovery-fill {
-      height: 100%;
-      width: 20%;
-      border-radius: 999px;
-      background: linear-gradient(180deg, #6ee0a8, #2a9f6a);
-      transition: width 180ms ease, background 180ms ease;
-    }
-    .recovery-fill.mid { background: linear-gradient(180deg, #f0c86a, #d09028); }
-    .recovery-fill.low { background: linear-gradient(180deg, #ff7a8a, #c8102e); }
-    .canvas-wrap {
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      touch-action: none;
-    }
+    .canvas-wrap { position: absolute; inset: 0; z-index: 1; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     .overlay {
       position: absolute;
       inset: 0;
@@ -119,11 +98,12 @@
       padding: var(--space-4);
       background: rgba(6,16,24,.72);
       backdrop-filter: blur(5px);
-      z-index: 2;
+      z-index: 10;
+      pointer-events: auto;
     }
     .overlay[hidden] { display: none; }
     .overlay-card {
-      width: min(100%, 360px);
+      width: min(100%, 380px);
       text-align: center;
       padding: var(--space-6) var(--space-5);
       border-radius: 22px;
@@ -175,6 +155,7 @@
       flex-wrap: wrap;
       gap: var(--space-2);
       align-items: center;
+      justify-content: space-between;
     }
     .btn {
       min-height: 48px;
@@ -197,23 +178,28 @@
     .btn.subtle {
       background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)), linear-gradient(180deg, #1a3848, #102028);
     }
-    .treat-grid {
+    .dpad {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: var(--space-2);
+      grid-template-columns: 52px 52px 52px;
+      grid-template-rows: 52px 52px;
+      gap: 6px;
+      margin-left: auto;
     }
-    .btn.treat {
-      min-height: 64px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-      font-size: 0.72rem;
-    }
-    .btn.treat .key {
+    .btn.dir {
+      min-height: 52px;
+      min-width: 52px;
+      padding: 0;
+      border-radius: 14px;
       font-size: 1.1rem;
       line-height: 1;
+    }
+    .btn.dir.up { grid-column: 2; }
+    .btn.dir.left { grid-column: 1; grid-row: 2; }
+    .btn.dir.right { grid-column: 3; grid-row: 2; }
+    .btn.dir:active, .btn.dir.pressed {
+      transform: translateY(2px);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,.35);
+      background: linear-gradient(180deg, #48b8e8, #1878a8);
     }
     .help-btn {
       position: absolute;
@@ -235,7 +221,7 @@
       left: max(10px, env(safe-area-inset-left, 0px));
       bottom: calc(58px + env(safe-area-inset-bottom, 0px));
       z-index: 6;
-      width: min(300px, calc(100vw - 20px));
+      width: min(320px, calc(100vw - 20px));
       padding: 12px 14px;
       border-radius: 14px;
       background: linear-gradient(180deg, rgba(16,36,48,.97), rgba(8,18,24,.98));
@@ -253,25 +239,22 @@
 <body>
   <div class="app">
     <div class="topbar">
-      <div class="stat wide">
-        <span class="label">Recovery</span>
-        <div class="recovery-bar" aria-hidden="true"><div class="recovery-fill" id="recoveryFill"></div></div>
-        <span class="value" id="recoveryVal">20%</span>
-      </div>
-      <div class="stat">
-        <span class="label">Round</span>
-        <span class="value" id="roundVal">1</span>
+      <div class="scoreboard" aria-live="polite">
+        <span class="team you" id="scoreYou">0</span>
+        <span class="dash">—</span>
+        <span class="team cpu" id="scoreCpu">0</span>
+        <span class="meta">First to <span id="goalTarget">3</span></span>
       </div>
     </div>
 
     <div class="canvas-wrap">
-      <canvas id="game" width="560" height="420" aria-label="Hospital recovery ward"></canvas>
+      <canvas id="game" width="560" height="420" aria-label="Medication time — pill soccer against the doctor"></canvas>
       <div class="overlay" id="overlay" hidden>
         <div class="overlay-card">
           <h2 id="overlayTitle">County General</h2>
           <p id="overlayText"></p>
           <div class="control-row" style="justify-content:center;">
-            <button class="btn primary" id="startBtn" type="button">Begin Treatment</button>
+            <button class="btn primary" id="startBtn" type="button">Kick Off</button>
           </div>
         </div>
       </div>
@@ -279,18 +262,24 @@
 
     <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false">?</button>
     <div class="help-panel" id="helpPanel" hidden>
-      <div><strong>1 / 2 / 3</strong> — give Pill, Ice, or Bandage when it reaches the bed</div>
-      <div>Match the treatment icon. Wrong dose hurts. Missed doses hurt worse.</div>
-      <div>Fill recovery to 100% to get discharged back to the grill.</div>
+      <div><strong>A / D</strong> — slide your fingertip left and right</div>
+      <div><strong>W</strong> — flick up (only from the sheets)</div>
+      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. First to 3.</div>
     </div>
 
     <div class="controls">
       <div class="control-row">
-        <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
-        <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
-        <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
+        <div>
+          <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
+          <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
+          <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
+        </div>
+        <div class="dpad" aria-label="Move and jump">
+          <button class="btn dir up" type="button" data-dir="up" aria-label="Jump">▲</button>
+          <button class="btn dir left" type="button" data-dir="left" aria-label="Move left">◀</button>
+          <button class="btn dir right" type="button" data-dir="right" aria-label="Move right">▶</button>
+        </div>
       </div>
-      <div class="treat-grid" id="treatGrid" aria-label="Treatments"></div>
     </div>
   </div>
 
@@ -298,19 +287,25 @@
 (() => {
   const W = 560;
   const H = 420;
-  const BED_X = 168;
-  const LINE_Y = 248;
-  const TREAT_W = 68;
-  const MAX_RECOVERY = 100;
-  const START_RECOVERY = 20;
+  const FLOOR_Y = 348;
+  const GOAL_W = 18;
+  const GOAL_H = 92;
+  const GOAL_TOP = FLOOR_Y - GOAL_H;
+  const WIN_SCORE = 3;
 
-  const TREATMENTS = [
-    { id: 'pill', label: 'Pill', key: '1', color: '#4a90e8', accent: '#1a5090' },
-    { id: 'ice', label: 'Ice', key: '2', color: '#7ad4f0', accent: '#2088a8' },
-    { id: 'bandage', label: 'Bandage', key: '3', color: '#f0ece4', accent: '#c8b8a8' }
-  ];
-
-  const KEY_TO_TREAT = { '1': 'pill', '2': 'ice', '3': 'bandage' };
+  const GRAVITY = 1650;
+  const SLIME_R = 34;
+  const SLIME_ACCEL = 2400;
+  const SLIME_MAX_VX = 300;
+  const SLIME_GROUND_FRICTION = 8.5;
+  const SLIME_AIR_FRICTION = 1.2;
+  const SLIME_JUMP = -560;
+  const BALL_R = 11;
+  const BALL_GRAVITY = 1500;
+  const BALL_BOUNCE = 0.78;
+  const BALL_WALL_BOUNCE = 0.72;
+  const BALL_FRICTION = 0.992;
+  const BALL_SLIME_BOUNCE = 0.88;
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -322,10 +317,8 @@
   const muteBtn = document.getElementById('muteBtn');
   const helpBtn = document.getElementById('helpBtn');
   const helpPanel = document.getElementById('helpPanel');
-  const treatGrid = document.getElementById('treatGrid');
-  const recoveryFill = document.getElementById('recoveryFill');
-  const recoveryVal = document.getElementById('recoveryVal');
-  const roundVal = document.getElementById('roundVal');
+  const scoreYouEl = document.getElementById('scoreYou');
+  const scoreCpuEl = document.getElementById('scoreCpu');
 
   let canvasDpr = 1;
   let admit = null;
@@ -338,21 +331,54 @@
     }
   } catch (e) {}
 
+  function makeSlime(side) {
+    return {
+      side,
+      x: side === 'you' ? W * 0.28 : W * 0.72,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      r: SLIME_R,
+      grounded: true,
+      squash: 0,
+      stretch: 0,
+      color: side === 'you' ? '#f0c8a0' : '#f8f8fc',
+      dark: side === 'you' ? '#c89060' : '#c8ccd8',
+      eye: side === 'you' ? '#102830' : '#203040'
+    };
+  }
+
+  function resetBall(center = true) {
+    return {
+      x: center ? W / 2 : W / 2 + (Math.random() - 0.5) * 30,
+      y: -72,
+      vx: 0,
+      vy: 0,
+      r: BALL_R,
+      spin: 0
+    };
+  }
+
+  function resetSlimesAndBall() {
+    state.you = makeSlime('you');
+    state.cpu = makeSlime('cpu');
+    state.ball = resetBall();
+  }
+
   const state = {
     mode: 'title',
-    recovery: START_RECOVERY,
-    round: 1,
-    spawnTimer: 1.4,
-    beltSpeed: 72,
-    treatments: [],
+    you: makeSlime('you'),
+    cpu: makeSlime('cpu'),
+    ball: resetBall(),
+    scoreYou: 0,
+    scoreCpu: 0,
     floatText: [],
-    flash: 0,
-    hurtFlash: 0,
     screenShake: 0,
-    pulse: 0,
+    goalFlash: 0,
+    kickoffTimer: 0,
     muted: false,
     lastTs: 0,
-    streak: 0
+    keys: { left: false, right: false, up: false }
   };
 
   let audioCtx = null;
@@ -381,107 +407,248 @@
     o.stop(ac.currentTime + dur);
   }
 
-  function pickTreatmentType() {
-    return TREATMENTS[Math.floor(Math.random() * TREATMENTS.length)].id;
+  function slimeCenterY(slime) {
+    return FLOOR_Y + slime.y;
   }
 
-  function spawnTreatment() {
-    state.treatments.push({
-      id: pickTreatmentType(),
-      x: W + 20,
-      wobble: Math.random() * Math.PI * 2
-    });
-  }
+  function updateSlime(slime, dt, input) {
+    const left = input.left;
+    const right = input.right;
+    const jump = input.up;
 
-  function activeTreatment() {
-    let best = null;
-    let bestDist = Infinity;
-    for (const t of state.treatments) {
-      const cx = t.x + TREAT_W / 2;
-      const dist = Math.abs(cx - BED_X);
-      if (dist < 56 && dist < bestDist) {
-        best = t;
-        bestDist = dist;
-      }
+    if (left && !right) slime.vx -= SLIME_ACCEL * dt;
+    else if (right && !left) slime.vx += SLIME_ACCEL * dt;
+    else {
+      const friction = slime.grounded ? SLIME_GROUND_FRICTION : SLIME_AIR_FRICTION;
+      slime.vx -= slime.vx * Math.min(1, friction * dt);
     }
-    return best;
-  }
 
-  function giveTreatment(treatId) {
-    if (state.mode !== 'play') return;
-    const t = activeTreatment();
-    if (!t) {
-      state.recovery = Math.max(0, state.recovery - 4);
-      state.hurtFlash = 0.35;
-      state.screenShake = 0.25;
-      beep(90, 0.12, 'sawtooth', 0.05);
-      state.floatText.push({ x: BED_X, y: LINE_Y - 90, text: 'Nothing there!', life: 0.8, color: '#ff8a9a' });
-      updateHUD();
-      checkEnd();
-      return;
+    slime.vx = Math.max(-SLIME_MAX_VX, Math.min(SLIME_MAX_VX, slime.vx));
+
+    if (jump && slime.grounded) {
+      slime.vy = SLIME_JUMP;
+      slime.grounded = false;
+      slime.stretch = 0.35;
+      if (slime.side === 'you') beep(280, 0.05, 'square', 0.03);
     }
-    if (t.id === treatId) {
-      const bonus = 6 + Math.min(4, state.streak);
-      state.recovery = Math.min(MAX_RECOVERY, state.recovery + bonus);
-      state.streak++;
-      state.pulse = 0.35;
-      beep(520, 0.06);
-      beep(660, 0.08);
-      state.floatText.push({ x: BED_X, y: LINE_Y - 90, text: `+${bonus}`, life: 0.9, color: '#6ee0a8' });
-      state.treatments = state.treatments.filter(x => x !== t);
+
+    slime.vy += GRAVITY * dt;
+    slime.y += slime.vy * dt;
+
+    if (slime.y >= 0) {
+      if (!slime.grounded && slime.vy > 220) slime.squash = Math.min(0.45, slime.vy / 900);
+      slime.y = 0;
+      slime.vy = 0;
+      slime.grounded = true;
     } else {
-      state.recovery = Math.max(0, state.recovery - 8);
-      state.streak = 0;
-      state.hurtFlash = 0.45;
-      state.screenShake = 0.4;
-      beep(70, 0.18, 'sawtooth', 0.06);
-      state.floatText.push({ x: BED_X, y: LINE_Y - 90, text: 'Wrong dose!', life: 0.9, color: '#ff8a9a' });
-      state.treatments = state.treatments.filter(x => x !== t);
+      slime.grounded = false;
     }
+
+    slime.x += slime.vx * dt;
+    const minX = GOAL_W + slime.r + 4;
+    const maxX = W - GOAL_W - slime.r - 4;
+    if (slime.x < minX) { slime.x = minX; slime.vx *= -0.25; }
+    if (slime.x > maxX) { slime.x = maxX; slime.vx *= -0.25; }
+
+    if (slime.squash > 0) slime.squash = Math.max(0, slime.squash - dt * 3.5);
+    if (slime.stretch > 0) slime.stretch = Math.max(0, slime.stretch - dt * 2.8);
+  }
+
+  function cpuInput(dt) {
+    const cpu = state.cpu;
+    const ball = state.ball;
+    const targetX = ball.x;
+    const distX = targetX - cpu.x;
+    const ballAbove = ball.y < -24;
+    const ballApproaching = Math.abs(distX) < 70;
+
+    let left = false;
+    let right = false;
+    let up = false;
+
+    if (Math.abs(distX) > 10) {
+      if (distX < 0) left = true;
+      else right = true;
+    }
+
+    if (cpu.grounded && ballApproaching && ballAbove && Math.abs(distX) < 48) {
+      up = Math.random() < 0.08 + dt * 2.2;
+    }
+
+    if (ball.x > W * 0.55 && cpu.x > W * 0.62) left = true;
+    if (ball.x < W * 0.45 && cpu.x < W * 0.38) right = true;
+
+    return { left, right, up };
+  }
+
+  function resolveBallSlime(slime) {
+    const ball = state.ball;
+    const cx = slime.x;
+    const cy = FLOOR_Y + slime.y;
+    const bx = ball.x;
+    const by = FLOOR_Y + ball.y;
+    const dx = bx - cx;
+    const dy = by - cy;
+    const dist = Math.hypot(dx, dy);
+    const minDist = ball.r + slime.r * (1 - slime.squash * 0.2);
+
+    if (dist >= minDist || dist === 0) return;
+
+    const nx = dx / dist;
+    const ny = dy / dist;
+    ball.x = cx + nx * minDist;
+    ball.y = cy + ny * minDist - FLOOR_Y;
+
+    if (ny > 0.15) return;
+
+    const relVx = ball.vx - slime.vx;
+    const relVy = ball.vy - slime.vy;
+    const relDot = relVx * nx + relVy * ny;
+    if (relDot > 0) return;
+
+    const impulse = -(1 + BALL_SLIME_BOUNCE) * relDot;
+    ball.vx += impulse * nx + slime.vx * 0.55;
+    ball.vy += impulse * ny + slime.vy * 0.35;
+    ball.vx += slime.vx * 0.35;
+    ball.vy += (slime.grounded ? 0 : slime.vy) * 0.25 - 40;
+
+    const speed = Math.hypot(ball.vx, ball.vy);
+    if (speed > 620) {
+      ball.vx = ball.vx / speed * 620;
+      ball.vy = ball.vy / speed * 620;
+    }
+
+    slime.squash = Math.min(0.28, speed / 1800);
+    ball.spin += slime.vx * 0.01;
+    beep(180 + speed * 0.15, 0.04, 'triangle', 0.025);
+  }
+
+  function updateBall(dt) {
+    if (state.kickoffTimer > 0) return;
+
+    const ball = state.ball;
+    ball.vy += BALL_GRAVITY * dt;
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+    ball.vx *= Math.pow(BALL_FRICTION, dt * 60);
+
+    const floorContact = -ball.r;
+    if (ball.y > floorContact) {
+      ball.y = floorContact;
+      ball.vy = -Math.abs(ball.vy) * BALL_BOUNCE;
+      ball.vx *= 0.94;
+      if (Math.abs(ball.vy) > 60) beep(120, 0.03, 'square', 0.02);
+    }
+
+    const minY = -GOAL_H + ball.r;
+    if (ball.y < minY) {
+      ball.y = minY;
+      ball.vy = Math.abs(ball.vy) * 0.35;
+    }
+
+    const leftWall = GOAL_W + ball.r;
+    const rightWall = W - GOAL_W - ball.r;
+    if (ball.x < leftWall) {
+      ball.x = leftWall;
+      ball.vx = Math.abs(ball.vx) * BALL_WALL_BOUNCE;
+    }
+    if (ball.x > rightWall) {
+      ball.x = rightWall;
+      ball.vx = -Math.abs(ball.vx) * BALL_WALL_BOUNCE;
+    }
+
+    resolveBallSlime(state.you);
+    resolveBallSlime(state.cpu);
+  }
+
+  function ballInGoal(side) {
+    const ball = state.ball;
+    const by = FLOOR_Y + ball.y;
+    if (by > FLOOR_Y - 4) return false;
+    if (by < GOAL_TOP + ball.r) return false;
+    if (side === 'left') return ball.x - ball.r < GOAL_W;
+    return ball.x + ball.r > W - GOAL_W;
+  }
+
+  function scoreGoal(scorer) {
+    if (scorer === 'you') {
+      state.scoreYou++;
+      state.floatText.push({ x: W * 0.72, y: FLOOR_Y - 120, text: 'TRASHED!', life: 1.4, color: '#6ee0a8' });
+    } else {
+      state.scoreCpu++;
+      state.floatText.push({ x: W * 0.28, y: FLOOR_Y - 120, text: 'SWALLOWED!', life: 1.4, color: '#ff8aa8' });
+    }
+    state.goalFlash = 0.55;
+    state.screenShake = 0.45;
+    resetSlimesAndBall();
+    state.kickoffTimer = 1.0;
+    beep(440, 0.08);
+    beep(554, 0.1);
+    beep(659, 0.14);
     updateHUD();
     checkEnd();
   }
 
+  function returnToDrive(heal) {
+    try {
+      const cpRaw = sessionStorage.getItem('drive-checkpoint');
+      sessionStorage.removeItem('drive-checkpoint');
+      if (cpRaw) {
+        const data = JSON.parse(cpRaw);
+        if (heal && data.drive) data.drive.hp = data.drive.maxHp;
+        sessionStorage.setItem('drive-resume', JSON.stringify(data));
+      }
+    } catch (_) { /* ignore */ }
+    location.href = 'frogger.html?resumeDrive=1';
+  }
+
   function checkEnd() {
-    if (state.recovery >= MAX_RECOVERY) {
+    if (state.scoreYou >= WIN_SCORE) {
       state.mode = 'win';
+      const fromDrive = admit && admit.from === 'drive';
       showOverlay(
         'Discharged',
-        admit
-          ? `${admit.who} sent you here with ${Wallet.format(Wallet.read())} on the line. You're cleared for the grill.`
-          : 'Vitals stable. Back to work.',
-        'Back to Grill'
+        fromDrive
+          ? `You trashed ${WIN_SCORE} pills. The doctor patches you up — back on the road at full strength.`
+          : admit
+            ? `You flicked ${WIN_SCORE} pills into the trash and the doctor gave up. ${admit.who} is still out there — back to the grill.`
+            : `${WIN_SCORE} pills in the trash. The doctor signs your discharge papers. Back to the grill.`,
+        fromDrive ? 'Back on the Road' : 'Back to Grill'
       );
       pauseBtn.disabled = true;
-      beep(440, 0.08);
-      beep(554, 0.1);
-      beep(659, 0.12);
-      beep(880, 0.16);
+      beep(523, 0.08);
+      beep(659, 0.1);
+      beep(784, 0.14);
       return;
     }
-    if (state.recovery <= 0) {
+    if (state.scoreCpu >= WIN_SCORE) {
       state.mode = 'gameover';
+      const fromDrive = admit && admit.from === 'drive';
       showOverlay(
-        'Code Blue',
-        'Recovery failed. The night shift waits for no one.',
-        'Try Again'
+        'Sedated',
+        fromDrive
+          ? `You swallowed ${state.scoreCpu} pills. Still woozy — head back to the wheel anyway.`
+          : `You swallowed ${state.scoreCpu} pills. The doctor smiles and refills the bottle. One more round?`,
+        fromDrive ? 'Back on the Road' : 'Rematch'
       );
       pauseBtn.disabled = true;
-      beep(110, 0.25, 'sawtooth', 0.06);
+      beep(110, 0.22, 'sawtooth', 0.05);
     }
   }
 
+  function resetPositions() {
+    resetSlimesAndBall();
+    state.kickoffTimer = 0.8;
+  }
+
   function startGame() {
-    state.recovery = START_RECOVERY;
-    state.round = 1;
-    state.spawnTimer = 1.2;
-    state.beltSpeed = 72;
-    state.treatments = [];
+    state.scoreYou = 0;
+    state.scoreCpu = 0;
     state.floatText = [];
-    state.flash = 0;
-    state.hurtFlash = 0;
     state.screenShake = 0;
-    state.streak = 0;
+    state.goalFlash = 0;
+    resetSlimesAndBall();
+    state.kickoffTimer = 0.9;
     state.mode = 'play';
     overlay.hidden = true;
     pauseBtn.disabled = false;
@@ -492,11 +659,8 @@
   }
 
   function updateHUD() {
-    recoveryVal.textContent = `${Math.round(state.recovery)}%`;
-    roundVal.textContent = String(state.round);
-    recoveryFill.style.width = state.recovery + '%';
-    recoveryFill.classList.toggle('mid', state.recovery <= 60 && state.recovery > 30);
-    recoveryFill.classList.toggle('low', state.recovery <= 30);
+    scoreYouEl.textContent = String(state.scoreYou);
+    scoreCpuEl.textContent = String(state.scoreCpu);
   }
 
   function showOverlay(title, text, btnLabel) {
@@ -507,216 +671,614 @@
   }
 
   function update(dt) {
-    if (state.hurtFlash > 0) state.hurtFlash -= dt;
     if (state.screenShake > 0) state.screenShake = Math.max(0, state.screenShake - dt * 1.8);
-    if (state.pulse > 0) state.pulse -= dt;
+    if (state.goalFlash > 0) state.goalFlash -= dt;
 
     for (const f of state.floatText) f.life -= dt;
     state.floatText = state.floatText.filter(f => f.life > 0);
 
     if (state.mode !== 'play') return;
 
-    state.spawnTimer -= dt;
-    if (state.spawnTimer <= 0) {
-      spawnTreatment();
-      state.spawnTimer = Math.max(0.55, 1.35 - state.round * 0.08);
+    if (state.kickoffTimer > 0) {
+      state.kickoffTimer -= dt;
+      return;
     }
 
-    for (const t of state.treatments) {
-      t.x -= state.beltSpeed * dt;
-      t.wobble += dt * 6;
-    }
+    updateSlime(state.you, dt, state.keys);
+    updateSlime(state.cpu, dt, cpuInput(dt));
+    updateBall(dt);
 
-    for (let i = state.treatments.length - 1; i >= 0; i--) {
-      const t = state.treatments[i];
-      if (t.x + TREAT_W < 0) {
-        state.treatments.splice(i, 1);
-        state.recovery = Math.max(0, state.recovery - 6);
-        state.streak = 0;
-        state.hurtFlash = 0.3;
-        beep(120, 0.1, 'square', 0.04);
-        state.floatText.push({ x: BED_X, y: LINE_Y - 70, text: 'Missed!', life: 0.8, color: '#ffb070' });
-        updateHUD();
-        checkEnd();
-      }
-    }
-
-    if (state.recovery >= 35 + state.round * 18 && state.round < 4) {
-      state.round++;
-      state.beltSpeed += 10;
-      updateHUD();
-    }
+    if (ballInGoal('left')) scoreGoal('cpu');
+    else if (ballInGoal('right')) scoreGoal('you');
   }
 
-  function roundRect(x, y, w, h, r) {
-    const rr = Math.min(r, w / 2, h / 2);
+  function drawField() {
+    // Forced perspective: camera at the patient's shoulder. The face is inches
+    // away (huge); the doctor and trash can are across the room (tiny).
+
+    // Back wall, brighter toward the far (right) end
+    const wall = ctx.createLinearGradient(0, 0, W, 0);
+    wall.addColorStop(0, '#a8c4d4');
+    wall.addColorStop(0.6, '#c8dde8');
+    wall.addColorStop(1, '#dcecf2');
+    ctx.fillStyle = wall;
+    ctx.fillRect(0, 0, W, FLOOR_Y);
+
+    // Ceiling wedge sloping down toward the vanishing point on the right
+    ctx.fillStyle = '#90aebe';
     ctx.beginPath();
-    ctx.moveTo(x + rr, y);
-    ctx.arcTo(x + w, y, x + w, y + h, rr);
-    ctx.arcTo(x + w, y + h, x, y + h, rr);
-    ctx.arcTo(x, y + h, x, y, rr);
-    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(W, 0);
+    ctx.lineTo(W, 26);
+    ctx.lineTo(0, 96);
     ctx.closePath();
-  }
-
-  function drawRoom() {
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#1a3848');
-    g.addColorStop(0.55, '#122830');
-    g.addColorStop(1, '#0a1820');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-
-    ctx.fillStyle = '#0e2028';
-    roundRect(0, LINE_Y + 18, W, H - LINE_Y - 18, 0);
     ctx.fill();
-
-    ctx.strokeStyle = 'rgba(184,212,232,.08)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < W; x += 40) {
+    // Ceiling seams converging right
+    ctx.strokeStyle = 'rgba(255,255,255,.25)';
+    ctx.lineWidth = 1.5;
+    for (const [y0, y1] of [[30, 9], [62, 18]]) {
       ctx.beginPath();
-      ctx.moveTo(x, LINE_Y + 18);
-      ctx.lineTo(x, H);
+      ctx.moveTo(0, y0);
+      ctx.lineTo(W, y1);
       ctx.stroke();
     }
 
-    ctx.fillStyle = 'rgba(42,159,214,.12)';
-    roundRect(0, LINE_Y - 8, W, 16, 8);
+    // Wall bumper rail — thick up close, thin far away
+    ctx.fillStyle = 'rgba(122,152,168,.75)';
+    ctx.beginPath();
+    ctx.moveTo(0, 188);
+    ctx.lineTo(W, 146);
+    ctx.lineTo(W, 153);
+    ctx.lineTo(0, 208);
+    ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = 'rgba(255,255,255,.04)';
-    ctx.font = '700 11px Nunito, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('COUNTY GENERAL — ER WARD', 16, 28);
-
-    drawMonitor(420, 52);
-    drawIV(92, LINE_Y - 120);
-    drawBed(BED_X, LINE_Y);
-    drawPatient(BED_X, LINE_Y - 8);
-
-    const active = state.mode === 'play' ? activeTreatment() : null;
-    if (active) {
-      ctx.strokeStyle = 'rgba(110,224,168,.55)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      roundRect(active.x - 4, LINE_Y - 86, TREAT_W + 8, 78, 10);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  }
-
-  function drawMonitor(x, y) {
-    roundRect(x, y, 96, 58, 8);
-    ctx.fillStyle = '#0a1820';
-    ctx.fill();
-    ctx.strokeStyle = '#3a6070';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.strokeStyle = state.recovery > 30 ? '#6ee0a8' : '#ff7a8a';
+    // Far wall window
+    ctx.fillStyle = '#7a98a8';
+    ctx.fillRect(W - 148, 108, 50, 42);
+    const glass = ctx.createLinearGradient(W - 144, 112, W - 144, 146);
+    glass.addColorStop(0, '#cfe8f4');
+    glass.addColorStop(1, '#9cc4dc');
+    ctx.fillStyle = glass;
+    ctx.fillRect(W - 144, 112, 42, 34);
+    ctx.strokeStyle = '#7a98a8';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    const beat = Math.sin(state.lastTs * 0.012) * 4;
-    for (let i = 0; i < 72; i++) {
-      const px = x + 12 + i;
-      const py = y + 30 + Math.sin(i * 0.45 + state.lastTs * 0.008) * (6 + beat);
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.stroke();
-  }
-
-  function drawIV(x, y) {
-    ctx.strokeStyle = '#b8d4e8';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, LINE_Y - 40);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(110,224,168,.35)';
-    ctx.beginPath();
-    ctx.arc(x, LINE_Y - 40, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#dceaf4';
-    roundRect(x - 14, y - 8, 28, 36, 6);
-    ctx.fill();
-  }
-
-  function drawBed(cx, baseY) {
-    ctx.fillStyle = '#dceaf4';
-    roundRect(cx - 72, baseY - 18, 144, 28, 8);
-    ctx.fill();
-    ctx.fillStyle = '#b8c8d8';
-    roundRect(cx - 78, baseY + 4, 156, 18, 6);
-    ctx.fill();
-    ctx.fillStyle = '#eef8ff';
-    roundRect(cx - 66, baseY - 52, 132, 36, 10);
-    ctx.fill();
-  }
-
-  function drawPatient(cx, cy) {
-    const bob = Math.sin(state.lastTs * 0.003) * 1.5;
-    ctx.fillStyle = '#e8c8a0';
-    ctx.beginPath();
-    ctx.arc(cx, cy - 28 + bob, 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#2a9fd6';
-    roundRect(cx - 22, cy - 12 + bob, 44, 34, 8);
-    ctx.fill();
-    if (state.hurtFlash > 0) {
-      ctx.fillStyle = `rgba(255,80,100,${state.hurtFlash * 0.35})`;
-      roundRect(cx - 24, cy - 34 + bob, 48, 58, 10);
-      ctx.fill();
-    }
-    if (state.pulse > 0) {
-      ctx.strokeStyle = `rgba(110,224,168,${state.pulse})`;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(cx, cy - 10 + bob, 34, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-  }
-
-  function drawTreatment(t) {
-    const spec = TREATMENTS.find(x => x.id === t.id);
-    const y = LINE_Y - 72 + Math.sin(t.wobble) * 2;
-    roundRect(t.x, y, TREAT_W, 56, 10);
-    ctx.fillStyle = spec.color;
-    ctx.fill();
-    ctx.strokeStyle = spec.accent;
-    ctx.lineWidth = 2;
+    ctx.moveTo(W - 123, 112);
+    ctx.lineTo(W - 123, 146);
     ctx.stroke();
 
-    ctx.fillStyle = spec.accent;
-    ctx.font = '800 11px Nunito, sans-serif';
+    // Small vitals monitor on the far wall
+    ctx.fillStyle = '#12222c';
+    ctx.fillRect(W - 218, 128, 36, 26);
+    ctx.strokeStyle = '#58c88a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(W - 214, 141);
+    ctx.lineTo(W - 208, 141);
+    ctx.lineTo(W - 205, 134);
+    ctx.lineTo(W - 201, 148);
+    ctx.lineTo(W - 198, 141);
+    ctx.lineTo(W - 186, 141);
+    ctx.stroke();
+
+    // Ward sign
+    ctx.fillStyle = 'rgba(24,120,168,.55)';
+    ctx.font = '800 14px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(spec.label.toUpperCase(), t.x + TREAT_W / 2, y + 18);
+    ctx.fillText('MEDICATION TIME', W * 0.56, 122);
 
-    if (t.id === 'pill') {
-      ctx.fillStyle = '#fff';
+    // Room floor beyond the bed (dark, bottom-right)
+    ctx.fillStyle = '#2c4250';
+    ctx.fillRect(0, FLOOR_Y, W, H - FLOOR_Y);
+
+    // The playing surface: the patient's blanket, huge in the foreground,
+    // receding to almost nothing at the doctor's end
+    const surf = ctx.createLinearGradient(0, FLOOR_Y, 0, H);
+    surf.addColorStop(0, '#a8cade');
+    surf.addColorStop(1, '#6f9cb4');
+    ctx.fillStyle = surf;
+    ctx.beginPath();
+    ctx.moveTo(0, FLOOR_Y);
+    ctx.lineTo(W, FLOOR_Y);
+    ctx.lineTo(W, FLOOR_Y + 16);
+    ctx.quadraticCurveTo(W * 0.42, FLOOR_Y + 64, 0, H + 36);
+    ctx.closePath();
+    ctx.fill();
+
+    // Blanket seams fanning out toward the viewer (converge at the far end)
+    ctx.strokeStyle = 'rgba(255,255,255,.28)';
+    ctx.lineWidth = 1.5;
+    for (const t of [0.3, 0.55, 0.8]) {
       ctx.beginPath();
-      ctx.ellipse(t.x + TREAT_W / 2, y + 36, 14, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (t.id === 'ice') {
-      ctx.fillStyle = 'rgba(255,255,255,.65)';
-      roundRect(t.x + TREAT_W / 2 - 14, y + 28, 28, 18, 4);
-      ctx.fill();
-    } else {
-      ctx.fillStyle = '#fff';
-      roundRect(t.x + TREAT_W / 2 - 16, y + 30, 32, 12, 3);
-      ctx.fill();
-      ctx.fillStyle = '#e84040';
-      roundRect(t.x + TREAT_W / 2 - 16, y + 30, 10, 12, 2);
+      ctx.moveTo(W - 8, FLOOR_Y + 13);
+      ctx.quadraticCurveTo(W * 0.5, FLOOR_Y + 18 + t * 26, 0, FLOOR_Y + 14 + t * (H - FLOOR_Y + 20));
+      ctx.stroke();
+    }
+
+    // Cross-folds: wide spacing near, tight spacing far
+    ctx.strokeStyle = 'rgba(40,70,90,.18)';
+    ctx.lineWidth = 2;
+    for (const [lx, rx] of [[H - 6, FLOOR_Y + 13], [FLOOR_Y + 40, FLOOR_Y + 8], [FLOOR_Y + 16, FLOOR_Y + 4]]) {
+      ctx.beginPath();
+      ctx.moveTo(0, lx);
+      ctx.quadraticCurveTo(W * 0.5, (lx + rx) / 2 + 6, W, rx);
+      ctx.stroke();
+    }
+
+    drawMouthGoal();
+    drawTrashGoal();
+
+    if (state.kickoffTimer > 0) {
+      ctx.fillStyle = '#1878a8';
+      ctx.font = '800 22px Fredoka, Nunito, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('PILL INCOMING', W / 2, FLOOR_Y - 100);
+    }
+
+    if (state.goalFlash > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${state.goalFlash * 0.35})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawMouthGoal() {
+    // Giant close-up patient profile filling the left edge; the open mouth is
+    // the goal. Face spans well above and below the play band to feel near.
+    const fx = GOAL_W;
+
+    // Hair mass at the crown
+    ctx.fillStyle = '#4a3828';
+    ctx.beginPath();
+    ctx.moveTo(0, 30);
+    ctx.quadraticCurveTo(fx + 22, 38, fx + 16, 64);
+    ctx.quadraticCurveTo(fx + 4, 62, 0, 74);
+    ctx.closePath();
+    ctx.fill();
+
+    // Skin silhouette: forehead, brow, nose, philtrum, lips, chin, jaw
+    const skin = ctx.createLinearGradient(0, 0, fx + 48, 0);
+    skin.addColorStop(0, '#e8bd93');
+    skin.addColorStop(0.65, '#f2cfa8');
+    skin.addColorStop(1, '#d8a173');
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.moveTo(0, 56);
+    ctx.quadraticCurveTo(fx + 22, 64, fx + 24, 106);   // forehead
+    ctx.quadraticCurveTo(fx + 27, 128, fx + 15, 142);  // brow ridge
+    ctx.quadraticCurveTo(fx + 8, 152, fx + 12, 166);   // bridge dip
+    ctx.quadraticCurveTo(fx + 26, 196, fx + 40, 222);  // nose slope
+    ctx.quadraticCurveTo(fx + 47, 232, fx + 36, 238);  // nose tip
+    ctx.quadraticCurveTo(fx + 18, 244, fx + 14, 241);  // nostril underside
+    ctx.quadraticCurveTo(fx + 9, 246, fx + 15, 251);   // philtrum
+    ctx.quadraticCurveTo(fx + 23, 257, fx + 8, 267);   // upper lip front
+    ctx.lineTo(fx + 6, 336);                            // (mouth cavity zone)
+    ctx.quadraticCurveTo(fx + 25, 343, fx + 22, 356);  // lower lip front
+    ctx.quadraticCurveTo(fx + 16, 362, fx + 20, 368);  // lip-chin crease
+    ctx.quadraticCurveTo(fx + 32, 378, fx + 20, 392);  // chin
+    ctx.quadraticCurveTo(fx + 4, 402, 0, 410);         // jaw falls away
+    ctx.closePath();
+    ctx.fill();
+
+    // Forehead worry lines
+    ctx.strokeStyle = 'rgba(150,100,60,.28)';
+    ctx.lineWidth = 1.5;
+    for (const y of [84, 98]) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.quadraticCurveTo(fx + 8, y - 5, fx + 17, y + 2);
+      ctx.stroke();
+    }
+
+    // Eyebrow
+    ctx.strokeStyle = '#6a4a30';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, 128);
+    ctx.quadraticCurveTo(fx - 2, 121, fx + 9, 131);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // Eye: almond with iris, watching the pill
+    ctx.fillStyle = '#fdf6ee';
+    ctx.beginPath();
+    ctx.ellipse(8, 152, 14, 5.5, -0.08, 0, Math.PI * 2);
+    ctx.fill();
+    const lookX = Math.max(0, Math.min(1, (state.ball.x - 60) / 300));
+    ctx.fillStyle = '#6a4a32';
+    ctx.beginPath();
+    ctx.arc(10 + lookX * 6, 152, 4.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#201410';
+    ctx.beginPath();
+    ctx.arc(11 + lookX * 6, 152, 2.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.beginPath();
+    ctx.arc(12 + lookX * 6, 150.4, 1, 0, Math.PI * 2);
+    ctx.fill();
+    // Upper eyelid + crease + lashes
+    ctx.strokeStyle = '#9a6a48';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-2, 148);
+    ctx.quadraticCurveTo(10, 143, 22, 150);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(154,106,72,.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, 141);
+    ctx.quadraticCurveTo(11, 137, 21, 144);
+    ctx.stroke();
+    ctx.strokeStyle = '#5a3a26';
+    ctx.lineWidth = 1.5;
+    for (const [x0, y0, x1, y1] of [[21, 149, 25, 147], [19, 151, 24, 150.5]]) {
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+
+    // Nose shading + nostril
+    ctx.strokeStyle = 'rgba(150,100,60,.3)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(fx + 12, 170);
+    ctx.quadraticCurveTo(fx + 20, 200, fx + 30, 224);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(90,50,30,.7)';
+    ctx.beginPath();
+    ctx.ellipse(fx + 17, 240, 3.6, 2.4, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cheek blush / shading
+    const blush = ctx.createRadialGradient(4, 214, 4, 4, 214, 34);
+    blush.addColorStop(0, 'rgba(216,144,112,.3)');
+    blush.addColorStop(1, 'rgba(216,144,112,0)');
+    ctx.fillStyle = blush;
+    ctx.beginPath();
+    ctx.arc(4, 214, 34, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mouth cavity (the goal) — dark throat
+    const cavity = ctx.createLinearGradient(fx + 6, 0, 0, 0);
+    cavity.addColorStop(0, '#5a1a22');
+    cavity.addColorStop(1, '#280a10');
+    ctx.fillStyle = cavity;
+    ctx.beginPath();
+    ctx.moveTo(fx + 8, 267);
+    ctx.quadraticCurveTo(fx + 10, 300, fx + 6, 336);
+    ctx.lineTo(0, 340);
+    ctx.lineTo(0, 264);
+    ctx.closePath();
+    ctx.fill();
+
+    // Upper teeth
+    ctx.fillStyle = '#f2ead8';
+    for (let i = 0; i < 4; i++) {
+      const tx = 1 + i * 5.5;
+      ctx.beginPath();
+      ctx.moveTo(tx, 268);
+      ctx.lineTo(tx + 4.5, 268);
+      ctx.lineTo(tx + 4, 280);
+      ctx.quadraticCurveTo(tx + 2, 283, tx + 0.5, 280);
+      ctx.closePath();
       ctx.fill();
     }
+    // Tongue
+    ctx.fillStyle = '#b04850';
+    ctx.beginPath();
+    ctx.ellipse(5, 337, 17, 9, -0.12, Math.PI, 0);
+    ctx.fill();
+    // Lower teeth
+    ctx.fillStyle = '#e8dfc8';
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(2 + i * 6, 330, 4.5, 8);
+    }
+
+    // Upper lip
+    ctx.fillStyle = '#c07064';
+    ctx.beginPath();
+    ctx.moveTo(0, 252);
+    ctx.quadraticCurveTo(fx + 12, 250, fx + 23, 257);
+    ctx.quadraticCurveTo(fx + 20, 264, fx + 8, 267);
+    ctx.quadraticCurveTo(fx, 266, 0, 265);
+    ctx.closePath();
+    ctx.fill();
+    // Lower lip (catches the light)
+    ctx.fillStyle = '#c8786a';
+    ctx.beginPath();
+    ctx.moveTo(0, 338);
+    ctx.quadraticCurveTo(fx + 4, 335, fx + 6, 336);
+    ctx.quadraticCurveTo(fx + 26, 342, fx + 22, 356);
+    ctx.quadraticCurveTo(fx + 10, 362, 0, 361);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(2, 350);
+    ctx.quadraticCurveTo(fx + 6, 351, fx + 15, 349);
+    ctx.stroke();
+
+    // Stubble on the chin and jaw (deterministic so it doesn't shimmer)
+    ctx.strokeStyle = 'rgba(90,60,40,.45)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 26; i++) {
+      const sx = (i * 53) % (fx + 24);
+      const sy = 364 + ((i * 31) % 36);
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + 1, sy + 2.5);
+      ctx.stroke();
+    }
+  }
+
+  function drawTrashGoal() {
+    // A normal-size trash can that reads as far away — same on-screen height
+    // as the giant mouth, which is the perspective joke.
+    const left = W - GOAL_W;
+
+    // Cast shadow on the floor
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath();
+    ctx.ellipse(left + GOAL_W / 2 - 6, FLOOR_Y + 6, 24, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body, tapered slightly toward the base
+    const body = ctx.createLinearGradient(left, 0, W, 0);
+    body.addColorStop(0, '#98a4b0');
+    body.addColorStop(0.5, '#ccd4dc');
+    body.addColorStop(1, '#8894a0');
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(left - 2, GOAL_TOP + 4);
+    ctx.lineTo(W, GOAL_TOP + 4);
+    ctx.lineTo(W, FLOOR_Y);
+    ctx.lineTo(left + 3, FLOOR_Y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Open rim (tilted ellipse so the opening faces the field)
+    ctx.fillStyle = '#3a4650';
+    ctx.beginPath();
+    ctx.ellipse(left + GOAL_W / 2 - 1, GOAL_TOP + 4, GOAL_W / 2 + 5, 5, -0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#aab4c0';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(left + GOAL_W / 2 - 1, GOAL_TOP + 4, GOAL_W / 2 + 5, 5, -0.18, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Ribs
+    ctx.strokeStyle = 'rgba(40,52,64,.35)';
+    ctx.lineWidth = 2;
+    for (let i = 1; i < 4; i++) {
+      const y = GOAL_TOP + 8 + ((FLOOR_Y - GOAL_TOP - 8) / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(left + 2, y);
+      ctx.lineTo(W - 2, y);
+      ctx.stroke();
+    }
+
+    // Flipped-open lid leaning on the wall
+    ctx.save();
+    ctx.translate(left + 4, GOAL_TOP - 4);
+    ctx.rotate(-0.9);
+    ctx.fillStyle = '#aab4c0';
+    ctx.fillRect(-2, -6, GOAL_W + 10, 7);
+    ctx.restore();
+
+    // Label
+    ctx.fillStyle = '#c8102e';
+    ctx.font = '800 8px Nunito, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.save();
+    ctx.translate(left + GOAL_W / 2 + 1, GOAL_TOP + GOAL_H / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('MEDS', 0, 3);
+    ctx.restore();
+  }
+
+  function drawShadows() {
+    // Depth cue: the near fingertip throws a big soft shadow, the far doctor
+    // a small one, and the pill's shadow shrinks as it rises.
+    const fingerLift = Math.max(0.45, 1 + state.you.y / 380);
+    ctx.fillStyle = `rgba(10,30,44,${0.3 * fingerLift})`;
+    ctx.beginPath();
+    ctx.ellipse(state.you.x, FLOOR_Y + 8, 46 * fingerLift, 10 * fingerLift, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const docLift = Math.max(0.45, 1 + state.cpu.y / 380);
+    ctx.fillStyle = `rgba(10,30,44,${0.24 * docLift})`;
+    ctx.beginPath();
+    ctx.ellipse(state.cpu.x, FLOOR_Y + 5, 24 * docLift, 4.5 * docLift, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const pillH = -state.ball.y;
+    const pillScale = Math.max(0.35, 1 - pillH / 260);
+    ctx.fillStyle = `rgba(10,30,44,${0.2 * pillScale})`;
+    ctx.beginPath();
+    ctx.ellipse(state.ball.x, FLOOR_Y + 4, 12 * pillScale, 3 * pillScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawFinger(slime) {
+    const cx = slime.x;
+    const cy = slimeCenterY(slime);
+    const r = slime.r * (1 + slime.stretch * 0.12 - slime.squash * 0.18);
+    const hScale = 1 + slime.stretch * 0.22 - slime.squash * 0.28;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, hScale);
+
+    // Fingertip dome
+    const grad = ctx.createRadialGradient(-r * 0.2, -r * 0.35, r * 0.1, 0, 0, r);
+    grad.addColorStop(0, slime.color);
+    grad.addColorStop(1, slime.dark);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(120,70,30,.3)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Fingernail
+    ctx.fillStyle = '#fbe8d8';
+    ctx.beginPath();
+    ctx.ellipse(0, -r * 0.62, r * 0.42, r * 0.3, 0, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(150,100,60,.4)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Knuckle creases at the base
+    ctx.strokeStyle = 'rgba(150,100,60,.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.7, -3);
+    ctx.quadraticCurveTo(0, -8, r * 0.7, -3);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawDoctor(slime) {
+    const cx = slime.x;
+    const cy = slimeCenterY(slime);
+    const r = slime.r * (1 + slime.stretch * 0.12 - slime.squash * 0.18);
+    const hScale = 1 + slime.stretch * 0.22 - slime.squash * 0.28;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, hScale);
+
+    // White coat body (dome)
+    const grad = ctx.createRadialGradient(-r * 0.2, -r * 0.35, r * 0.1, 0, 0, r);
+    grad.addColorStop(0, slime.color);
+    grad.addColorStop(1, slime.dark);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(80,96,112,.4)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Coat lapels
+    ctx.strokeStyle = '#aab4c4';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.18, -r * 0.5);
+    ctx.lineTo(-r * 0.3, 0);
+    ctx.moveTo(r * 0.18, -r * 0.5);
+    ctx.lineTo(r * 0.3, 0);
+    ctx.stroke();
+
+    // Head
+    const headY = -r * 0.62;
+    ctx.fillStyle = '#e8bc90';
+    ctx.beginPath();
+    ctx.arc(0, headY, r * 0.34, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes looking at the pill
+    const lookX = Math.max(-1, Math.min(1, (state.ball.x - cx) / 200));
+    ctx.fillStyle = '#203040';
+    ctx.beginPath();
+    ctx.arc(-r * 0.12 + lookX * 2, headY - 1, 2.2, 0, Math.PI * 2);
+    ctx.arc(r * 0.12 + lookX * 2, headY - 1, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Head mirror
+    ctx.strokeStyle = '#d0a23a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, headY - r * 0.3, r * 0.14, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Stethoscope
+    ctx.strokeStyle = '#3a4858';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, -r * 0.18, r * 0.28, 0.3, Math.PI - 0.3);
+    ctx.stroke();
+    ctx.fillStyle = '#3a4858';
+    ctx.beginPath();
+    ctx.arc(-r * 0.26, -r * 0.08, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawBall() {
+    // The "ball" is a capsule pill
+    const ball = state.ball;
+    const bx = ball.x;
+    const by = FLOOR_Y + ball.y;
+    const len = ball.r * 1.9;
+    const rad = ball.r * 0.62;
+
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(ball.spin);
+
+    // White half
+    ctx.fillStyle = '#f8f8f4';
+    ctx.beginPath();
+    ctx.arc(-len / 2 + rad, 0, rad, Math.PI / 2, -Math.PI / 2);
+    ctx.lineTo(0, -rad);
+    ctx.lineTo(0, rad);
+    ctx.closePath();
+    ctx.fill();
+
+    // Red half
+    ctx.fillStyle = '#e84048';
+    ctx.beginPath();
+    ctx.arc(len / 2 - rad, 0, rad, -Math.PI / 2, Math.PI / 2);
+    ctx.lineTo(0, rad);
+    ctx.lineTo(0, -rad);
+    ctx.closePath();
+    ctx.fill();
+
+    // Outline + seam
+    ctx.strokeStyle = '#802028';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(-len / 2 + rad, 0, rad, Math.PI / 2, -Math.PI / 2);
+    ctx.arc(len / 2 - rad, 0, rad, -Math.PI / 2, Math.PI / 2);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, -rad);
+    ctx.lineTo(0, rad);
+    ctx.stroke();
+
+    // Shine
+    ctx.strokeStyle = 'rgba(255,255,255,.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-len / 2 + rad, -rad * 0.45);
+    ctx.lineTo(len / 2 - rad, -rad * 0.45);
+    ctx.stroke();
+
+    ctx.restore();
+    ball.spin += ball.vx * 0.0007;
   }
 
   function drawFloatText() {
     for (const f of state.floatText) {
       ctx.globalAlpha = Math.min(1, f.life);
       ctx.fillStyle = f.color;
-      ctx.font = '800 18px Fredoka, Nunito, sans-serif';
+      ctx.font = '800 26px Fredoka, Nunito, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(f.text, f.x, f.y - (1 - f.life) * 24);
+      ctx.fillText(f.text, f.x, f.y - (1 - f.life) * 30);
       ctx.globalAlpha = 1;
     }
   }
@@ -725,14 +1287,17 @@
     ctx.save();
     ctx.setTransform(canvasDpr, 0, 0, canvasDpr, 0, 0);
     if (state.screenShake > 0) {
-      ctx.translate((Math.random() - 0.5) * state.screenShake * 8, (Math.random() - 0.5) * state.screenShake * 6);
+      ctx.translate(
+        (Math.random() - 0.5) * state.screenShake * 10,
+        (Math.random() - 0.5) * state.screenShake * 8
+      );
     }
 
-    drawRoom();
-
-    const sorted = [...state.treatments].sort((a, b) => a.x - b.x);
-    for (const t of sorted) drawTreatment(t);
-
+    drawField();
+    drawShadows();
+    drawBall();
+    drawFinger(state.you);
+    drawDoctor(state.cpu);
     drawFloatText();
 
     if (state.mode === 'pause') {
@@ -776,28 +1341,44 @@
     helpBtn.setAttribute('aria-expanded', String(open));
   }
 
-  function buildTreatButtons() {
-    treatGrid.innerHTML = '';
-    for (const t of TREATMENTS) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn treat';
-      btn.innerHTML = `<span class="key">${t.key}</span><span>${t.label}</span>`;
-      btn.style.borderColor = t.accent;
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        ensureAudio();
-        giveTreatment(t.id);
-      });
-      treatGrid.appendChild(btn);
-    }
+  function setKey(dir, down) {
+    if (dir === 'left') state.keys.left = down;
+    if (dir === 'right') state.keys.right = down;
+    if (dir === 'up') state.keys.up = down;
   }
+
+  document.querySelectorAll('[data-dir]').forEach(btn => {
+    const dir = btn.dataset.dir;
+    const press = (e) => {
+      e.preventDefault();
+      ensureAudio();
+      setKey(dir, true);
+      btn.classList.add('pressed');
+    };
+    const release = (e) => {
+      e.preventDefault();
+      setKey(dir, false);
+      btn.classList.remove('pressed');
+    };
+    btn.addEventListener('pointerdown', press);
+    btn.addEventListener('pointerup', release);
+    btn.addEventListener('pointerleave', release);
+    btn.addEventListener('pointercancel', release);
+  });
 
   startBtn.addEventListener('click', () => {
     ensureAudio();
     if (state.mode === 'win') {
+      if (admit && admit.from === 'drive') {
+        returnToDrive(true);
+        return;
+      }
       try { sessionStorage.setItem('passed-entry-grill', '1'); } catch (e) {}
       location.href = 'burger.html';
+      return;
+    }
+    if (state.mode === 'gameover' && admit && admit.from === 'drive') {
+      returnToDrive(false);
       return;
     }
     startGame();
@@ -829,12 +1410,24 @@
       }
       return;
     }
-    const treatId = KEY_TO_TREAT[e.key];
-    if (treatId) {
+    if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
       e.preventDefault();
-      ensureAudio();
-      giveTreatment(treatId);
+      state.keys.left = true;
     }
+    if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      state.keys.right = true;
+    }
+    if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') {
+      e.preventDefault();
+      state.keys.up = true;
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') state.keys.left = false;
+    if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') state.keys.right = false;
+    if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') state.keys.up = false;
   });
 
   function fitCanvas() {
@@ -846,16 +1439,17 @@
   }
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
-  buildTreatButtons();
 
   const introWho = admit ? admit.who : 'The grill';
-  const introScore = Wallet.format(Wallet.read());
+  const fromDrive = admit && admit.from === 'drive';
   showOverlay(
     'County General',
-    admit
-      ? `${introWho} knocked you out with ${introScore} on the line. Administer the right treatments to get discharged.`
-      : 'Match treatments at the bed. Fill recovery to return to work.',
-    'Begin Treatment'
+    fromDrive
+      ? `Pulled off for ER. Flick ${WIN_SCORE} pills into the trash to get patched up and back on the road. Don't swallow them.`
+      : admit
+        ? `${introWho} sent you here. You're the fingertip — flick ${WIN_SCORE} pills into the trash to get discharged. Don't let them in your mouth.`
+        : `Medication time. Flick ${WIN_SCORE} pills into the trash before the doctor bounces ${WIN_SCORE} into your mouth.`,
+    'Kick Off'
   );
   updateHUD();
   requestAnimationFrame(frame);
