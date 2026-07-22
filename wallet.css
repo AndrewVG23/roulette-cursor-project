@@ -1,0 +1,42 @@
+/* Shared purse HUD — same placement on every game screen */
+.purse-hud {
+  position: fixed;
+  top: max(8px, env(safe-area-inset-top, 0px));
+  right: max(10px, env(safe-area-inset-right, 0px));
+  z-index: 10000;
+  min-width: 72px;
+  padding: 6px 10px;
+  border-radius: 3px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(20, 53, 40, 0.9), rgba(12, 26, 21, 0.96));
+  border: 1px solid rgba(238, 194, 97, 0.22);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  font-family: 'General Sans', 'Inter', system-ui, sans-serif;
+}
+
+.purse-hud-label {
+  display: block;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #897f6d;
+}
+
+.purse-hud-value {
+  display: block;
+  font-family: 'Zodiak', Georgia, serif;
+  font-size: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  font-weight: 700;
+  color: #d0a23a;
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: 1.2;
+}
+
+.purse-hud.low .purse-hud-value { color: #ffd2a0; }
+.purse-hud.empty .purse-hud-value { color: #f26e89; }
+
+.purse-stack-amount.purse-stack-amount--hidden,
+.purse-block.purse-block--hidden {
+  display: none !important;
+}

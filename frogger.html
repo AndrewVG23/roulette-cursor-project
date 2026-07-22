@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Return to Your Car</title>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="wallet.css">
+  <script src="wallet.js"></script>
   <style>
     :root, [data-theme="light"] {
       --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
@@ -363,10 +365,6 @@
             <p id="brandSub"></p>
           </div>
           <div class="stats" aria-live="polite">
-            <div class="stat">
-              <span class="label">Score</span>
-              <span class="value" id="scoreVal">0</span>
-            </div>
             <div class="stat">
               <span class="label" id="meterLabel">Level</span>
               <span class="value" id="levelVal">1</span>
@@ -1140,7 +1138,6 @@
   const replayBtn = document.getElementById('replayBtn');
   const shareReplayBtn = document.getElementById('shareReplayBtn');
   const muteBtn = document.getElementById('muteBtn');
-  const scoreVal = document.getElementById('scoreVal');
   const levelVal = document.getElementById('levelVal');
   const livesVal = document.getElementById('livesVal');
   const livesPips = document.getElementById('livesPips');
@@ -1213,7 +1210,7 @@
     scenario: SCENARIO,
     phase: 'cross', // cross | drive
     mode: 'title', // title | play | pause | dead | win | gameover | drive | arrived
-    score: 0,
+    score: 0, // session tally for crossing high scores only
     high: Number(localStorage.getItem(SCENARIO === 'grill' ? 'grillLeaveHigh' : 'returnToCarHigh') || 0),
     level: 1,
     lives: 3,
@@ -1498,6 +1495,7 @@
 
   function startGame() {
     state.score = 0;
+    Wallet.updateDisplay();
     state.lives = 3;
     state.combo = 0;
     state.floatText = [];
@@ -1787,7 +1785,7 @@
   }
 
   function updateHUD() {
-    scoreVal.textContent = state.phase === 'drive' ? `$${state.score}` : String(state.score);
+    Wallet.updateDisplay();
     if (state.phase === 'drive' && state.drive) {
       const d = state.drive;
       const pathLen = d.route ? d.route.length : 1;
@@ -1882,7 +1880,7 @@
     const d = state.drive;
     return {
       t: d.replayClock,
-      score: state.score,
+      score: Wallet.read(),
       particles: state.particles.map(p => ({ ...p })),
       drive: replaySnapDrive(d)
     };
@@ -1890,7 +1888,7 @@
 
   function captureLiveCheckpoint() {
     return {
-      score: state.score,
+      score: Wallet.read(),
       particles: state.particles.map(p => ({ ...p })),
       drive: replaySnapDrive(state.drive),
       replayClock: state.drive.replayClock
@@ -1902,13 +1900,15 @@
     state.drive.replayClock = cp.replayClock;
     state.particles = cp.particles.map(p => ({ ...p }));
     state.score = cp.score;
+    Wallet.set(cp.score);
     updateHUD();
   }
 
   function applyReplayFrame(frame) {
     replayApplyDrive(state.drive, frame.drive);
     state.particles = frame.particles.map(p => ({ ...p }));
-    state.score = frame.score;
+    Wallet.set(frame.score);
+    state.score = Wallet.read();
   }
 
   function updateReplayButton() {
@@ -2011,7 +2011,7 @@
 
   async function shareOrDownloadReplayVideo(file) {
     const title = 'Night drive replay';
-    const text = `Last ${REPLAY_SECONDS} seconds · $${state.score}`;
+    const text = `Last ${REPLAY_SECONDS} seconds · ${Wallet.format(Wallet.read())}`;
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title, text });
@@ -2246,7 +2246,7 @@
         state.phase === 'drive' ? 'Wrecked' : isEnter()
           ? 'Never made it inside'
           : (isGrill() ? 'Never left the block' : 'Never made it to the car'),
-        `${reason} Final score ${state.score}. Best ${state.high}.`,
+        `${reason} Purse ${Wallet.format(Wallet.read())}. Best run ${Wallet.format(state.high)}.`,
         'Try Again'
       );
       pauseBtn.disabled = true;
@@ -2323,7 +2323,9 @@
       d.speed = Math.max(10, d.speed * 0.55);
       d.approachingExit = exit;
     }
-    state.score += 180 + state.level * 30;
+    const bonus = 180 + state.level * 30;
+    Wallet.add(bonus);
+    state.score += bonus;
     const estab = ESTABLISHMENTS[exit.id] || {
       id: exit.id,
       name: exit.name,
@@ -2996,7 +2998,7 @@
     d.chaser = null;
     d.chaserSpawnT = 4 + Math.random() * 3;
     const bounty = copPileup ? 500 : 100;
-    state.score += bounty;
+    Wallet.add(bounty);
     d.slowMo = Math.max(d.slowMo || 0, copPileup ? 0.65 : 0.5);
     d.zoomPunch = copPileup ? 1.5 : 1.2;
     d.camShake = Math.max(d.camShake, copPileup ? 9 : 6);
@@ -3035,7 +3037,7 @@
     cop.velX = -dir * 1.4;
     const ground = projectWorld(d.playerX, 0, d.z + 6, d);
     spawnCrashFX(ground.x, ground.y - 12 * ground.scale, dir, 0.9);
-    state.score = Math.max(0, state.score - 50);
+    Wallet.take(50);
     spawnFloat('−$50', ground.x, ground.y - 32 * ground.scale, '#ff6a5a', {
       life: 1.1,
       size: 17,
@@ -3220,7 +3222,7 @@
     }
 
     if (other && other.chaser) {
-      state.score = Math.max(0, state.score - 10);
+      Wallet.take(10);
       spawnFloat('−$10', ground.x, ground.y - 28 * ground.scale, '#ff6a5a', {
         life: 1,
         size: 15,
@@ -3261,14 +3263,14 @@
     const isChaser = !!(other && other.chaser);
     let cashTag = '';
     if (isChaser) {
-      state.score += 150;
+      Wallet.add(150);
       cashTag = '+$150';
     } else if (isCop) {
-      state.score += 50;
+      Wallet.add(50);
       cashTag = '+$50';
     } else {
       const fine = hard ? 80 + Math.floor(Math.random() * 120) : 10;
-      state.score = Math.max(0, state.score - fine);
+      Wallet.take(fine);
       cashTag = `-$${fine}`;
     }
     if (other) {
@@ -3530,7 +3532,7 @@
       }
       // Ran the red on gas — $100 fine once per signal
       if (phase === 'red' && dist <= 0 && dist > -8 && d.speed > 6 && gas && d.signalFineCd <= 0) {
-        state.score = Math.max(0, state.score - 100);
+        Wallet.take(100);
         d.signalFineCd = 3;
         d.signalFlash = 0.75;
         d.flashingSignalZ = sig.z;
@@ -3782,7 +3784,7 @@
       if (state.mode !== 'drive') return;
     }
 
-    if (d.speed > 40) state.score += Math.floor(d.speed * dt * 0.2);
+    if (d.speed > 40) Wallet.add(Math.floor(d.speed * dt * 0.2));
     updateHUD();
 
     if (Math.floor(d.rpmPulse * 5) !== Math.floor((d.rpmPulse - dt) * 5) && d.speed > 20) {

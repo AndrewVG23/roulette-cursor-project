@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Roulette</title>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="wallet.css">
+  <script src="wallet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root, [data-theme="light"] {
@@ -761,7 +763,7 @@
               <button class="purse-stack" id="purseStack" type="button" aria-label="Your purse. Tap to change chip size.">
                 <div class="purse-chip-stacks" id="purseChipStack" aria-hidden="true"></div>
                 <span class="purse-selected-denom" id="purseSelectedDenom">$1 chip</span>
-                <div class="purse-stack-amount" id="scorePurse">$100</div>
+                <div class="purse-stack-amount purse-stack-amount--hidden" id="scorePurse">$100</div>
               </button>
               <div class="wheel-area" aria-label="Roulette wheel controls">
                 <button id="wheelDisplay" class="wheel-display" type="button" aria-label="Spin wheel">
@@ -1002,8 +1004,12 @@
     let lastSpinNet = 0;
     let dealerStackCount = 0;
     let startingPurse = 100;
-    let purse = 100;
-    let purseBeforeSpin = 100;
+    let purse = Wallet.read();
+    let purseBeforeSpin = purse;
+    Wallet.subscribe((value) => {
+      purse = value;
+      updatePurseDisplay();
+    });
     let lastReplayCycle = null;
     let lastReplayVideo = null; // { key, blob, mimeType }
     let replayMode = false;
@@ -3379,13 +3385,7 @@
       return Math.max(1, Number(bankrollInput.value || 100));
     }
 
-    const GRILL_TIPS_KEY = 'grillTipsPending';
-    let sessionGrillTips = 0;
-    function takeGrillTips() {
-      const tips = Math.max(0, Math.round(Number(localStorage.getItem(GRILL_TIPS_KEY) || 0)));
-      if (tips > 0) localStorage.setItem(GRILL_TIPS_KEY, '0');
-      return tips;
-    }
+    const GRILL_TIPS_KEY = Wallet.GRILL_TIPS_KEY;
 
     function showGrillTipsBanner(tips) {
       const banner = document.getElementById('tipsBanner');
@@ -3539,6 +3539,7 @@
     function updatePurseDisplay() {
       if (!scorePurseEl) return;
       const value = Math.max(0, Math.round(purse));
+      Wallet.updateDisplay();
       const counts = countPurseChips(value);
       scorePurseEl.textContent = purseFmt.format(value);
       refreshPurseSelection();
@@ -3553,12 +3554,9 @@
     }
 
     function resetPurse() {
-      const tips = takeGrillTips();
-      sessionGrillTips += tips;
-      startingPurse = getStartingPurse() + sessionGrillTips;
+      startingPurse = Wallet.read();
       purse = startingPurse;
       updatePurseDisplay();
-      if (tips > 0) showGrillTipsBanner(tips);
     }
 
     function hidePayoutOverlay() {
@@ -4254,9 +4252,8 @@
       clearSettlementVisuals();
       placements.clear();
       history.length = 0;
-      purse = cycle.b;
+      Wallet.set(cycle.b);
       clampSelectedChipDenom();
-      updatePurseDisplay();
       renderChips();
       updateMetrics();
       updateReplayChrome();
@@ -4491,11 +4488,10 @@
         return;
       }
       hidePayoutOverlay();
-      purse += computeAdvanceTotal();
+      Wallet.add(computeAdvanceTotal());
       clampSelectedChipDenom();
       placements.clear();
       history.length = 0;
-      updatePurseDisplay();
       clearSettlementVisuals();
       renderChips();
       updateMetrics();
@@ -5019,11 +5015,10 @@
       if (purse < amount) return;
       // Start the shareable clip when the first bet lands so placement is in the video.
       ensureLiveReplayCapture();
-      purse -= amount;
+      Wallet.take(amount);
       placements.set(key, (placements.get(key) || 0) + amount);
       if (track) history.push({ key, amount });
       clampSelectedChipDenom();
-      updatePurseDisplay();
       renderChips(key);
       scheduleUpdateMetrics();
     }
@@ -5035,9 +5030,8 @@
       const next = current - last.amount;
       if (next <= 0) placements.delete(last.key);
       else placements.set(last.key, next);
-      purse += last.amount;
+      Wallet.add(last.amount);
       clampSelectedChipDenom();
-      updatePurseDisplay();
       renderChips();
       scheduleUpdateMetrics();
     }
@@ -5045,11 +5039,11 @@
       if (settling || replayMode) return;
       if (awaitingAdvance) {
         hidePayoutOverlay();
-        purse += computeAdvanceTotal();
+        Wallet.add(computeAdvanceTotal());
       } else {
         let refund = 0;
         placements.forEach((stake) => { refund += stake; });
-        purse += refund;
+        Wallet.add(refund);
         // Mid-round clear discards an in-progress placement recording.
         abortLiveReplayCapture();
         lastReplayVideo = null;
@@ -5058,7 +5052,6 @@
       placements.clear();
       history.length = 0;
       clampSelectedChipDenom();
-      updatePurseDisplay();
       renderChips();
       updateMetrics();
       updateShareButtons();

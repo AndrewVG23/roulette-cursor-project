@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Night Shift Grill</title>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="wallet.css">
+  <script src="wallet.js"></script>
   <style>
     :root, [data-theme="light"] {
       --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
@@ -132,25 +134,6 @@
       font-weight: 700;
       color: #fff4ea;
       line-height: 1.2;
-    }
-    .stat.money-stat {
-      min-width: 108px;
-      padding: 5px 9px 7px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-    }
-    .stat.money-stat .bill {
-      display: block;
-      width: 92px;
-      height: 40px;
-      border-radius: 8px;
-      box-shadow: 0 3px 8px rgba(0,0,0,.35);
-    }
-    .stat.money-stat .value {
-      font-size: var(--text-sm);
-      color: #7ddea0;
     }
     .stat.health-stat {
       min-width: 110px;
@@ -446,11 +429,6 @@
             <p></p>
           </div>
           <div class="stats" aria-live="polite">
-            <div class="stat money-stat">
-              <span class="label">Tips</span>
-              <canvas class="bill" id="billCanvas" width="184" height="80" aria-hidden="true"></canvas>
-              <span class="value" id="moneyVal">$0</span>
-            </div>
             <div class="stat">
               <span class="label">Shift</span>
               <span class="value" id="levelVal">1</span>
@@ -481,6 +459,7 @@
           <div><strong>A / S / D / F</strong> — slam Patty, Cheese, Tomato, Bacon</div>
           <div><strong>X</strong> — toss a ruined or gross burger</div>
           <div>Match the ticket order, then the bun seals itself. Tap the ingredient buttons if you skip the keys.</div>
+          <div>Every burger served pays <strong>$1</strong>. A clean good build pays <strong>$20</strong>.</div>
         </div>
 
         <div class="controls" aria-label="Game controls">
@@ -556,12 +535,9 @@
   const pauseBtn = document.getElementById('pauseBtn');
   const muteBtn = document.getElementById('muteBtn');
   const tossBtn = document.getElementById('tossBtn');
-  const moneyVal = document.getElementById('moneyVal');
   const levelVal = document.getElementById('levelVal');
   const healthVal = document.getElementById('healthVal');
   const healthFill = document.getElementById('healthFill');
-  const billCanvas = document.getElementById('billCanvas');
-  const billCtx = billCanvas.getContext('2d');
   const ingGrid = document.getElementById('ingGrid');
   const helpBtn = document.getElementById('helpBtn');
   const helpPanel = document.getElementById('helpPanel');
@@ -909,7 +885,6 @@
   const state = {
     mode: 'title',
     money: 0,
-    pendingTips: Number(localStorage.getItem('grillTipsPending') || 0),
     high: Number(localStorage.getItem('nightShiftGrillHigh') || 0),
     level: 1,
     health: MAX_HEALTH,
@@ -1459,6 +1434,10 @@
     beep(140, 0.12, 'sawtooth', 0.05);
   }
 
+  function isGoodBurger(burger) {
+    return burger.done && !burger.ruined && !burger.tainted;
+  }
+
   function deliverToCustomer(burger) {
     if (burger.delivered) return;
     burger.delivered = true;
@@ -1466,9 +1445,12 @@
     if (!c) return;
 
     const heldIds = burger.stack.map(layerId);
-    if (burger.done && !burger.ruined && !burger.tainted) {
-      // Paid $1 a burger — tips bank for the casino purse
-      bankTip(1);
+    const good = isGoodBurger(burger);
+    const served = burger.done && !burger.ruined;
+
+    if (good) {
+      // Clean build — $20 tips bank for the casino purse
+      bankTip(20);
       state.served += 1;
       state.combo += 1;
       c.held = heldIds;
@@ -1476,16 +1458,46 @@
       setCustomerMood('happy');
       state.floatText.push({
         x: CUSTOMER_SPOT_X - 10, y: CUSTOMER_Y - 100,
-        text: '+$1', life: 1.05, color: '#8fd989'
+        text: '+$20', life: 1.15, color: '#d0a23a'
+      });
+      state.floatText.push({
+        x: CUSTOMER_SPOT_X - 10, y: CUSTOMER_Y - 122,
+        text: 'GOOD BURGER', life: 1.0, color: '#8fd989'
       });
       beep(520, 0.08);
       beep(740, 0.1);
+      beep(980, 0.12);
       removeTicket(burger.ticketId);
       if (state.served % 6 === 0) {
         state.level += 1;
         state.floatText.push({ x: W / 2, y: H / 2, text: `SHIFT ${state.level}`, life: 1.2, color: '#d0a23a' });
         beep(440, 0.08); beep(660, 0.1); beep(880, 0.12);
       }
+      updateHUD();
+      if (state.tickets.length < MAX_TICKETS) addTicket();
+    } else if (served) {
+      // Served, but gross — $1 and an angry customer
+      bankTip(1);
+      state.served += 1;
+      state.combo = 0;
+      c.held = heldIds;
+      c.heldScale = 1;
+      setCustomerMood('pissed');
+      rageSound();
+      state.flash = Math.max(state.flash, 0.2);
+      state.floatText.push({
+        x: CUSTOMER_SPOT_X - 10, y: CUSTOMER_Y - 100,
+        text: '+$1', life: 1.05, color: '#8fd989'
+      });
+      state.floatText.push({
+        x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 118,
+        text: 'THAT WAS RANCID', life: 1.0, color: '#8fd96a'
+      });
+      c.willHit = true;
+      c.walkPhase = 'lunge';
+      c.lungeT = 0;
+      c.hitLanded = false;
+      removeTicket(burger.ticketId);
       updateHUD();
       if (state.tickets.length < MAX_TICKETS) addTicket();
     } else {
@@ -1495,17 +1507,10 @@
       state.combo = 0;
       rageSound();
       state.flash = Math.max(state.flash, 0.2);
-      if (burger.tainted) {
-        state.floatText.push({
-          x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 118,
-          text: 'THAT WAS RANCID', life: 1.0, color: '#8fd96a'
-        });
-      } else {
-        state.floatText.push({
-          x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 108,
-          text: 'WRONG ORDER', life: 0.95, color: '#f0a46a'
-        });
-      }
+      state.floatText.push({
+        x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 108,
+        text: 'WRONG ORDER', life: 0.95, color: '#f0a46a'
+      });
       c.willHit = true;
       c.walkPhase = 'lunge';
       c.lungeT = 0;
@@ -1539,119 +1544,35 @@
         localStorage.setItem('nightShiftGrillHigh', String(state.high));
       }
       const who = customer ? customer.name : 'A customer';
+      pauseBtn.disabled = true;
+      try {
+        sessionStorage.setItem('hospital-admit', JSON.stringify({
+          score: Wallet.read(),
+          shift: state.money,
+          who
+        }));
+      } catch (e) {}
       showOverlay(
         'Knocked Out',
-        `${who}. $${state.money} · best $${state.high}`,
-        'Again'
+        `${who}. ${Wallet.format(Wallet.read())} — heading to the hospital…`,
+        '…'
       );
-      pauseBtn.disabled = true;
+      startBtn.disabled = true;
+      setTimeout(() => {
+        location.href = 'hospital.html';
+      }, 1100);
     }
-  }
-
-  function drawDollarBill() {
-    const c = billCtx;
-    const bw = billCanvas.width;
-    const bh = billCanvas.height;
-    c.clearRect(0, 0, bw, bh);
-
-    // Greenback body
-    const g = c.createLinearGradient(0, 0, 0, bh);
-    g.addColorStop(0, '#cfe8d0');
-    g.addColorStop(0.5, '#b7d4b4');
-    g.addColorStop(1, '#9fc49c');
-    c.fillStyle = g;
-    roundRectPath(c, 4, 4, bw - 8, bh - 8, 5);
-    c.fill();
-
-    c.strokeStyle = '#2f6b3a';
-    c.lineWidth = 2;
-    roundRectPath(c, 8, 8, bw - 16, bh - 16, 3);
-    c.stroke();
-
-    // Ornamental corners
-    c.strokeStyle = '#3d7a48';
-    c.lineWidth = 1;
-    [[12, 12], [bw - 12, 12], [12, bh - 12], [bw - 12, bh - 12]].forEach(([x, y], i) => {
-      c.beginPath();
-      c.arc(x, y, 6, 0, Math.PI * 2);
-      c.stroke();
-    });
-
-    // Left "1"
-    c.fillStyle = '#1f4d28';
-    c.font = '700 28px Fredoka, Nunito, sans-serif';
-    c.textAlign = 'left';
-    c.fillText('1', 16, 48);
-
-    // Right "1"
-    c.textAlign = 'right';
-    c.fillText('1', bw - 16, 48);
-
-    // Portrait oval (generic founding-face blob)
-    c.fillStyle = '#dcecdc';
-    c.beginPath();
-    c.ellipse(bw / 2, bh / 2 + 2, 22, 26, 0, 0, Math.PI * 2);
-    c.fill();
-    c.strokeStyle = '#2f6b3a';
-    c.lineWidth = 1.5;
-    c.stroke();
-    // Tiny face
-    c.fillStyle = '#c8b090';
-    c.beginPath();
-    c.ellipse(bw / 2, bh / 2, 12, 14, 0, 0, Math.PI * 2);
-    c.fill();
-    c.fillStyle = '#3a2a20';
-    c.beginPath();
-    c.ellipse(bw / 2, bh / 2 - 8, 12, 6, 0, Math.PI, 0);
-    c.fill();
-    c.fillStyle = '#2a1c14';
-    c.beginPath();
-    c.arc(bw / 2 - 4, bh / 2 - 1, 1.2, 0, Math.PI * 2);
-    c.arc(bw / 2 + 4, bh / 2 - 1, 1.2, 0, Math.PI * 2);
-    c.fill();
-    c.strokeStyle = '#5a3a28';
-    c.lineWidth = 1;
-    c.beginPath();
-    c.arc(bw / 2, bh / 2 + 4, 4, 0.2, Math.PI - 0.2);
-    c.stroke();
-
-    // ONE DOLLAR
-    c.fillStyle = '#1f4d28';
-    c.font = '800 9px Nunito, sans-serif';
-    c.textAlign = 'center';
-    c.fillText('ONE DOLLAR', bw / 2, bh - 14);
-
-    // Serial-ish
-    c.font = '700 7px Nunito, sans-serif';
-    c.fillStyle = '#3d6a44';
-    c.textAlign = 'left';
-    c.fillText('NIGHT SHIFT', 18, 18);
-    c.textAlign = 'right';
-    c.fillText('SERIES GRILL', bw - 18, 18);
-  }
-
-  function roundRectPath(c, x, y, w, h, r) {
-    const rr = Math.min(r, w / 2, h / 2);
-    c.beginPath();
-    c.moveTo(x + rr, y);
-    c.arcTo(x + w, y, x + w, y + h, rr);
-    c.arcTo(x + w, y + h, x, y + h, rr);
-    c.arcTo(x, y + h, x, y, rr);
-    c.arcTo(x, y, x + w, y, rr);
-    c.closePath();
   }
 
   function bankTip(amount) {
     const n = Math.max(0, Math.round(amount));
     if (n <= 0) return;
     state.money += n;
-    state.pendingTips = Math.max(0, Math.round(Number(localStorage.getItem('grillTipsPending') || 0))) + n;
-    localStorage.setItem('grillTipsPending', String(state.pendingTips));
+    Wallet.add(n);
   }
 
   function startGame() {
     state.money = 0;
-    state.pendingTips = Math.max(0, Math.round(Number(localStorage.getItem('grillTipsPending') || 0)));
     state.level = 1;
     state.health = MAX_HEALTH;
     state.served = 0;
@@ -1677,16 +1598,13 @@
   }
 
   function updateHUD() {
-    moneyVal.textContent = state.pendingTips > 0
-      ? `$${state.money} · $${state.pendingTips}→tables`
-      : `$${state.money}`;
+    Wallet.updateDisplay();
     levelVal.textContent = String(state.level);
     healthVal.textContent = String(state.health);
     const pct = Math.max(0, Math.min(100, (state.health / MAX_HEALTH) * 100));
     healthFill.style.width = pct + '%';
     healthFill.classList.toggle('mid', state.health <= 60 && state.health > 30);
     healthFill.classList.toggle('low', state.health <= 30);
-    drawDollarBill();
   }
 
   function showOverlay(title, text, btnLabel) {
