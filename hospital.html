@@ -39,54 +39,6 @@
     }
     button, a.btn { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; text-decoration: none; }
     .app { height: 100dvh; display: flex; flex-direction: column; min-height: 0; }
-    .topbar {
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      z-index: 3;
-      display: flex;
-      justify-content: center;
-      gap: var(--space-2);
-      padding: 10px 12px;
-      background: linear-gradient(180deg, rgba(8,24,32,.78), transparent);
-      pointer-events: none;
-    }
-    .scoreboard {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 18px;
-      border-radius: 18px;
-      background: linear-gradient(180deg, rgba(255,255,255,.12), transparent 40%), linear-gradient(180deg, #163040, #0c1820);
-      border: 2px solid rgba(184,212,232,.22);
-      box-shadow: 0 4px 0 rgba(4,16,24,.45);
-      pointer-events: auto;
-    }
-    .scoreboard .team {
-      font-family: var(--font-display);
-      font-size: var(--text-lg);
-      font-weight: 700;
-      min-width: 1.2ch;
-      text-align: center;
-    }
-    .scoreboard .team.you { color: #6ee0a8; }
-    .scoreboard .team.cpu { color: #ff9ab0; }
-    .scoreboard .dash {
-      font-size: var(--text-sm);
-      color: var(--color-text-faint);
-      font-weight: 800;
-      letter-spacing: .08em;
-    }
-    .scoreboard .meta {
-      margin-left: 8px;
-      padding-left: 10px;
-      border-left: 1px solid rgba(184,212,232,.2);
-      font-size: 0.68rem;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      font-weight: 800;
-      color: var(--color-text-faint);
-      line-height: 1.3;
-    }
     .canvas-wrap { position: absolute; inset: 0; z-index: 1; }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     .overlay {
@@ -238,15 +190,6 @@
 </head>
 <body>
   <div class="app">
-    <div class="topbar">
-      <div class="scoreboard" aria-live="polite">
-        <span class="team you" id="scoreYou">0</span>
-        <span class="dash">—</span>
-        <span class="team cpu" id="scoreCpu">0</span>
-        <span class="meta">First to <span id="goalTarget">3</span></span>
-      </div>
-    </div>
-
     <div class="canvas-wrap">
       <canvas id="game" width="560" height="420" aria-label="Medication time — pill soccer against the doctor"></canvas>
       <div class="overlay" id="overlay" hidden>
@@ -264,7 +207,7 @@
     <div class="help-panel" id="helpPanel" hidden>
       <div><strong>A / D</strong> — slide your fingertip left and right</div>
       <div><strong>W</strong> — flick up (only from the sheets)</div>
-      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. First to 3. Every swallow costs <strong>$100</strong> — except the red pill (1 in 4), which heals you for <strong>$1</strong>.</div>
+      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. Every swallow costs <strong>$100</strong> — except the red pill (1 in 4), which costs <strong>$1</strong> and gets you discharged.</div>
     </div>
 
     <div class="controls">
@@ -297,8 +240,6 @@
   const MOUTH_PLANE_BOTTOM_Y = 336;
   const MOUTH_PLANE_TOP_X = GOAL_W + 8;
   const MOUTH_PLANE_BOTTOM_X = GOAL_W + 6;
-  const WIN_SCORE = 3;
-
   function mouthPlaneX(y) {
     const t = Math.max(0, Math.min(1, (y - MOUTH_PLANE_TOP_Y) / (MOUTH_PLANE_BOTTOM_Y - MOUTH_PLANE_TOP_Y)));
     return MOUTH_PLANE_TOP_X + (MOUTH_PLANE_BOTTOM_X - MOUTH_PLANE_TOP_X) * t;
@@ -333,9 +274,6 @@
   const muteBtn = document.getElementById('muteBtn');
   const helpBtn = document.getElementById('helpBtn');
   const helpPanel = document.getElementById('helpPanel');
-  const scoreYouEl = document.getElementById('scoreYou');
-  const scoreCpuEl = document.getElementById('scoreCpu');
-
   let canvasDpr = 1;
   let admit = null;
 
@@ -395,8 +333,6 @@
     you: makeSlime('you'),
     cpu: makeSlime('cpu'),
     ball: null,
-    scoreYou: 0,
-    scoreCpu: 0,
     pillSerial: 0,
     patientHp: patientStartHp,
     patientMaxHp,
@@ -626,39 +562,35 @@
   function scoreGoal(scorer) {
     const pillKind = state.ball.kind;
     if (scorer === 'you') {
-      state.scoreYou++;
       state.floatText.push({ x: W * 0.72, y: FLOOR_Y - 120, text: 'TRASHED!', life: 1.4, color: '#6ee0a8' });
       beep(440, 0.08);
       beep(554, 0.1);
       beep(659, 0.14);
+    } else if (pillKind === 'heal') {
+      Wallet.take(1);
+      healPatient();
+      state.floatText.push({
+        x: W * 0.28, y: FLOOR_Y - 120,
+        text: '−$1', life: 1.6, color: '#6ee0a8'
+      });
+      beep(523, 0.08);
+      beep(659, 0.1);
+      beep(784, 0.12);
+      discharge();
+      return;
     } else {
-      state.scoreCpu++;
-      if (pillKind === 'heal') {
-        Wallet.take(1);
-        healPatient();
-        state.floatText.push({
-          x: W * 0.28, y: FLOOR_Y - 120,
-          text: '−$1 · FULL HEALTH', life: 1.6, color: '#6ee0a8'
-        });
-        beep(523, 0.08);
-        beep(659, 0.1);
-        beep(784, 0.12);
-      } else {
-        Wallet.take(100);
-        state.floatText.push({
-          x: W * 0.28, y: FLOOR_Y - 120,
-          text: '−$100', life: 1.4, color: '#ff6b6b'
-        });
-        beep(110, 0.12, 'sawtooth', 0.04);
-        beep(180, 0.08);
-      }
+      Wallet.take(100);
+      state.floatText.push({
+        x: W * 0.28, y: FLOOR_Y - 120,
+        text: '−$100', life: 1.4, color: '#ff6b6b'
+      });
+      beep(110, 0.12, 'sawtooth', 0.04);
+      beep(180, 0.08);
     }
     state.goalFlash = 0.55;
     state.screenShake = 0.45;
     resetSlimesAndBall();
     state.kickoffTimer = 1.0;
-    updateHUD();
-    checkEnd();
   }
 
   function returnToDrive(heal) {
@@ -674,38 +606,22 @@
     location.href = 'frogger.html?resumeDrive=1';
   }
 
-  function checkEnd() {
-    if (state.scoreYou >= WIN_SCORE) {
-      state.mode = 'win';
-      const fromDrive = admit && admit.from === 'drive';
-      showOverlay(
-        'Discharged',
-        fromDrive
-          ? `You trashed ${WIN_SCORE} pills. The doctor patches you up — back on the road at full strength.`
-          : admit
-            ? `You flicked ${WIN_SCORE} pills into the trash and the doctor gave up. ${admit.who} is still out there — back to the grill.`
-            : `${WIN_SCORE} pills in the trash. The doctor signs your discharge papers. Back to the grill.`,
-        fromDrive ? 'Back on the Road' : 'Back to Grill'
-      );
-      pauseBtn.disabled = true;
-      beep(523, 0.08);
-      beep(659, 0.1);
-      beep(784, 0.14);
-      return;
-    }
-    if (state.scoreCpu >= WIN_SCORE) {
-      state.mode = 'gameover';
-      const fromDrive = admit && admit.from === 'drive';
-      showOverlay(
-        'Sedated',
-        fromDrive
-          ? `You swallowed ${state.scoreCpu} pills. Still woozy — head back to the wheel anyway.`
-          : `You swallowed ${state.scoreCpu} pills. The doctor smiles and refills the bottle. One more round?`,
-        fromDrive ? 'Back on the Road' : 'Rematch'
-      );
-      pauseBtn.disabled = true;
-      beep(110, 0.22, 'sawtooth', 0.05);
-    }
+  function discharge() {
+    state.mode = 'win';
+    const fromDrive = admit && admit.from === 'drive';
+    showOverlay(
+      'Discharged',
+      fromDrive
+        ? 'The red pill hits. You\'re patched up — back on the road at full strength.'
+        : admit
+          ? `The red pill heals you. ${admit.who} is still out there — back to the grill.`
+          : 'The red pill heals you. The doctor signs your discharge papers.',
+      fromDrive ? 'Back on the Road' : 'Back to Grill'
+    );
+    pauseBtn.disabled = true;
+    beep(523, 0.08);
+    beep(659, 0.1);
+    beep(784, 0.14);
   }
 
   function resetPositions() {
@@ -714,8 +630,6 @@
   }
 
   function startGame() {
-    state.scoreYou = 0;
-    state.scoreCpu = 0;
     state.pillSerial = 0;
     state.patientHp = patientStartHp;
     state.floatText = [];
@@ -727,14 +641,8 @@
     overlay.hidden = true;
     pauseBtn.disabled = false;
     pauseBtn.textContent = 'Pause';
-    updateHUD();
     beep(330, 0.08);
     beep(440, 0.1);
-  }
-
-  function updateHUD() {
-    scoreYouEl.textContent = String(state.scoreYou);
-    scoreCpuEl.textContent = String(state.scoreCpu);
   }
 
   function showOverlay(title, text, btnLabel) {
@@ -956,7 +864,6 @@
 
     drawMouthGoal();
     drawTrashGoal();
-    drawGoalBounds();
 
     if (state.kickoffTimer > 0) {
       ctx.fillStyle = '#1878a8';
@@ -1227,62 +1134,6 @@
     ctx.translate(left + GOAL_W / 2 + 1, GOAL_TOP + GOAL_H / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('MEDS', 0, 3);
-    ctx.restore();
-  }
-
-  function drawGoalBounds() {
-    const top = GOAL_TOP;
-    const bottom = FLOOR_Y - 4;
-    const height = bottom - top;
-    const right = W - GOAL_W;
-    const pulse = state.goalFlash > 0 ? state.goalFlash * 0.35 : 0;
-
-    ctx.save();
-    ctx.setLineDash([6, 5]);
-    ctx.lineWidth = 2;
-
-    ctx.fillStyle = `rgba(255,120,140,${0.12 + pulse})`;
-    ctx.beginPath();
-    ctx.moveTo(mouthPlaneX(MOUTH_OPEN_TOP), MOUTH_OPEN_TOP);
-    for (let y = MOUTH_OPEN_TOP; y <= MOUTH_OPEN_BOTTOM; y += 3) {
-      ctx.lineTo(mouthPlaneX(y), y);
-    }
-    ctx.lineTo(0, MOUTH_OPEN_BOTTOM);
-    ctx.lineTo(0, MOUTH_OPEN_TOP);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = `rgba(255,138,168,${0.72 + pulse})`;
-    ctx.stroke();
-
-    ctx.setLineDash([4, 5]);
-    ctx.lineWidth = 2.5;
-    ctx.strokeStyle = `rgba(255,210,220,${0.85 + pulse})`;
-    ctx.beginPath();
-    for (let y = MOUTH_OPEN_TOP; y <= MOUTH_OPEN_BOTTOM; y += 3) {
-      const x = mouthPlaneX(y);
-      if (y === MOUTH_OPEN_TOP) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    ctx.setLineDash([6, 5]);
-    ctx.lineWidth = 2;
-    ctx.fillStyle = `rgba(110,224,168,${0.12 + pulse})`;
-    ctx.fillRect(right, top, GOAL_W, height);
-    ctx.strokeStyle = `rgba(110,224,168,${0.72 + pulse})`;
-    ctx.strokeRect(right + 0.5, top + 0.5, GOAL_W - 1, height - 1);
-
-    ctx.setLineDash([4, 6]);
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = 'rgba(240,250,255,.42)';
-    ctx.beginPath();
-    ctx.moveTo(right, top);
-    ctx.lineTo(right, bottom);
-    ctx.moveTo(right, top);
-    ctx.lineTo(W, top);
-    ctx.stroke();
-
-    ctx.setLineDash([]);
     ctx.restore();
   }
 
@@ -1738,10 +1589,6 @@
       location.href = 'burger.html';
       return;
     }
-    if (state.mode === 'gameover' && admit && admit.from === 'drive') {
-      returnToDrive(false);
-      return;
-    }
     startGame();
   });
 
@@ -1764,7 +1611,7 @@
       if (state.mode === 'play' || state.mode === 'pause') togglePause();
       return;
     }
-    if (state.mode === 'title' || state.mode === 'gameover') {
+    if (state.mode === 'title') {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         startBtn.click();
@@ -1806,13 +1653,12 @@
   showOverlay(
     'County General',
     fromDrive
-      ? `Pulled off for ER. Flick ${WIN_SCORE} pills into the trash to get patched up and back on the road. Every swallow costs $100 — except the red pill (1 in 4), which heals you for $1.`
+      ? 'Pulled off for ER. Trash what you can — every swallow costs $100. Swallow the red pill (1 in 4) for $1 and you\'re discharged.'
       : admit
-        ? `${introWho} sent you here. Flick ${WIN_SCORE} pills into the trash. Swallowing costs $100 — the red pill (1 in 4) heals you for $1.`
-        : `Medication time. Flick ${WIN_SCORE} pills into the trash. Every swallow costs $100 — the red pill (1 in 4) heals you for $1.`,
+        ? `${introWho} sent you here. Trash pills when you can. Swallowing costs $100 — the red pill (1 in 4) costs $1 and gets you discharged.`
+        : 'Medication time. Trash pills when you can. Every swallow costs $100 — the red pill (1 in 4) costs $1 and gets you discharged.',
     'Kick Off'
   );
-  updateHUD();
   requestAnimationFrame(frame);
 })();
   </script>
