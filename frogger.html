@@ -429,6 +429,308 @@
     { id: 'casino', name: 'CASINO', href: 'index.html', blurb: 'The casino — back to the tables.' }
   ];
 
+  // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
+  // n = north address, e = east blocks from Michigan Ave
+  const NIGHT_DRIVE_MAP = {
+    name: 'LSD Loop',
+    zPerNorth: 9,
+    zPerEastBlock: 640,
+    xPerBlock: 0.74,
+    geoBounds: { nMin: 560, nMax: 1680, eMin: -2.5, eMax: 3.0 },
+    lakeEastOf: 2.55,
+    loop: [
+      // —— LSD northbound (lakefront curves) ——
+      { n: 620, e: 2.05, label: 'Grand & LSD' },
+      { n: 700, e: 2.11 },
+      { n: 780, e: 2.18 },
+      { n: 820, e: 2.22, label: 'Chicago Ave' },
+      { n: 900, e: 2.30, label: 'Hancock View' },
+      { n: 980, e: 2.34 },
+      { n: 1000, e: 2.20, label: 'Oak St Curve' },
+      { n: 1040, e: 2.32 },
+      { n: 1080, e: 2.44 },
+      { n: 1120, e: 2.52, label: 'Drake / Gold Coast' },
+      { n: 1160, e: 2.50 },
+      { n: 1200, e: 2.44, label: 'Division' },
+      { n: 1320, e: 2.28 },
+      { n: 1480, e: 2.12 },
+      { n: 1600, e: 2.04, label: 'North Ave Beach' },
+      // 90° west onto North Ave
+      { n: 1600, e: -2.10, label: 'North & Clark' },
+      // —— Clark St southbound ——
+      { n: 1480, e: -2.10 },
+      { n: 1320, e: -2.10 },
+      { n: 1200, e: -2.10, label: 'Division & Clark' },
+      // 90° east into Gold Coast (Rush → Michigan)
+      { n: 1200, e: -0.85, label: 'Rush St' },
+      { n: 1200, e: 0.25, label: 'Michigan Ave' },
+      { n: 1120, e: 0.25, label: 'Gold Coast' },
+      // 90° west back to Clark
+      { n: 1120, e: -0.85 },
+      { n: 1120, e: -2.10 },
+      { n: 1000, e: -2.10, label: 'Oak St' },
+      { n: 820, e: -2.10, label: 'Chicago & Clark' },
+      { n: 620, e: -2.10, label: 'Grand & Clark' },
+      // 90° east on Grand Ave back to LSD
+      { n: 620, e: 2.05, label: 'Loop Start' }
+    ],
+    signals: [
+      { n: 1600, e: 2.04, offset: 0, label: 'North & LSD' },
+      { n: 1600, e: -2.10, offset: 2.4, label: 'North & Clark' },
+      { n: 1200, e: -2.10, offset: 4.8, label: 'Division' },
+      { n: 1200, e: 0.25, offset: 1.2, label: 'Michigan' },
+      { n: 620, e: -2.10, offset: 3.6, label: 'Grand & Clark' },
+      { n: 620, e: 2.05, offset: 6.0, label: 'Grand & LSD' }
+    ],
+    streets: [
+      { kind: 'ns', e: 0, label: 'Michigan' },
+      { kind: 'ns', e: -0.85, label: 'Rush' },
+      { kind: 'ns', e: -2.10, label: 'Clark' },
+      { kind: 'ns', e: 2.30, label: 'LSD' },
+      { kind: 'ew', n: 820, label: 'Chicago' },
+      { kind: 'ew', n: 1000, label: 'Oak' },
+      { kind: 'ew', n: 1200, label: 'Division' },
+      { kind: 'ew', n: 1600, label: 'North' },
+      { kind: 'ew', n: 620, label: 'Grand' }
+    ],
+    landmarks: [
+      { n: 900, e: 2.55, label: 'Hancock' },
+      { n: 1120, e: 2.65, label: 'Drake' },
+      { n: 1200, e: 0.35, label: 'Mag Mile' },
+      { n: 1600, e: 2.55, label: 'Beach' }
+    ],
+    exits: [
+      { n: 900, e: 2.30, side: -1, id: 'casino', name: 'CASINO', mapLabel: 'Casino', href: 'index.html', blurb: 'The casino — back to the tables.' },
+      { n: 1200, e: 0.25, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' }
+    ]
+  };
+
+  const SIGNAL_CYCLE = 9;
+  const SIGNAL_GREEN = 4.5;
+  const SIGNAL_YELLOW = 1.0;
+
+  function signalPhase(sig, time) {
+    const p = (time + (sig.offset || 0)) % SIGNAL_CYCLE;
+    if (p < SIGNAL_GREEN) return 'green';
+    if (p < SIGNAL_GREEN + SIGNAL_YELLOW) return 'yellow';
+    return 'red';
+  }
+
+  function geoToGameXY(map, n, e) {
+    return { x: e * map.xPerBlock, n, e };
+  }
+
+  function geoSegmentLength(map, a, b) {
+    const dn = (b.n - a.n) * map.zPerNorth;
+    const de = (b.e - a.e) * map.zPerEastBlock;
+    return Math.hypot(dn, de);
+  }
+
+  function assignPathZ(map, geoPoints) {
+    const raw = geoPoints.map(wp => ({ ...wp, ...geoToGameXY(map, wp.n, wp.e) }));
+    raw[0].z = 0;
+    for (let i = 1; i < raw.length; i++) {
+      raw[i].z = raw[i - 1].z + geoSegmentLength(map, raw[i - 1], raw[i]);
+    }
+    return raw;
+  }
+
+  function activeRouteWaypoints(d) {
+    if (!d || !d.route) return [];
+    return d.route.waypoints;
+  }
+
+  function compileNightDriveRoute(map) {
+    const waypoints = assignPathZ(map, map.loop);
+    const length = waypoints[waypoints.length - 1].z;
+
+    const samples = [];
+    const step = 14;
+    for (let z = 0; z <= length; z += step) {
+      samples.push({ z, ...sampleRouteFrame(waypoints, map, z) });
+    }
+    const last = samples[samples.length - 1];
+    if (!last || last.z < length) {
+      samples.push({ z: length, ...sampleRouteFrame(waypoints, map, length) });
+    }
+
+    let minX = Infinity, maxX = -Infinity;
+    for (const s of samples) {
+      minX = Math.min(minX, s.x);
+      maxX = Math.max(maxX, s.x);
+    }
+
+    const exits = (map.exits || []).map(def => ({
+      ...def,
+      z: nearestRouteZ(waypoints, def.n, def.e),
+      mapLabel: def.mapLabel || def.name
+    }));
+
+    const intersections = compileIntersections(waypoints, map);
+    const legs = compileLegs(waypoints, intersections);
+    const signals = intersections.map((ix, i) => {
+      const manual = (map.signals || []).find(s =>
+        Math.abs(s.n - ix.n) < 30 && Math.abs(s.e - ix.e) < 0.35
+      );
+      return {
+        n: ix.n,
+        e: ix.e,
+        z: ix.z,
+        offset: manual ? manual.offset : (i * 1.65) % SIGNAL_CYCLE,
+        label: manual ? manual.label : ix.label,
+        intersection: ix
+      };
+    });
+
+    return { ...map, waypoints, samples, length, minX, maxX, exits, signals, intersections, legs };
+  }
+
+  function compileIntersections(waypoints, map) {
+    const list = [];
+    for (let i = 1; i < waypoints.length - 1; i++) {
+      const prev = waypoints[i - 1], cur = waypoints[i], next = waypoints[i + 1];
+      const dn1 = cur.n - prev.n, de1 = cur.e - prev.e;
+      const dn2 = next.n - cur.n, de2 = next.e - cur.e;
+      const seg1Ns = Math.abs(de1) < 0.08 && Math.abs(dn1) > 0.08;
+      const seg1Ew = Math.abs(dn1) < 0.08 && Math.abs(de1) > 0.08;
+      const seg2Ns = Math.abs(de2) < 0.08 && Math.abs(dn2) > 0.08;
+      const seg2Ew = Math.abs(dn2) < 0.08 && Math.abs(de2) > 0.08;
+      if (!((seg1Ns && seg2Ew) || (seg1Ew && seg2Ns))) continue;
+      const cross = seg2Ew ? 'ew' : 'ns';
+      const frameBefore = sampleRouteFrame(waypoints, map, Math.max(0, cur.z - 28));
+      const frameAfter = sampleRouteFrame(waypoints, map, Math.min(waypoints[waypoints.length - 1].z, cur.z + 28));
+      let dh = frameAfter.heading - frameBefore.heading;
+      while (dh > Math.PI) dh -= Math.PI * 2;
+      while (dh < -Math.PI) dh += Math.PI * 2;
+      const turnDir = dh > 0.12 ? 'left' : dh < -0.12 ? 'right' : 'straight';
+      list.push({
+        z: cur.z,
+        n: cur.n,
+        e: cur.e,
+        cross,
+        crossSpan: cross === 'ew' ? 2.85 : 2.0,
+        crossE: cur.e,
+        crossN: cur.n,
+        label: cur.label,
+        heading: frameBefore.heading,
+        turnDir
+      });
+    }
+    return list;
+  }
+
+  function compileLegs(waypoints, intersections) {
+    return intersections.map((ix, i) => ({
+      z0: i === 0 ? 0 : intersections[i - 1].z,
+      z1: ix.z,
+      turn: ix.turnDir,
+      ix,
+      done: false
+    }));
+  }
+
+  function currentDriveLeg(d) {
+    if (!d.legs || d.legIndex >= d.legs.length) return null;
+    return d.legs[d.legIndex];
+  }
+
+  function interpRouteGeo(wps, z, linear) {
+    if (z <= wps[0].z) return { n: wps[0].n, e: wps[0].e };
+    if (z >= wps[wps.length - 1].z) return { n: wps[wps.length - 1].n, e: wps[wps.length - 1].e };
+    for (let i = 0; i < wps.length - 1; i++) {
+      const a = wps[i], b = wps[i + 1];
+      if (z >= a.z && z <= b.z) {
+        const t = (z - a.z) / (b.z - a.z || 1);
+        const k = linear ? t : t * t * (3 - 2 * t);
+        return { n: a.n + (b.n - a.n) * k, e: a.e + (b.e - a.e) * k };
+      }
+    }
+    return { n: wps[0].n, e: wps[0].e };
+  }
+
+  function interpRouteX(wps, z) {
+    if (z <= wps[0].z) return wps[0].x;
+    if (z >= wps[wps.length - 1].z) return wps[wps.length - 1].x;
+    for (let i = 0; i < wps.length - 1; i++) {
+      const a = wps[i], b = wps[i + 1];
+      if (z >= a.z && z <= b.z) {
+        const t = (z - a.z) / (b.z - a.z || 1);
+        return a.x + (b.x - a.x) * t;
+      }
+    }
+    return 0;
+  }
+
+  function sampleRouteFrame(wps, map, z) {
+    const eps = 14;
+    const z0 = Math.max(0, z - eps);
+    const z1 = Math.min(wps[wps.length - 1].z, z + eps);
+    const g = interpRouteGeo(wps, z, true);
+    const g0 = interpRouteGeo(wps, z0, true);
+    const g1 = interpRouteGeo(wps, z1, true);
+    const x = g.e * map.xPerBlock;
+    const x0 = g0.e * map.xPerBlock;
+    const x1 = g1.e * map.xPerBlock;
+    const dz = z1 - z0 || 1;
+    const dx = x1 - x0;
+    const heading = Math.atan2(dx, dz);
+    const curve = dx / dz;
+    return { x, n: g.n, e: g.e, heading, curve };
+  }
+
+  function nearestRouteZ(wps, n, e) {
+    let bestZ = 0;
+    let bestD = Infinity;
+    for (let i = 0; i < wps.length - 1; i++) {
+      const a = wps[i], b = wps[i + 1];
+      const steps = Math.max(2, Math.ceil((b.z - a.z) / 60));
+      for (let s = 0; s <= steps; s++) {
+        const t = s / steps;
+        const zn = a.n + (b.n - a.n) * t;
+        const ze = a.e + (b.e - a.e) * t;
+        const zz = a.z + (b.z - a.z) * t;
+        const d = (zn - n) * (zn - n) + (ze - e) * (ze - e) * 4;
+        if (d < bestD) { bestD = d; bestZ = zz; }
+      }
+    }
+    return bestZ;
+  }
+
+  function sampleRouteAt(route, z, d) {
+    if (!route) return { x: 0, curve: 0, heading: 0, label: null };
+    const wps = d ? activeRouteWaypoints(d) : route.waypoints;
+    z = Math.max(0, Math.min(d ? wps[wps.length - 1].z : route.length, z));
+
+    const frame = sampleRouteFrame(wps, route, z);
+    let label = null;
+    for (const wp of wps) {
+      if (Math.abs(wp.z - z) < 220 && wp.label) label = wp.label;
+    }
+    return { ...frame, label };
+  }
+
+  function seedMapExits(d, route) {
+    d.exits = [];
+    for (const def of route.exits || []) {
+      d.exits.push({
+        z: def.z,
+        side: def.side,
+        id: def.id,
+        name: def.name,
+        mapLabel: def.mapLabel,
+        href: def.href,
+        blurb: def.blurb,
+        taken: false,
+        startZ: def.z - 90,
+        endZ: def.z + 70,
+        n: def.n,
+        e: def.e
+      });
+    }
+    d.exits.sort((a, b) => a.z - b.z);
+    d.nextExitZ = route.length;
+  }
+
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   const overlay = document.getElementById('overlay');
@@ -568,10 +870,10 @@
   function setPhaseUI() {
     if (state.phase === 'drive') {
       brandTitle.textContent = 'Night Drive';
-      brandSub.textContent = 'Open road · take EXIT GRILL or CASINO';
-      meterLabel.textContent = 'Exit';
+      brandSub.textContent = 'LSD loop · stop at red · steer to turn';
+      meterLabel.textContent = 'Lap';
       livesLabel.textContent = 'HP';
-      hintText.textContent = 'Steer into the exit ramp when you see the sign';
+      hintText.textContent = 'Stop at the light · when green, steer left or right to turn';
       dpad.classList.add('drive-mode');
     } else if (isGrill()) {
       brandTitle.textContent = 'Leave the Grill';
@@ -742,6 +1044,7 @@
   };
 
   function beginDrive() {
+    const route = compileNightDriveRoute(NIGHT_DRIVE_MAP);
     state.phase = 'drive';
     state.mode = 'drive';
     state.invuln = 0;
@@ -750,7 +1053,16 @@
     state.destination = null;
     state.drive = {
       z: 0,
-      goal: Infinity, // open road — ends only when you take an exit
+      goal: route.length,
+      lap: 1,
+      signals: route.signals,
+      atSignal: null,
+      signalFineCd: 0,
+      route,
+      legs: route.legs.map(l => ({ ...l, done: false })),
+      legIndex: 0,
+      awaitTurn: null,
+      turnFlash: 0,
       speed: 28,
       maxSpeed: 72 + state.level * 4,
       accel: 0,
@@ -765,7 +1077,7 @@
       suspVel: 0,
       curve: 0,
       targetCurve: 0,
-      curveTimer: 1.5,
+      curveTimer: 0,
       hills: 0,
       traffic: [],
       props: [],
@@ -773,7 +1085,7 @@
       exits: [],
       nextPropZ: 40,
       nextBuildZ: 20,
-      nextExitZ: 4200,
+      nextExitZ: route.length,
       exitIndex: 0,
       spawnTimer: 0.35,
       invuln: 1.4,
@@ -793,7 +1105,7 @@
       approachingExit: null
     };
     seedCityBlocks(state.drive, 0, 1600);
-    seedRoadExits(state.drive, 0, 12000);
+    seedMapExits(state.drive, route);
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
     setPhaseUI();
     overlay.hidden = true;
@@ -861,9 +1173,6 @@
       if (((z / lot) | 0) % 4 === 0) {
         d.props.push({ z: z + 40, side: Math.cos(z) > 0 ? 1 : -1, kind: 'hydrant' });
       }
-      if (((z / lot) | 0) % 7 === 0) {
-        d.props.push({ z: z + lot * 0.5, side: 0, kind: 'crosswalk' });
-      }
     }
     d.nextBuildZ = toZ;
     d.nextPropZ = toZ;
@@ -872,14 +1181,10 @@
   function updateHUD() {
     scoreVal.textContent = state.phase === 'drive' ? `$${state.score}` : String(state.score);
     if (state.phase === 'drive' && state.drive) {
-      const ex = nextRoadExit(state.drive);
-      if (ex) {
-        const dist = Math.max(0, ex.z - state.drive.z);
-        const mi = (dist / (DW.MPH_Z * 55)).toFixed(1);
-        levelVal.textContent = `${ex.name} ${mi}`;
-      } else {
-        levelVal.textContent = '—';
-      }
+      const d = state.drive;
+      const pathLen = d.route ? d.route.length : 1;
+      const pct = Math.min(99, Math.round((d.z / pathLen) * 100));
+      levelVal.textContent = `Lap ${d.lap || 1} · ${pct}%`;
       livesVal.textContent = String(Math.max(0, Math.ceil(state.drive.hp)));
       livesPips.innerHTML = '';
       const pips = 5;
@@ -1351,43 +1656,156 @@
     '#d4a017', '#e8e6e0', '#4a235a', '#784212', '#283747'
   ];
 
+  // Body-type stats for rendering + collision; weights mirror rough US sales share.
+  const CAR_KIND_STATS = {
+    bus: { base: 30, halfW: 0.3, len: 44, bodyScale: 1.15, roof: 1.35 },
+    taxi: { base: 42, halfW: 0.21, len: 28, bodyScale: 1, roof: 1 },
+    sports: { base: 50, halfW: 0.19, len: 26, bodyScale: 0.92, roof: 0.72 },
+    suv: { base: 40, halfW: 0.24, len: 32, bodyScale: 1.08, roof: 1.2 },
+    van: { base: 36, halfW: 0.25, len: 34, bodyScale: 1.05, roof: 1.25 },
+    pickup: { base: 38, halfW: 0.22, len: 33, bodyScale: 1.02, roof: 0.85 },
+    compact: { base: 44, halfW: 0.18, len: 24, bodyScale: 0.85, roof: 0.95 },
+    police: { base: 46, halfW: 0.21, len: 29, bodyScale: 1, roof: 1 },
+    sedan: { base: 40, halfW: 0.2, len: 28, bodyScale: 1, roof: 1 }
+  };
+
+  // Real models — weight ≈ annual US sales (pickups/SUVs dominate; exotics are rare treats).
+  const REAL_CAR_FLEET = [
+    { model: 'Ford F-150', kind: 'pickup', weight: 750, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#784212'] },
+    { model: 'Chevy Silverado', kind: 'pickup', weight: 555, colors: ['#283747', '#5d6d7e', '#1a5276', '#922b21'] },
+    { model: 'Ram 1500', kind: 'pickup', weight: 440, colors: ['#1c2833', '#5d6d7e', '#922b21', '#4a235a'] },
+    { model: 'Toyota RAV4', kind: 'suv', weight: 434, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Honda CR-V', kind: 'suv', weight: 361, colors: ['#1c2833', '#5d6d7e', '#196f3d', '#922b21', '#e8e6e0'] },
+    { model: 'Toyota Camry', kind: 'sedan', weight: 290, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Honda Civic', kind: 'compact', weight: 263, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#c0392b'] },
+    { model: 'Tesla Model Y', kind: 'suv', weight: 251, colors: ['#1c2833', '#5d6d7e', '#922b21', '#e8e6e0', '#148f77'] },
+    { model: 'Toyota Tacoma', kind: 'pickup', weight: 231, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d'] },
+    { model: 'Toyota Corolla', kind: 'compact', weight: 222, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Chevy Equinox', kind: 'suv', weight: 212, colors: ['#283747', '#5d6d7e', '#1a5276', '#922b21', '#e8e6e0'] },
+    { model: 'Ford Explorer', kind: 'suv', weight: 178, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d'] },
+    { model: 'Jeep Grand Cherokee', kind: 'suv', weight: 157, colors: ['#1c2833', '#5d6d7e', '#922b21', '#784212'] },
+    { model: 'Ford Escape', kind: 'suv', weight: 156, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Honda Accord', kind: 'sedan', weight: 154, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Nissan Rogue', kind: 'suv', weight: 171, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d'] },
+    { model: 'Toyota Highlander', kind: 'suv', weight: 184, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Hyundai Tucson', kind: 'suv', weight: 147, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Subaru Outback', kind: 'suv', weight: 130, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d'] },
+    { model: 'Mazda CX-5', kind: 'suv', weight: 128, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#c0392b'] },
+    { model: 'Honda Pilot', kind: 'suv', weight: 122, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Nissan Altima', kind: 'sedan', weight: 120, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d'] },
+    { model: 'Kia Telluride', kind: 'suv', weight: 93, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Toyota Prius', kind: 'compact', weight: 88, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Chevy Malibu', kind: 'sedan', weight: 85, colors: ['#283747', '#5d6d7e', '#1a5276', '#922b21'] },
+    { model: 'VW Tiguan', kind: 'suv', weight: 82, colors: ['#1c2833', '#5d6d7e', '#922b21', '#196f3d', '#e8e6e0'] },
+    { model: 'Ford Transit', kind: 'van', weight: 40, colors: ['#e8e6e0', '#5d6d7e', '#1c2833'] },
+    { model: 'BMW 3 Series', kind: 'sedan', weight: 45, colors: ['#1c2833', '#5d6d7e', '#e8e6e0', '#922b21', '#148f77'] },
+    { model: 'Mercedes C-Class', kind: 'sedan', weight: 38, colors: ['#1c2833', '#5d6d7e', '#e8e6e0', '#922b21'] },
+    { model: 'NYC Yellow Cab', kind: 'taxi', weight: 28, colors: ['#d4a017'] },
+    { model: 'Ford Police Interceptor', kind: 'police', weight: 90, colors: ['#1a2330'] },
+    { model: 'MTA Bus', kind: 'bus', weight: 22, colors: ['#e8e6e0'] },
+    // Exotics — low weight, high cool factor
+    { model: 'Lamborghini Huracán', kind: 'sports', weight: 1, cool: true, colors: ['#f39c12', '#e74c3c', '#ecf0f1', '#1c2833'], bodyScale: 0.86, roof: 0.62, base: 58 },
+    { model: 'Ferrari Roma', kind: 'sports', weight: 1, cool: true, colors: ['#c0392b', '#1c2833', '#ecf0f1', '#f1c40f'], bodyScale: 0.88, roof: 0.64, base: 56 },
+    { model: 'McLaren 720S', kind: 'sports', weight: 1, cool: true, colors: ['#f39c12', '#148f77', '#ecf0f1', '#1c2833'], bodyScale: 0.85, roof: 0.6, base: 60 },
+    { model: 'Porsche 911', kind: 'sports', weight: 2, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#f1c40f'], bodyScale: 0.9, roof: 0.68, base: 54 },
+    { model: 'Corvette Stingray', kind: 'sports', weight: 2, cool: true, colors: ['#c0392b', '#1c2833', '#ecf0f1', '#f39c12'], bodyScale: 0.91, roof: 0.66, base: 55 },
+    { model: 'Dodge Challenger Hellcat', kind: 'sports', weight: 2, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#922b21'], bodyScale: 0.98, roof: 0.78, base: 52 },
+    { model: 'BMW M4', kind: 'sports', weight: 1, cool: true, colors: ['#1c2833', '#148f77', '#ecf0f1', '#c0392b'], bodyScale: 0.9, roof: 0.7, base: 53 },
+    { model: 'Mercedes-AMG GT', kind: 'sports', weight: 1, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#5d6d7e'], bodyScale: 0.88, roof: 0.65, base: 57 },
+    { model: 'Audi R8', kind: 'sports', weight: 1, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#f39c12'], bodyScale: 0.87, roof: 0.63, base: 58 },
+    { model: 'Tesla Model S Plaid', kind: 'sports', weight: 2, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#148f77'], bodyScale: 0.93, roof: 0.72, base: 56 },
+    { model: 'Ford Mustang GT', kind: 'sports', weight: 2, cool: true, colors: ['#c0392b', '#1c2833', '#ecf0f1', '#196f3d'], bodyScale: 0.94, roof: 0.74, base: 51 },
+    { model: 'Nissan GT-R', kind: 'sports', weight: 1, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#5d6d7e'], bodyScale: 0.92, roof: 0.7, base: 54 }
+  ];
+  const COMMON_CAR_FLEET = REAL_CAR_FLEET.filter(c => !c.cool);
+  const COOL_CAR_FLEET = REAL_CAR_FLEET.filter(c => c.cool);
+  const POLICE_CAR = REAL_CAR_FLEET.find(c => c.kind === 'police');
+  const COMMON_CAR_FLEET_TOTAL = COMMON_CAR_FLEET.reduce((s, c) => s + c.weight, 0);
+  const COOL_CAR_SPAWN_CHANCE = 0.035;
+  const POLICE_SPAWN_CHANCE = 0.12;
+
+  function pickRealCar() {
+    if (Math.random() < COOL_CAR_SPAWN_CHANCE && COOL_CAR_FLEET.length) {
+      return COOL_CAR_FLEET[Math.floor(Math.random() * COOL_CAR_FLEET.length)];
+    }
+    if (Math.random() < POLICE_SPAWN_CHANCE && POLICE_CAR) {
+      return POLICE_CAR;
+    }
+    let r = Math.random() * COMMON_CAR_FLEET_TOTAL;
+    for (const car of COMMON_CAR_FLEET) {
+      r -= car.weight;
+      if (r <= 0) return car;
+    }
+    return COMMON_CAR_FLEET[0];
+  }
+
+  function carColorFor(def) {
+    if (def.kind === 'taxi') return '#d4a017';
+    if (def.kind === 'bus') return '#e8e6e0';
+    if (def.kind === 'police') return '#1a2330';
+    const palette = def.colors || CAR_PALETTE;
+    return palette[Math.floor(Math.random() * palette.length)];
+  }
+
+  // Distinct rear-end silhouettes for a handful of archetypes; everything else stays generic.
+  const REAR_PROFILES = {
+    f150: { wMul: 1.06, hMul: 1.04, roof: 0.85 },
+    rav4: { wMul: 1.0, hMul: 1.06, roof: 1.12 },
+    camry: { wMul: 1.0, hMul: 0.96, roof: 1.0 },
+    civic: { wMul: 0.92, hMul: 0.88, roof: 0.95 },
+    model_y: { wMul: 1.0, hMul: 1.02, roof: 1.05 },
+    taxi: { wMul: 1.0, hMul: 0.96, roof: 1.0 },
+    lambo: { wMul: 1.06, hMul: 0.76, roof: 0.62 },
+    porsche911: { wMul: 1.0, hMul: 0.8, roof: 0.68 },
+    ferrari: { wMul: 1.02, hMul: 0.78, roof: 0.64 },
+    corvette: { wMul: 1.0, hMul: 0.82, roof: 0.66 },
+    mustang: { wMul: 1.04, hMul: 0.86, roof: 0.74 }
+  };
+
+  const MODEL_REAR = {
+    'Ford F-150': 'f150', 'Chevy Silverado': 'f150', 'Ram 1500': 'f150', 'Toyota Tacoma': 'f150',
+    'Toyota RAV4': 'rav4', 'Honda CR-V': 'rav4', 'Chevy Equinox': 'rav4', 'Nissan Rogue': 'rav4',
+    'Ford Escape': 'rav4', 'Hyundai Tucson': 'rav4', 'Mazda CX-5': 'rav4', 'VW Tiguan': 'rav4',
+    'Toyota Camry': 'camry', 'Honda Accord': 'camry', 'Nissan Altima': 'camry', 'Chevy Malibu': 'camry',
+    'BMW 3 Series': 'camry', 'Mercedes C-Class': 'camry',
+    'Honda Civic': 'civic', 'Toyota Corolla': 'civic', 'Toyota Prius': 'civic',
+    'Tesla Model Y': 'model_y', 'Tesla Model S Plaid': 'model_y',
+    'NYC Yellow Cab': 'taxi',
+    'Lamborghini Huracán': 'lambo', 'McLaren 720S': 'lambo', 'Mercedes-AMG GT': 'lambo', 'Audi R8': 'lambo',
+    'Porsche 911': 'porsche911',
+    'Ferrari Roma': 'ferrari',
+    'Corvette Stingray': 'corvette',
+    'Ford Mustang GT': 'mustang', 'Dodge Challenger Hellcat': 'mustang', 'BMW M4': 'mustang', 'Nissan GT-R': 'mustang'
+  };
+
+  function resolveRearProfile(def) {
+    const id = MODEL_REAR[def.model];
+    if (!id) return null;
+    return { id, ...REAR_PROFILES[id] };
+  }
+
   function spawnTraffic(d, aheadZ) {
     const lane = [-DW.LANE, 0, DW.LANE][Math.floor(Math.random() * 3)];
-    const roll = Math.random();
-    let kind, base, halfW, len, bodyScale, roof;
-    if (roll < 0.12) {
-      kind = 'bus'; base = 30; halfW = 0.3; len = 44; bodyScale = 1.15; roof = 1.35;
-    } else if (roll < 0.22) {
-      kind = 'taxi'; base = 42; halfW = 0.21; len = 28; bodyScale = 1; roof = 1;
-    } else if (roll < 0.32) {
-      kind = 'sports'; base = 50; halfW = 0.19; len = 26; bodyScale = 0.92; roof = 0.72;
-    } else if (roll < 0.44) {
-      kind = 'suv'; base = 40; halfW = 0.24; len = 32; bodyScale = 1.08; roof = 1.2;
-    } else if (roll < 0.54) {
-      kind = 'van'; base = 36; halfW = 0.25; len = 34; bodyScale = 1.05; roof = 1.25;
-    } else if (roll < 0.64) {
-      kind = 'pickup'; base = 38; halfW = 0.22; len = 33; bodyScale = 1.02; roof = 0.85;
-    } else if (roll < 0.72) {
-      kind = 'compact'; base = 44; halfW = 0.18; len = 24; bodyScale = 0.85; roof = 0.95;
-    } else if (roll < 0.78) {
-      kind = 'police'; base = 46; halfW = 0.21; len = 29; bodyScale = 1; roof = 1;
-    } else {
-      kind = 'sedan'; base = 40; halfW = 0.2; len = 28; bodyScale = 1; roof = 1;
-    }
-    const color = kind === 'taxi' ? '#d4a017'
-      : kind === 'bus' ? '#e8e6e0'
-      : kind === 'police' ? '#1a2330'
-      : CAR_PALETTE[Math.floor(Math.random() * CAR_PALETTE.length)];
+    const def = pickRealCar();
+    const stats = CAR_KIND_STATS[def.kind] || CAR_KIND_STATS.sedan;
+    const rear = resolveRearProfile(def);
+    const base = def.base != null ? def.base : stats.base;
+    const bodyScale = def.bodyScale != null ? def.bodyScale : stats.bodyScale;
+    const roof = def.roof != null ? def.roof : (rear?.roof != null ? rear.roof : stats.roof);
+    const wMul = rear?.wMul || 1;
     d.traffic.push({
       z: d.z + (aheadZ != null ? aheadZ : 420 + Math.random() * 640),
       x: lane + (Math.random() - 0.5) * 0.04,
-      kind,
-      color,
+      model: def.model,
+      kind: def.kind,
+      cool: !!def.cool,
+      rear,
+      color: carColorFor(def),
       bodyScale,
       roof,
       speed: Math.max(22, base + (Math.random() - 0.35) * 12),
-      halfW,
-      len,
+      halfW: stats.halfW * wMul * 0.98,
+      len: stats.len * wMul * 0.98,
       yaw: 0,
       yawVel: 0,
       roll: 0,
@@ -1444,6 +1862,65 @@
         size: 10 + Math.random() * 24
       });
     }
+  }
+
+  function driveHitOverlap(car, d) {
+    const dz = car.z - (d.z + 10);
+    const hitLen = (car.len + DW.CAR_LEN) * 0.35;
+    if (dz <= 0 || dz >= hitLen) return null;
+    const latSum = car.halfW + DW.CAR_HALF_W;
+    const latOverlap = latSum - Math.abs(car.x - d.playerX);
+    if (latOverlap <= 0) return null;
+    const latRatio = latOverlap / latSum;
+    const depthRatio = (hitLen - dz) / hitLen;
+    const overlap = latRatio * 0.68 + depthRatio * 0.32;
+    return {
+      overlap,
+      impactX: d.playerX - car.x,
+      latRatio,
+      depthRatio
+    };
+  }
+
+  function triggerDriveBump(impactX, other) {
+    const d = state.drive;
+    if (!d || d.invuln > 0 || state.mode !== 'drive') return;
+    if (other && (other.smashed || (other.bumpCd || 0) > 0)) return;
+
+    const dir = Math.sign(impactX) || (Math.random() < 0.5 ? -1 : 1);
+    const intensity = Math.min(0.55, 0.12 + d.speed / 130);
+    const ground = projectWorld(d.playerX, 0, d.z + 14, d);
+
+    d.velX += dir * (0.28 + intensity * 0.22);
+    d.yawVel += -dir * (0.25 + intensity * 0.2);
+    d.speed = Math.max(16, d.speed * (0.93 + Math.random() * 0.04));
+    d.suspVel -= 2.5 * intensity;
+    d.camShake = Math.max(d.camShake, 1.5 + intensity * 2.5);
+    d.crashT = 0.12;
+    d.invuln = 0.32;
+
+    if (other) {
+      other.bumpCd = 0.4;
+      other.velX = (other.velX || 0) - dir * (0.2 + intensity * 0.18);
+      other.x += -dir * 0.018;
+      other.yaw = dir * 0.1;
+      other.speed = Math.max(14, other.speed * 0.97);
+    }
+
+    if (Math.random() < 0.55) {
+      state.particles.push({
+        type: 'spark',
+        x: ground.x + dir * 8,
+        y: ground.y - 8 * ground.scale,
+        vx: dir * 40 + (Math.random() - 0.5) * 30,
+        vy: -20 - Math.random() * 30,
+        life: 0.12 + Math.random() * 0.15,
+        maxLife: 0.28,
+        color: '#ccc8b8'
+      });
+    }
+    beep(220 + Math.abs(d.velX) * 40, 0.028, 'triangle', 0.018);
+    updateHUD();
   }
 
   function triggerDriveCrash(reason, impactX, other, opts = {}) {
@@ -1643,18 +2120,17 @@
     d.steer += (steerInput - d.steer) * Math.min(1, 11 * dt);
     // Keep authority high even at speed so dodging stays easy
     const steerAuth = 0.92 + 0.08 * (1 - speedNorm);
-    const desiredLat = d.steer * steerAuth * (2.4 + d.speed * 0.028);
+    const desiredLat = d.steer * steerAuth * (2.85 + d.speed * 0.032);
 
     // Road curvature pushes you wide (v²/r feel) — mild so it doesn't fight the wheel
     const curveForce = d.curve * (d.speed * d.speed) * 0.000018;
-    let latAccel = (desiredLat - d.velX) * 18 - curveForce;
+    let latAccel = (desiredLat - d.velX) * 20 - curveForce;
     latAccel = Math.max(-gripMax, Math.min(gripMax, latAccel));
     d.velX += latAccel * dt;
     // Light damping so the car keeps sliding while you hold a direction
     const damp = steerInput !== 0 ? 0.18 : 0.45;
     d.velX *= Math.exp(-(gripMax * damp) * dt);
-    // Direct lane assist scaled by eased steer — no jerk on press/release
-    d.playerX += d.steer * (1.55 + d.speed * 0.012) * dt;
+    // Lateral motion from velocity only — avoids double-steer twitch on the road plane
     d.playerX += d.velX * dt;
 
     // Slip / yaw / body roll from real lateral accel
@@ -1675,10 +2151,9 @@
     // Concrete curb / jersey barrier response
     if (d.surface === 'curb') {
       d.speed = Math.max(0, d.speed - 28 * dt);
-      d.rumble = Math.max(d.rumble, 0.2);
-      // Periodic thump tied to wheel speed — reads as rumble strip, not noise
-      d.suspVel -= 40 * dt * (1 + Math.sin(d.wheelSpin * 2.6) * 0.6);
-      d.camShake = Math.max(d.camShake, 2.5);
+      d.rumble = Math.max(d.rumble, 0.14);
+      d.suspVel -= 32 * dt * (1 + Math.sin(d.wheelSpin * 2.6) * 0.45);
+      d.camShake = Math.max(d.camShake, 1.4);
     }
     if (ax > DW.ROAD * 0.92) {
       const over = ax - DW.ROAD * 0.92;
@@ -1699,17 +2174,76 @@
     }
     d.playerX = Math.max(-DW.CURB - 0.02, Math.min(DW.CURB + 0.02, d.playerX));
 
-    // Long sweeping city bends — hold a heading for a while, ease slowly
-    d.curveTimer -= dt;
-    if (d.curveTimer <= 0) {
-      // Mostly straight blocks; rare, shallow bend
-      d.targetCurve = Math.random() > 0.86
-        ? (Math.random() - 0.5) * 0.34
-        : (Math.random() - 0.5) * 0.07;
-      d.curveTimer = 8 + Math.random() * 10;
+    // Traffic signals — stop at red/yellow before the stop line
+    const signalTime = performance.now() / 1000;
+    d.atSignal = null;
+    d.mustStop = false;
+    if (d.signalFineCd > 0) d.signalFineCd -= dt;
+    for (const sig of d.signals || []) {
+      const dist = sig.z - d.z;
+      if (dist < -12 || dist > 70) continue;
+      const phase = signalPhase(sig, signalTime);
+      d.atSignal = { ...sig, phase, dist };
+      if (dist > 0 && dist < 52) {
+        if (phase === 'red') d.mustStop = true;
+        else if (phase === 'yellow' && dist < 38) d.mustStop = true;
+      }
+      // Ran the red — small fine once per signal
+      if (phase === 'red' && dist <= 0 && dist > -8 && d.speed > 8 && d.signalFineCd <= 0) {
+        state.score = Math.max(0, state.score - 25);
+        d.signalFineCd = 2.5;
+        d.camShake = Math.max(d.camShake, 4);
+        beep(180, 0.08, 'square', 0.05);
+        updateHUD();
+      }
+      break;
     }
-    d.curve += (d.targetCurve - d.curve) * Math.min(1, 0.22 * dt);
-    d.hills = Math.sin(d.z * 0.0006) * 6 + Math.sin(d.z * 0.0015) * 2;
+    if (d.mustStop) {
+      const stopDist = d.atSignal ? Math.max(0, d.atSignal.dist - 6) : 0;
+      const cap = stopDist < 18 ? Math.max(0, stopDist * 1.6) : d.speed;
+      d.speed = Math.min(d.speed, cap);
+      if (stopDist < 4 && !state.keys.up) d.speed = Math.min(d.speed, 2);
+    }
+
+    // Turning mechanic — at green, steer into the turn to proceed
+    const leg = currentDriveLeg(d);
+    d.awaitTurn = null;
+    if (leg && leg.turn && leg.turn !== 'straight' && !leg.done) {
+      const distIx = leg.z1 - d.z;
+      if (distIx < 75 && distIx > -15) d.awaitTurn = leg.turn;
+
+      const atLine = d.z >= leg.z1 - 14;
+      const green = d.atSignal && d.atSignal.phase === 'green' && !d.mustStop;
+      const steerLeft = state.keys.left || d.steer < -0.28;
+      const steerRight = state.keys.right || d.steer > 0.28;
+      const turned = leg.turn === 'left'
+        ? steerLeft && d.playerX < -0.12
+        : steerRight && d.playerX > 0.12;
+
+      if (atLine && !leg.done) {
+        if (!green) {
+          d.speed = Math.min(d.speed, Math.max(0, distIx * 0.35));
+        } else if (turned && d.speed > 2) {
+          leg.done = true;
+          d.legIndex += 1;
+          d.awaitTurn = null;
+          d.turnFlash = 0.55;
+          d.yawVel += leg.turn === 'left' ? -0.35 : 0.35;
+          beep(659, 0.07);
+          beep(988, 0.11);
+        } else if (green) {
+          d.speed = Math.min(d.speed, 14);
+        }
+      }
+    }
+    if (d.turnFlash > 0) d.turnFlash -= dt;
+
+    // Track curvature from the map path
+    const routeSample = sampleRouteAt(d.route, d.z, d);
+    d.targetCurve = routeSample.curve;
+    d.curve += (d.targetCurve - d.curve) * Math.min(1, 3.2 * dt);
+    const targetHills = Math.sin(d.z * 0.0006) * 5 + Math.sin(d.z * 0.0015) * 1.6;
+    d.hills = (d.hills || 0) + (targetHills - (d.hills || 0)) * Math.min(1, 2.8 * dt);
 
     // Pothole bumps when you roll over them
     for (const pr of d.props) {
@@ -1724,22 +2258,40 @@
 
     // Integrate world position from MPH
     d.z += d.speed * DW.MPH_Z * dt;
+
+    // Hold at intersection until turn is committed on green
+    const legAfter = currentDriveLeg(d);
+    if (legAfter && legAfter.turn && legAfter.turn !== 'straight' && !legAfter.done) {
+      const green = d.atSignal && d.atSignal.phase === 'green' && !d.mustStop;
+      const stopZ = legAfter.z1 - (green ? 4 : 8);
+      if (d.z > stopZ) d.z = stopZ;
+    }
+
+    // Complete the loop — wrap back to start for continuous laps
+    const pathLen = d.route ? d.route.length : d.goal;
+    if (d.z >= pathLen) {
+      d.z -= pathLen;
+      d.lap = (d.lap || 1) + 1;
+      d.legIndex = 0;
+      for (const l of d.legs) l.done = false;
+      d.invuln = Math.max(d.invuln, 0.6);
+      beep(523, 0.07);
+      beep(784, 0.12);
+      updateHUD();
+    }
+
     d.wheelSpin += d.speed * dt * 0.35;
     d.rpmPulse += dt * (0.7 + d.speed / 50);
 
-    // Chase cam: spring-follow for weight, lift slightly with speed
-    d.camX += (d.playerX - d.camX) * Math.min(1, 2.6 * dt);
-    const camTargetY = 40 + d.speed * 0.06 + Math.abs(d.velX) * 0.8 - d.susp * 0.4;
-    d.camY += (camTargetY - d.camY) * Math.min(1, 2.4 * dt);
-    // Eased dolly; the crash zoom punch lunges the camera in, then relaxes
-    const camBackTarget = 112 + d.speed * 0.15 - (d.zoomPunch || 0) * 26;
-    d.camBack = (d.camBack || 112) + (camBackTarget - (d.camBack || 112)) * Math.min(1, 6 * dt);
+    // Chase cam: softer follow so the road scroll feels steady, not twitchy
+    d.camX += (d.playerX - d.camX) * Math.min(1, 1.8 * dt);
+    const camTargetY = 40 + d.speed * 0.05 + Math.abs(d.velX) * 0.55 - d.susp * 0.35;
+    d.camY += (camTargetY - d.camY) * Math.min(1, 1.6 * dt);
+    const camBackTarget = 112 + d.speed * 0.13 - (d.zoomPunch || 0) * 26;
+    d.camBack = (d.camBack || 112) + (camBackTarget - (d.camBack || 112)) * Math.min(1, 3.8 * dt);
 
     if (d.z + 1300 > d.nextBuildZ) {
       seedCityBlocks(d, d.nextBuildZ, d.nextBuildZ + 1000);
-    }
-    if (d.z + 1600 > d.nextExitZ) {
-      seedRoadExits(d, d.nextExitZ, d.nextExitZ + 1600);
     }
     d.buildings = d.buildings.filter(b => b.z > d.z - 100);
     d.props = d.props.filter(p => p.z > d.z - 80);
@@ -1768,6 +2320,7 @@
       d.spawnTimer = Math.max(0.55, 1.2 - state.level * 0.07);
     }
     for (const car of d.traffic) {
+      if (car.bumpCd > 0) car.bumpCd = Math.max(0, car.bumpCd - dt);
       if (car.smashed) {
         car.spinT = (car.spinT || 0) + dt;
         car.z += car.speed * DW.MPH_Z * 0.65 * dt;
@@ -1822,35 +2375,43 @@
       } else {
         // Traffic holds its lane — settle onto the nearest lane center and stay
         car.z += car.speed * DW.MPH_Z * dt;
+        if (car.velX) {
+          car.x += car.velX * dt;
+          car.velX *= Math.exp(-2.8 * dt);
+          if (Math.abs(car.velX) < 0.02) car.velX = 0;
+        }
         const lane = Math.round(car.x / DW.LANE) * DW.LANE;
         car.x += (lane - car.x) * Math.min(1, 1.2 * dt);
-        car.yaw = 0;
+        if (car.bumpCd > 0) {
+          car.yaw = (car.yaw || 0) * Math.exp(-4 * dt);
+        } else {
+          car.yaw = 0;
+        }
       }
     }
     d.traffic = d.traffic.filter(c => c.z > d.z - 80 && c.z < d.z + 1800);
 
-    // AABB-ish collision — smash sends them flying; rarely a hard wreck
+    // AABB-ish collision — light overlap = bump, heavy overlap = smash
+    const SMASH_OVERLAP = 0.4;
     for (const car of d.traffic) {
       if (car.smashed) continue;
-      const dz = car.z - (d.z + 10);
-      const hitLen = (car.len + DW.CAR_LEN) * 0.35;
-      if (dz > 0 && dz < hitLen) {
-        if (Math.abs(car.x - d.playerX) < car.halfW + DW.CAR_HALF_W) {
-          const impactX = d.playerX - car.x;
-          const closing = d.speed - car.speed;
-          if (closing > 6 || Math.abs(impactX) < car.halfW) {
-            triggerDriveCrash(
-              car.kind === 'police' ? 'NYPD launched. $50 bounty.'
-                : car.kind === 'bus' ? 'Clipped a bus.'
-                : car.kind === 'taxi' ? 'Cab got launched.'
-                : 'Sent them flying.',
-              impactX,
-              car
-            );
-            if (state.mode !== 'drive') return;
-          }
-        }
+      const hit = driveHitOverlap(car, d);
+      if (!hit) continue;
+      if (hit.overlap < SMASH_OVERLAP) {
+        triggerDriveBump(hit.impactX, car);
+      } else {
+        triggerDriveCrash(
+          car.kind === 'police' ? 'NYPD launched. $50 bounty.'
+            : car.kind === 'bus' ? 'Clipped an MTA bus.'
+            : car.kind === 'taxi' ? 'Launched a yellow cab.'
+            : car.cool ? `Sent a ${car.model} flying!`
+            : car.model ? `Bounced off a ${car.model}.`
+            : 'Sent them flying.',
+          hit.impactX,
+          car
+        );
       }
+      if (state.mode !== 'drive') return;
     }
 
     if (d.speed > 40) state.score += Math.floor(d.speed * dt * 0.2);
@@ -3037,30 +3598,47 @@
     }
   }
 
-  // Chase-cam projection: camera behind & above the car, street is the ground plane (y=0)
+  // Chase-cam projection — Frenet frame along the map path so curves match the reference map
   function projectWorld(wx, wy, wz, d) {
     const camX = (d.camX != null ? d.camX : d.playerX);
     const camY = d.camY || 46;
-    const camZ = d.z - (d.camBack || 110);
+    const camBack = d.camBack || 110;
+    const zCam = d.z - camBack;
+    const route = d.route;
 
-    let rx = (wx - camX) * 100;
+    let rx, rz;
+    if (route) {
+      const wps = activeRouteWaypoints(d);
+      const zClamp = Math.max(0, Math.min(wps[wps.length - 1].z, wz));
+      const zCamClamp = Math.max(0, Math.min(wps[wps.length - 1].z, zCam));
+      const camFrame = sampleRouteFrame(wps, route, zCamClamp);
+      const ptFrame = sampleRouteFrame(wps, route, zClamp);
+      const dz = zClamp - zCamClamp;
+      const dx = (ptFrame.x + wx) - (camFrame.x + camX);
+      const cos = Math.cos(camFrame.heading);
+      const sin = Math.sin(camFrame.heading);
+      const relForward = dz * cos + dx * sin;
+      const relLateral = -dz * sin + dx * cos;
+      rx = relLateral * 100;
+      rz = relForward;
+    } else {
+      rx = (wx - camX) * 100;
+      rz = wz - zCam;
+    }
+
     let ry = wy - camY;
-    let rz = wz - camZ;
 
-    // Gentle road bend ahead — kept mild so the asphalt doesn't whip
     const ahead = wz - d.z;
     if (ahead > 0) {
-      rx += d.curve * ahead * ahead * 0.014;
-      // Smoothstep easing so hills roll in without a kink
-      const ht = Math.min(1, ahead / 600);
-      ry += (d.hills || 0) * (ht * ht * (3 - 2 * ht)) * 0.3;
+      const ht = Math.min(1, ahead / 680);
+      const hillEase = ht * ht * (3 - 2 * ht);
+      ry += (d.hills || 0) * hillEase * 0.28;
     }
 
     if (rz < 12) rz = 12;
     const fov = 300;
     const scale = fov / rz;
     const x = W / 2 + rx * scale;
-    // Horizon sits mid-frame; near ground drops toward the bottom
     const y = H * 0.46 - ry * scale;
     return { x, y, scale, relZ: rz };
   }
@@ -3079,6 +3657,127 @@
     return `rgb(${r},${g},${b})`;
   }
 
+  // Taillights + rear bumper details for the handful of modeled profiles.
+  function drawCarRear(id, p) {
+    const { rearW, rearY, h, w, lean, body, midW, midY } = p;
+    const red = '#e74c3c';
+    const redHi = '#ff6b5a';
+    switch (id) {
+      case 'f150':
+        ctx.fillStyle = shade(body, -10);
+        ctx.fillRect(-rearW * 0.86, rearY - h * 0.2, rearW * 1.72, h * 0.18);
+        ctx.strokeStyle = '#8a9098';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-rearW * 0.86, rearY - h * 0.2, rearW * 1.72, h * 0.18);
+        ctx.fillStyle = red;
+        ctx.fillRect(-rearW * 0.88, rearY - h * 0.16, w * 0.11, h * 0.22);
+        ctx.fillRect(rearW * 0.77, rearY - h * 0.16, w * 0.11, h * 0.22);
+        ctx.fillStyle = '#b8c0c8';
+        ctx.fillRect(-rearW * 0.68, rearY + h * 0.07, rearW * 1.36, h * 0.05);
+        break;
+      case 'rav4':
+        ctx.fillStyle = red;
+        ctx.fillRect(-rearW * 0.88, rearY - h * 0.12, w * 0.13, h * 0.16);
+        ctx.fillRect(rearW * 0.75, rearY - h * 0.12, w * 0.13, h * 0.16);
+        ctx.fillStyle = '#f0f0f0';
+        ctx.fillRect(-w * 0.08, rearY - h * 0.06, w * 0.16, h * 0.07);
+        break;
+      case 'camry':
+        ctx.fillStyle = shade(body, -8);
+        ctx.fillRect(-rearW * 0.62, rearY - h * 0.2, rearW * 1.24, h * 0.1);
+        ctx.fillStyle = red;
+        ctx.fillRect(-rearW * 0.78, rearY - h * 0.08, rearW * 1.56, h * 0.06);
+        ctx.fillStyle = redHi;
+        ctx.fillRect(-rearW * 0.72, rearY - h * 0.07, rearW * 0.22, h * 0.04);
+        ctx.fillRect(rearW * 0.5, rearY - h * 0.07, rearW * 0.22, h * 0.04);
+        break;
+      case 'civic':
+        ctx.fillStyle = red;
+        ctx.beginPath();
+        ctx.moveTo(-rearW * 0.82, rearY - h * 0.04);
+        ctx.lineTo(-rearW * 0.62, rearY - h * 0.12);
+        ctx.lineTo(-rearW * 0.48, rearY - h * 0.04);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(rearW * 0.82, rearY - h * 0.04);
+        ctx.lineTo(rearW * 0.62, rearY - h * 0.12);
+        ctx.lineTo(rearW * 0.48, rearY - h * 0.04);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      case 'model_y':
+        ctx.fillStyle = red;
+        ctx.fillRect(-rearW * 0.84, rearY - h * 0.07, rearW * 1.68, h * 0.055);
+        ctx.fillStyle = redHi;
+        ctx.fillRect(-rearW * 0.8, rearY - h * 0.065, rearW * 1.6, h * 0.025);
+        break;
+      case 'taxi':
+        ctx.fillStyle = red;
+        ctx.fillRect(-rearW * 0.75, rearY - h * 0.07, rearW * 1.5, h * 0.06);
+        break;
+      case 'lambo':
+        ctx.fillStyle = shade(body, -25);
+        ctx.fillRect(-rearW * 0.8, rearY - h * 0.24, rearW * 1.6, h * 0.05);
+        ctx.fillStyle = red;
+        ctx.beginPath();
+        ctx.moveTo(-rearW * 0.72, rearY - h * 0.1);
+        ctx.lineTo(-rearW * 0.48, rearY - h * 0.16);
+        ctx.lineTo(-rearW * 0.38, rearY - h * 0.06);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(rearW * 0.72, rearY - h * 0.1);
+        ctx.lineTo(rearW * 0.48, rearY - h * 0.16);
+        ctx.lineTo(rearW * 0.38, rearY - h * 0.06);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#1a1a20';
+        ctx.fillRect(-w * 0.12, rearY + h * 0.04, w * 0.24, h * 0.06);
+        break;
+      case 'porsche911':
+        ctx.fillStyle = shade(body, -22);
+        ctx.fillRect(-rearW * 0.85, rearY - h * 0.26, rearW * 1.7, h * 0.05);
+        ctx.fillStyle = red;
+        ctx.beginPath();
+        ctx.arc(-rearW * 0.55, rearY - h * 0.1, w * 0.07, 0, Math.PI * 2);
+        ctx.arc(rearW * 0.55, rearY - h * 0.1, w * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case 'ferrari':
+        ctx.fillStyle = red;
+        ctx.beginPath();
+        ctx.arc(-rearW * 0.38, rearY - h * 0.1, w * 0.065, 0, Math.PI * 2);
+        ctx.arc(rearW * 0.38, rearY - h * 0.1, w * 0.065, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1a1a20';
+        ctx.fillRect(-w * 0.08, rearY + h * 0.06, w * 0.16, h * 0.05);
+        break;
+      case 'corvette':
+        ctx.fillStyle = shade(body, -20);
+        ctx.fillRect(-rearW * 0.7, rearY - h * 0.22, rearW * 1.4, h * 0.05);
+        ctx.fillStyle = red;
+        ctx.fillRect(-rearW * 0.55, rearY - h * 0.12, w * 0.1, h * 0.08);
+        ctx.fillRect(-rearW * 0.2, rearY - h * 0.12, w * 0.1, h * 0.08);
+        ctx.fillRect(rearW * 0.1, rearY - h * 0.12, w * 0.1, h * 0.08);
+        ctx.fillRect(rearW * 0.45, rearY - h * 0.12, w * 0.1, h * 0.08);
+        break;
+      case 'mustang':
+        ctx.fillStyle = shade(body, -22);
+        ctx.fillRect(-rearW * 0.78, rearY - h * 0.24, rearW * 1.56, h * 0.05);
+        ctx.fillStyle = red;
+        for (let i = 0; i < 3; i++) {
+          ctx.fillRect(-rearW * 0.82, rearY - h * (0.14 - i * 0.035), w * 0.14, h * 0.025);
+          ctx.fillRect(rearW * 0.68, rearY - h * (0.14 - i * 0.035), w * 0.14, h * 0.025);
+        }
+        break;
+      default:
+        ctx.fillStyle = red;
+        ctx.fillRect(-rearW * 0.85, rearY - h * 0.05, w * 0.14, h * 0.1);
+        ctx.fillRect(rearW * 0.7, rearY - h * 0.05, w * 0.14, h * 0.1);
+    }
+  }
+
   // Rear / 3rd-person low-poly car. (x,y) = ground contact under the chassis.
   function drawLowPolyCar(x, y, scale, kind, opts = {}) {
     const player = !!opts.player;
@@ -3087,15 +3786,18 @@
     const roll = opts.roll || 0;
     const smashed = !!opts.smashed;
     const crush = Math.max(0, Math.min(1, opts.crush || (smashed ? 0.6 : 0)));
+    const rear = opts.rear;
     const bodyScale = opts.bodyScale || 1;
-    const roofMul = opts.roof || 1;
+    const roofMul = opts.roof || rear?.roof || 1;
+    const wMul = rear?.wMul || 1;
+    const hMul = rear?.hMul || 1;
     const s = Math.max(0.12, scale) * bodyScale;
     const kindW = kind === 'bus' ? 78 : kind === 'van' || kind === 'suv' ? 68
       : kind === 'pickup' ? 64 : kind === 'compact' || kind === 'sports' ? 52 : 58;
     const kindH = kind === 'bus' ? 48 : kind === 'suv' || kind === 'van' ? 40
       : kind === 'sports' ? 28 : kind === 'compact' ? 30 : 34;
-    const w = kindW * s * (1 - crush * 0.35);
-    const h = kindH * s * (1 - crush * 0.45);
+    const w = kindW * s * wMul * (1 - crush * 0.35);
+    const h = kindH * s * hMul * (1 - crush * 0.45);
     const baseColor = opts.color
       || (player ? '#1a2430' : kind === 'taxi' ? '#d4a017' : kind === 'bus' ? '#e8e6e0' : '#4a5560');
     const body = smashed ? shade(baseColor, -40 - crush * 30) : baseColor;
@@ -3203,9 +3905,13 @@
     ctx.fillRect(-midW * 0.5 + lean, midY + h * 0.02, w * 0.12, h * 0.14);
     if (crush < 0.7) ctx.fillRect(midW * 0.35 + lean, midY + h * 0.02, w * 0.12, h * 0.14);
 
-    ctx.fillStyle = '#e74c3c';
-    ctx.fillRect(-rearW * 0.85, rearY - h * 0.05, w * 0.14, h * 0.1);
-    ctx.fillRect(rearW * 0.7, rearY - h * 0.05, w * 0.14, h * 0.1);
+    if (rear?.id) {
+      drawCarRear(rear.id, { rearW, rearY, h, w, lean, body, midW, midY, s });
+    } else {
+      ctx.fillStyle = '#e74c3c';
+      ctx.fillRect(-rearW * 0.85, rearY - h * 0.05, w * 0.14, h * 0.1);
+      ctx.fillRect(rearW * 0.7, rearY - h * 0.05, w * 0.14, h * 0.1);
+    }
 
     if (kind === 'taxi') {
       ctx.fillStyle = '#fff6d0';
@@ -3440,23 +4146,282 @@
     }
   }
 
-  function drawStreetProp(pr, d) {
-    if (pr.kind === 'crosswalk') {
-      const pL = projectWorld(-DW.ROAD * 0.92, 0, pr.z, d);
-      const pR = projectWorld(DW.ROAD * 0.92, 0, pr.z, d);
-      if (pL.relZ < 50 || pL.relZ > 900) return;
-      const cwA = Math.max(0, Math.min(1, (900 - pL.relZ) / 220));
-      ctx.fillStyle = `rgba(210,200,180,${0.5 * cwA})`;
-      const stripes = 7;
-      for (let i = 0; i < stripes; i++) {
-        const t0 = i / stripes;
-        const t1 = (i + 0.4) / stripes;
-        const x0 = pL.x + (pR.x - pL.x) * t0;
-        const x1 = pL.x + (pR.x - pL.x) * t1;
-        ctx.fillRect(x0, pL.y - 4 * pL.scale, Math.max(2, x1 - x0), Math.max(2, 10 * pL.scale));
+  function drawClassicSignalHead(cx, cy, s, phase, fade) {
+    const bw = 12 * s;
+    const bh = 32 * s;
+    const bx = cx - bw * 0.5;
+    const by = cy - bh;
+    ctx.fillStyle = '#1a1a1f';
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = 'rgba(70,70,80,0.9)';
+    ctx.lineWidth = Math.max(1, 0.8 * s);
+    ctx.strokeRect(bx, by, bw, bh);
+    const lampColors = { red: '#e74c3c', yellow: '#f1c40f', green: '#2ecc71' };
+    const order = ['red', 'yellow', 'green'];
+    for (let i = 0; i < 3; i++) {
+      const on = order[i] === phase;
+      const ly = by + 6 * s + i * 10 * s;
+      ctx.fillStyle = '#0e0e12';
+      ctx.fillRect(bx + 2 * s, ly - 4.5 * s, bw - 4 * s, 9 * s);
+      ctx.fillStyle = on ? lampColors[order[i]] : '#281818';
+      ctx.beginPath();
+      ctx.arc(cx, ly, 3.6 * s, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2a2a30';
+      ctx.fillRect(bx + 1 * s, ly - 5.5 * s, bw - 2 * s, 2.5 * s);
+      if (on) {
+        ctx.fillStyle = `rgba(255,255,255,${0.4 * fade})`;
+        ctx.beginPath();
+        ctx.arc(cx - 1.5 * s, ly - 1.5 * s, 1.3 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowColor = lampColors[order[i]];
+        ctx.shadowBlur = 14 * s;
+        ctx.fillStyle = lampColors[order[i]];
+        ctx.beginPath();
+        ctx.arc(cx, ly, 2 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
       }
-      return;
     }
+  }
+
+  function drawCrosswalkAt(d, zLine, eCenter, halfSpan, map) {
+    const stripes = 8;
+    for (let i = 0; i < stripes; i++) {
+      const t0 = i / stripes;
+      const t1 = (i + 0.45) / stripes;
+      const e0 = eCenter - halfSpan + t0 * halfSpan * 2;
+      const e1 = eCenter - halfSpan + t1 * halfSpan * 2;
+      const wx0 = (e0 - eCenter) * map.xPerBlock;
+      const wx1 = (e1 - eCenter) * map.xPerBlock;
+      const a = projectWorld(wx0, 0, zLine, d);
+      const b = projectWorld(wx1, 0, zLine, d);
+      if (a.relZ < 25 || a.relZ > 1000) continue;
+      const cwA = Math.max(0, Math.min(1, (1000 - a.relZ) / 220));
+      ctx.fillStyle = `rgba(235,230,215,${0.62 * cwA})`;
+      ctx.fillRect(a.x, a.y - 5 * a.scale, Math.max(2, b.x - a.x), Math.max(2, 10 * a.scale));
+    }
+  }
+
+  function drawIntersection(ix, d) {
+    const map = d.route;
+    const pCenter = projectWorld(0, 0, ix.z, d);
+    if (pCenter.relZ < 25 || pCenter.relZ > 1150) return;
+    const fade = Math.max(0, Math.min(1, (1150 - pCenter.relZ) / 300));
+    ctx.save();
+    ctx.globalAlpha = fade;
+    const depth = 26;
+    const zNear = ix.z - depth;
+    const zFar = ix.z + depth;
+    const ASP = 'rgb(34,34,38)';
+    const ASP_LANE = 'rgba(200,195,180,0.22)';
+
+    if (ix.cross === 'ew') {
+      const steps = 12;
+      for (let i = 0; i < steps; i++) {
+        const t0 = i / steps, t1 = (i + 1) / steps;
+        const e0 = ix.e - ix.crossSpan + t0 * ix.crossSpan * 2;
+        const e1 = ix.e - ix.crossSpan + t1 * ix.crossSpan * 2;
+        const wx0 = (e0 - ix.e) * map.xPerBlock;
+        const wx1 = (e1 - ix.e) * map.xPerBlock;
+        const p00 = projectWorld(wx0, 0, zNear, d);
+        const p01 = projectWorld(wx1, 0, zNear, d);
+        const p10 = projectWorld(wx0, 0, zFar, d);
+        const p11 = projectWorld(wx1, 0, zFar, d);
+        if (p00.relZ < 15) continue;
+        ctx.fillStyle = ASP;
+        ctx.beginPath();
+        ctx.moveTo(p00.x, p00.y);
+        ctx.lineTo(p01.x, p01.y);
+        ctx.lineTo(p11.x, p11.y);
+        ctx.lineTo(p10.x, p10.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+      const midZ = (zNear + zFar) * 0.5;
+      const mL = projectWorld(-ix.crossSpan * map.xPerBlock, 0, midZ, d);
+      const mR = projectWorld(ix.crossSpan * map.xPerBlock, 0, midZ, d);
+      if (mL.relZ > 30 && mL.relZ < 1100) {
+        ctx.strokeStyle = ASP_LANE;
+        ctx.lineWidth = Math.max(1, 1.5 * mL.scale);
+        ctx.setLineDash([6 * mL.scale, 8 * mL.scale]);
+        ctx.beginPath();
+        ctx.moveTo(mL.x, mL.y);
+        ctx.lineTo(mR.x, mR.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      drawCrosswalkAt(d, zNear + 5, ix.e, ix.crossSpan, map);
+      drawCrosswalkAt(d, zFar - 5, ix.e, ix.crossSpan, map);
+    } else {
+      const crossWx = (ix.crossE - ix.e) * map.xPerBlock;
+      const hw = DW.ROAD * 1.05;
+      const steps = 10;
+      for (let i = 0; i < steps; i++) {
+        const tz0 = zNear + (i / steps) * (zFar - zNear);
+        const tz1 = zNear + ((i + 1) / steps) * (zFar - zNear);
+        const p00 = projectWorld(crossWx - hw, 0, tz0, d);
+        const p01 = projectWorld(crossWx + hw, 0, tz0, d);
+        const p10 = projectWorld(crossWx - hw, 0, tz1, d);
+        const p11 = projectWorld(crossWx + hw, 0, tz1, d);
+        if (p00.relZ < 15) continue;
+        ctx.fillStyle = ASP;
+        ctx.beginPath();
+        ctx.moveTo(p00.x, p00.y);
+        ctx.lineTo(p01.x, p01.y);
+        ctx.lineTo(p11.x, p11.y);
+        ctx.lineTo(p10.x, p10.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+      for (let side of [-1, 1]) {
+        const stripeZ = ix.z + side * (depth - 6);
+        const a = projectWorld(crossWx - hw, 0, stripeZ, d);
+        const b = projectWorld(crossWx + hw, 0, stripeZ, d);
+        if (a.relZ < 25 || a.relZ > 1000) continue;
+        const cwA = Math.max(0, Math.min(1, (1000 - a.relZ) / 220));
+        ctx.fillStyle = `rgba(235,230,215,${0.62 * cwA})`;
+        const stripes = 7;
+        for (let i = 0; i < stripes; i++) {
+          const t0 = i / stripes, t1 = (i + 0.42) / stripes;
+          const x0 = a.x + (b.x - a.x) * t0;
+          const x1 = a.x + (b.x - a.x) * t1;
+          ctx.fillRect(x0, a.y - 5 * a.scale, Math.max(2, x1 - x0), Math.max(2, 10 * a.scale));
+        }
+      }
+    }
+
+    // Corner tick marks — intersection box
+    ctx.strokeStyle = 'rgba(235,230,215,0.35)';
+    ctx.lineWidth = Math.max(1, 1.2 * pCenter.scale);
+    for (const sign of [-1, 1]) {
+      const cL = projectWorld(sign * DW.ROAD * 0.88, 0, zNear + 2, d);
+      const cR = projectWorld(sign * DW.ROAD * 0.88, 0, zFar - 2, d);
+      if (cL.relZ > 30) {
+        ctx.beginPath();
+        ctx.moveTo(cL.x, cL.y);
+        ctx.lineTo(cL.x + sign * 8 * cL.scale, cL.y);
+        ctx.stroke();
+      }
+      if (cR.relZ > 30) {
+        ctx.beginPath();
+        ctx.moveTo(cR.x, cR.y);
+        ctx.lineTo(cR.x + sign * 8 * cR.scale, cR.y);
+        ctx.stroke();
+      }
+    }
+
+    // Painted turn arrow when waiting to turn here
+    const leg = currentDriveLeg(d);
+    if (d.awaitTurn && leg && leg.ix === ix && ix.turnDir && ix.turnDir !== 'straight') {
+      drawTurnArrow(ix, d, ix.turnDir, fade);
+    }
+
+    ctx.restore();
+  }
+
+  function drawTurnArrow(ix, d, dir, fade) {
+    const arrowZ = ix.z - 22;
+    const p = projectWorld(0, 0, arrowZ, d);
+    if (p.relZ < 35 || p.relZ > 850) return;
+    const s = p.scale;
+    const green = d.atSignal && d.atSignal.phase === 'green' && !d.mustStop;
+    ctx.save();
+    ctx.globalAlpha = fade * (green ? 0.9 : 0.45);
+    ctx.fillStyle = green ? 'rgba(130,220,130,0.75)' : 'rgba(210,200,170,0.55)';
+    ctx.strokeStyle = green ? 'rgba(180,255,180,0.6)' : 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = Math.max(1, 1.5 * s);
+
+    const tip = projectWorld(dir === 'left' ? -0.55 : 0.55, 0, arrowZ + 10, d);
+    const tail = projectWorld(0, 0, arrowZ - 8, d);
+    const wingA = projectWorld(dir === 'left' ? 0.15 : -0.15, 0, arrowZ + 2, d);
+    const wingB = projectWorld(dir === 'left' ? -0.35 : 0.35, 0, arrowZ + 2, d);
+
+    ctx.beginPath();
+    ctx.moveTo(tip.x, tip.y);
+    ctx.lineTo(wingA.x, wingA.y);
+    ctx.lineTo(tail.x, tail.y);
+    ctx.lineTo(wingB.x, wingB.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = green ? '#b8f0b8' : '#e8e0c8';
+    ctx.font = `700 ${Math.max(9, 11 * s)}px "General Sans", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(dir === 'left' ? '← TURN' : 'TURN →', tail.x, tail.y - 14 * s);
+    ctx.restore();
+  }
+
+  function drawTrafficSignal(sig, d) {
+    const phase = signalPhase(sig, performance.now() / 1000);
+    const ix = sig.intersection;
+    const stopZ = sig.z - 8;
+    const poleZ = sig.z - 32;
+    const p = projectWorld(0, 0, stopZ, d);
+    if (p.relZ < 30 || p.relZ > 950) return;
+    const fade = Math.max(0, Math.min(1, (950 - p.relZ) / 240));
+    const s = p.scale;
+    ctx.save();
+    ctx.globalAlpha = fade;
+
+    // Stop line — wide bar before the intersection box
+    const pL = projectWorld(-DW.ROAD * 0.95, 0, stopZ, d);
+    const pR = projectWorld(DW.ROAD * 0.95, 0, stopZ, d);
+    ctx.fillStyle = `rgba(240,235,220,${0.72 * fade})`;
+    const sy = (pL.y + pR.y) * 0.5;
+    ctx.fillRect(Math.min(pL.x, pR.x), sy - 2 * s, Math.abs(pR.x - pL.x), Math.max(3, 4 * s));
+
+    // —— Classic mast-arm signal (near right corner) ——
+    const poleX = -DW.CURB - 0.14;
+    const base = projectWorld(poleX, 0, poleZ, d);
+    const top = projectWorld(poleX, 46, poleZ, d);
+    const mastEnd = projectWorld(DW.ROAD * 0.45, 44, stopZ - 2, d);
+    ctx.strokeStyle = '#3a3a42';
+    ctx.lineWidth = Math.max(2, 3.2 * s);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(base.x, base.y);
+    ctx.lineTo(top.x, top.y);
+    ctx.stroke();
+    ctx.lineWidth = Math.max(2, 2.8 * s);
+    ctx.beginPath();
+    ctx.moveTo(top.x, top.y);
+    ctx.lineTo(mastEnd.x, mastEnd.y);
+    ctx.stroke();
+    ctx.fillStyle = '#3a3a42';
+    ctx.beginPath();
+    ctx.arc(top.x, top.y, 3 * s, 0, Math.PI * 2);
+    ctx.fill();
+    const hangY = mastEnd.y + 8 * s;
+    drawClassicSignalHead(mastEnd.x, hangY, s, phase, fade);
+
+    // —— Far-left corner signal (classic 4-way intersection look) ——
+    const farPoleX = DW.CURB + 0.55;
+    const farBase = projectWorld(farPoleX, 0, sig.z + 18, d);
+    const farTop = projectWorld(farPoleX, 38, sig.z + 18, d);
+    if (farBase.relZ > 40 && farBase.relZ < 900) {
+      const farFade = Math.max(0, Math.min(1, (900 - farBase.relZ) / 200));
+      ctx.globalAlpha = fade * farFade * 0.85;
+      ctx.lineWidth = Math.max(1, 2.4 * farBase.scale);
+      ctx.beginPath();
+      ctx.moveTo(farBase.x, farBase.y);
+      ctx.lineTo(farTop.x, farTop.y);
+      ctx.stroke();
+      const farMast = projectWorld(-DW.ROAD * 0.3, 36, sig.z + 6, d);
+      ctx.lineWidth = Math.max(1, 2 * farBase.scale);
+      ctx.beginPath();
+      ctx.moveTo(farTop.x, farTop.y);
+      ctx.lineTo(farMast.x, farMast.y);
+      ctx.stroke();
+      const farPhase = signalPhase({ offset: (sig.offset || 0) + SIGNAL_CYCLE * 0.5 }, performance.now() / 1000);
+      drawClassicSignalHead(farMast.x, farMast.y + 7 * farBase.scale, farBase.scale * 0.82, farPhase, fade * farFade);
+    }
+
+    ctx.restore();
+  }
+
+  function drawStreetProp(pr, d) {
     if (pr.kind === 'pothole') {
       const p = projectWorld(pr.x != null ? pr.x : 0, 0, pr.z, d);
       if (p.relZ < 50 || p.relZ > 700) return;
@@ -3572,13 +4537,217 @@
     ctx.globalAlpha = 1;
   }
 
+  function drawReferenceMap(d) {
+    const route = d.route;
+    if (!route || !route.samples) return;
+
+    const mapW = 132, mapH = 132;
+    const pad = 10;
+    const mx = pad, my = H - mapH - pad - 8;
+    const innerX = 8, innerY = 20;
+    const innerW = mapW - 16, innerH = mapH - 28;
+    const b = route.geoBounds;
+    const nSpan = b.nMax - b.nMin;
+    const eSpan = b.eMax - b.eMin;
+
+    function geoToMap(n, e) {
+      return {
+        px: mx + innerX + ((e - b.eMin) / eSpan) * innerW,
+        py: my + innerY + innerH - ((n - b.nMin) / nSpan) * innerH
+      };
+    }
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(12,14,18,0.9)';
+    ctx.strokeStyle = 'rgba(208,162,58,0.35)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(mx, my, mapW, mapH);
+    ctx.strokeRect(mx + 0.5, my + 0.5, mapW - 1, mapH - 1);
+
+    // Lake Michigan (east / right side)
+    const lakeX = mx + innerX + ((route.lakeEastOf - b.eMin) / eSpan) * innerW;
+    ctx.fillStyle = 'rgba(45,85,120,0.55)';
+    ctx.fillRect(lakeX, my + innerY, mx + innerX + innerW - lakeX, innerH);
+    ctx.fillStyle = 'rgba(90,140,180,0.35)';
+    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('LAKE', lakeX + (mx + innerX + innerW - lakeX) * 0.5, my + innerY + innerH * 0.55);
+
+    // Street grid
+    ctx.strokeStyle = 'rgba(120,125,135,0.28)';
+    ctx.lineWidth = 0.8;
+    ctx.fillStyle = 'rgba(160,165,175,0.45)';
+    ctx.font = '600 6px "General Sans", sans-serif';
+    for (const st of route.streets || []) {
+      if (st.kind === 'ns') {
+        const p0 = geoToMap(b.nMin, st.e);
+        const p1 = geoToMap(b.nMax, st.e);
+        ctx.beginPath();
+        ctx.moveTo(p0.px, p0.py);
+        ctx.lineTo(p1.px, p1.py);
+        ctx.stroke();
+        ctx.textAlign = st.e >= 0 ? 'left' : 'right';
+        ctx.fillText(st.label, st.e >= 0 ? p1.px + 2 : p1.px - 2, p1.py + 8);
+      } else {
+        const p0 = geoToMap(st.n, b.eMin);
+        const p1 = geoToMap(st.n, b.eMax);
+        ctx.beginPath();
+        ctx.moveTo(p0.px, p0.py);
+        ctx.lineTo(p1.px, p1.py);
+        ctx.stroke();
+        ctx.textAlign = 'left';
+        ctx.fillText(st.label, p0.px + 2, p0.py - 2);
+      }
+    }
+
+    // Landmarks
+    for (const lm of route.landmarks || []) {
+      const pt = geoToMap(lm.n, lm.e);
+      ctx.fillStyle = 'rgba(208,162,58,0.55)';
+      ctx.beginPath();
+      ctx.arc(pt.px, pt.py, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Complete loop route
+    const wps = route.waypoints;
+    ctx.strokeStyle = 'rgba(196,160,53,0.8)';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (let i = 0; i < wps.length; i++) {
+      const pt = geoToMap(wps[i].n, wps[i].e);
+      if (i === 0) ctx.moveTo(pt.px, pt.py);
+      else ctx.lineTo(pt.px, pt.py);
+    }
+    ctx.stroke();
+
+    // Traveled portion
+    const geo = interpRouteGeo(wps, d.z, true);
+    if (d.z > 0) {
+      ctx.strokeStyle = 'rgba(230,220,190,0.65)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < wps.length; i++) {
+        if (wps[i].z > d.z) break;
+        const pt = geoToMap(wps[i].n, wps[i].e);
+        if (i === 0) ctx.moveTo(pt.px, pt.py);
+        else ctx.lineTo(pt.px, pt.py);
+      }
+      const curPt = geoToMap(geo.n, geo.e);
+      ctx.lineTo(curPt.px, curPt.py);
+      ctx.stroke();
+    }
+
+    // Intersection markers on minimap
+    for (const ix of route.intersections || []) {
+      const pt = geoToMap(ix.n, ix.e);
+      ctx.strokeStyle = 'rgba(235,230,215,0.35)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pt.px - 3, pt.py - 3, 6, 6);
+    }
+
+    // Traffic signals on minimap
+    const sigTime = performance.now() / 1000;
+    for (const sig of route.signals || []) {
+      const pt = geoToMap(sig.n, sig.e);
+      const ph = signalPhase(sig, sigTime);
+      ctx.fillStyle = ph === 'red' ? '#e74c3c' : ph === 'yellow' ? '#f1c40f' : '#2ecc71';
+      ctx.fillRect(pt.px - 2, pt.py - 2, 4, 4);
+    }
+
+    // Exit labels — casino & burger joint
+    for (const ex of d.exits || route.exits || []) {
+      if (ex.taken) continue;
+      const exGeo = ex.n != null ? { n: ex.n, e: ex.e } : interpRouteGeo(wps, ex.z, true);
+      const exPt = geoToMap(exGeo.n, exGeo.e);
+      const isCasino = ex.id === 'casino';
+      const label = ex.mapLabel || ex.name;
+      const color = isCasino ? '#7dce7a' : '#e8a040';
+      const lx = exPt.px + (isCasino ? 6 : -6);
+      const ly = exPt.py - 5;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(exPt.px, exPt.py, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(12,14,18,0.82)';
+      ctx.font = '600 7px "General Sans", sans-serif';
+      const tw = ctx.measureText(label).width + 8;
+      const bx = isCasino ? lx - 2 : lx - tw - 2;
+      ctx.fillRect(bx, ly - 9, tw, 11);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 0.8;
+      ctx.strokeRect(bx + 0.5, ly - 8.5, tw - 1, 10);
+      ctx.fillStyle = color;
+      ctx.textAlign = 'left';
+      ctx.fillText(label, bx + 4, ly);
+    }
+
+    // Start
+    const startPt = geoToMap(wps[0].n, wps[0].e);
+    ctx.fillStyle = '#5a9e68';
+    ctx.beginPath();
+    ctx.arc(startPt.px, startPt.py, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Player
+    const playerPt = geoToMap(geo.n, geo.e + d.playerX * 0.45);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath();
+    ctx.arc(playerPt.px, playerPt.py, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f0ece0';
+    ctx.beginPath();
+    ctx.arc(playerPt.px, playerPt.py, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Title + area label
+    ctx.fillStyle = 'rgba(208,162,58,0.9)';
+    ctx.font = '600 9px "General Sans", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(route.name, mx + 8, my + 12);
+
+    const pos = sampleRouteAt(route, d.z, d);
+    if (pos.label) {
+      ctx.fillStyle = 'rgba(232,220,192,0.7)';
+      ctx.font = '600 8px "General Sans", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(pos.label, mx + mapW - 8, my + 12);
+    } else if (d.atSignal && d.atSignal.dist > 0 && d.atSignal.dist < 60) {
+      const ph = d.atSignal.phase.toUpperCase();
+      ctx.fillStyle = d.atSignal.phase === 'red' ? '#e74c3c'
+        : d.atSignal.phase === 'yellow' ? '#f1c40f' : '#2ecc71';
+      ctx.font = '600 8px "General Sans", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(ph, mx + mapW - 8, my + 12);
+    }
+
+    // North arrow
+    ctx.strokeStyle = 'rgba(208,162,58,0.5)';
+    ctx.fillStyle = 'rgba(208,162,58,0.65)';
+    ctx.lineWidth = 1;
+    const ax = mx + mapW - 14, ay = my + innerY + 6;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay + 10);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(ax - 3, ay + 4);
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax + 3, ay + 4);
+    ctx.stroke();
+    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', ax, ay - 2);
+
+    ctx.restore();
+  }
+
   function drawDrive() {
     const d = state.drive;
     ctx.clearRect(0, 0, W, H);
 
     // Smooth camera sway — layered slow sines instead of per-frame random jitter
     const st = performance.now() / 1000;
-    const shakeAmt = (d.camShake || 0) * 0.7 + (d.rumble || 0) * 2.2;
+    const shakeAmt = (d.camShake || 0) * 0.55 + (d.rumble || 0) * 1.5;
     const shakeX = shakeAmt ? (Math.sin(st * 21) * 0.6 + Math.sin(st * 34 + 1.3) * 0.4) * shakeAmt * 0.45 : 0;
     const shakeY = shakeAmt ? (Math.sin(st * 26 + 0.7) * 0.6 + Math.sin(st * 41) * 0.4) * shakeAmt * 0.32 : 0;
     ctx.save();
@@ -3602,22 +4771,27 @@
     ctx.fillStyle = moonGlow;
     ctx.fillRect(W * 0.72 - 60, H * 0.13 - 60, 120, 120);
 
-    // Skyline — two parallax layers that lean into the curve
-    const skySway = -d.curve * 60 - (d.camX || 0) * 6;
+    // Skyline — tiled scroll so buildings drift smoothly without modulo pops
+    const skySway = -d.curve * 48 - (d.camX || 0) * 4.5;
+    const farScroll = d.z * 0.012 + skySway * 0.4;
+    const farTile = 61;
+    const farCount = Math.ceil((W + 90) / farTile) + 3;
     ctx.fillStyle = '#3a3f47';
-    for (let i = 0; i < 16; i++) {
-      const bx = ((i * 61 + d.z * 0.012 + skySway * 0.4) % (W + 90) + W + 90) % (W + 90) - 45;
+    for (let i = 0; i < farCount; i++) {
+      const bx = i * farTile - (farScroll % farTile) - 45;
       const bh = 14 + ((i * 23) % 34);
       ctx.fillRect(bx, H * 0.42 - bh - (d.hills || 0) * 0.06, 26 + (i % 4) * 7, bh);
     }
+    const nearScroll = d.z * 0.03 + skySway;
+    const nearTile = 47;
+    const nearCount = Math.ceil((W + 70) / nearTile) + 3;
     ctx.fillStyle = '#2e333a';
-    for (let i = 0; i < 20; i++) {
-      const bx = ((i * 47 + d.z * 0.03 + skySway) % (W + 70) + W + 70) % (W + 70) - 35;
+    for (let i = 0; i < nearCount; i++) {
+      const bx = i * nearTile - (nearScroll % nearTile) - 35;
       const bh = 20 + ((i * 19) % 55);
       const bw2 = 22 + (i % 3) * 6;
       const by = H * 0.42 - bh - (d.hills || 0) * 0.1;
       ctx.fillRect(bx, by, bw2, bh);
-      // Sparse lit windows
       ctx.fillStyle = 'rgba(210,180,110,0.25)';
       for (let wI = (i * 7) % 3; wI < 5; wI += 2) {
         ctx.fillRect(bx + 4 + (wI % 3) * 7, by + 6 + Math.floor(wI / 3) * 12 + (i % 5) * 4, 3, 4);
@@ -3636,31 +4810,32 @@
     ctx.fillStyle = '#5a564e';
     ctx.fillRect(-30, nearGround.y - 4, W + 60, H);
 
-    // Smooth cohesive street with atmospheric perspective on every surface
-    const segs = 62;
-    const segLen = 22;
-    const zBase = Math.floor(d.z / segLen) * segLen;
+    // Continuous road mesh — anchor to camera, never snap to a Z grid (that caused visible jumps)
+    const camZ = d.z - (d.camBack || 110);
+    const segLen = 14;
+    const segs = 78;
+    const zStart = camZ + 6;
+    const fogFar = segs * segLen;
     const FOG = [126, 120, 108];
     const ASPHALT = [42, 42, 46];
     const WALKC = [138, 134, 128];
     const CURBC = [168, 164, 156];
-    const fogFar = segs * segLen;
-    for (let i = segs; i >= -5; i--) {
-      const z0 = zBase + i * segLen;
+    const dashPeriod = segLen * 3;
+    for (let i = segs; i >= -3; i--) {
+      const z0 = zStart + i * segLen;
       const z1 = z0 + segLen;
       const pL = projectWorld(-DW.ROAD, 0, z0, d);
       const pR = projectWorld(DW.ROAD, 0, z0, d);
       const qL = projectWorld(-DW.ROAD, 0, z1, d);
       const qR = projectWorld(DW.ROAD, 0, z1, d);
+      if (pL.relZ < 8) continue;
       const wL = projectWorld(-DW.WALK, 0, z0, d);
       const wR = projectWorld(DW.WALK, 0, z0, d);
       const vL = projectWorld(-DW.WALK, 0, z1, d);
       const vR = projectWorld(DW.WALK, 0, z1, d);
-      // Haze factor — surfaces dissolve toward the fog color with distance
-      const fogT = Math.pow(Math.max(0, Math.min(1, pL.relZ / fogFar)), 1.4) * 0.85;
+      const fogT = Math.pow(Math.max(0, Math.min(1, pL.relZ / fogFar)), 1.35) * 0.82;
       const paintA = 1 - fogT;
 
-      // Continuous sidewalk
       ctx.fillStyle = hazeMix(WALKC, FOG, fogT);
       ctx.beginPath();
       ctx.moveTo(-20, wL.y);
@@ -3675,7 +4850,6 @@
       ctx.lineTo(W + 20, vR.y);
       ctx.fill();
 
-      // Thin continuous curb lip
       ctx.fillStyle = hazeMix(CURBC, FOG, fogT);
       ctx.beginPath();
       ctx.moveTo(wL.x, wL.y);
@@ -3692,7 +4866,6 @@
       ctx.closePath();
       ctx.fill();
 
-      // Solid asphalt
       ctx.fillStyle = hazeMix(ASPHALT, FOG, fogT);
       ctx.beginPath();
       ctx.moveTo(pL.x, pL.y);
@@ -3702,9 +4875,8 @@
       ctx.closePath();
       ctx.fill();
 
-      // Soft shoulder paint, fading into the haze
-      ctx.strokeStyle = `rgba(210,200,170,${0.28 * paintA})`;
-      ctx.lineWidth = Math.max(1, 1.5 * pL.scale);
+      ctx.strokeStyle = `rgba(210,200,170,${0.26 * paintA})`;
+      ctx.lineWidth = Math.max(1, 1.4 * pL.scale);
       ctx.beginPath();
       ctx.moveTo(pL.x, pL.y);
       ctx.lineTo(qL.x, qL.y);
@@ -3712,11 +4884,10 @@
       ctx.lineTo(qR.x, qR.y);
       ctx.stroke();
 
-      // Continuous double yellow
       const m0 = projectWorld(0, 0, z0, d);
       const m1 = projectWorld(0, 0, z1, d);
-      ctx.strokeStyle = `rgba(196,160,53,${0.42 * paintA})`;
-      ctx.lineWidth = Math.max(1, 2 * pL.scale);
+      ctx.strokeStyle = `rgba(196,160,53,${0.4 * paintA})`;
+      ctx.lineWidth = Math.max(1, 1.8 * pL.scale);
       ctx.beginPath();
       ctx.moveTo(m0.x - 3 * pL.scale, m0.y);
       ctx.lineTo(m1.x - 3 * pL.scale, m1.y);
@@ -3724,10 +4895,14 @@
       ctx.lineTo(m1.x + 3 * pL.scale, m1.y);
       ctx.stroke();
 
-      // Soft dashed lane marks
-      if (Math.floor(z0 / (segLen * 3)) % 2 === 0) {
-        ctx.strokeStyle = `rgba(200,195,180,${0.22 * paintA})`;
-        ctx.lineWidth = Math.max(1, 1.8 * pL.scale);
+      // Dashed lane marks — fade at dash boundaries so stripes don't pop
+      const dashPhase = (z0 % dashPeriod) / dashPeriod;
+      const dashAlpha = dashPhase < 0.12 ? dashPhase / 0.12
+        : dashPhase > 0.88 ? (1 - dashPhase) / 0.12
+        : 1;
+      if (Math.floor(z0 / dashPeriod) % 2 === 0) {
+        ctx.strokeStyle = `rgba(200,195,180,${0.2 * paintA * dashAlpha})`;
+        ctx.lineWidth = Math.max(1, 1.6 * pL.scale);
         for (const lane of [-DW.LANE, DW.LANE]) {
           const a = projectWorld(lane, 0, z0, d);
           const bpt = projectWorld(lane, 0, z1, d);
@@ -3738,6 +4913,14 @@
         }
       }
     }
+
+    // Intersections — cross streets + crosswalks at 90° turns
+    const ixs = [...(d.route.intersections || [])].sort((a, b) => b.z - a.z);
+    for (const ix of ixs) drawIntersection(ix, d);
+
+    // Classic mast-arm traffic signals
+    const sigs = [...(d.signals || [])].sort((a, b) => b.z - a.z);
+    for (const sig of sigs) drawTrafficSignal(sig, d);
 
     // City blocks (far → near), sit on sidewalk grade
     const builds = [...d.buildings].sort((a, b) => b.z - a.z);
@@ -3767,7 +4950,8 @@
         crush: car.crush || 0,
         color: car.color,
         bodyScale: car.bodyScale || 1,
-        roof: car.roof || 1
+        roof: car.roof || 1,
+        rear: car.rear
       });
       // Taillight glow on live cars ahead
       if (!car.smashed && car.z > d.z + 40) {
@@ -3808,15 +4992,39 @@
     ctx.textAlign = 'left';
     if (d.approachingExit) {
       ctx.fillText(`TAKE EXIT → ${d.approachingExit.name}`, 10, 22);
+    } else if (d.awaitTurn && d.atSignal && d.atSignal.phase === 'green' && !d.mustStop) {
+      ctx.fillStyle = '#7dce7a';
+      ctx.fillText(d.awaitTurn === 'left' ? 'GREEN — STEER LEFT ←' : 'GREEN — STEER RIGHT →', 10, 22);
+    } else if (d.mustStop && d.atSignal) {
+      ctx.fillStyle = d.atSignal.phase === 'red' ? '#e74c3c' : '#f1c40f';
+      ctx.fillText(`${d.atSignal.phase.toUpperCase()} LIGHT — STOP`, 10, 22);
+    } else if (d.awaitTurn && d.atSignal && d.atSignal.dist > 0) {
+      ctx.fillStyle = '#e8dcc0';
+      ctx.fillText(`APPROACHING TURN — ${d.awaitTurn.toUpperCase()}`, 10, 22);
+    } else if (d.atSignal && d.atSignal.dist > 0 && d.atSignal.dist < 55) {
+      ctx.fillStyle = d.atSignal.phase === 'green' ? '#7dce7a' : '#e8dcc0';
+      ctx.fillText(`SIGNAL ${d.atSignal.phase.toUpperCase()}  ${Math.round(d.atSignal.dist / (DW.MPH_Z * 40) * 10) / 10} mi`, 10, 22);
     } else if (upcoming) {
       const mi = ((upcoming.z - d.z) / (DW.MPH_Z * 55)).toFixed(1);
       ctx.fillText(`NEXT EXIT  ${upcoming.name}  ${mi} mi`, 10, 22);
+    } else if (d.route) {
+      const pathLen = d.route.length;
+      const pct = Math.min(99, Math.round((d.z / pathLen) * 100));
+      ctx.fillStyle = '#e8dcc0';
+      ctx.fillText(`LAP ${d.lap || 1}  ${pct}%`, 10, 22);
     } else {
       ctx.fillText('OPEN ROAD', 10, 22);
     }
     ctx.textAlign = 'right';
     ctx.fillStyle = '#d8d2c0';
     ctx.fillText(`${Math.round(d.speed)} MPH`, W - 10, 22);
+
+    drawReferenceMap(d);
+
+    if (d.turnFlash > 0) {
+      ctx.fillStyle = `rgba(125,206,122,${d.turnFlash * 0.25})`;
+      ctx.fillRect(0, 0, W, H);
+    }
 
     const sp = d.speed / d.maxSpeed;
     ctx.fillStyle = '#2a2c30';

@@ -202,6 +202,7 @@
       max-height: none;
       object-fit: fill;
       image-rendering: auto;
+      -webkit-optimize-contrast: true;
       touch-action: none;
     }
     .overlay {
@@ -535,6 +536,7 @@
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+  let canvasDpr = 1;
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
@@ -577,79 +579,112 @@
   };
   const SLAM_Y0 = 150;
   const DELIVER_X = W - 118;
-  const CUSTOMER_X = W - 52;
+  const CUSTOMER_SPOT_X = W - 78;
+  const CUSTOMER_QUEUE_X = W + 115;
+  const LUNGE_TARGET_X = STATION_X + 72;
   const CUSTOMER_Y = LINE_Y - 8;
+  const CUSTOMER_WALK_SPEED = 118;
 
   const CUSTOMERS = [
     {
-      id: 'pat', name: 'Pat', title: 'Guest',
+      id: 'pat', name: 'Pat', title: 'Night DJ',
+      bio: 'On-air till 2 AM. Eats with one hand on the dial.',
       skin: '#e0b090', blush: '#e08a78', hair: '#3a2a20', hairStyle: 'short', shirt: '#4a3038', accent: '#c8102e',
       quirk: 'antenna', hurtChance: 0.55, dmg: [8, 14],
-      happy: ['Yes. The round is correct.', 'I have repaid the cow.', 'Soft won today.'],
-      pissed: ['This contains Thursday.', 'Return my silence.', 'Wrong temperature of no.']
+      idle: ['You open late. I respect that.', 'Keep the grill hot — I\'m between songs.'],
+      eager: ['That bun looks radio-ready.', 'Slide it over before the next caller.'],
+      happy: ['Perfect stack. Going out on this high note.', 'That hit the spot like a good chorus.', 'Soft bun, loud flavor. I\'ll mention you on air.'],
+      pissed: ['That patty was still doing call-in hours.', 'Wrong order. My listeners heard me sigh.', 'I came off shift for this?']
     },
     {
-      id: 'sam', name: 'Sam', title: 'Regular',
+      id: 'sam', name: 'Sam', title: 'Cab Driver',
+      bio: 'Third shift. Knows every shortcut and every grill.',
       skin: '#c68642', blush: '#d47868', hair: '#1a0e08', hairStyle: 'bob', shirt: '#3a3a48', accent: '#e8b050',
       quirk: 'monobrow', hurtChance: 0.5, dmg: [7, 12],
-      happy: ['Mm. Horizontal.', 'My elbows approve.', 'It hummed correctly.'],
-      pissed: ['I will remember this in reverse.', 'The bun lied.', 'Put it back in the idea.']
+      idle: ['Meter\'s off. I\'ve got five minutes.', 'Same as last Tuesday, if you remember.'],
+      eager: ['There it is. Don\'t make me double-park.', 'Hurry — I\'ve got a fare at O\'Hare.'],
+      happy: ['Solid. Horizontal. No complaints.', 'That\'s why I keep coming back here.', 'Good burger. Good tip. Good night.'],
+      pissed: ['The bun lied to me.', 'I\'ve had better from a gas station.', 'You just lost a regular, pal.']
     },
     {
-      id: 'jo', name: 'Jo', title: 'Local',
+      id: 'jo', name: 'Jo', title: 'Art Student',
+      bio: 'Studio closed at midnight. Forgot dinner again.',
       skin: '#f0c8a8', blush: '#f0a090', hair: '#8a3a18', hairStyle: 'spike', shirt: '#2a4a3a', accent: '#d0d0d0',
       quirk: 'dot', hurtChance: 0.6, dmg: [8, 13],
-      happy: ['Good shapes inside.', 'I left my shadow outside.', 'Cheese did a kindness.'],
-      pissed: ['My bones disagree.', 'This is a hallway food.', 'Please unmake it.']
+      idle: ['Is this place still open? Cool.', 'I can pay. I think.'],
+      eager: ['Oh wow, that color palette… I mean, burger.', 'My hands are shaking — is that normal?'],
+      happy: ['Beautiful layers. Very compositional.', 'Cheese ratio is chef\'s-kiss.', 'I can finally think about something other than charcoal.'],
+      pissed: ['This tastes like my critique went wrong.', 'I asked for food, not an abstract concept.', 'My stomach and my professor would both be disappointed.']
     },
     {
-      id: 'lee', name: 'Lee', title: 'Unit',
+      id: 'lee', name: 'Lee', title: 'ER Nurse',
+      bio: 'Just off a twelve-hour shift. Running on coffee and spite.',
       skin: '#dbb08a', blush: '#e09080', hair: '#4a3040', hairStyle: 'pony', shirt: '#6a3038', accent: '#f0d080',
       quirk: 'square', hurtChance: 0.7, dmg: [9, 15],
-      happy: ['Accepted by mouth.', 'The napkin clapped.', 'I am briefly taller.'],
-      pissed: ['No stack of that.', 'It tasted like waiting.', 'I invoice the air.']
+      idle: ['Don\'t talk to me until I have protein.', 'One burger. No small talk. Please.'],
+      eager: ['Yes. Yes. That one. Now.', 'I can smell it from here — hurry.'],
+      happy: ['Finally. Something that didn\'t beep at me.', 'Warm, stacked, no paperwork. Perfect.', 'I might actually smile today.'],
+      pissed: ['That patty was still mooing. I deal with enough trauma.', 'Wrong stack. I don\'t have time for this.', 'I save lives. You can\'t save a burger?']
     },
     {
-      id: 'kim', name: 'Kim', title: 'Neighbor',
+      id: 'kim', name: 'Kim', title: 'Retired Teacher',
+      bio: 'Walks the block every night. Judges portions like essays.',
       skin: '#8d5524', blush: '#c07060', hair: '#0e0a08', hairStyle: 'short', shirt: '#2a2a3a', accent: '#70a0d0',
       quirk: 'tinyhat', hurtChance: 0.55, dmg: [8, 13],
-      happy: ['Warm geometry.', 'I parked my thoughts.', 'Bacon said hello first.'],
-      pissed: ['Send a quieter burger.', 'This offends the floor.', 'Count me as elsewhere.']
+      idle: ['Good evening, dear. Is the grill clean?', 'I remember when this corner had a pharmacy.'],
+      eager: ['That looks promising. Show me the bacon.', 'Careful with the stack — presentation counts.'],
+      happy: ['Well done. I\'ll tell the neighbors.', 'Balanced, warm, respectable. B-plus.', 'Bacon arrived on time. Gold star.'],
+      pissed: ['This would not pass inspection.', 'Send a quieter burger next time, young one.', 'I\'ve written harder notes than this meal deserves.']
     },
     {
-      id: 'riley', name: 'Riley', title: 'Citizen',
+      id: 'riley', name: 'Riley', title: 'Finals Week',
+      bio: 'Three Red Bulls deep. Brain is 90% flashcards.',
       skin: '#f5d0b0', blush: '#f0a8a0', hair: '#c8a040', hairStyle: 'messy', shirt: '#4a5a6a', accent: '#f0a0c0',
       quirk: 'freckles', hurtChance: 0.4, dmg: [5, 11],
-      happy: ['I swallowed a small win.', 'The sesame winked.', 'Okay forever for a minute.'],
-      pissed: ['It blinked wrong.', 'Hold this apology.', 'I preferred the rumor.']
+      idle: ['Do you deliver to the library? Kidding. Mostly.', 'I have an exam at eight. Feed me.'],
+      eager: ['Is that mine? Please say yes.', 'My GPA depends on this burger.'],
+      happy: ['Okay. Okay. I can keep studying now.', 'Sesame seeds = tiny victories.', 'Best thing that happened to me all week.'],
+      pissed: ['That blinked wrong. Like my sleep schedule.', 'I needed comfort food, not a plot twist.', 'Hold this apology — I have a midterm.']
     },
     {
-      id: 'casey', name: 'Casey', title: 'Soft One',
+      id: 'casey', name: 'Casey', title: 'Site Foreman',
+      bio: 'Hard hat in the truck. Knows a good build when he sees one.',
       skin: '#d4a574', blush: '#d08070', hair: '#3a2a20', hairStyle: 'bob', shirt: '#5a4030', accent: '#90c070',
       quirk: 'mustache', hurtChance: 0.5, dmg: [7, 12],
-      happy: ['Flavor parked here.', 'I owe the grill a wave.', 'Tomato behaved.'],
-      pissed: ['Undo the chew.', 'This is sideways nutrition.', 'I brought the wrong face.']
+      idle: ['Long day on the job. Need something stacked right.', 'Nothing fancy. Just done proper.'],
+      eager: ['Now we\'re talking. Solid foundation on that bun.', 'Don\'t rush the finish — I\'m watching.'],
+      happy: ['Good structure. Tomato held its load.', 'That\'s craftmanship. Respect.', 'I\'ll bring the crew next Friday.'],
+      pissed: ['That stack wouldn\'t pass code.', 'Sloppy work. I\'ve seen better scaffolding.', 'Fix it or I\'m eating at the diner.']
     },
     {
-      id: 'morgan', name: 'Morgan', title: 'Etc.',
+      id: 'morgan', name: 'Morgan', title: 'Remote Dev',
+      bio: 'Hasn\'t left the apartment in four days. Types with one hand.',
       skin: '#e8c4a0', blush: '#e89888', hair: '#e8e0d0', hairStyle: 'cap', shirt: '#a04040', accent: '#304080',
       quirk: 'glasses', hurtChance: 0.65, dmg: [8, 14],
-      happy: ['Signal received in stomach.', 'Bun was honest.', 'I forgot my other complaint.'],
-      pissed: ['Error: meat.', 'Recalculate the bite.', 'My receipt is emotional.']
+      idle: ['Grill API online. Requesting one burger.', 'Is this the only place open? Asking for a friend.'],
+      eager: ['Response incoming… looks like 200 OK.', 'Deploy to my hand when ready.'],
+      happy: ['Merged to main. Tastes like a closed ticket.', 'Bun integrity checks out. Ship it.', 'Forgot my other complaint. Good sign.'],
+      pissed: ['Error: unexpected patty.', 'Recalculate the stack and retry.', 'My receipt is emotional and so am I.']
     },
     {
-      id: 'taylor', name: 'Taylor', title: 'Probably',
+      id: 'taylor', name: 'Taylor', title: 'Ex Line Cook',
+      bio: 'Used to work a flat-top. Hard to impress, easy to offend.',
       skin: '#e8c8b0', blush: '#e0a090', hair: '#6a6a70', hairStyle: 'short', shirt: '#4a5a40', accent: '#d0b060',
       quirk: 'scar', hurtChance: 0.75, dmg: [6, 11],
-      happy: ['Nice little stack event.', 'I am full of minor joy.', 'The plate understood me.'],
-      pissed: ['Cancel the concept.', 'I taste a hallway.', 'Bring me a different yesterday.']
+      idle: ['Let\'s see if you learned anything.', 'I\'ve seen how the other kitchens do it.'],
+      eager: ['Hmm. Not bad. Don\'t mess it up now.', 'Heat\'s right. Seasoning\'s a question mark.'],
+      happy: ['You\'d survive a Saturday rush.', 'Clean stack. I\'ll say that much.', 'Almost reminds me of my old station.'],
+      pissed: ['My line lead would have fired you.', 'That patty needed thirty more seconds.', 'I came here hungry, not nostalgic for bad food.']
     },
     {
-      id: 'alex', name: 'Alex', title: 'Human?',
+      id: 'alex', name: 'Alex', title: 'Delivery Cyclist',
+      bio: 'Forty orders left. Zero patience. Lives on tips and adrenaline.',
       skin: '#c9a07a', blush: '#d07868', hair: '#1a1410', hairStyle: 'spike', shirt: '#303038', accent: '#e04040',
       quirk: 'antenna', hurtChance: 0.8, dmg: [11, 17],
-      happy: ['Protein happened.', 'I will tell the ceiling.', 'Grease is a language.'],
-      pissed: ['Bro is a feeling and I have it.', 'That was anti-food.', 'I leave through the wall.']
+      idle: ['Quick question: how quick is quick?', 'I\'m double-parked. Legally-ish.'],
+      eager: ['Hand it over — clock\'s ticking!', 'That smell is making me late on purpose.'],
+      happy: ['Protein acquired. Back on the route.', 'Fast and good. You\'re a legend.', 'Grease is a language and you\'re fluent.'],
+      pissed: ['Bro, that was anti-food.', 'I waited longer than my last delivery.', 'Wrong order. I don\'t have time to be mad but here we are.']
     }
   ];
 
@@ -675,7 +710,8 @@
     lastTs: 0,
     combo: 0,
     customer: null,
-    hurtFlash: 0
+    hurtFlash: 0,
+    screenShake: 0
   };
 
   let audioCtx = null;
@@ -1087,6 +1123,13 @@
     return {
       ...base,
       mood: 'idle', // idle | eager | happy | eating | pissed
+      walkX: CUSTOMER_QUEUE_X,
+      walkTarget: CUSTOMER_SPOT_X,
+      walkPhase: 'approach', // approach | atWindow | lunge | retreat
+      hitLanded: false,
+      willHit: false,
+      lungeT: 0,
+      retreatT: 0,
       t: 0,
       bob: 0,
       shake: 0,
@@ -1102,6 +1145,42 @@
       lineLife: 0,
       punch: 0
     };
+  }
+
+  function customerAtWindow(c) {
+    return c && c.walkPhase === 'atWindow';
+  }
+
+  function customerWalkT(c) {
+    if (c.walkPhase === 'lunge') {
+      return 1 + Math.min(1, c.lungeT / 0.38) * 0.4;
+    }
+    if (c.walkPhase === 'retreat') {
+      return Math.max(0, 1 - Math.min(1, c.retreatT / 0.55));
+    }
+    const span = CUSTOMER_QUEUE_X - CUSTOMER_SPOT_X;
+    return Math.max(0, Math.min(1, (CUSTOMER_QUEUE_X - c.walkX) / span));
+  }
+
+  function customerFootY(c) {
+    const t = customerWalkT(c);
+    const ease = t * t * (3 - 2 * t);
+    const farY = LINE_Y - 58;
+    const nearY = LINE_Y + 18;
+    if (c.walkPhase === 'lunge') {
+      const lt = Math.min(1, c.lungeT / 0.38);
+      return nearY + lt * 14;
+    }
+    return farY + (nearY - farY) * ease;
+  }
+
+  function customerBodyScale(c) {
+    const t = customerWalkT(c);
+    const ease = t * t * (3 - 2 * t);
+    if (c.walkPhase === 'lunge') {
+      return 1.22 + Math.min(1, c.lungeT / 0.38) * 0.32;
+    }
+    return 0.32 + ease * 0.98;
   }
 
   function setCustomerMood(mood) {
@@ -1179,7 +1258,7 @@
       c.heldScale = 1;
       setCustomerMood('happy');
       state.floatText.push({
-        x: CUSTOMER_X - 10, y: CUSTOMER_Y - 100,
+        x: CUSTOMER_SPOT_X - 10, y: CUSTOMER_Y - 100,
         text: '+$1', life: 1.05, color: '#8fd989'
       });
       beep(520, 0.08);
@@ -1201,21 +1280,19 @@
       state.flash = Math.max(state.flash, 0.2);
       if (burger.tainted) {
         state.floatText.push({
-          x: CUSTOMER_X, y: CUSTOMER_Y - 118,
+          x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 118,
           text: 'THAT WAS RANCID', life: 1.0, color: '#8fd96a'
         });
-      }
-
-      // Random violence from an unhappy customer
-      if (Math.random() < c.hurtChance) {
-        const dmg = c.dmg[0] + Math.floor(Math.random() * (c.dmg[1] - c.dmg[0] + 1));
-        hurtPlayer(dmg, c);
       } else {
         state.floatText.push({
-          x: CUSTOMER_X, y: CUSTOMER_Y - 108,
-          text: 'LUCKY MISS', life: 0.85, color: '#f0a46a'
+          x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 108,
+          text: 'WRONG ORDER', life: 0.95, color: '#f0a46a'
         });
       }
+      c.willHit = true;
+      c.walkPhase = 'lunge';
+      c.lungeT = 0;
+      c.hitLanded = false;
       removeTicket(burger.ticketId);
       updateHUD();
     }
@@ -1229,11 +1306,12 @@
     state.health = Math.max(0, state.health - amount);
     state.hurtFlash = 0.45;
     state.flash = 0.4;
+    state.screenShake = Math.max(state.screenShake, 0.55);
     if (customer) customer.punch = 1;
     beep(70, 0.2, 'sawtooth', 0.06);
     beep(110, 0.12, 'square', 0.04);
     state.floatText.push({
-      x: W * 0.35, y: H * 0.55,
+      x: STATION_X, y: LINE_Y - 120,
       text: `-${amount} HP`, life: 1.0, color: '#f26e89'
     });
     updateHUD();
@@ -1368,6 +1446,7 @@
     state.drips = [];
     state.floatText = [];
     state.hurtFlash = 0;
+    state.screenShake = 0;
     state.spawnTimer = 0.8;
     state.customer = pickCustomer();
     state.mode = 'play';
@@ -1403,6 +1482,7 @@
   function update(dt) {
     if (state.armPulse > 0) state.armPulse -= dt;
     if (state.hurtFlash > 0) state.hurtFlash -= dt;
+    if (state.screenShake > 0) state.screenShake = Math.max(0, state.screenShake - dt * 1.8);
 
     // Always animate goo / drips a bit
     for (const g of state.goo) {
@@ -1483,10 +1563,14 @@
     }
 
     const speed = beltSpeed();
-    const custBusy = state.customer && (state.customer.mood === 'eating' || state.customer.mood === 'happy' || state.customer.mood === 'pissed');
+    const c = state.customer;
+    const custAtWindow = customerAtWindow(c);
+    const custReacting = c && (
+      c.mood === 'eating' || c.mood === 'happy' || c.mood === 'pissed'
+      || c.walkPhase === 'lunge' || c.walkPhase === 'retreat'
+    );
     for (const b of state.burgers) {
-      // Pause at the window if customer is mid-reaction
-      if (custBusy && b.x >= DELIVER_X - 8) {
+      if ((!custAtWindow || custReacting) && b.x >= DELIVER_X - 8) {
         b.x = Math.min(b.x, DELIVER_X - 8);
       } else {
         b.x += speed * dt;
@@ -1494,7 +1578,7 @@
       if (b.bounce > 0) b.bounce -= dt;
       if (b.squash > 0) b.squash -= dt;
 
-      if (!b.delivered && b.x >= DELIVER_X && !custBusy) {
+      if (!b.delivered && b.x >= DELIVER_X && custAtWindow && !custReacting) {
         deliverToCustomer(b);
       }
     }
@@ -1526,20 +1610,76 @@
     if (c.steam > 0 && c.mood === 'pissed') c.steam = Math.min(1.2, c.steam + dt * 0.15);
     else if (c.steam > 0) c.steam = Math.max(0, c.steam - dt);
 
+    if (c.walkPhase === 'approach') {
+      const dx = c.walkTarget - c.walkX;
+      if (Math.abs(dx) > 2) {
+        c.walkX += Math.sign(dx) * CUSTOMER_WALK_SPEED * dt;
+      } else {
+        c.walkX = c.walkTarget;
+        c.walkPhase = 'atWindow';
+        if (c.idle && c.idle.length) {
+          c.line = pickLine(c.idle);
+          c.lineLife = 2.8;
+        }
+      }
+      return;
+    }
+
+    if (c.walkPhase === 'retreat') {
+      c.retreatT += dt;
+      const t = Math.min(1, c.retreatT / 0.55);
+      c.walkX = LUNGE_TARGET_X + (CUSTOMER_QUEUE_X - LUNGE_TARGET_X) * (t * t);
+      if (t >= 1) state.customer = pickCustomer(c.id);
+      return;
+    }
+
+    if (c.walkPhase === 'lunge') {
+      c.lungeT += dt;
+      const t = Math.min(1, c.lungeT / 0.38);
+      const ease = t * t * (3 - 2 * t);
+      c.walkX = CUSTOMER_SPOT_X + (LUNGE_TARGET_X - CUSTOMER_SPOT_X) * ease;
+      c.brow = 1;
+      c.vein = 0.7 + Math.sin(c.lungeT * 24) * 0.3;
+      if (t >= 0.92 && !c.hitLanded && c.willHit) {
+        c.hitLanded = true;
+        const dmg = c.dmg[0] + Math.floor(Math.random() * (c.dmg[1] - c.dmg[0] + 1));
+        hurtPlayer(dmg, c);
+        c.willHit = false;
+      }
+      if (c.held && c.lungeT > 0.5) {
+        c.heldScale = Math.max(0, 1 - (c.lungeT - 0.5) * 2.8);
+        if (c.lungeT > 0.72 && c.held) {
+          spawnGoo(c.walkX - 18, customerFootY(c) - 48, 'tomato', 10);
+          c.held = null;
+        }
+      }
+      if (c.lungeT > 1.35) {
+        c.walkPhase = 'retreat';
+        c.retreatT = 0;
+        c.t = 0;
+      }
+      return;
+    }
+
     if (c.mood === 'idle') {
-      // Lean in when a burger is approaching
-      const approaching = state.burgers.some(b => b.x > STATION_X && !b.delivered);
-      if (approaching) c.mood = 'eager';
+      const approaching = state.burgers.some(b => b.x > STATION_X + 40 && !b.delivered);
+      if (approaching) {
+        c.mood = 'eager';
+        if (c.eager && c.eager.length) {
+          c.line = pickLine(c.eager);
+          c.lineLife = 2.0;
+        }
+      }
     } else if (c.mood === 'eager') {
-      const approaching = state.burgers.some(b => b.x > STATION_X && !b.delivered);
+      const approaching = state.burgers.some(b => b.x > STATION_X + 40 && !b.delivered);
       if (!approaching) c.mood = 'idle';
     } else if (c.mood === 'happy') {
       if (c.t > 0.35) {
         setCustomerMood('eating');
         c.bite = 0;
         chompSound();
-        spawnGoo(CUSTOMER_X - 8, CUSTOMER_Y - 40, 'patty', 8);
-        spawnGoo(CUSTOMER_X - 8, CUSTOMER_Y - 40, 'cheese', 6);
+        spawnGoo(c.walkX - 8, customerFootY(c) - 40, 'patty', 8);
+        spawnGoo(c.walkX - 8, customerFootY(c) - 40, 'cheese', 6);
       }
     } else if (c.mood === 'eating') {
       c.bite = Math.min(1, c.t / 0.28);
@@ -1547,21 +1687,6 @@
       c.chew = c.t;
       if (c.t > 0.85) {
         c.held = null;
-        // Swap in the next hungry stranger
-        state.customer = pickCustomer(c.id);
-      }
-    } else if (c.mood === 'pissed') {
-      c.brow = 1;
-      c.vein = 0.7 + Math.sin(c.t * 20) * 0.3;
-      // Fling the garbage burger
-      if (c.held && c.t > 0.2) {
-        c.heldScale = Math.max(0, 1 - (c.t - 0.2) * 2.5);
-        if (c.t > 0.45) {
-          spawnGoo(CUSTOMER_X - 20, CUSTOMER_Y - 50, 'tomato', 10);
-          c.held = null;
-        }
-      }
-      if (c.t > 1.65) {
         state.customer = pickCustomer(c.id);
       }
     }
@@ -1963,71 +2088,130 @@
     }
   }
 
-  function drawCustomerWindow() {
-    const wx = W - 100;
-    const wy = LINE_Y - 130;
-    ctx.fillStyle = '#2a1418';
-    roundRect(wx, wy, 96, 160, 10);
-    ctx.fill();
-    ctx.fillStyle = '#f0e4d4';
-    roundRect(wx + 6, wy + 22, 84, 130, 8);
-    ctx.fill();
+  function drawServiceWindow() {
+    const wx = W - 108;
+    const wy = LINE_Y - 148;
+    const ww = 100;
+    const wh = 168;
+
+    // Frame jambs + header (opening stays clear — customer draws underneath)
+    ctx.fillStyle = '#3a181c';
+    ctx.fillRect(wx, wy, 10, wh);
+    ctx.fillRect(wx + ww - 10, wy, 10, wh);
+    ctx.fillStyle = '#5a2830';
+    ctx.fillRect(wx + 4, wy + wh - 10, ww - 8, 10);
     ctx.fillStyle = '#c8102e';
-    roundRect(wx, wy, 96, 20, 8);
+    roundRect(wx, wy, ww, 22, 8);
     ctx.fill();
     ctx.fillStyle = '#fff8f0';
     ctx.font = '800 10px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('PICKUP', wx + 48, wy + 14);
+    ctx.fillText('PICKUP', wx + ww / 2, wy + 15);
 
+    ctx.fillStyle = '#9aa2aa';
+    ctx.fillRect(wx + 6, LINE_Y + 2, ww - 12, 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(wx + 6, LINE_Y + 2, ww - 12, 2);
+    ctx.strokeStyle = 'rgba(246,239,228,0.4)';
+    ctx.lineWidth = 2;
+    roundRect(wx + 5, wy + 24, ww - 10, wh - 30, 8);
+    ctx.stroke();
+  }
+
+  function drawCustomerWindow() {
     if (!state.customer) state.customer = pickCustomer();
     drawCustomer(state.customer);
   }
 
   function drawCustomer(c) {
+    const bodySc = customerBodyScale(c);
+    const footY = customerFootY(c);
     const shakeX = c.mood === 'pissed' ? Math.sin(c.t * 40) * 3.5 * c.shake : 0;
-    const bobY = Math.sin(c.bob * (c.mood === 'eager' ? 8 : 3)) * (c.mood === 'eager' ? 3 : 1.5);
-    const cx = CUSTOMER_X + shakeX;
-    const cy = CUSTOMER_Y + bobY;
-    const lean = c.mood === 'eager' ? -4 : c.mood === 'pissed' ? 2 : 0;
+    const walkBob = c.walkPhase === 'approach' ? Math.sin(c.bob * 14) * (2.8 + customerWalkT(c) * 2) : 0;
+    const bobY = Math.sin(c.bob * (c.mood === 'eager' ? 8 : 3)) * (c.mood === 'eager' ? 3 : 1.5) + walkBob;
+    const cx = c.walkX + shakeX;
+    const cy = footY + bobY;
+    const lean = c.walkPhase === 'lunge' ? -22
+      : c.mood === 'eager' ? -8
+      : c.mood === 'pissed' ? 5
+      : c.walkPhase === 'approach' ? -4 - customerWalkT(c) * 4 : 0;
+
+    // Ground shadow — grows and drops as they step toward the camera
+    const shadowY = cy + 38 * bodySc;
+    ctx.fillStyle = `rgba(0,0,0,${0.1 + bodySc * 0.12})`;
+    ctx.beginPath();
+    ctx.ellipse(cx, shadowY, 14 + 24 * bodySc, 4 + 8 * bodySc, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(bodySc, bodySc);
+    ctx.translate(0, 0);
+    ctx.rotate(lean * 0.012);
+    ctx.translate(-cx, -cy);
     ctx.translate(lean, 0);
 
-    // Simple body
-    ctx.fillStyle = c.shirt;
+    // Torso with simple depth shading
+    const shirtGrd = ctx.createLinearGradient(cx - 18, cy - 12, cx + 20, cy + 30);
+    shirtGrd.addColorStop(0, c.shirt);
+    shirtGrd.addColorStop(0.55, c.shirt);
+    shirtGrd.addColorStop(1, 'rgba(0,0,0,0.28)');
+    ctx.fillStyle = shirtGrd;
     roundRect(cx - 18, cy - 12, 36, 42, 10);
     ctx.fill();
     ctx.fillStyle = c.accent;
     ctx.fillRect(cx - 4, cy - 12, 8, 30);
 
-    // Arms
+    const lunging = c.walkPhase === 'lunge';
+    const armUp = lunging ? -1.05
+      : (c.mood === 'happy' || c.mood === 'eating') ? -0.9 * c.arm
+      : c.mood === 'pissed' ? -0.55 : 0.15;
+
     ctx.strokeStyle = c.skin;
     ctx.lineWidth = 7;
     ctx.lineCap = 'round';
-    const armUp = (c.mood === 'happy' || c.mood === 'eating') ? -0.9 * c.arm : c.mood === 'pissed' ? -0.5 : 0.15;
-    ctx.beginPath();
-    ctx.moveTo(cx - 14, cy - 2);
-    ctx.quadraticCurveTo(cx - 28, cy + armUp * 28, cx - 24, cy + 12 + armUp * 16);
-    ctx.stroke();
+
     ctx.beginPath();
     ctx.moveTo(cx + 14, cy - 2);
     ctx.quadraticCurveTo(cx + 28, cy + 2 + armUp * 26, cx + 24, cy + 10 + armUp * 14);
     ctx.stroke();
 
+    if (lunging || c.punch > 0) {
+      const ext = lunging ? Math.min(1, c.lungeT / 0.38) : (1 - c.punch);
+      const fistX = cx - 24 - ext * 58;
+      const fistY = cy - 20 - ext * 8;
+      ctx.beginPath();
+      ctx.moveTo(cx - 14, cy - 2);
+      ctx.quadraticCurveTo(cx - 30 - ext * 18, cy - 32 - ext * 12, fistX, fistY);
+      ctx.stroke();
+      ctx.fillStyle = c.skin;
+      ctx.beginPath();
+      ctx.ellipse(fistX, fistY, 11, 9, -0.45 - ext * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,80,80,0.35)';
+      ctx.beginPath();
+      ctx.arc(fistX - 10, fistY, 10 + ext * 22, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(cx - 14, cy - 2);
+      ctx.quadraticCurveTo(cx - 28, cy + armUp * 28, cx - 24, cy + 12 + armUp * 16);
+      ctx.stroke();
+    }
+
     // Held burger (before the chomp finishes / while raging)
     if (c.held && c.heldScale > 0.05) {
       const hx = c.mood === 'eating' || c.mood === 'happy'
         ? cx - 4
-        : cx - 26;
+        : lunging ? cx - 30 : cx - 26;
       const hy = c.mood === 'eating' || c.mood === 'happy'
         ? cy - 38 - (1 - c.heldScale) * 8
-        : cy - 30 - c.t * 40;
+        : lunging ? cy - 34 - c.lungeT * 20 : cy - 30 - c.t * 40;
       const sc = 0.7 * c.heldScale;
       ctx.save();
       ctx.translate(hx, hy);
       ctx.scale(sc, sc);
-      ctx.rotate(c.mood === 'pissed' ? c.t * 8 : 0);
+      ctx.rotate((c.mood === 'pissed' || lunging) ? c.t * 8 + c.lungeT * 6 : 0);
       drawBottomBun(0, 10, 1, 0);
       let ly = 10;
       for (const id of c.held) {
@@ -2188,11 +2372,12 @@
 
     // Steam plumes when pissed
     if (c.mood === 'pissed' && c.steam > 0) {
+      const rageT = lunging ? c.lungeT : c.t;
       ctx.strokeStyle = `rgba(200,80,80,${0.35 + c.steam * 0.25})`;
       ctx.lineWidth = 2;
       for (let i = 0; i < 3; i++) {
         const sx = cx - 10 + i * 10;
-        const sy = headY - 26 - (c.t * 30 + i * 8) % 24;
+        const sy = headY - 26 - (rageT * 30 + i * 8) % 24;
         ctx.beginPath();
         ctx.moveTo(sx, sy + 10);
         ctx.quadraticCurveTo(sx + 3, sy + 5, sx, sy);
@@ -2200,28 +2385,16 @@
       }
     }
 
-    // Punch fist flying toward kitchen when they land a hit
-    if (c.punch > 0) {
-      const px = cx - 20 - (1 - c.punch) * 80;
-      const py = cy - 20 + Math.sin(c.punch * 12) * 4;
-      ctx.fillStyle = c.skin;
-      ctx.beginPath();
-      ctx.ellipse(px, py, 10, 8, -0.3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(255,80,80,0.35)';
-      ctx.beginPath();
-      ctx.arc(px - 8, py, 14 * (1 - c.punch), 0, Math.PI * 2);
-      ctx.fill();
-    }
-
     // Speech bubble
     if (c.line && c.lineLife > 0) {
       drawSpeechBubble(cx - 58, headY - 48, c.line, c.mood === 'pissed' ? '#3a1518' : '#1a2820', c.lineLife);
     }
 
-    // Simple name + odd title
+    // Name tag + role + bio
+    const tagW = 92;
+    const tagH = c.bio ? 38 : 22;
     ctx.fillStyle = '#c8102e';
-    roundRect(cx - 34, cy + 30, 68, 22, 8);
+    roundRect(cx - tagW / 2, cy + 28, tagW, tagH, 8);
     ctx.fill();
     ctx.fillStyle = '#fff8f0';
     ctx.font = '700 11px Fredoka, Nunito, sans-serif';
@@ -2230,6 +2403,12 @@
     ctx.fillStyle = '#ffd8d0';
     ctx.font = '700 8px Nunito, sans-serif';
     ctx.fillText(c.title, cx, cy + 49);
+    if (c.bio) {
+      ctx.fillStyle = 'rgba(255,248,240,0.82)';
+      ctx.font = '600 6.5px Nunito, sans-serif';
+      const bio = c.bio.length > 34 ? c.bio.slice(0, 33) + '…' : c.bio;
+      ctx.fillText(bio, cx, cy + 59);
+    }
 
     ctx.restore();
   }
@@ -2552,35 +2731,112 @@
   }
 
   function drawKitchenScene() {
-    // Flat warm room
-    ctx.fillStyle = '#3a1c22';
+    const counterTop = LINE_Y + 18;
+    const counterFront = 24;
+    const vpX = W * 0.38;
+
+    // Opaque base — every pixel must be repainted each frame (no motion trails)
+    ctx.fillStyle = '#1a080c';
     ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = '#4a282e';
-    ctx.fillRect(0, 0, W, 70);
 
-    // One simple checker strip on the wall
-    drawCheckeredWall(0, 70, W, 130, 28);
-    ctx.fillStyle = 'rgba(40,10,14,0.2)';
-    ctx.fillRect(0, 70, W, 60);
+    const ceil = ctx.createLinearGradient(0, 0, 0, 90);
+    ceil.addColorStop(0, '#1a080c');
+    ceil.addColorStop(1, '#3a1820');
+    ctx.fillStyle = ceil;
+    ctx.fillRect(0, 0, W, 72);
 
-    // Soft warm light blobs (minimal)
-    for (const lx of [160, 340]) {
-      const glow = ctx.createRadialGradient(lx, 200, 4, lx, 230, 60);
-      glow.addColorStop(0, 'rgba(255,180,100,0.16)');
-      glow.addColorStop(1, 'rgba(255,180,100,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(lx - 60, 180, 120, 80);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, 72);
+    ctx.lineTo(W, 72);
+    ctx.lineTo(W - 24, 138);
+    ctx.lineTo(24, 138);
+    ctx.closePath();
+    ctx.clip();
+    drawCheckeredWall(-10, 72, W + 10, 138, 28);
+    ctx.fillStyle = 'rgba(40,10,14,0.22)';
+    ctx.fillRect(0, 72, W, 66);
+    ctx.restore();
+
+    ctx.fillStyle = '#281018';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 138);
+    ctx.lineTo(32, 138);
+    ctx.lineTo(48, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#220c12';
+    ctx.beginPath();
+    ctx.moveTo(W, 0);
+    ctx.lineTo(W, 138);
+    ctx.lineTo(W - 108, 138);
+    ctx.lineTo(W - 92, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    // Solid back wall behind the line — belt/customer zone (was transparent gaps)
+    ctx.fillStyle = '#241018';
+    ctx.fillRect(0, 138, W, counterTop - 16 - 138);
+
+    const wx = W - 108;
+    ctx.fillStyle = '#0e0608';
+    roundRect(wx + 10, LINE_Y - 118, 88, 136, 6);
+    ctx.fill();
+
+    const floorY0 = counterTop + counterFront;
+    for (let r = 0; r < 9; r++) {
+      const t0 = r / 9;
+      const t1 = (r + 1) / 9;
+      const y0 = floorY0 + (H - floorY0) * t0 * 0.92;
+      const y1 = floorY0 + (H - floorY0) * t1 * 0.92;
+      const s0 = 1 - t0 * 0.48;
+      const s1 = 1 - t1 * 0.48;
+      const xl0 = vpX + (0 - vpX) * s0;
+      const xr0 = vpX + (W - vpX) * s0;
+      const xl1 = vpX + (0 - vpX) * s1;
+      const xr1 = vpX + (W - vpX) * s1;
+      for (let tc = 0; tc < 8; tc++) {
+        const u0 = tc / 8;
+        const u1 = (tc + 1) / 8;
+        ctx.fillStyle = ((r + tc) % 2 === 0) ? '#1e0a0e' : '#261016';
+        ctx.beginPath();
+        ctx.moveTo(xl0 + (xr0 - xl0) * u0, y0);
+        ctx.lineTo(xl0 + (xr0 - xl0) * u1, y0);
+        ctx.lineTo(xl1 + (xr1 - xl1) * u1, y1);
+        ctx.lineTo(xl1 + (xr1 - xl1) * u0, y1);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
-    // Solid floor + counter
-    ctx.fillStyle = '#241014';
-    ctx.fillRect(0, LINE_Y + 18, W, H - LINE_Y - 18);
-    ctx.fillStyle = '#b0b8c0';
-    ctx.fillRect(0, LINE_Y + 18, W, 12);
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.fillRect(0, LINE_Y + 18, W, 3);
+    for (const lx of [160, 320]) {
+      const glow = ctx.createRadialGradient(lx, 200, 4, lx, 240, 70);
+      glow.addColorStop(0, 'rgba(255,180,100,0.18)');
+      glow.addColorStop(1, 'rgba(255,180,100,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(lx - 70, 175, 140, 90);
+    }
 
-    // Simple conveyor belt
+    const counterFace = ctx.createLinearGradient(0, counterTop, 0, counterTop + counterFront);
+    counterFace.addColorStop(0, '#c8d0d8');
+    counterFace.addColorStop(0.4, '#a0a8b0');
+    counterFace.addColorStop(1, '#6a727a');
+    ctx.fillStyle = counterFace;
+    ctx.fillRect(0, counterTop, W - 92, counterFront);
+    ctx.fillStyle = '#d0d8e0';
+    ctx.beginPath();
+    ctx.moveTo(0, counterTop);
+    ctx.lineTo(W - 92, counterTop);
+    ctx.lineTo(W - 108, counterTop - 16);
+    ctx.lineTo(24, counterTop - 16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.38)';
+    ctx.fillRect(24, counterTop - 15, W - 130, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(0, counterTop + counterFront - 4, W - 92, 4);
+
     ctx.fillStyle = '#2a2e34';
     roundRect(10, LINE_Y - 14, W - 108, 38, 6);
     ctx.fill();
@@ -2605,6 +2861,19 @@
   }
 
   function draw() {
+    ctx.setTransform(canvasDpr, 0, 0, canvasDpr, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.shadowBlur = 0;
+    ctx.clearRect(0, 0, W, H);
+
+    const st = performance.now() / 1000;
+    const shake = state.screenShake || 0;
+    const shakeX = shake ? Math.sin(st * 38) * shake * 9 : 0;
+    const shakeY = shake ? Math.cos(st * 44) * shake * 6 : 0;
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+
     drawKitchenScene();
 
     state.tickets.forEach((t) => drawTicket(t));
@@ -2659,6 +2928,9 @@
     ctx.globalAlpha = 1;
 
     drawCustomerWindow();
+    drawServiceWindow();
+
+    ctx.restore();
 
     if (state.flash > 0) {
       ctx.fillStyle = `rgba(227,28,35,${state.flash * 0.35})`;
@@ -2776,6 +3048,9 @@
   });
 
   function fitCanvas() {
+    canvasDpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * canvasDpr);
+    canvas.height = Math.round(H * canvasDpr);
     canvas.style.width = '100%';
     canvas.style.height = '100%';
   }
