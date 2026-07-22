@@ -409,8 +409,8 @@
             <button class="btn subtle" id="replayBtn" type="button" hidden>Replay</button>
             <button class="btn subtle" id="shareReplayBtn" type="button" hidden>Share</button>
             <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
-            <a class="btn subtle" href="burger.html">Grill</a>
-            <a class="btn subtle" href="index.html">Tables</a>
+            <a class="btn subtle" href="frogger.html?enter=grill">Grill</a>
+            <a class="btn subtle" href="frogger.html?enter=casino">Tables</a>
           </div>
         </div>
       </div>
@@ -434,13 +434,21 @@
 
   const DESTINATIONS = [
     { id: 'casino', name: 'CASINO', href: 'index.html', blurb: 'Back to the tables.' },
-    { id: 'grill', name: 'GRILL', href: 'burger.html', blurb: 'Late-night burgers on the line.' }
+    { id: 'grill', name: 'GRILL', href: 'burger.html', blurb: 'Late-night burgers on the line.' },
+    { id: 'craps', name: 'CRAPS', href: 'craps.html', blurb: 'The craps pit.' }
   ];
+
+  const ESTABLISHMENTS = {
+    grill: { id: 'grill', name: 'GRILL', href: 'burger.html', sign: 'NIGHT SHIFT GRILL', signBg: '#c8102e', signFg: '#fff7ef' },
+    casino: { id: 'casino', name: 'CASINO', href: 'index.html', sign: 'CASINO FLOOR', signBg: '#d0a23a', signFg: '#1a1307' },
+    craps: { id: 'craps', name: 'CRAPS', href: 'craps.html', sign: 'CRAPS PIT', signBg: '#2f8f4e', signFg: '#f5edd8' }
+  };
 
   // Highway exits you can take during the night drive
   const ROAD_EXITS = [
     { id: 'grill', name: 'GRILL', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' },
-    { id: 'casino', name: 'CASINO', href: 'index.html', blurb: 'The casino — back to the tables.' }
+    { id: 'casino', name: 'CASINO', href: 'index.html', blurb: 'The casino — back to the tables.' },
+    { id: 'craps', name: 'CRAPS', href: 'craps.html', blurb: 'The craps pit.' }
   ];
 
   // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
@@ -1178,8 +1186,22 @@
     CAR_COL: 5
   };
 
+  // Quick cross from curb to door when entering a spot
+  const ENTRY = {
+    FACADE: 0,
+    DOOR: 1,
+    SAFE: 2,
+    ROAD_START: 3,
+    ROAD_END: 5,
+    START: 6,
+    DOOR_COL: 5
+  };
+
   const params = new URLSearchParams(location.search);
-  const SCENARIO = params.get('from') === 'grill' ? 'grill' : 'midtown';
+  const ENTER_IDS = ['grill', 'casino', 'craps'];
+  const ENTER_PARAM = params.get('enter');
+  const ENTER_ID = ENTER_IDS.includes(ENTER_PARAM) ? ENTER_PARAM : null;
+  const SCENARIO = ENTER_ID ? 'enter' : (params.get('from') === 'grill' ? 'grill' : 'midtown');
 
   // Your car sits in one bay; other bays are pillars / strangers' cars
   const CAR_COL = 5;
@@ -1195,7 +1217,7 @@
     high: Number(localStorage.getItem(SCENARIO === 'grill' ? 'grillLeaveHigh' : 'returnToCarHigh') || 0),
     level: 1,
     lives: 3,
-    frog: { col: 5.5, row: SCENARIO === 'grill' ? GRILL.START : ROW.START, onFerry: null },
+    frog: { col: 5.5, row: ENTER_ID ? ENTRY.START : (SCENARIO === 'grill' ? GRILL.START : ROW.START), onFerry: null },
     lanes: [],
     time: 45,
     maxTime: 45,
@@ -1213,8 +1235,9 @@
     floatText: [],
     muted: false,
     lastTs: 0,
-    reachedRows: new Set([SCENARIO === 'grill' ? GRILL.START : ROW.START]),
+    reachedRows: new Set([ENTER_ID ? ENTRY.START : (SCENARIO === 'grill' ? GRILL.START : ROW.START)]),
     destination: DESTINATIONS[0],
+    entryDest: ENTER_ID ? ESTABLISHMENTS[ENTER_ID] : null,
     drive: null,
     keys: { left: false, right: false, up: false, down: false },
     replay: {
@@ -1235,8 +1258,17 @@
   const REPLAY_SECONDS = 5;
 
   function isGrill() { return state.scenario === 'grill'; }
-  function startRow() { return isGrill() ? GRILL.START : ROW.START; }
-  function goalRow() { return isGrill() ? GRILL.GOAL : ROW.GARAGE; }
+  function isEnter() { return state.scenario === 'enter'; }
+  function startRow() {
+    if (isEnter()) return ENTRY.START;
+    if (isGrill()) return GRILL.START;
+    return ROW.START;
+  }
+  function goalRow() {
+    if (isEnter()) return ENTRY.DOOR;
+    if (isGrill()) return GRILL.GOAL;
+    return ROW.GARAGE;
+  }
   function highKey() { return isGrill() ? 'grillLeaveHigh' : 'returnToCarHigh'; }
 
   let audioCtx = null;
@@ -1283,6 +1315,14 @@
       livesLabel.textContent = 'HP';
       hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · R replay · Share last 5 sec';
       dpad.classList.add('drive-mode');
+    } else if (isEnter()) {
+      const dest = state.entryDest;
+      brandTitle.textContent = dest ? `Enter ${dest.name}` : 'Enter';
+      brandSub.textContent = 'Cross the street · reach the door';
+      meterLabel.textContent = 'Time';
+      livesLabel.textContent = 'Lives';
+      hintText.textContent = 'Arrows / WASD · swipe · get inside';
+      dpad.classList.remove('drive-mode');
     } else if (isGrill()) {
       brandTitle.textContent = 'Leave the Grill';
       brandSub.textContent = 'Bad block · four lanes · get to your car';
@@ -1321,6 +1361,30 @@
     };
   }
 
+  function buildEntryLanes(level) {
+    const dirs = [-1, 1, -1];
+    const lanes = [];
+    for (let i = 0; i < 3; i++) {
+      const row = ENTRY.ROAD_START + i;
+      const dir = dirs[i];
+      lanes.push({
+        row,
+        dir,
+        ghetto: true,
+        entities: [],
+        spawnTimer: 0.55 + Math.random() * 0.8,
+        baseSpeed: 1
+      });
+      if (Math.random() < 0.45) {
+        const car = makeJankyCar(dir, level);
+        car.x = Math.random() * W;
+        car.speed *= 0.82;
+        lanes[i].entities.push(car);
+      }
+    }
+    return lanes;
+  }
+
   function buildGhettoLanes(level) {
     const dirs = [-1, 1, -1, 1];
     const lanes = [];
@@ -1346,6 +1410,7 @@
   }
 
   function buildLanes(level) {
+    if (isEnter()) return buildEntryLanes(level);
     if (isGrill()) return buildGhettoLanes(level);
     // Gentler early levels — challenge ramps in, doesn't jump you
     const speed = 0.82 + (level - 1) * 0.15;
@@ -1401,7 +1466,6 @@
     state.destination = isGrill()
       ? DESTINATIONS.find(d => d.id === 'grill') || DESTINATIONS[1]
       : pickDestination(level);
-    // Generous timer — pressure without the constant panic
     state.maxTime = isGrill()
       ? Math.max(24, 40 - (level - 1) * 2)
       : Math.max(36, 55 - (level - 1) * 2);
@@ -1409,6 +1473,27 @@
     resetFrog();
     setPhaseUI();
     updateHUD();
+  }
+
+  function startEntryCross(dest) {
+    if (!dest) return;
+    state.scenario = 'enter';
+    state.phase = 'cross';
+    state.entryDest = dest;
+    state.level = 1;
+    state.lives = 3;
+    state.maxTime = 20;
+    state.time = state.maxTime;
+    state.lanes = buildEntryLanes(1);
+    resetFrog();
+    state.mode = 'play';
+    setPhaseUI();
+    updateHUD();
+    overlay.hidden = true;
+    pauseBtn.disabled = false;
+    pauseBtn.textContent = 'Pause';
+    beep(440, 0.06);
+    beep(554, 0.08);
   }
 
   function startGame() {
@@ -1425,12 +1510,44 @@
     beep(660, 0.1);
   }
 
-  function spawnFloat(text, x, y, color) {
+  function spawnFloat(text, x, y, color, opts = {}) {
+    const life = opts.life ?? 0.85;
     state.floatText.push({
       text, x, y,
-      life: 0.85,
-      color: color || '#efc84a'
+      life,
+      maxLife: opts.maxLife ?? life,
+      color: color || '#efc84a',
+      size: opts.size,
+      vy: opts.vy
     });
+  }
+
+  function tickFloatText(dt) {
+    for (const ft of state.floatText) {
+      ft.life -= dt;
+      ft.y += (ft.vy ?? -36) * dt;
+    }
+    state.floatText = state.floatText.filter(ft => ft.life > 0);
+  }
+
+  function drawFloatText() {
+    for (const ft of state.floatText) {
+      const maxLife = ft.maxLife || 0.85;
+      const a = Math.min(1, ft.life / maxLife);
+      const size = ft.size || 11;
+      ctx.globalAlpha = a;
+      ctx.font = `700 ${size}px "General Sans", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = Math.max(2, size * 0.18);
+      ctx.strokeStyle = 'rgba(10,10,14,0.85)';
+      ctx.strokeText(ft.text, ft.x, ft.y);
+      ctx.fillStyle = ft.color;
+      ctx.fillText(ft.text, ft.x, ft.y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
   }
 
   function hopSfx(row) {
@@ -2126,7 +2243,9 @@
         localStorage.setItem(highKey(), String(state.high));
       }
       showOverlay(
-        state.phase === 'drive' ? 'Wrecked' : (isGrill() ? 'Never left the block' : 'Never made it to the car'),
+        state.phase === 'drive' ? 'Wrecked' : isEnter()
+          ? 'Never made it inside'
+          : (isGrill() ? 'Never left the block' : 'Never made it to the car'),
         `${reason} Final score ${state.score}. Best ${state.high}.`,
         'Try Again'
       );
@@ -2152,12 +2271,8 @@
   }
 
   function reachCar() {
-    const comboBonus = Math.max(0, state.combo) * 18;
-    const bonus = 120 + Math.floor(state.time * 2.5) + state.level * 20 + comboBonus;
-    state.score += bonus;
     const fx = state.frog.col * TILE + TILE / 2;
     const fy = state.frog.row * TILE + TILE / 2;
-    spawnFloat(comboBonus > 0 ? `+${bonus}  ×${state.combo}` : `+${bonus}`, fx, fy - 8, '#efc84a');
     for (let i = 0; i < 22; i++) {
       const a = (Math.PI * 2 * i) / 22;
       state.particles.push({
@@ -2176,6 +2291,30 @@
     beginDrive();
   }
 
+  function reachDoor() {
+    const dest = state.entryDest;
+    if (!dest || !dest.href) return;
+    const fx = state.frog.col * TILE + TILE / 2;
+    const fy = state.frog.row * TILE + TILE / 2;
+    for (let i = 0; i < 16; i++) {
+      const a = (Math.PI * 2 * i) / 16;
+      state.particles.push({
+        x: fx, y: fy,
+        vx: Math.cos(a) * (30 + Math.random() * 50),
+        vy: Math.sin(a) * (30 + Math.random() * 50) - 20,
+        life: 0.35 + Math.random() * 0.3,
+        color: '#f5edd8'
+      });
+    }
+    beep(523, 0.06);
+    beep(659, 0.08);
+    beep(784, 0.1);
+    try {
+      sessionStorage.setItem(`passed-entry-${dest.id}`, '1');
+    } catch (_) { /* ignore */ }
+    window.location.href = dest.href;
+  }
+
   function takeExit(exit) {
     if (!exit || exit.taken || state.mode !== 'drive') return;
     exit.taken = true;
@@ -2185,11 +2324,13 @@
       d.approachingExit = exit;
     }
     state.score += 180 + state.level * 30;
-    state.destination = {
+    const estab = ESTABLISHMENTS[exit.id] || {
       id: exit.id,
       name: exit.name,
       href: exit.href,
-      blurb: exit.blurb
+      sign: exit.name,
+      signBg: '#d0a23a',
+      signFg: '#1a1307'
     };
     updateHUD();
     if (state.score > state.high) {
@@ -2198,8 +2339,8 @@
     }
     beep(523, 0.08);
     beep(784, 0.12);
-    beep(1046, 0.18);
-    if (exit.href) window.location.href = exit.href;
+    state.drive = null;
+    startEntryCross(estab);
   }
 
   function spawnHopDust(col, row) {
@@ -2228,7 +2369,24 @@
     const nr = f.row + dy;
     if (nc < 0 || nc > COLS - 1 || nr < 0 || nr > ROWS - 1) return;
 
-    if (isGrill()) {
+    if (isEnter()) {
+      if (nr > ENTRY.START || nr < ENTRY.DOOR) return;
+      if (nr === ENTRY.DOOR) {
+        if (Math.abs(nc - ENTRY.DOOR_COL) < 0.75) {
+          state.facing = 'up';
+          state.hopAnim = {
+            fromCol: f.col, fromRow: f.row, toCol: ENTRY.DOOR_COL, toRow: nr,
+            t: 0, dur: 0.1
+          };
+          f.col = ENTRY.DOOR_COL;
+          f.row = nr;
+          f.onFerry = null;
+          hopSfx(nr);
+          reachDoor();
+          return;
+        }
+      }
+    } else if (isGrill()) {
       if (nr < GRILL.GOAL || nr > GRILL.START) return;
       if (nr === GRILL.GOAL) {
         if (Math.abs(nc - GRILL.CAR_COL) < 0.75) {
@@ -2287,17 +2445,9 @@
 
     if (!state.reachedRows.has(nr) && nr < startRow()) {
       state.reachedRows.add(nr);
-      const pts = 10 + Math.max(0, state.combo - 1) * 4;
-      state.score += pts;
-      const px = f.col * TILE + TILE / 2;
-      const py = f.row * TILE + 8;
       if (state.combo >= 3) {
-        spawnFloat(`${state.combo}×  +${pts}`, px, py, '#7ec8e3');
         beep(520 + state.combo * 40, 0.05, 'square', 0.02);
-      } else {
-        spawnFloat(`+${pts}`, px, py, '#efc84a');
       }
-      updateHUD();
     }
   }
 
@@ -2384,20 +2534,17 @@
 
   // --- Crossing update ---
   function updateCross(dt) {
+    tickFloatText(dt);
+
     if (state.shake > 0) state.shake = Math.max(0, state.shake - dt);
     if (state.hopAnim) {
       state.hopAnim.t += dt;
       if (state.hopAnim.t >= state.hopAnim.dur) state.hopAnim = null;
     }
-    for (const ft of state.floatText) {
-      ft.life -= dt;
-      ft.y -= 36 * dt;
-    }
-    state.floatText = state.floatText.filter(ft => ft.life > 0);
 
     if (state.mode !== 'play') {
       if (state.mode === 'title' || state.mode === 'pause' || state.mode === 'gameover' || state.mode === 'win' || state.mode === 'arrived') {
-        if (isGrill()) {
+        if (isGrill() || isEnter()) {
           updateGhettoLanes(dt, false);
         } else {
           for (const lane of state.lanes) {
@@ -2428,7 +2575,11 @@
     }
     if (state.nearMissCd > 0) state.nearMissCd -= dt;
     if (state.time <= 0) {
-      loseLife(isGrill() ? 'Shift over — you froze up on the curb.' : 'The garage closed — time ran out.');
+      loseLife(isEnter()
+        ? 'Traffic won — couldn\'t get inside.'
+        : isGrill()
+          ? 'Shift over — you froze up on the curb.'
+          : 'The garage closed — time ran out.');
       return;
     }
 
@@ -2440,7 +2591,7 @@
     const fw = TILE - frogPad * 2;
     const fh = TILE - frogPad * 2;
 
-    if (isGrill()) {
+    if (isEnter() || isGrill()) {
       updateGhettoLanes(dt, true);
       for (const lane of state.lanes) {
         if (f.row !== lane.row) continue;
@@ -2450,13 +2601,15 @@
           const hx = e.x + 5;
           const hw = Math.max(10, e.w - 10);
           if (rectsOverlap(fx, fy, fw, fh, hx, ey, hw, eh)) {
-            const hits = [
-              'Didn\'t even see it coming.',
-              'Nailed by a hoopty.',
-              'That van came out of nowhere.',
-              'Janky brakes. Yours, not theirs.',
-              'Street don\'t care you smell like grease.'
-            ];
+            const hits = isEnter()
+              ? ['Tagged before you made the door.', 'Cab didn\'t stop.', 'Almost had it.']
+              : [
+                'Didn\'t even see it coming.',
+                'Nailed by a hoopty.',
+                'That van came out of nowhere.',
+                'Janky brakes. Yours, not theirs.',
+                'Street don\'t care you smell like grease.'
+              ];
             loseLife(hits[Math.floor(Math.random() * hits.length)]);
             return;
           }
@@ -2464,10 +2617,8 @@
               && rectsOverlap(fx - 10, fy, fw + 20, fh, hx, ey, hw, eh)
               && !rectsOverlap(fx, fy, fw, fh, hx, ey, hw, eh)) {
             state.nearMissCd = 0.55;
-            state.score += 5;
             spawnFloat('close!', f.col * TILE + TILE / 2, f.row * TILE, '#7ec8e3');
             beep(880, 0.04, 'triangle', 0.02);
-            updateHUD();
           }
         }
       }
@@ -2503,10 +2654,8 @@
             && rectsOverlap(fx - 12, fy, fw + 24, fh, hx, ey, hw, eh)
           ) {
             state.nearMissCd = 0.5;
-            state.score += 5 + Math.min(10, state.combo);
             spawnFloat('near miss!', f.col * TILE + TILE / 2, f.row * TILE, '#7ec8e3');
             beep(920, 0.035, 'triangle', 0.018);
-            updateHUD();
           }
         }
       }
@@ -2756,7 +2905,7 @@
   function spawnChaseCop(d) {
     const stats = CAR_KIND_STATS.police;
     d.chaser = {
-      z: d.z - 110,
+      z: d.z - 140,
       x: Math.max(-DW.LANE, Math.min(DW.LANE, Math.round(d.playerX / DW.LANE) * DW.LANE)),
       model: 'Ford Police Interceptor',
       kind: 'police',
@@ -2837,21 +2986,33 @@
     }
   }
 
-  function chaserWrecksOnTraffic(d, cop, civ) {
-    const dir = Math.sign(civ.x - cop.x) || (Math.random() < 0.5 ? -1 : 1);
-    smashCarAway(d, civ, dir, 1);
-    smashCarAway(d, cop, -dir, 1.2);
+  function chaserWrecksOnTraffic(d, cop, other) {
+    const dir = Math.sign(other.x - cop.x) || (Math.random() < 0.5 ? -1 : 1);
+    const copPileup = other.kind === 'police';
+    smashCarAway(d, other, dir, copPileup ? 1.4 : 1);
+    smashCarAway(d, cop, -dir, copPileup ? 1.5 : 1.2);
     cop.chaser = false;
     if (!d.traffic.includes(cop)) d.traffic.push(cop);
     d.chaser = null;
     d.chaserSpawnT = 4 + Math.random() * 3;
-    state.score += 100;
-    d.slowMo = Math.max(d.slowMo || 0, 0.5);
-    d.zoomPunch = 1.2;
-    d.camShake = Math.max(d.camShake, 6);
+    const bounty = copPileup ? 500 : 100;
+    state.score += bounty;
+    d.slowMo = Math.max(d.slowMo || 0, copPileup ? 0.65 : 0.5);
+    d.zoomPunch = copPileup ? 1.5 : 1.2;
+    d.camShake = Math.max(d.camShake, copPileup ? 9 : 6);
+    const hitP = projectWorld((cop.x + other.x) * 0.5, 0, (cop.z + other.z) * 0.5, d);
+    spawnFloat(`+$${bounty}`, hitP.x, hitP.y - 40 * hitP.scale, '#7dce7a', {
+      life: 1.2,
+      size: copPileup ? 19 : 16,
+      vy: -46
+    });
     beep(880, 0.06, 'square', 0.04);
     beep(1320, 0.09, 'square', 0.035);
     beep(60, 0.2, 'sawtooth', 0.05);
+    if (copPileup) {
+      beep(1760, 0.08, 'square', 0.04);
+      beep(2200, 0.1, 'square', 0.035);
+    }
     updateHUD();
   }
 
@@ -2874,6 +3035,12 @@
     cop.velX = -dir * 1.4;
     const ground = projectWorld(d.playerX, 0, d.z + 6, d);
     spawnCrashFX(ground.x, ground.y - 12 * ground.scale, dir, 0.9);
+    state.score = Math.max(0, state.score - 50);
+    spawnFloat('−$50', ground.x, ground.y - 32 * ground.scale, '#ff6a5a', {
+      life: 1.1,
+      size: 17,
+      vy: -44
+    });
     beep(110, 0.09, 'sawtooth', 0.055);
     beep(65, 0.14, 'square', 0.045);
     updateHUD();
@@ -2910,13 +3077,13 @@
     let steerRate = 2.4;
 
     if (cop.ai === 'closein') {
-      targetSpeed = d.speed + Math.max(8, (-34 - dzc) * 0.35);
-      if (dzc > -44) { cop.ai = 'stalk'; cop.aiT = 1 + Math.random() * 1.5; }
+      targetSpeed = d.speed + Math.max(8, (-52 - dzc) * 0.35);
+      if (dzc > -62) { cop.ai = 'stalk'; cop.aiT = 1 + Math.random() * 1.5; }
     } else if (cop.ai === 'stalk') {
-      // Sits on your bumper, mirroring your lane before committing
-      targetSpeed = d.speed + (-34 - dzc) * 0.5;
+      // Sits back a ways, mirroring your lane before committing
+      targetSpeed = d.speed + (-52 - dzc) * 0.5;
       targetX = d.playerX + Math.sin(performance.now() / 320) * 0.07;
-      if (dzc < -70) cop.ai = 'closein';
+      if (dzc < -88) cop.ai = 'closein';
       else if (cop.aiT <= 0) {
         cop.ai = 'windup';
         cop.aiT = 0.5;
@@ -2946,7 +3113,7 @@
     } else { // fallback
       targetSpeed = Math.max(18, d.speed - 15);
       targetX = d.playerX * 0.4;
-      if (dzc < -60 || cop.aiT <= 0) cop.ai = 'closein';
+      if (dzc < -78 || cop.aiT <= 0) cop.ai = 'closein';
     }
 
     cop.speed += (targetSpeed - cop.speed) * Math.min(1, (cop.ai === 'ram' ? 4.5 : 2.2) * dt);
@@ -2964,13 +3131,13 @@
     const targetBob = Math.sin(cop.wheelSpin * 2.1) * (cop.speed / 720) * 2.4;
     cop.bob += (targetBob - cop.bob) * Math.min(1, 10 * dt);
 
-    // A lunging cop that clips a civilian wrecks them both — free bounty
+    // A lunging cop that clips traffic wrecks both — $500 if it's another cop
     if (cop.ai === 'ram' || cop.ai === 'exposed') {
-      for (const civ of d.traffic) {
-        if (civ.smashed) continue;
-        if (Math.abs(civ.z - cop.z) >= (civ.len + cop.len) * 0.38) continue;
-        if ((civ.halfW + cop.halfW) - Math.abs(civ.x - cop.x) <= 0) continue;
-        chaserWrecksOnTraffic(d, cop, civ);
+      for (const car of d.traffic) {
+        if (car.smashed) continue;
+        if (Math.abs(car.z - cop.z) >= (car.len + cop.len) * 0.38) continue;
+        if ((car.halfW + cop.halfW) - Math.abs(car.x - cop.x) <= 0) continue;
+        chaserWrecksOnTraffic(d, cop, car);
         return;
       }
     }
@@ -3050,6 +3217,15 @@
       other.x += -dir * 0.018;
       other.yaw = dir * 0.1;
       other.speed = Math.max(14, other.speed * 0.97);
+    }
+
+    if (other && other.chaser) {
+      state.score = Math.max(0, state.score - 10);
+      spawnFloat('−$10', ground.x, ground.y - 28 * ground.scale, '#ff6a5a', {
+        life: 1,
+        size: 15,
+        vy: -40
+      });
     }
 
     if (Math.random() < 0.55) {
@@ -3169,14 +3345,10 @@
         });
       }
       // Floating tag: cop hits pay a bounty, everyone else sends a bill
-      state.particles.push({
-        type: 'text',
-        text: cashTag,
-        x: hitP.x, y: hitP.y - 40 * hitP.scale,
-        vx: 0, vy: -46,
-        life: 1.2, maxLife: 1.2,
+      spawnFloat(cashTag, hitP.x, hitP.y - 40 * hitP.scale, isCop ? '#7dce7a' : '#ff6a5a', {
+        life: 1.2,
         size: isCop ? 17 : 15,
-        color: isCop ? '#7dce7a' : '#ff6a5a'
+        vy: -46
       });
       // Wrecked chase cop hands off to the traffic system for tumble physics
       if (isChaser) {
@@ -3228,6 +3400,8 @@
   function updateDrive(dt) {
     const d = state.drive;
     if (!d) return;
+
+    tickFloatText(dt);
 
     if (d.camShake > 0) d.camShake = Math.max(0, d.camShake - 36 * dt);
     if (d.crashT > 0) d.crashT = Math.max(0, d.crashT - dt);
@@ -4684,6 +4858,54 @@
     });
   }
 
+  function drawEntryFacade() {
+    const dest = state.entryDest;
+    const y = ENTRY.FACADE * TILE;
+    ctx.fillStyle = '#1e1a18';
+    ctx.fillRect(0, y, W, TILE * 2);
+    drawBrickWall(0, y, W, TILE * 2, 3);
+
+    const dx = ENTRY.DOOR_COL * TILE;
+    const sign = dest?.sign || 'OPEN';
+    ctx.fillStyle = dest?.signBg || '#c8102e';
+    ctx.fillRect(dx - TILE * 0.55, y + 6, TILE * 2.1, TILE - 10);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.strokeRect(dx - TILE * 0.55 + 0.5, y + 6.5, TILE * 2.1 - 1, TILE - 11);
+    ctx.fillStyle = dest?.signFg || '#fff7ef';
+    ctx.font = '700 8px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(sign, dx + TILE / 2, y + TILE * 0.55);
+
+    const doorY = ENTRY.DOOR * TILE;
+    ctx.fillStyle = '#2a2420';
+    ctx.fillRect(dx + 6, doorY + 6, TILE - 12, TILE - 10);
+    ctx.strokeStyle = '#efc84a';
+    ctx.lineWidth = 2;
+    const pulse = 0.45 + 0.55 * Math.sin(performance.now() / 260);
+    ctx.globalAlpha = 0.55 + pulse * 0.45;
+    ctx.strokeRect(dx + 4, doorY + 4, TILE - 8, TILE - 8);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#efc84a';
+    ctx.font = '700 7px "General Sans", sans-serif';
+    ctx.fillText('ENTER', dx + TILE / 2, doorY + 12);
+  }
+
+  function drawEntryCross() {
+    ctx.fillStyle = '#12100e';
+    ctx.fillRect(0, (ENTRY.START + 1) * TILE, W, (ROWS - ENTRY.START - 1) * TILE);
+
+    drawEntryFacade();
+    drawSafeBand(ENTRY.SAFE, 'CROSSWALK');
+    for (let r = ENTRY.ROAD_START; r <= ENTRY.ROAD_END; r++) drawGhettoRoad(r);
+    drawGhettoCurb(ENTRY.START, 'CURB  •  START', 'start');
+
+    for (const lane of state.lanes) {
+      for (const e of lane.entities) {
+        drawJankyCar(e, lane.row, lane.dir);
+      }
+    }
+  }
+
   function drawGhettoCross() {
     drawTopBlock();
     drawHooptyGoal();
@@ -4726,7 +4948,9 @@
       ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
     }
 
-    if (isGrill()) {
+    if (isEnter()) {
+      drawEntryCross();
+    } else if (isGrill()) {
       drawGhettoCross();
     } else {
       for (let r = 0; r < ROWS; r++) {
@@ -4769,14 +4993,7 @@
     }
     ctx.globalAlpha = 1;
 
-    for (const ft of state.floatText) {
-      ctx.globalAlpha = Math.min(1, ft.life * 2);
-      ctx.fillStyle = ft.color;
-      ctx.font = '700 11px "General Sans", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(ft.text, ft.x, ft.y);
-    }
-    ctx.globalAlpha = 1;
+    drawFloatText();
 
     if (state.mode === 'play' || state.mode === 'pause' || state.mode === 'dead') drawTimer();
 
@@ -7592,6 +7809,8 @@
       ctx.fillRect(0, 0, W, H);
     }
 
+    drawFloatText();
+
     if (state.mode === 'pause') {
       ctx.fillStyle = 'rgba(20,22,26,0.55)';
       ctx.fillRect(0, 0, W, H);
@@ -7814,6 +8033,10 @@
       pauseBtn.textContent = 'Pause';
       return;
     }
+    if (state.mode === 'gameover' && isEnter() && state.entryDest) {
+      startEntryCross(state.entryDest);
+      return;
+    }
     startGame();
   });
 
@@ -7824,10 +8047,14 @@
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
 
-  state.lanes = buildLanes(1);
   setPhaseUI();
   overlay.hidden = true;
-  startGame();
+  if (ENTER_ID && ESTABLISHMENTS[ENTER_ID]) {
+    startEntryCross(ESTABLISHMENTS[ENTER_ID]);
+  } else {
+    state.lanes = buildLanes(1);
+    startGame();
+  }
   requestAnimationFrame(frame);
 })();
   </script>
