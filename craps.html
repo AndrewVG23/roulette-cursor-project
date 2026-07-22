@@ -1,0 +1,3616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Craps</title>
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+      --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-6: 1.5rem;
+      --color-text: #f5edd8; --color-text-muted: #bdb39b; --color-text-faint: #897f6d;
+      --color-primary: #d0a23a; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-full: 9999px;
+      --font-display: 'Zodiak', Georgia, serif;
+      --font-body: 'General Sans', 'Inter', sans-serif;
+      --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      height: 100dvh;
+      overflow: hidden;
+      font-family: var(--font-body);
+      color: var(--color-text);
+      background: #0a1210;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    button, a.btn { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+    .app {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
+      padding: var(--space-2) var(--space-3);
+      background: linear-gradient(180deg, rgba(20,53,40,.92), rgba(12,26,21,.96));
+      border-bottom: 1px solid rgba(238,194,97,.18);
+      flex-shrink: 0;
+      z-index: 5;
+    }
+    .controls .spacer { flex: 1; }
+    .btn {
+      min-height: 48px;
+      padding: 0 var(--space-4);
+      border-radius: 3px;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #f7ead0;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
+      border: 1px solid rgba(255,238,198,.22);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 2px 5px rgba(0,0,0,.24);
+      transition: transform var(--transition), border-color var(--transition);
+    }
+    .btn:hover { transform: translateY(-1px); border-color: rgba(239,187,73,.42); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn.primary {
+      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
+      border-color: rgba(255,210,200,.28);
+      color: #fff6e3;
+      min-width: 110px;
+    }
+    .btn.warning {
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)), linear-gradient(180deg, #434850, #15181c);
+    }
+    .btn.chip {
+      min-width: 56px;
+      padding: 0 var(--space-3);
+      border-radius: var(--radius-full);
+    }
+    .btn.chip.active {
+      background: linear-gradient(180deg, rgba(239,187,73,.34), rgba(208,162,58,.14)), linear-gradient(180deg, #2f8850, #1a5031);
+      border-color: rgba(239,187,73,.58);
+    }
+    .chip-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+    .chip-label {
+      color: #d0a23a;
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      font-weight: 700;
+    }
+    .stage {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .stage-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .stage.stats-open .board3d { min-height: 200px; }
+    .analytics-dock {
+      display: none;
+      flex-shrink: 0;
+      max-height: min(46dvh, 380px);
+      overflow: auto;
+      border-top: 1px solid rgba(238,194,97,.14);
+      background: linear-gradient(180deg, rgba(12,24,20,.99), rgba(8,16,14,.99));
+      padding: var(--space-3) var(--space-4);
+      gap: var(--space-3);
+    }
+    .stage.stats-open .analytics-dock { display: flex; flex-direction: column; }
+    .analytics-dock h3 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      color: var(--color-primary);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .stats-note {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+      line-height: 1.4;
+    }
+    .scoreboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+    .scoreboard-stat {
+      padding: 8px 10px;
+      border-radius: 3px;
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(238,194,97,.12);
+    }
+    .scoreboard-stat .label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--color-text-faint);
+      font-weight: 700;
+    }
+    .scoreboard-stat .value {
+      font-family: var(--font-display);
+      font-size: var(--text-sm);
+      font-variant-numeric: tabular-nums;
+      color: var(--color-text);
+      margin-top: 2px;
+    }
+    .scoreboard-stat .value.positive { color: #71d189; }
+    .scoreboard-stat .value.negative { color: #f26e89; }
+    .scoreboard-stat .value.neutral { color: var(--color-text-muted); }
+    .chart-wrap {
+      position: relative;
+      height: 160px;
+      min-height: 140px;
+    }
+    .chart-dock h3 {
+      margin: 0 0 var(--space-2);
+      font-family: var(--font-display);
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .btn.stats-toggle.active {
+      border-color: rgba(239,187,73,.58);
+      background: linear-gradient(180deg, rgba(239,187,73,.22), rgba(208,162,58,.1)), linear-gradient(180deg, #2f8850, #1a5031);
+    }
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-4);
+      background: linear-gradient(180deg, rgba(23,48,39,.94), rgba(15,27,23,.96));
+      border-bottom: 1px solid rgba(238,194,97,.14);
+      z-index: 4;
+    }
+    .status-phase {
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      color: var(--color-primary);
+    }
+    .status-msg {
+      flex: 1;
+      min-width: 10rem;
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+    }
+    .status-roll { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .status-roll strong { color: var(--color-primary); font-size: var(--text-lg); }
+    .board3d {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      background: #0a1210;
+      touch-action: none;
+    }
+    .board3d canvas { display: block; width: 100%; height: 100%; }
+    .dock {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: linear-gradient(180deg, rgba(23,48,39,.94), rgba(15,27,23,.98));
+      border-top: 1px solid rgba(238,194,97,.16);
+      z-index: 4;
+    }
+    .dock-left { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+    .hint {
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+      letter-spacing: .04em;
+    }
+    .throw-meter {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: min(220px, 42vw);
+    }
+    .throw-meter-label {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--color-text-faint);
+      display: flex;
+      justify-content: space-between;
+    }
+    .throw-meter-label strong { color: var(--color-primary); font-weight: 800; }
+    .throw-meter-track {
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,238,198,.18);
+      overflow: hidden;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,.35);
+    }
+    .throw-meter-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #3f9a5d, #efbb49 55%, #d44a45);
+      transition: width 40ms linear;
+    }
+    .throw-meter.charging .throw-meter-fill {
+      box-shadow: 0 0 12px rgba(239,187,73,.35);
+    }
+    .purse-block { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .purse-label {
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: var(--color-text-faint);
+      font-weight: 700;
+    }
+    .purse-value {
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      color: var(--color-primary);
+      line-height: 1;
+    }
+    .at-risk { font-size: var(--text-xs); color: var(--color-text-muted); }
+    .help-panel {
+      position: fixed; inset: 0; z-index: 40;
+      background: rgba(4, 10, 8, 0.72);
+      display: grid; place-items: center; padding: var(--space-4);
+    }
+    .help-panel[hidden] { display: none; }
+    .help-card {
+      width: min(520px, 100%);
+      max-height: min(80dvh, 640px);
+      overflow: auto;
+      background: linear-gradient(180deg, #173027, #0f1b17);
+      border: 1px solid rgba(239,187,73,.28);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      box-shadow: 0 24px 60px rgba(0,0,0,.5);
+    }
+    .help-card h2 {
+      margin: 0 0 var(--space-3);
+      font-family: var(--font-display);
+      font-size: var(--text-xl);
+      color: var(--color-primary);
+    }
+    .help-card p, .help-card li {
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      line-height: 1.45;
+    }
+    .help-card ul { margin: 0 0 var(--space-4); padding-left: 1.2rem; }
+    .help-card .btn { width: 100%; margin-top: var(--space-2); }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(88px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(120%);
+      z-index: 30;
+      padding: 10px 16px;
+      border-radius: var(--radius-full);
+      background: rgba(15,27,23,.94);
+      border: 1px solid rgba(239,187,73,.35);
+      color: var(--color-text);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      box-shadow: 0 10px 28px rgba(0,0,0,.4);
+      transition: transform 220ms ease;
+      pointer-events: none;
+      max-width: min(92vw, 420px);
+      text-align: center;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.win { border-color: rgba(113,209,137,.5); color: #b8f0c6; }
+    .toast.lose { border-color: rgba(242,110,137,.45); color: #ffc0cc; }
+    @media (max-width: 640px) {
+      .btn { min-height: 44px; }
+      .hint { display: none; }
+      .dock { flex-direction: column; align-items: stretch; }
+      .purse-block { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="controls" aria-label="Craps controls">
+      <button class="btn warning" id="clearBtn" type="button">Clear</button>
+      <button class="btn" id="statsToggle" type="button" aria-expanded="false" aria-controls="analyticsDock">Stats</button>
+      <button class="btn" id="helpBtn" type="button">Help</button>
+      <div class="chip-row" aria-label="Chip size">
+        <span class="chip-label">Chip</span>
+        <button class="btn chip active" type="button" data-chip="1">$1</button>
+        <button class="btn chip" type="button" data-chip="5">$5</button>
+        <button class="btn chip" type="button" data-chip="25">$25</button>
+        <button class="btn chip" type="button" data-chip="100">$100</button>
+      </div>
+      <span class="spacer" aria-hidden="true"></span>
+      <a class="btn" href="index.html">Roulette</a>
+      <a class="btn" href="frogger.html">Return to car</a>
+      <a class="btn" href="burger.html">Grill</a>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="status-bar" aria-live="polite">
+        <div class="status-phase" id="phaseLabel">Come-out</div>
+        <div class="status-msg" id="statusMsg">Tap the felt to place chips, then roll.</div>
+        <div class="status-roll" id="lastRollLabel">Last: <strong>—</strong></div>
+      </div>
+      <div class="stage-body">
+        <div class="board3d" id="board3d" aria-label="Craps table"></div>
+      </div>
+      <div class="analytics-dock" id="analyticsDock" aria-label="Craps analytics">
+        <p class="stats-note" id="statsNote">Probability-weighted net profit for the next roll across all 36 dice combinations.</p>
+        <div class="scoreboard-grid" aria-label="Outcome probabilities">
+          <div class="scoreboard-stat">
+            <div class="label">Win prob</div>
+            <div class="value positive" id="scoreWin">0.0%</div>
+          </div>
+          <div class="scoreboard-stat">
+            <div class="label">Even</div>
+            <div class="value neutral" id="scoreEven">0.0%</div>
+          </div>
+          <div class="scoreboard-stat">
+            <div class="label">Lose prob</div>
+            <div class="value negative" id="scoreLoss">0.0%</div>
+          </div>
+          <div class="scoreboard-stat">
+            <div class="label">Expected profit</div>
+            <div class="value" id="scoreEv">$0.00</div>
+          </div>
+          <div class="scoreboard-stat">
+            <div class="label">Best roll</div>
+            <div class="value positive" id="scoreMax">$0.00</div>
+          </div>
+          <div class="scoreboard-stat">
+            <div class="label">Worst roll</div>
+            <div class="value negative" id="scoreMin">$0.00</div>
+          </div>
+        </div>
+        <div class="chart-dock">
+          <h3>Payout curve</h3>
+          <div class="chart-wrap"><canvas id="payoutChart" aria-label="Net payout by dice total"></canvas></div>
+        </div>
+      </div>
+      <div class="dock">
+        <div class="dock-left">
+          <button class="btn primary" id="rollBtn" type="button">Hold to throw</button>
+          <div class="throw-meter" id="throwMeter" aria-label="Throw power">
+            <div class="throw-meter-label">
+              <span>Power</span>
+              <strong id="throwMeterValue">—</strong>
+            </div>
+            <div class="throw-meter-track"><div class="throw-meter-fill" id="throwMeterFill"></div></div>
+          </div>
+          <span class="hint">←→ aim · ↑↓ loft · hold Space / button, release to throw</span>
+        </div>
+        <div class="purse-block">
+          <span class="purse-label">Purse</span>
+          <div class="purse-value" id="purseEl">$100</div>
+          <div class="at-risk" id="atRiskEl">At risk $0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+  <div class="help-panel" id="helpPanel" hidden>
+    <div class="help-card">
+      <h2>How to play</h2>
+      <p>Tap the felt to drop chips. Aim with the arrow keys, hold Space (or the throw button) to charge, then release to hurl the dice — they bounce off the felt and the far wall.</p>
+      <ul>
+        <li><strong>← →</strong> — Aim left / right toward the far wall.</li>
+        <li><strong>↑ ↓</strong> — More loft / flatter throw.</li>
+        <li><strong>Hold Space</strong> — Charge power; release to throw.</li>
+        <li><strong>Pass / Don't Pass / Odds / Come / Field / Props</strong> — Standard craps action.</li>
+      </ul>
+      <button class="btn primary" id="helpClose" type="button">Got it</button>
+    </div>
+  </div>
+
+  <script>
+    if (location.protocol === 'file:') {
+      document.addEventListener('DOMContentLoaded', () => {
+        const note = document.createElement('div');
+        note.textContent = 'Run a local server to play: npm run dev, then open http://localhost:8000/craps.html';
+        note.style.cssText = 'position:fixed;inset:0 auto auto 0;right:0;z-index:9999;padding:12px 16px;background:#8f2420;color:#fff6e3;font:600 14px/1.4 sans-serif;text-align:center';
+        document.body.prepend(note);
+      });
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import * as CANNON from 'cannon-es';
+
+    const BOARD_W = 1480;
+    const BOARD_H = 820;
+    const TEX = 2;
+    const FELT_Y = 1;
+    const TABLE_CORNER = 110;
+    const WALL_HEIGHT = 96;
+    const WALL_THICK = 16;
+    const RAIL_THICK = 28;
+    const RAIL_HEIGHT = 20;
+    const CHIP = { radius: 14, height: 3.2, stackPitch: 3.35, scatter: 5, segments: 24 };
+    const DIE_SIZE = 22;
+    const PLACE_NUMS = [4, 5, 6, 8, 9, 10];
+    const FIELD_WIN = new Set([2, 3, 4, 9, 10, 11, 12]);
+    const FIELD_DOUBLE = new Set([2, 12]);
+    const HORN = { horn2: 2, horn3: 3, horn11: 11, horn12: 12 };
+    const HORN_PAY = { horn2: 30, horn3: 15, horn11: 15, horn12: 30 };
+    const GRILL_TIPS_KEY = 'grillTipsPending';
+    const CHIP_TOSS_FLIGHT = 0.72;
+    const CHIP_BOUNCES = [
+      { frac: 0.32, h: 18 },
+      { frac: 0.24, h: 7.5 },
+      { frac: 0.18, h: 3.4 },
+      { frac: 0.14, h: 1.5 },
+      { frac: 0.12, h: 0.55 }
+    ];
+    const CHIP_CONTACTS = [
+      { at: 0, s: 1 },
+      { at: 0.32, s: 0.64 },
+      { at: 0.56, s: 0.46 },
+      { at: 0.74, s: 0.32 },
+      { at: 0.88, s: 0.2 }
+    ];
+    const purseFmt = new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'USD', maximumFractionDigits: 0
+    });
+    const moneyFmt = new Intl.NumberFormat('en-US', {
+      style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
+
+    function formatMoney(value) {
+      const n = Number(value || 0);
+      const abs = moneyFmt.format(Math.abs(n));
+      if (n > 0) return `+${abs}`;
+      if (n < 0) return `-${abs}`;
+      return moneyFmt.format(0);
+    }
+
+    const els = {
+      board3d: document.getElementById('board3d'),
+      phaseLabel: document.getElementById('phaseLabel'),
+      statusMsg: document.getElementById('statusMsg'),
+      lastRollLabel: document.getElementById('lastRollLabel'),
+      purseEl: document.getElementById('purseEl'),
+      atRiskEl: document.getElementById('atRiskEl'),
+      rollBtn: document.getElementById('rollBtn'),
+      throwMeter: document.getElementById('throwMeter'),
+      throwMeterFill: document.getElementById('throwMeterFill'),
+      throwMeterValue: document.getElementById('throwMeterValue'),
+      clearBtn: document.getElementById('clearBtn'),
+      helpBtn: document.getElementById('helpBtn'),
+      helpPanel: document.getElementById('helpPanel'),
+      helpClose: document.getElementById('helpClose'),
+      toast: document.getElementById('toast'),
+      chipBtns: [...document.querySelectorAll('[data-chip]')],
+      stage: document.getElementById('stage'),
+      statsToggle: document.getElementById('statsToggle'),
+      analyticsDock: document.getElementById('analyticsDock'),
+      statsNote: document.getElementById('statsNote'),
+      scoreWin: document.getElementById('scoreWin'),
+      scoreEven: document.getElementById('scoreEven'),
+      scoreLoss: document.getElementById('scoreLoss'),
+      scoreEv: document.getElementById('scoreEv'),
+      scoreMax: document.getElementById('scoreMax'),
+      scoreMin: document.getElementById('scoreMin')
+    };
+
+    let payoutChart;
+
+    const state = {
+      purse: 100,
+      chip: 1,
+      point: null,
+      rolling: false,
+      lastDice: [1, 1],
+      bets: {
+        pass: 0, dontPass: 0, passOdds: 0,
+        come: 0, dontCome: 0, field: 0,
+        any7: 0, anyCraps: 0, big6: 0, big8: 0,
+        place4: 0, place5: 0, place6: 0, place8: 0, place9: 0, place10: 0,
+        hard4: 0, hard6: 0, hard8: 0, hard10: 0,
+        horn2: 0, horn3: 0, horn11: 0, horn12: 0
+      },
+      comePoints: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
+      dontComePoints: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 }
+    };
+
+    let scene, camera, renderer, tableGroup, chipGroup, highlightGroup, diceGroup;
+    let boardTexture, feltMesh, pointPuck;
+    let raycaster, pointer, feltPlane, planeHit;
+    let chipMaterialCache, chipGeometryCache;
+    let chipDropAnims = [];
+    let dieMeshes = [];
+    let diceBodies = [];
+    let aimArrow = null;
+    let throwDoneCb = null;
+    let lastAnimTime = 0;
+    let toastTimer = 0;
+    const throwCtrl = {
+      aimYaw: 0,
+      loft: 0.48,
+      power: 0,
+      charging: false,
+      chargeStart: 0,
+      keys: { left: false, right: false, up: false, down: false }
+    };
+    const THROW = {
+      minPower: 0.28,
+      maxChargeMs: 1050,
+      // Arcade gravity: tall readable arcs across this board without clipping the rail hard
+      gravity: 1180,
+      // Dice may crest a bit above the rail so the arc can reach the far rubber in the air
+      ceilScale: 1.85,
+      // Pyramid-rubber ramp angle on the far wall (radians)
+      backWallTilt: 0.26,
+      aimMax: 0.72,
+      loftMin: 0.22,
+      loftMax: 0.78,
+      arcPoints: 32,
+      // Rigid-body settle thresholds (physics units: meters/seconds)
+      settleSpeed: 0.32,
+      settleAng: 1.5,
+      settleFrames: 10,
+      maxFlightTime: 9
+    };
+    // Rigid-body world runs in meters: 1 world unit = 1 cm
+    const PHYS_SCALE = 0.01;
+    let physWorld = null;
+    let physDiceBodies = null;
+    let impactShake = 0;
+    let targets = [];
+    let targetMap = new Map();
+    let cameraDrag = null;
+    let leftPointer = { active: false, x: 0, y: 0, moved: false };
+    // Player view framed like roulette: high over the near rail, looking across the felt.
+    const CAMERA_LIMITS = {
+      minYaw: THREE.MathUtils.degToRad(-38),
+      maxYaw: THREE.MathUtils.degToRad(38),
+      minPitch: THREE.MathUtils.degToRad(-18),
+      maxPitch: THREE.MathUtils.degToRad(18),
+      minFov: 24,
+      maxFov: 48,
+      damp: 0.16,
+      panYaw: 0.0012,
+      panPitch: 0.00085
+    };
+    const cameraRig = {
+      yaw: 0,
+      pitch: 0,
+      targetYaw: 0,
+      targetPitch: 0,
+      fov: 36,
+      targetFov: 36,
+      // High player view — clears the tall near wall and frames the felt
+      position: new THREE.Vector3(0, 980, 1050),
+      baseLookAt: new THREE.Vector3(0, 0, 20)
+    };
+    const Y_AXIS = new THREE.Vector3(0, 1, 0);
+    const _lookForward = new THREE.Vector3();
+    const _lookRight = new THREE.Vector3();
+    const _lookResult = new THREE.Vector3();
+    const _yawQuat = new THREE.Quaternion();
+    const _pitchQuat = new THREE.Quaternion();
+    const _euler = new THREE.Euler();
+    const _quat = new THREE.Quaternion();
+    let cameraDragMoved = false;
+
+    // ——— layout / targets ———
+    // Classic diagram: ONE place-number row across the top, then
+    // left wing | center props | right wing underneath.
+    // Board space: origin top-left, x→ right, y→ down (player / +Z at bottom).
+    function layoutMetrics() {
+      const margin = 52;
+      const propsW = 250;
+      const gap = 10;
+      const innerW = BOARD_W - margin * 2;
+      const innerH = BOARD_H - margin * 2;
+      const wingW = (innerW - propsW - gap * 2) / 2;
+      const leftX = margin;
+      const propsX = margin + wingW + gap;
+      const rightX = propsX + propsW + gap;
+      const topY = margin;
+      const numH = 100;
+      const bodyY = topY + numH;
+      const bodyH = innerH - numH;
+      const passH = 70;
+      const oddsH = 36;
+      const dpH = 40;
+      const fieldH = 100;
+      const comeH = bodyH - fieldH - dpH - passH - oddsH;
+      return {
+        margin, propsW, gap, innerW, innerH, wingW,
+        leftX, propsX, rightX, topY, bodyY, bodyH,
+        numH, comeH, fieldH, dpH, passH, oddsH
+      };
+    }
+
+    function buildTargets() {
+      const L = layoutMetrics();
+      const list = [];
+      const add = (key, x, y, w, h, label, primary = true) => {
+        list.push({ key, x, y, width: w, height: h, label: label || key, primary });
+      };
+
+      // Single place-number row across the full table width
+      const numW = L.innerW / 6;
+      [4, 5, 6, 8, 9, 10].forEach((n, i) => {
+        add(`place${n}`, L.leftX + i * numW, L.topY, numW, L.numH, String(n), true);
+      });
+
+      const addWing = (wingX, primary) => {
+        const comeY = L.bodyY;
+        const dcW = L.wingW * 0.28;
+        const dcX = primary ? wingX + L.wingW - dcW : wingX;
+        add('dontCome', dcX, comeY, dcW, 52, "Don't Come", primary);
+        add('come', wingX, comeY, L.wingW, L.comeH, 'Come', primary);
+
+        const fieldY = comeY + L.comeH;
+        add('field', wingX, fieldY, L.wingW, L.fieldH, 'Field', primary);
+
+        const dpY = fieldY + L.fieldH;
+        add('dontPass', wingX, dpY, L.wingW, L.dpH, "Don't Pass", primary);
+
+        const passY = dpY + L.dpH;
+        const bigW = 64;
+        add('pass', wingX, passY, L.wingW - bigW * 2, L.passH, 'Pass Line', primary);
+        add('big6', wingX + L.wingW - bigW * 2, passY, bigW, L.passH, 'Big 6', primary);
+        add('big8', wingX + L.wingW - bigW, passY, bigW, L.passH, 'Big 8', primary);
+
+        const oddsY = passY + L.passH;
+        add('passOdds', wingX, oddsY, L.wingW, L.oddsH, 'Odds', primary);
+      };
+
+      addWing(L.leftX, true);
+      addWing(L.rightX, false);
+
+      // Center propositions — under the number row
+      let py = L.bodyY;
+      add('any7', L.propsX, py, L.propsW, 72, 'Any 7', true);
+      py += 72;
+      const hardH = 64;
+      add('hard6', L.propsX, py, L.propsW / 2, hardH, 'Hard 6', true);
+      add('hard8', L.propsX + L.propsW / 2, py, L.propsW / 2, hardH, 'Hard 8', true);
+      py += hardH;
+      add('hard4', L.propsX, py, L.propsW / 2, hardH, 'Hard 4', true);
+      add('hard10', L.propsX + L.propsW / 2, py, L.propsW / 2, hardH, 'Hard 10', true);
+      py += hardH;
+      const hornH = 70;
+      add('horn2', L.propsX, py, L.propsW / 2, hornH, '2', true);
+      add('horn12', L.propsX + L.propsW / 2, py, L.propsW / 2, hornH, '12', true);
+      py += hornH;
+      add('horn3', L.propsX, py, L.propsW / 2, hornH, '3', true);
+      add('horn11', L.propsX + L.propsW / 2, py, L.propsW / 2, hornH, '11', true);
+      py += hornH;
+      add('anyCraps', L.propsX, py, L.propsW, L.bodyY + L.bodyH - py, 'Any Craps', true);
+
+      targets = list;
+      targetMap = new Map();
+      for (const t of list) {
+        if (t.primary || !targetMap.has(t.key)) targetMap.set(t.key, t);
+      }
+      return L;
+    }
+
+    function boardToWorld(bx, by) {
+      return {
+        x: bx - BOARD_W / 2,
+        z: by - BOARD_H / 2
+      };
+    }
+
+    function targetCenter(target) {
+      const w = boardToWorld(target.x + target.width / 2, target.y + target.height / 2);
+      return { x: w.x, z: w.z };
+    }
+
+    // ——— felt texture ———
+    function drawMiniDie(ctx, x, y, n, size = 16, face = '#f2e6cf', pip = '#1a1307') {
+      ctx.fillStyle = face;
+      ctx.strokeStyle = 'rgba(0,0,0,.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.rect(x, y, size, size);
+      ctx.fill();
+      ctx.stroke();
+      const pips = {
+        1: [[0.5, 0.5]],
+        2: [[0.28, 0.28], [0.72, 0.72]],
+        3: [[0.28, 0.28], [0.5, 0.5], [0.72, 0.72]],
+        4: [[0.28, 0.28], [0.72, 0.28], [0.28, 0.72], [0.72, 0.72]],
+        5: [[0.28, 0.28], [0.72, 0.28], [0.5, 0.5], [0.28, 0.72], [0.72, 0.72]],
+        6: [[0.28, 0.28], [0.72, 0.28], [0.28, 0.5], [0.72, 0.5], [0.28, 0.72], [0.72, 0.72]]
+      };
+      ctx.fillStyle = pip;
+      for (const [px, py] of pips[n]) {
+        ctx.beginPath();
+        ctx.arc(x + px * size, y + py * size, size * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function goldStroke(ctx, lineWidth = 2.5) {
+      ctx.strokeStyle = '#e7c14a';
+      ctx.lineWidth = lineWidth;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+    }
+
+    function fillGoldText(ctx, text, x, y, font, shadow = true) {
+      ctx.font = font;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (shadow) {
+        ctx.fillStyle = 'rgba(0,0,0,.35)';
+        ctx.fillText(text, x + 1.2, y + 1.6);
+      }
+      const grad = ctx.createLinearGradient(x, y - 18, x, y + 18);
+      grad.addColorStop(0, '#ffe89a');
+      grad.addColorStop(0.45, '#f0d24a');
+      grad.addColorStop(1, '#c49220');
+      ctx.fillStyle = grad;
+      ctx.fillText(text, x, y);
+    }
+
+    function roundPlayfield(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function drawNumberRow(ctx, L) {
+      const numW = L.innerW / 6;
+      goldStroke(ctx, 2.4);
+      ctx.strokeRect(L.leftX + 0.5, L.topY + 0.5, L.innerW - 1, L.numH - 1);
+      for (let i = 1; i < 6; i++) {
+        const x = L.leftX + i * numW;
+        ctx.beginPath();
+        ctx.moveTo(x, L.topY);
+        ctx.lineTo(x, L.topY + L.numH);
+        ctx.stroke();
+      }
+      const labels = ['4', '5', 'Six', '8', 'Nine', '10'];
+      const pays = ['9 TO 5', '7 TO 5', '7 TO 6', '7 TO 6', '7 TO 5', '9 TO 5'];
+      labels.forEach((t, i) => {
+        const cx = L.leftX + (i + 0.5) * numW;
+        fillGoldText(ctx, t, cx, L.topY + 38, '700 40px Zodiak, Georgia, serif');
+        ctx.fillStyle = 'rgba(247,241,223,.78)';
+        ctx.font = '700 10px "General Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('PLACE BET', cx, L.topY + 70);
+        ctx.fillText(`PAYS ${pays[i]}`, cx, L.topY + 84);
+      });
+    }
+
+    function drawWing(ctx, wingX, L, mirror) {
+      const red = '#d41f1f';
+      const white = '#f7f1df';
+      const comeY = L.bodyY;
+      const fieldY = comeY + L.comeH;
+      const dpY = fieldY + L.fieldH;
+      const passY = dpY + L.dpH;
+      const oddsY = passY + L.passH;
+      const bigW = 64;
+
+      goldStroke(ctx, 2.4);
+      ctx.strokeRect(wingX + 0.5, L.bodyY + 0.5, L.wingW - 1, L.bodyH - 1);
+
+      // Come + Don't Come
+      ctx.beginPath();
+      ctx.moveTo(wingX, fieldY);
+      ctx.lineTo(wingX + L.wingW, fieldY);
+      ctx.stroke();
+
+      const dcW = L.wingW * 0.28;
+      const dcX = mirror ? wingX : wingX + L.wingW - dcW;
+      goldStroke(ctx, 2);
+      ctx.strokeRect(dcX + 0.5, comeY + 0.5, dcW - 1, 52 - 1);
+      ctx.fillStyle = white;
+      ctx.font = '800 11px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText("Don't Come Bar", dcX + dcW / 2, comeY + 18);
+      drawMiniDie(ctx, dcX + dcW / 2 - 18, comeY + 28, 6, 14, '#d41f1f', '#fff');
+      drawMiniDie(ctx, dcX + dcW / 2 + 2, comeY + 28, 6, 14, '#d41f1f', '#fff');
+
+      ctx.font = '700 78px Zodiak, Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      ctx.fillText('COME', wingX + L.wingW / 2 + 2, comeY + L.comeH / 2 + 10);
+      ctx.fillStyle = red;
+      ctx.fillText('COME', wingX + L.wingW / 2, comeY + L.comeH / 2 + 8);
+
+      // Field
+      ctx.beginPath();
+      ctx.moveTo(wingX, dpY);
+      ctx.lineTo(wingX + L.wingW, dpY);
+      goldStroke(ctx, 2.4);
+      ctx.stroke();
+      fillGoldText(ctx, 'FIELD', wingX + L.wingW / 2, fieldY + 22, '700 22px Zodiak, Georgia, serif');
+      const fieldNums = [
+        { t: '2', circ: true }, { t: '3' }, { t: '4' }, { t: '9' },
+        { t: '10' }, { t: '11' }, { t: '12', circ: true }
+      ];
+      const fx0 = wingX + L.wingW * 0.1;
+      const fspan = L.wingW * 0.8;
+      fieldNums.forEach((n, i) => {
+        const x = fx0 + (i / (fieldNums.length - 1)) * fspan;
+        const y = fieldY + 58;
+        goldStroke(ctx, 2);
+        if (n.circ) {
+          ctx.beginPath();
+          ctx.arc(x, y, 17, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        fillGoldText(ctx, n.t, x, y, '800 24px "General Sans", sans-serif', false);
+      });
+      ctx.fillStyle = 'rgba(247,241,223,.7)';
+      ctx.font = '700 10px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('2 & 12 Pays Double', wingX + L.wingW / 2, fieldY + L.fieldH - 14);
+
+      // Don't Pass
+      ctx.beginPath();
+      ctx.moveTo(wingX, passY);
+      ctx.lineTo(wingX + L.wingW, passY);
+      goldStroke(ctx, 2.4);
+      ctx.stroke();
+      ctx.fillStyle = white;
+      ctx.font = '800 15px "General Sans", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText("Don't Pass Bar", wingX + 14, dpY + L.dpH / 2);
+      drawMiniDie(ctx, wingX + 168, dpY + L.dpH / 2 - 8, 6, 14, '#d41f1f', '#fff');
+      drawMiniDie(ctx, wingX + 186, dpY + L.dpH / 2 - 8, 6, 14, '#d41f1f', '#fff');
+
+      // Pass line + big 6/8
+      ctx.beginPath();
+      ctx.moveTo(wingX + L.wingW - bigW * 2, passY);
+      ctx.lineTo(wingX + L.wingW - bigW * 2, passY + L.passH);
+      ctx.moveTo(wingX + L.wingW - bigW, passY);
+      ctx.lineTo(wingX + L.wingW - bigW, passY + L.passH);
+      ctx.moveTo(wingX, oddsY);
+      ctx.lineTo(wingX + L.wingW, oddsY);
+      goldStroke(ctx, 2.4);
+      ctx.stroke();
+
+      ctx.fillStyle = white;
+      ctx.font = '800 34px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('PASS LINE', wingX + (L.wingW - bigW * 2) / 2, passY + L.passH / 2);
+      ctx.fillStyle = red;
+      ctx.font = '700 44px Zodiak, Georgia, serif';
+      ctx.fillText('6', wingX + L.wingW - bigW * 1.5, passY + L.passH / 2);
+      ctx.fillText('8', wingX + L.wingW - bigW * 0.5, passY + L.passH / 2);
+
+      fillGoldText(ctx, 'ODDS', wingX + L.wingW / 2, oddsY + L.oddsH / 2, '800 14px "General Sans", sans-serif', false);
+    }
+
+    function drawFelt() {
+      const L = buildTargets();
+      const canvas = document.createElement('canvas');
+      canvas.width = BOARD_W * TEX;
+      canvas.height = BOARD_H * TEX;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(TEX, TEX);
+
+      // Damask-like surround
+      ctx.fillStyle = '#0b3d28';
+      ctx.fillRect(0, 0, BOARD_W, BOARD_H);
+      ctx.save();
+      ctx.globalAlpha = 0.07;
+      ctx.strokeStyle = '#d0a23a';
+      ctx.lineWidth = 1;
+      for (let y = -40; y < BOARD_H + 40; y += 28) {
+        for (let x = -40; x < BOARD_W + 40; x += 28) {
+          ctx.beginPath();
+          ctx.ellipse(x + (y % 56 === 0 ? 0 : 14), y, 10, 6, 0.4, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+
+      // Main felt — large corner radius to match the 3D board silhouette
+      const inset = 8;
+      const boardR = 96;
+      roundPlayfield(ctx, inset, inset, BOARD_W - inset * 2, BOARD_H - inset * 2, boardR);
+      const feltGrad = ctx.createRadialGradient(BOARD_W * 0.5, BOARD_H * 0.42, 40, BOARD_W / 2, BOARD_H / 2, BOARD_W * 0.62);
+      feltGrad.addColorStop(0, '#1a8a56');
+      feltGrad.addColorStop(0.55, '#0f6b40');
+      feltGrad.addColorStop(1, '#0b4d2e');
+      ctx.fillStyle = feltGrad;
+      ctx.fill();
+
+      // Fiber nap
+      ctx.save();
+      ctx.clip();
+      ctx.globalAlpha = 0.16;
+      for (let i = 0; i < 5000; i++) {
+        const x = Math.random() * BOARD_W;
+        const y = Math.random() * BOARD_H;
+        const a = 0.15 + Math.random() * 0.55;
+        const len = 1.2 + Math.random() * 3.2;
+        ctx.strokeStyle = Math.random() > 0.5 ? 'rgba(255,255,255,.4)' : 'rgba(0,0,0,.45)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Thick gold outer border
+      roundPlayfield(ctx, inset, inset, BOARD_W - inset * 2, BOARD_H - inset * 2, boardR);
+      goldStroke(ctx, 5);
+      ctx.stroke();
+      roundPlayfield(ctx, inset + 6, inset + 6, BOARD_W - inset * 2 - 12, BOARD_H - inset * 2 - 12, boardR - 8);
+      ctx.strokeStyle = 'rgba(255,232,154,.35)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      drawNumberRow(ctx, L);
+      drawWing(ctx, L.leftX, L, false);
+      drawWing(ctx, L.rightX, L, true);
+
+      // Center props box — sits under the single number row
+      const red = '#d41f1f';
+      const white = '#f7f1df';
+      goldStroke(ctx, 3);
+      const pr = 16;
+      roundPlayfield(ctx, L.propsX, L.bodyY, L.propsW, L.bodyH, pr);
+      ctx.stroke();
+
+      // ANY SEVEN
+      const a7 = targetMap.get('any7');
+      ctx.beginPath();
+      ctx.moveTo(L.propsX, a7.y + a7.height);
+      ctx.lineTo(L.propsX + L.propsW, a7.y + a7.height);
+      goldStroke(ctx, 2);
+      ctx.stroke();
+      ctx.fillStyle = red;
+      ctx.font = '900 16px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('4 TO 1   ANY SEVEN   4 TO 1', L.propsX + L.propsW / 2, a7.y + a7.height / 2);
+
+      const hardFace = '#f0d24a';
+      const hornFace = '#d41f1f';
+      const propCells = [
+        ['hard6', [3, 3], '9 TO 1', hardFace],
+        ['hard8', [4, 4], '9 TO 1', hardFace],
+        ['hard4', [2, 2], '7 TO 1', hardFace],
+        ['hard10', [5, 5], '7 TO 1', hardFace],
+        ['horn2', [1, 1], '30 TO 1', hornFace],
+        ['horn12', [6, 6], '30 TO 1', hornFace],
+        ['horn3', [1, 2], '15 TO 1', hornFace],
+        ['horn11', [5, 6], '15 TO 1', hornFace]
+      ];
+      for (const [key, pips, odds, face] of propCells) {
+        const t = targetMap.get(key);
+        goldStroke(ctx, 1.8);
+        ctx.strokeRect(t.x + 0.5, t.y + 0.5, t.width - 1, t.height - 1);
+        drawMiniDie(ctx, t.x + t.width / 2 - 18, t.y + 12, pips[0], 16, face, '#fff');
+        drawMiniDie(ctx, t.x + t.width / 2 + 2, t.y + 12, pips[1], 16, face, '#fff');
+        ctx.fillStyle = white;
+        ctx.font = '800 12px "General Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(odds, t.x + t.width / 2, t.y + t.height - 14);
+      }
+
+      // Horn label band between hardways and horn
+      const h2 = targetMap.get('horn2');
+      ctx.fillStyle = red;
+      ctx.font = '900 13px "General Sans", sans-serif';
+      ctx.fillText('HORN BET', L.propsX + L.propsW / 2, h2.y - 10);
+
+      const ac = targetMap.get('anyCraps');
+      goldStroke(ctx, 2);
+      ctx.beginPath();
+      ctx.moveTo(L.propsX, ac.y);
+      ctx.lineTo(L.propsX + L.propsW, ac.y);
+      ctx.stroke();
+      ctx.fillStyle = red;
+      ctx.font = '900 15px "General Sans", sans-serif';
+      ctx.fillText('7 TO 1   ANY CRAPS   7 TO 1', L.propsX + L.propsW / 2, ac.y + ac.height / 2);
+
+      return canvas;
+    }
+
+    // ——— chips (from roulette) ———
+    function getChipStyle(amount) {
+      const value = Math.max(1, Math.round(amount));
+      if (value >= 100) return { primary: '#17130f', accent: '#d0a23a', label: '$100' };
+      if (value >= 25) return { primary: '#1f6b41', accent: '#f2e6cf', label: '$25' };
+      if (value >= 5) return { primary: '#b63a34', accent: '#f2e6cf', label: '$5' };
+      return { primary: '#244f8f', accent: '#f2e6cf', label: '$1' };
+    }
+
+    function drawClassicChipTop(c, size, primary, accent, label) {
+      const cx = size / 2;
+      const cy = size / 2;
+      const r = size / 2 - size * 0.05;
+      c.clearRect(0, 0, size, size);
+      const shadow = c.createRadialGradient(cx, cy + size * 0.04, r * 0.2, cx, cy, r);
+      shadow.addColorStop(0, '#fffdf6');
+      shadow.addColorStop(0.72, '#f3ead8');
+      shadow.addColorStop(1, '#ddd1b8');
+      c.fillStyle = shadow;
+      c.beginPath();
+      c.arc(cx, cy, r, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = primary;
+      c.lineWidth = size * 0.07;
+      c.beginPath();
+      c.arc(cx, cy, r - size * 0.045, 0, Math.PI * 2);
+      c.stroke();
+      for (let i = 0; i < 8; i++) {
+        c.save();
+        c.translate(cx, cy);
+        c.rotate((i / 8) * Math.PI * 2);
+        c.fillStyle = i % 2 ? primary : accent;
+        c.fillRect(-size * 0.052, -r + size * 0.018, size * 0.104, size * 0.125);
+        c.restore();
+      }
+      const inlay = c.createRadialGradient(cx - size * 0.06, cy - size * 0.08, size * 0.04, cx, cy, r * 0.44);
+      inlay.addColorStop(0, '#fffdf8');
+      inlay.addColorStop(1, '#f5edd9');
+      c.fillStyle = inlay;
+      c.beginPath();
+      c.arc(cx, cy, r * 0.44, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = primary;
+      c.lineWidth = Math.max(2, size * 0.016);
+      c.beginPath();
+      c.arc(cx, cy, r * 0.44, 0, Math.PI * 2);
+      c.stroke();
+      c.fillStyle = primary;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.font = `700 ${label.length > 3 ? size * 0.155 : size * 0.21}px General Sans`;
+      c.fillText(label, cx, cy + size * 0.008);
+    }
+
+    function drawClassicChipSide(c, width, height, primary, accent) {
+      c.fillStyle = accent;
+      c.fillRect(0, 0, width, height);
+      const blocks = 16;
+      const blockW = width / blocks;
+      for (let i = 0; i < blocks; i++) {
+        c.fillStyle = i % 2 ? primary : accent;
+        c.fillRect(i * blockW, 0, blockW + 0.5, height);
+      }
+    }
+
+    function getClassicChipMaterials(amount) {
+      if (!chipMaterialCache) chipMaterialCache = new Map();
+      const style = getChipStyle(amount);
+      const key = `${style.primary}-${style.label}`;
+      if (chipMaterialCache.has(key)) return chipMaterialCache.get(key);
+      const texSize = 192;
+      const topCanvas = document.createElement('canvas');
+      topCanvas.width = texSize;
+      topCanvas.height = texSize;
+      drawClassicChipTop(topCanvas.getContext('2d'), texSize, style.primary, style.accent, style.label);
+      const topTex = new THREE.CanvasTexture(topCanvas);
+      topTex.colorSpace = THREE.SRGBColorSpace;
+      const sideCanvas = document.createElement('canvas');
+      sideCanvas.width = 512;
+      sideCanvas.height = 72;
+      drawClassicChipSide(sideCanvas.getContext('2d'), 512, 72, style.primary, style.accent);
+      const sideTex = new THREE.CanvasTexture(sideCanvas);
+      sideTex.colorSpace = THREE.SRGBColorSpace;
+      sideTex.wrapS = THREE.RepeatWrapping;
+      const faceMat = new THREE.MeshStandardMaterial({ map: topTex, roughness: 0.48, metalness: 0.08 });
+      const sideMat = new THREE.MeshStandardMaterial({ map: sideTex, roughness: 0.58, metalness: 0.05 });
+      const materials = [sideMat, faceMat, faceMat];
+      chipMaterialCache.set(key, materials);
+      return materials;
+    }
+
+    function getChipGeometry() {
+      if (!chipGeometryCache) {
+        chipGeometryCache = new THREE.CylinderGeometry(
+          CHIP.radius, CHIP.radius * 0.964, CHIP.height, CHIP.segments, 1, false
+        );
+      }
+      return chipGeometryCache;
+    }
+
+    function hashChipOffset(key, index) {
+      let hash = 0;
+      const s = `${key}:${index}`;
+      for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+      return hash;
+    }
+
+    function chipAmountsForStake(stake) {
+      let left = Math.max(0, Math.round(stake));
+      const amounts = [];
+      for (const d of [100, 25, 5, 1]) {
+        while (left >= d) {
+          amounts.push(d);
+          left -= d;
+          if (amounts.length >= 12) return amounts;
+        }
+      }
+      return amounts;
+    }
+
+    function queueChipDrop(mesh) {
+      const to = mesh.position.clone();
+      const fromX = to.x * 0.12 + (Math.random() - 0.5) * 90;
+      const from = new THREE.Vector3(fromX, FELT_Y + 52, BOARD_H / 2 + 210);
+      const dist = from.distanceTo(to);
+      chipDropAnims.push({
+        mesh,
+        from,
+        to,
+        start: performance.now(),
+        duration: Math.min(980, 520 + dist * 0.26),
+        arc: Math.min(260, 130 + dist * 0.16),
+        spin: (Math.random() < 0.5 ? -1 : 1) * (2.4 + Math.random() * 2.2),
+        tilt: 0.34 + Math.random() * 0.22,
+        wobblePhase: Math.random() * Math.PI * 2,
+        wobbleTurns: 2.1 + Math.random() * 1.4,
+        baseRotY: mesh.rotation.y
+      });
+      mesh.position.copy(from);
+    }
+
+    function updateChipDropAnims(now) {
+      if (!chipDropAnims.length) return;
+      chipDropAnims = chipDropAnims.filter((a) => {
+        const m = a.mesh;
+        if (!m.parent) return false;
+        const t = Math.min(1, (now - a.start) / a.duration);
+        if (t < CHIP_TOSS_FLIGHT) {
+          const p = t / CHIP_TOSS_FLIGHT;
+          const g = p * p * (3 - 2 * p);
+          m.position.x = a.from.x + (a.to.x - a.from.x) * g;
+          m.position.z = a.from.z + (a.to.z - a.from.z) * g;
+          m.position.y = a.from.y + (a.to.y - a.from.y) * p + a.arc * 4 * p * (1 - p);
+          const flutter = a.tilt * Math.sin(p * Math.PI);
+          const ph = a.wobblePhase + p * a.wobbleTurns * Math.PI * 2;
+          m.rotation.x = flutter * Math.cos(ph);
+          m.rotation.z = flutter * Math.sin(ph);
+          m.rotation.y = a.baseRotY + a.spin * Math.PI * 2 * (1 - p) * (1 - p);
+          m.scale.set(1, 1, 1);
+        } else {
+          const p = (t - CHIP_TOSS_FLIGHT) / (1 - CHIP_TOSS_FLIGHT);
+          let y = 0;
+          let acc = 0;
+          for (const seg of CHIP_BOUNCES) {
+            if (p <= acc + seg.frac) {
+              const q = (p - acc) / seg.frac;
+              y = seg.h * 4 * q * (1 - q);
+              break;
+            }
+            acc += seg.frac;
+          }
+          m.position.y = a.to.y + y;
+          let impact = 0;
+          for (const c of CHIP_CONTACTS) {
+            impact = Math.max(impact, Math.max(0, 1 - Math.abs(p - c.at) * 15) * c.s);
+          }
+          m.scale.y = 1 - 0.34 * impact;
+          m.scale.x = m.scale.z = 1 + 0.16 * impact;
+          const skit = 2.2 * impact;
+          m.position.x = a.to.x + skit * Math.sin(p * 52 + a.wobblePhase);
+          m.position.z = a.to.z + skit * Math.cos(p * 47 + a.wobblePhase * 1.7);
+          const sh = 0.09 * impact;
+          m.rotation.x = sh * Math.sin(p * 44 + a.wobblePhase);
+          m.rotation.z = sh * Math.cos(p * 37 + a.wobblePhase);
+          m.rotation.y = a.baseRotY + 0.08 * Math.sin(p * 30) * (1 - p) * Math.sign(a.spin);
+        }
+        if (t >= 1) {
+          m.position.copy(a.to);
+          m.rotation.set(0, a.baseRotY, 0);
+          m.scale.set(1, 1, 1);
+          return false;
+        }
+        return true;
+      });
+    }
+
+    function createChipMesh(key, stackIndex, chipAmount) {
+      const target = targetMap.get(key);
+      if (!target) return null;
+      const center = targetCenter(target);
+      const hash = hashChipOffset(key, stackIndex);
+      const offsetX = ((hash % 100) / 100 - 0.5) * CHIP.scatter * 2;
+      const offsetZ = (((hash >> 8) % 100) / 100 - 0.5) * CHIP.scatter * 2;
+      const y = FELT_Y + CHIP.height / 2 + stackIndex * CHIP.stackPitch;
+      const chip = new THREE.Mesh(getChipGeometry(), getClassicChipMaterials(chipAmount));
+      chip.position.set(center.x + offsetX, y, center.z + offsetZ);
+      chip.rotation.y = ((hash >> 16) % 360) * (Math.PI / 180);
+      chip.userData.betKey = key;
+      return chip;
+    }
+
+    function renderChips(animateKey = null) {
+      if (!chipGroup) return;
+      if (animateKey != null) {
+        const amounts = chipAmountsForStake(state.bets[animateKey] || 0);
+        if (!amounts.length) return;
+        const i = amounts.length - 1;
+        const mesh = createChipMesh(animateKey, i, amounts[i]);
+        if (!mesh) return;
+        chipGroup.add(mesh);
+        queueChipDrop(mesh);
+        return;
+      }
+      while (chipGroup.children.length) chipGroup.remove(chipGroup.children[0]);
+      for (const key of Object.keys(state.bets)) {
+        const amounts = chipAmountsForStake(state.bets[key]);
+        amounts.forEach((amt, i) => {
+          const mesh = createChipMesh(key, i, amt);
+          if (mesh) chipGroup.add(mesh);
+        });
+      }
+      // Come / don't-come parked on numbers
+      for (const n of PLACE_NUMS) {
+        const cAmt = chipAmountsForStake(state.comePoints[n]);
+        cAmt.forEach((amt, i) => {
+          const mesh = createChipMesh(`place${n}`, 20 + i, amt);
+          if (mesh) {
+            mesh.position.x += 10;
+            chipGroup.add(mesh);
+          }
+        });
+        const dAmt = chipAmountsForStake(state.dontComePoints[n]);
+        dAmt.forEach((amt, i) => {
+          const mesh = createChipMesh(`place${n}`, 40 + i, amt);
+          if (mesh) {
+            mesh.position.x -= 10;
+            chipGroup.add(mesh);
+          }
+        });
+      }
+    }
+
+    // ——— dice ———
+    function makeDieFaceTexture(value) {
+      const size = 128;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+      const g = ctx.createLinearGradient(0, 0, size, size);
+      g.addColorStop(0, '#fffdf8');
+      g.addColorStop(1, '#e4d8bc');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, size, size);
+      ctx.strokeStyle = 'rgba(40,30,18,.35)';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(4, 4, size - 8, size - 8);
+      const pip = {
+        1: [[0.5, 0.5]],
+        2: [[0.28, 0.28], [0.72, 0.72]],
+        3: [[0.28, 0.28], [0.5, 0.5], [0.72, 0.72]],
+        4: [[0.28, 0.28], [0.72, 0.28], [0.28, 0.72], [0.72, 0.72]],
+        5: [[0.28, 0.28], [0.72, 0.28], [0.5, 0.5], [0.28, 0.72], [0.72, 0.72]],
+        6: [[0.28, 0.28], [0.72, 0.28], [0.28, 0.5], [0.72, 0.5], [0.28, 0.72], [0.72, 0.72]]
+      };
+      ctx.fillStyle = '#1a1307';
+      for (const [px, py] of pip[value]) {
+        ctx.beginPath();
+        ctx.arc(px * size, py * size, size * 0.095, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function createDieMesh() {
+      // BoxGeometry materials: +X -X +Y -Y +Z -Z → 3,4,1,6,2,5
+      const faces = [3, 4, 1, 6, 2, 5];
+      const mats = faces.map((v) => new THREE.MeshStandardMaterial({
+        map: makeDieFaceTexture(v),
+        roughness: 0.42,
+        metalness: 0.04
+      }));
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(DIE_SIZE, DIE_SIZE, DIE_SIZE), mats);
+      mesh.castShadow = false;
+      return mesh;
+    }
+
+    const DIE_FACE_NORMALS = [
+      { v: 1, n: new THREE.Vector3(0, 1, 0) },
+      { v: 6, n: new THREE.Vector3(0, -1, 0) },
+      { v: 2, n: new THREE.Vector3(0, 0, 1) },
+      { v: 5, n: new THREE.Vector3(0, 0, -1) },
+      { v: 3, n: new THREE.Vector3(1, 0, 0) },
+      { v: 4, n: new THREE.Vector3(-1, 0, 0) }
+    ];
+    const _faceN = new THREE.Vector3();
+    const _spinQ = new THREE.Quaternion();
+    const _tmpV = new THREE.Vector3();
+
+    function faceUpFromQuat(q) {
+      let best = 1;
+      let bestDot = -Infinity;
+      for (const f of DIE_FACE_NORMALS) {
+        _faceN.copy(f.n).applyQuaternion(q);
+        if (_faceN.y > bestDot) {
+          bestDot = _faceN.y;
+          best = f.v;
+        }
+      }
+      return best;
+    }
+
+    /** How flat the die sits: 1 = a face is perfectly up, lower = cocked. */
+    function topFaceAlignment(q) {
+      let bestDot = -Infinity;
+      for (const f of DIE_FACE_NORMALS) {
+        _faceN.copy(f.n).applyQuaternion(q);
+        if (_faceN.y > bestDot) bestDot = _faceN.y;
+      }
+      return bestDot;
+    }
+
+    function quatForTopFace(value) {
+      const q = new THREE.Quaternion();
+      switch (value) {
+        case 1: q.identity(); break;
+        case 2: q.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)); break;
+        case 3: q.setFromEuler(new THREE.Euler(0, 0, Math.PI / 2)); break;
+        case 4: q.setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2)); break;
+        case 5: q.setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)); break;
+        case 6: q.setFromEuler(new THREE.Euler(Math.PI, 0, 0)); break;
+        default: q.identity();
+      }
+      const yaw = new THREE.Quaternion().setFromAxisAngle(Y_AXIS, Math.random() * Math.PI * 2);
+      return yaw.multiply(q);
+    }
+
+    function pitPlayBounds() {
+      const dieHalf = DIE_SIZE * 0.52;
+      // Match the inner hole of the foam wall ring in buildTableShell
+      const hx = (BOARD_W - WALL_THICK) / 2 - dieHalf;
+      const hz = (BOARD_H - WALL_THICK) / 2 - dieHalf;
+      const corner = Math.max(18, TABLE_CORNER - 8 - dieHalf);
+      return {
+        hx,
+        hz,
+        corner,
+        floorY: FELT_Y + DIE_SIZE / 2,
+        ceilY: diceCeilingY(FELT_Y + DIE_SIZE / 2)
+      };
+    }
+
+    function tableHalfExtents() {
+      const b = pitPlayBounds();
+      return { hx: b.hx, hz: b.hz, floorY: b.floorY, corner: b.corner };
+    }
+
+    function throwOrigin(i, jitter = true) {
+      return new THREE.Vector3(
+        (i === 0 ? -16 : 16) + (jitter ? (Math.random() - 0.5) * 5 : 0),
+        FELT_Y + DIE_SIZE * 0.7 + 18,
+        BOARD_H / 2 - 120
+      );
+    }
+
+    function diceCeilingY(floorY) {
+      return floorY + WALL_HEIGHT * THROW.ceilScale - DIE_SIZE * 0.35;
+    }
+
+    /** Ballistic velocity tuned to this board: clear arc, mid-air hit on the far rubber. */
+    function solveThrowVelocity(origin, yaw, power, loftAngle, out = new THREE.Vector3()) {
+      const { hz, floorY } = tableHalfExtents();
+      const punch = Math.pow(THREE.MathUtils.clamp(power, 0, 1), 0.85);
+      const loft01 = THREE.MathUtils.clamp(
+        (loftAngle - THROW.loftMin) / (THROW.loftMax - THROW.loftMin),
+        0, 1
+      );
+      const dirX = Math.sin(yaw);
+      const dirZ = -Math.cos(yaw);
+      // Distance along aim ray to the far wall (z = -hz)
+      const range = THREE.MathUtils.clamp((origin.z + hz) / Math.max(0.2, -dirZ), 380, 820);
+
+      // Hang time long enough for a visible mid-table peak, short enough to feel thrown
+      const flightT = THREE.MathUtils.lerp(0.78, 0.52, punch) * THREE.MathUtils.lerp(1.22, 0.95, loft01);
+      const vH = range / flightT;
+
+      const maxPeak = diceCeilingY(floorY) - 4;
+      const wantPeak = THREE.MathUtils.clamp(
+        origin.y + THREE.MathUtils.lerp(36, 62, loft01) * THREE.MathUtils.lerp(0.95, 1.1, punch),
+        origin.y + 24,
+        maxPeak
+      );
+      // Peak a little before the wall so the descent smacks the rubber
+      const tApex = flightT * THREE.MathUtils.lerp(0.46, 0.58, loft01);
+      let vy = THROW.gravity * tApex;
+      let peakY = origin.y + (vy * vy) / (2 * THROW.gravity);
+      if (peakY < wantPeak) {
+        vy = Math.sqrt(2 * THROW.gravity * (wantPeak - origin.y));
+        peakY = wantPeak;
+      }
+      if (peakY > maxPeak) {
+        vy = Math.sqrt(Math.max(60, 2 * THROW.gravity * (maxPeak - origin.y)));
+      }
+
+      // Nudge so impact height on the far wall sits in the sweet pyramid band
+      const wantWallY = floorY + THREE.MathUtils.lerp(24, 44, loft01);
+      const yAtWall = origin.y + vy * flightT - 0.5 * THROW.gravity * flightT * flightT;
+      if (yAtWall < wantWallY) {
+        const boosted = (wantWallY - origin.y + 0.5 * THROW.gravity * flightT * flightT) / flightT;
+        const peakFromBoost = origin.y + (boosted * boosted) / (2 * THROW.gravity);
+        if (peakFromBoost <= maxPeak + 6) vy = boosted;
+      }
+
+      return out.set(dirX * vH, vy, dirZ * vH);
+    }
+
+    function buildAimArrow() {
+      const group = new THREE.Group();
+      const n = THROW.arcPoints;
+      const positions = new Float32Array(n * 3);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const line = new THREE.Line(
+        geo,
+        new THREE.LineBasicMaterial({
+          color: 0xefbb49,
+          transparent: true,
+          opacity: 0.78,
+          depthWrite: false
+        })
+      );
+      line.frustumCulled = false;
+      group.add(line);
+
+      const dotMat = new THREE.MeshStandardMaterial({
+        color: 0xffe09a,
+        emissive: 0x8a6418,
+        emissiveIntensity: 0.45,
+        roughness: 0.4,
+        metalness: 0.15,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false
+      });
+      const dots = [];
+      for (let i = 0; i < 6; i++) {
+        const d = new THREE.Mesh(new THREE.SphereGeometry(2.4 - i * 0.18, 8, 8), dotMat);
+        d.visible = false;
+        group.add(d);
+        dots.push(d);
+      }
+      const head = new THREE.Mesh(
+        new THREE.ConeGeometry(6.5, 16, 10),
+        new THREE.MeshStandardMaterial({
+          color: 0xefbb49,
+          emissive: 0x8a6418,
+          emissiveIntensity: 0.4,
+          roughness: 0.45,
+          metalness: 0.2,
+          transparent: true,
+          opacity: 0.92,
+          depthWrite: false
+        })
+      );
+      head.visible = false;
+      group.add(head);
+
+      group.userData = { positions, geo, line, dots, head, tmpV: new THREE.Vector3(), tmpVel: new THREE.Vector3() };
+      group.visible = false;
+      return group;
+    }
+
+    function updateAimArrow() {
+      if (!aimArrow) return;
+      const show = !state.rolling && canThrow();
+      aimArrow.visible = show;
+      if (!show) return;
+
+      const { hx, hz, floorY, corner } = tableHalfExtents();
+      const ud = aimArrow.userData;
+      const origin = throwOrigin(0, false);
+      origin.x = 0;
+      const power = throwCtrl.charging ? currentChargePower() : 0.42;
+      solveThrowVelocity(origin, throwCtrl.aimYaw, power, throwCtrl.loft, ud.tmpVel);
+
+      const p = ud.tmpV.copy(origin);
+      const v = ud.tmpVel.clone();
+      const dt = 0.018;
+      const pos = ud.positions;
+      let count = THROW.arcPoints;
+      for (let i = 0; i < THROW.arcPoints; i++) {
+        pos[i * 3] = p.x;
+        pos[i * 3 + 1] = p.y;
+        pos[i * 3 + 2] = p.z;
+        v.y -= THROW.gravity * dt;
+        p.x += v.x * dt;
+        p.y += v.y * dt;
+        p.z += v.z * dt;
+        if (p.y < floorY + 2 || p.z <= -hz + 4) {
+          count = i + 1;
+          for (let j = i + 1; j < THROW.arcPoints; j++) {
+            pos[j * 3] = p.x;
+            pos[j * 3 + 1] = Math.max(p.y, floorY + 2);
+            pos[j * 3 + 2] = p.z;
+          }
+          break;
+        }
+        const pitHit = resolvePitContact(p.x, p.z, v.x, v.z, { hx, hz, corner });
+        if (pitHit) {
+          count = i + 1;
+          pos[i * 3] = pitHit.x;
+          pos[i * 3 + 2] = pitHit.z;
+          for (let j = i + 1; j < THROW.arcPoints; j++) {
+            pos[j * 3] = pitHit.x;
+            pos[j * 3 + 1] = Math.max(p.y, floorY + 2);
+            pos[j * 3 + 2] = pitHit.z;
+          }
+          break;
+        }
+      }
+      ud.geo.setDrawRange(0, count);
+      ud.geo.attributes.position.needsUpdate = true;
+      ud.geo.computeBoundingSphere();
+      ud.line.material.opacity = throwCtrl.charging ? 0.95 : 0.7;
+
+      for (let i = 0; i < ud.dots.length; i++) {
+        const t = (i + 1) / (ud.dots.length + 1);
+        const idx = Math.min(count - 1, Math.floor(t * (count - 1)));
+        const dot = ud.dots[i];
+        dot.visible = count > 3;
+        dot.position.set(pos[idx * 3], pos[idx * 3 + 1], pos[idx * 3 + 2]);
+        dot.scale.setScalar(0.75 + power * 0.55);
+      }
+
+      const hi = Math.max(0, count - 1);
+      const hj = Math.max(0, count - 2);
+      const ex = pos[hi * 3];
+      const ey = pos[hi * 3 + 1];
+      const ez = pos[hi * 3 + 2];
+      const dx = ex - pos[hj * 3];
+      const dy = ey - pos[hj * 3 + 1];
+      const dz = ez - pos[hj * 3 + 2];
+      ud.head.visible = count > 4;
+      ud.head.position.set(ex, ey, ez);
+      ud.head.lookAt(ex + dx, ey + dy, ez + dz);
+      ud.head.rotateX(Math.PI / 2);
+    }
+
+    function currentChargePower() {
+      if (!throwCtrl.charging) return throwCtrl.power;
+      const held = performance.now() - throwCtrl.chargeStart;
+      // Ease in then pulse near full for a juicy charge
+      const t = Math.min(1, held / THROW.maxChargeMs);
+      const waved = t < 0.85 ? t : 0.85 + 0.15 * Math.sin((held / 90) * Math.PI) * 0.5 + 0.075;
+      return THREE.MathUtils.clamp(Math.max(THROW.minPower, waved), 0, 1);
+    }
+
+    function updateThrowMeter() {
+      if (!els.throwMeterFill) return;
+      const p = throwCtrl.charging ? currentChargePower() : 0;
+      els.throwMeterFill.style.width = `${Math.round(p * 100)}%`;
+      els.throwMeter.classList.toggle('charging', throwCtrl.charging);
+      if (els.throwMeterValue) {
+        els.throwMeterValue.textContent = throwCtrl.charging
+          ? `${Math.round(p * 100)}%`
+          : (canThrow() ? 'Ready' : '—');
+      }
+      if (els.rollBtn) {
+        els.rollBtn.textContent = throwCtrl.charging ? 'Release!' : 'Hold to throw';
+      }
+    }
+
+    function canThrow() {
+      if (state.rolling) return false;
+      const comeOut = state.point == null;
+      return !(
+        comeOut && state.bets.pass <= 0 && state.bets.dontPass <= 0 &&
+        totalOneRollBets() <= 0 && !hasWorkingBets()
+      );
+    }
+
+    function resetDiceToHand() {
+      if (physWorld) {
+        for (const rec of diceBodies) {
+          physWorld.removeBody(rec.body);
+          rec.body.__rec = null;
+        }
+      }
+      dieMeshes.forEach((mesh, i) => {
+        const o = throwOrigin(i);
+        mesh.position.copy(o);
+        mesh.quaternion.copy(quatForTopFace(1 + (i % 6)));
+        mesh.scale.set(1, 1, 1);
+        mesh.visible = true;
+      });
+      diceBodies = [];
+    }
+
+    function beginCharge() {
+      if (state.rolling || throwCtrl.charging) return;
+      if (!canThrow()) {
+        showToast('Need a line bet on the come-out');
+        return;
+      }
+      throwCtrl.charging = true;
+      throwCtrl.chargeStart = performance.now();
+      throwCtrl.power = THROW.minPower;
+      updateUI();
+    }
+
+    function releaseThrow() {
+      if (!throwCtrl.charging || state.rolling) return;
+      const power = currentChargePower();
+      throwCtrl.charging = false;
+      throwCtrl.power = 0;
+      updateThrowMeter();
+      launchDice(power);
+    }
+
+    // ——— rigid-body dice (cannon-es) ———
+    /** Push die center back inside the rounded pit; reflect velocity off the wall normal. */
+    function resolvePitContact(x, z, vx, vz, bounds, rec) {
+      const { hx, hz, corner } = bounds;
+      const ax = Math.abs(x);
+      const az = Math.abs(z);
+      const sx = x >= 0 ? 1 : -1;
+      const sz = z >= 0 ? 1 : -1;
+      const innerX = hx - corner;
+      const innerZ = hz - corner;
+      let nx = 0;
+      let nz = 0;
+      let outX = x;
+      let outZ = z;
+      let hit = false;
+
+      if (ax <= innerX) {
+        if (az > hz) {
+          outZ = sz * hz;
+          nz = sz;
+          hit = true;
+        }
+      } else if (az <= innerZ) {
+        if (ax > hx) {
+          outX = sx * hx;
+          nx = sx;
+          hit = true;
+        }
+      } else {
+        const cx = sx * innerX;
+        const cz = sz * innerZ;
+        const dx = x - cx;
+        const dz = z - cz;
+        const dist = Math.hypot(dx, dz);
+        if (dist > corner && dist > 1e-6) {
+          outX = cx + (dx / dist) * corner;
+          outZ = cz + (dz / dist) * corner;
+          nx = dx / dist;
+          nz = dz / dist;
+          hit = true;
+        }
+      }
+
+      if (!hit) return null;
+
+      if (rec && nz < -0.45) rec.hitBackWall = true;
+
+      let outVx = vx;
+      let outVz = vz;
+      const vn = vx * nx + vz * nz;
+      if (vn > 0) {
+        const rest = nz < -0.45 ? 0.86 : 0.74;
+        outVx -= (1 + rest) * vn * nx;
+        outVz -= (1 + rest) * vn * nz;
+        if (rec) {
+          const impact = Math.min(1.2, vn / 520);
+          rec.squash = Math.max(rec.squash, Math.min(1, 0.25 + impact * 0.55));
+          rec.squashAxis = Math.abs(nx) > Math.abs(nz) ? 'x' : 'z';
+          if (nz < -0.45) punchImpact(0.12 + impact * 0.28);
+        }
+      }
+
+      return { x: outX, z: outZ, vx: outVx, vz: outVz, nx, nz };
+    }
+
+    function clampBodyToPit(body, bounds) {
+      const s = PHYS_SCALE;
+      const rec = body.__rec;
+      const x = body.position.x / s;
+      const z = body.position.z / s;
+      const y = body.position.y / s;
+      let vx = body.velocity.x / s;
+      let vy = body.velocity.y / s;
+      let vz = body.velocity.z / s;
+      let changed = false;
+
+      const hit = resolvePitContact(x, z, vx, vz, bounds, rec);
+      if (hit) {
+        body.position.x = hit.x * s;
+        body.position.z = hit.z * s;
+        body.velocity.x = hit.vx * s;
+        body.velocity.z = hit.vz * s;
+        changed = true;
+      }
+
+      const floorY = bounds.floorY;
+      const minY = floorY * s;
+      if (body.position.y < minY) {
+        body.position.y = minY;
+        if (body.velocity.y < 0) {
+          body.velocity.y *= -0.38;
+          changed = true;
+        }
+      }
+
+      const ceilY = bounds.ceilY * s;
+      if (body.position.y > ceilY) {
+        body.position.y = ceilY;
+        if (body.velocity.y > 0) {
+          body.velocity.y *= -0.25;
+          changed = true;
+        }
+      }
+
+      if (changed && rec && !rec.resting) body.wakeUp();
+      return changed;
+    }
+
+    function buildPitWalls(s, matRubber, feltTopY, bounds) {
+      const { hx, hz, corner } = bounds;
+      const hxs = hx * s;
+      const hzs = hz * s;
+      const cs = corner * s;
+      const wallHalfThick = Math.max(DIE_SIZE * 0.45 * s, 0.08);
+      const wallH = WALL_HEIGHT * 3.5 * s;
+      const straightX = Math.max(40, hx - corner) * s;
+      const straightZ = Math.max(40, hz - corner) * s;
+
+      const addBoxWall = (kind, halfX, halfY, halfZ, px, py, pz, eulerX = 0, eulerY = 0) => {
+        const wall = new CANNON.Body({
+          type: CANNON.Body.STATIC,
+          shape: new CANNON.Box(new CANNON.Vec3(halfX, halfY, halfZ)),
+          material: matRubber
+        });
+        wall.position.set(px, py, pz);
+        wall.quaternion.setFromEuler(eulerX, eulerY, 0);
+        wall.userData = { kind };
+        physWorld.addBody(wall);
+      };
+
+      // Straight segments — inner face sits on the play boundary
+      addBoxWall('rubber-back', straightX + cs, wallH, wallHalfThick,
+        0, feltTopY, -hzs - wallHalfThick, -THROW.backWallTilt, 0);
+      addBoxWall('rubber-side', straightX + cs, wallH, wallHalfThick,
+        0, feltTopY, hzs + wallHalfThick);
+      addBoxWall('rubber-side', wallHalfThick, wallH, straightZ + cs,
+        hxs + wallHalfThick, feltTopY, 0, 0, Math.PI / 2);
+      addBoxWall('rubber-side', wallHalfThick, wallH, straightZ + cs,
+        -hxs - wallHalfThick, feltTopY, 0, 0, Math.PI / 2);
+
+      // Rounded corners — chain of boxes hugging the arc so dice can't slip through
+      const segN = 9;
+      const segLen = (Math.PI / 2 * cs) / segN;
+      for (const sx of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          const cx = sx * straightX;
+          const cz = sz * straightZ;
+          for (let i = 0; i < segN; i++) {
+            const tm = ((i + 0.5) / segN) * (Math.PI / 2);
+            const px = cx + sx * Math.sin(tm) * cs;
+            const pz = cz + sz * Math.cos(tm) * cs;
+            const len = Math.hypot(px, pz) || 1;
+            const ox = px / len;
+            const oz = pz / len;
+            const wx = px + ox * wallHalfThick;
+            const wz = pz + oz * wallHalfThick;
+            const ry = Math.atan2(-ox, -oz);
+            addBoxWall('rubber-side', segLen * 0.55, wallH, wallHalfThick, wx, feltTopY, wz, 0, ry);
+          }
+        }
+      }
+    }
+
+    function ensurePhysics() {
+      if (physWorld) return;
+      const s = PHYS_SCALE;
+      const bounds = pitPlayBounds();
+      physWorld = new CANNON.World({ gravity: new CANNON.Vec3(0, -THROW.gravity * s, 0) });
+      physWorld.broadphase = new CANNON.SAPBroadphase(physWorld);
+      physWorld.allowSleep = true;
+      physWorld.solver.iterations = 18;
+
+      const matDie = new CANNON.Material('die');
+      const matFelt = new CANNON.Material('felt');
+      const matRubber = new CANNON.Material('rubber');
+      physWorld.addContactMaterial(new CANNON.ContactMaterial(matDie, matFelt, { friction: 0.34, restitution: 0.44 }));
+      physWorld.addContactMaterial(new CANNON.ContactMaterial(matDie, matRubber, { friction: 0.12, restitution: 0.78 }));
+      physWorld.addContactMaterial(new CANNON.ContactMaterial(matDie, matDie, { friction: 0.14, restitution: 0.5 }));
+
+      const feltTopY = FELT_Y * s;
+      const floor = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: matFelt });
+      floor.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+      floor.position.set(0, feltTopY, 0);
+      floor.userData = { kind: 'felt' };
+      physWorld.addBody(floor);
+
+      const lid = new CANNON.Body({ type: CANNON.Body.STATIC, shape: new CANNON.Plane(), material: matFelt });
+      lid.quaternion.setFromEuler(Math.PI / 2, 0, 0);
+      lid.position.set(0, bounds.ceilY * s, 0);
+      lid.userData = { kind: 'lid' };
+      physWorld.addBody(lid);
+
+      buildPitWalls(s, matRubber, feltTopY, bounds);
+
+      const half = (DIE_SIZE / 2) * s;
+      physDiceBodies = dieMeshes.map(() => {
+        const body = new CANNON.Body({
+          mass: 0.09,
+          shape: new CANNON.Box(new CANNON.Vec3(half, half, half)),
+          material: matDie,
+          linearDamping: 0.08,
+          angularDamping: 0.06,
+          allowSleep: true,
+          sleepSpeedLimit: 0.42,
+          sleepTimeLimit: 0.3
+        });
+        body.addEventListener('collide', onDieCollide);
+        return body;
+      });
+    }
+
+    function punchImpact(amount) {
+      impactShake = Math.min(1.35, impactShake + amount);
+    }
+
+    function onDieCollide(e) {
+      const rec = e.target.__rec;
+      if (!rec || rec.resting) return;
+      const impact = Math.abs(e.contact.getImpactVelocityAlongNormal());
+      const kind = e.body.userData?.kind || 'die';
+      const n = e.contact.ni;
+      const axn = Math.abs(n.x);
+      const ayn = Math.abs(n.y);
+      const azn = Math.abs(n.z);
+      rec.squashAxis = axn > ayn && axn > azn ? 'x' : (azn > ayn ? 'z' : 'y');
+      const norm = Math.min(1.3, impact / 6);
+      if (norm > 0.1) rec.squash = Math.max(rec.squash, Math.min(1, 0.2 + norm * 0.6));
+
+      const b = e.target;
+      if (kind === 'rubber-back') {
+        rec.hitBackWall = true;
+        punchImpact(0.22 + norm * 0.4);
+        // Pyramid faces: randomized deflection + hard tumble on the money bounce
+        b.velocity.x += (Math.random() - 0.5) * impact * 0.45;
+        b.velocity.y += impact * (0.14 + Math.random() * 0.2);
+        b.angularVelocity.x += (Math.random() - 0.5) * impact * 2.6;
+        b.angularVelocity.y += (Math.random() - 0.5) * impact * 3.4;
+        b.angularVelocity.z += (Math.random() - 0.5) * impact * 2.6;
+      } else if (kind === 'rubber-side') {
+        punchImpact(0.06 + norm * 0.16);
+        b.angularVelocity.x += (Math.random() - 0.5) * impact * 1.5;
+        b.angularVelocity.y += (Math.random() - 0.5) * impact * 2.1;
+        b.angularVelocity.z += (Math.random() - 0.5) * impact * 1.5;
+      } else if (kind === 'felt') {
+        if (norm > 0.3) punchImpact(0.04 + norm * 0.1);
+      } else if (kind === 'die') {
+        punchImpact(0.05);
+      }
+    }
+
+    function launchDice(power) {
+      ensurePhysics();
+      state.rolling = true;
+      updateUI();
+      updateAimArrow();
+      throwDoneCb = null;
+      impactShake = Math.max(impactShake, 0.16 + power * 0.2);
+      const punch = Math.pow(power, 0.85);
+      const s = PHYS_SCALE;
+      const baseVel = new THREE.Vector3();
+
+      diceBodies = dieMeshes.map((mesh, i) => {
+        const origin = throwOrigin(i, true);
+        origin.y += 6 + punch * 8;
+        mesh.position.copy(origin);
+        mesh.scale.set(1, 1, 1);
+        solveThrowVelocity(origin, throwCtrl.aimYaw, power, throwCtrl.loft, baseVel);
+        const side = i === 0 ? -1 : 1;
+        const vel = baseVel.clone();
+        // Twin toss: fan + tiny lag on the second die
+        vel.x += side * (18 + Math.random() * 16) + (Math.random() - 0.5) * 22;
+        vel.y += (Math.random() - 0.35) * 28;
+        vel.z += -i * (12 + punch * 18) + (Math.random() - 0.5) * 16;
+        // Real tumble the solver carries through corner impacts
+        const tumble = 11 + punch * 17;
+        const angVel = new THREE.Vector3(
+          (0.6 + Math.random()) * tumble * (Math.random() < 0.5 ? -1 : 1),
+          (Math.random() - 0.5) * tumble * 0.7,
+          (0.6 + Math.random()) * tumble * (Math.random() < 0.5 ? -1 : 1)
+        );
+        angVel.x += -Math.sign(vel.z || -1) * (7 + punch * 9);
+
+        const body = physDiceBodies[i];
+        if (!physWorld.bodies.includes(body)) physWorld.addBody(body);
+        body.position.set(origin.x * s, origin.y * s, origin.z * s);
+        body.quaternion.setFromEuler(
+          Math.random() * Math.PI * 2,
+          Math.random() * Math.PI * 2,
+          Math.random() * Math.PI * 2
+        );
+        body.velocity.set(vel.x * s, vel.y * s, vel.z * s);
+        body.angularVelocity.set(angVel.x, angVel.y, angVel.z);
+        body.wakeUp();
+
+        const rec = {
+          mesh,
+          body,
+          resting: false,
+          restFrames: 0,
+          squash: 0,
+          squashAxis: 'y',
+          age: 0,
+          nudges: 0,
+          hitBackWall: false
+        };
+        body.__rec = rec;
+        return rec;
+      });
+
+      throwDoneCb = () => {
+        const d1 = faceUpFromQuat(dieMeshes[0].quaternion);
+        const d2 = faceUpFromQuat(dieMeshes[1].quaternion);
+        dieMeshes[0].quaternion.copy(quatForTopFace(d1));
+        dieMeshes[1].quaternion.copy(quatForTopFace(d2));
+        dieMeshes.forEach((m) => m.scale.set(1, 1, 1));
+        state.rolling = false;
+        resolveRoll(d1, d2);
+        updateAimArrow();
+        updateThrowMeter();
+      };
+    }
+
+    function updateDicePhysics(dt) {
+      if (!diceBodies.length || !physWorld) return;
+      const frame = Math.min(dt, 0.05);
+      const bounds = pitPlayBounds();
+      physWorld.step(1 / 120, frame, 12);
+
+      const s = PHYS_SCALE;
+      const restY = bounds.floorY;
+      let allResting = true;
+
+      for (const rec of diceBodies) {
+        if (rec.resting) continue;
+        allResting = false;
+        rec.age += frame;
+
+        const b = rec.body;
+        // Hard clamp to the rounded pit so dice never ghost through corners or rails
+        clampBodyToPit(b, bounds);
+
+        rec.mesh.position.set(b.position.x / s, b.position.y / s, b.position.z / s);
+        rec.mesh.quaternion.set(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
+
+        // Impact squash reads the hit, recovers fast
+        rec.squash *= Math.pow(0.1, frame);
+        const sq = rec.squash;
+        const stretch = 1 + sq * 0.22;
+        const flatS = 1 - sq * 0.34;
+        if (rec.squashAxis === 'x') rec.mesh.scale.set(flatS, stretch, stretch);
+        else if (rec.squashAxis === 'z') rec.mesh.scale.set(stretch, stretch, flatS);
+        else rec.mesh.scale.set(stretch, flatS, stretch);
+
+        const speed = b.velocity.length();
+        const spin = b.angularVelocity.length();
+        const grounded = b.position.y / s <= restY + DIE_SIZE * 0.6;
+        const asleep = b.sleepState === CANNON.Body.SLEEPING;
+        const still = asleep || (grounded && speed < THROW.settleSpeed && spin < THROW.settleAng);
+        rec.restFrames = still ? rec.restFrames + 1 : 0;
+
+        const timedOut = rec.age > THROW.maxFlightTime;
+        if (rec.restFrames >= THROW.settleFrames || timedOut) {
+          // Cocked die (leaning on the wall or its twin): flick it flat and keep rolling
+          if (!timedOut && topFaceAlignment(rec.mesh.quaternion) < 0.93 && rec.nudges < 2) {
+            rec.nudges += 1;
+            rec.restFrames = 0;
+            b.wakeUp();
+            b.applyImpulse(new CANNON.Vec3((Math.random() - 0.5) * 0.05, 0.07, (Math.random() - 0.5) * 0.05));
+            b.angularVelocity.set(
+              (Math.random() - 0.5) * 6,
+              (Math.random() - 0.5) * 4,
+              (Math.random() - 0.5) * 6
+            );
+          } else {
+            rec.resting = true;
+            rec.mesh.scale.set(1, 1, 1);
+            b.sleep();
+          }
+        }
+      }
+
+      if (allResting || diceBodies.every((r) => r.resting)) {
+        for (const rec of diceBodies) {
+          physWorld.removeBody(rec.body);
+          rec.body.__rec = null;
+        }
+        const cb = throwDoneCb;
+        throwDoneCb = null;
+        diceBodies = [];
+        cb?.();
+      }
+    }
+
+    function updateThrowAim(dt) {
+      const turn = 1.9 * dt;
+      const loftStep = 1.1 * dt;
+      if (throwCtrl.keys.left) throwCtrl.aimYaw = Math.min(THROW.aimMax, throwCtrl.aimYaw + turn);
+      if (throwCtrl.keys.right) throwCtrl.aimYaw = Math.max(-THROW.aimMax, throwCtrl.aimYaw - turn);
+      if (throwCtrl.keys.up) throwCtrl.loft = Math.min(THROW.loftMax, throwCtrl.loft + loftStep);
+      if (throwCtrl.keys.down) throwCtrl.loft = Math.max(THROW.loftMin, throwCtrl.loft - loftStep);
+      updateAimArrow();
+      if (throwCtrl.charging) updateThrowMeter();
+    }
+
+    // ——— table shell ———
+    /** Draw a rounded rect into a Shape or Path. ccw=true for outer, false for holes. */
+    function drawRoundedRect(path, w, h, radius, ccw = true) {
+      const hw = w / 2;
+      const hh = h / 2;
+      const r = Math.min(radius, hw - 2, hh - 2);
+      if (ccw) {
+        path.moveTo(-hw + r, -hh);
+        path.lineTo(hw - r, -hh);
+        path.absarc(hw - r, -hh + r, r, -Math.PI / 2, 0, false);
+        path.lineTo(hw, hh - r);
+        path.absarc(hw - r, hh - r, r, 0, Math.PI / 2, false);
+        path.lineTo(-hw + r, hh);
+        path.absarc(-hw + r, hh - r, r, Math.PI / 2, Math.PI, false);
+        path.lineTo(-hw, -hh + r);
+        path.absarc(-hw + r, -hh + r, r, Math.PI, Math.PI * 1.5, false);
+      } else {
+        path.moveTo(-hw + r, -hh);
+        path.absarc(-hw + r, -hh + r, r, -Math.PI / 2, Math.PI, true);
+        path.lineTo(-hw, hh - r);
+        path.absarc(-hw + r, hh - r, r, Math.PI, Math.PI / 2, true);
+        path.lineTo(hw - r, hh);
+        path.absarc(hw - r, hh - r, r, Math.PI / 2, 0, true);
+        path.lineTo(hw, -hh + r);
+        path.absarc(hw - r, -hh + r, r, 0, -Math.PI / 2, true);
+      }
+    }
+
+    function makeRoundedRectShape(w, h, radius) {
+      const shape = new THREE.Shape();
+      drawRoundedRect(shape, w, h, radius, true);
+      return shape;
+    }
+
+    function makeRoundedRectRing(outerW, outerH, outerR, innerW, innerH, innerR) {
+      const shape = new THREE.Shape();
+      drawRoundedRect(shape, outerW, outerH, outerR, true);
+      const hole = new THREE.Path();
+      drawRoundedRect(hole, innerW, innerH, innerR, false);
+      shape.holes.push(hole);
+      return shape;
+    }
+
+    function extrudeUp(shape, depth) {
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        depth,
+        bevelEnabled: false,
+        curveSegments: 32,
+        steps: 1
+      });
+      // Extrude +Z → rotate so depth becomes +Y
+      geo.rotateX(-Math.PI / 2);
+      return geo;
+    }
+
+    function makeFoamWallTexture() {
+      const size = 512;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+
+      const base = ctx.createLinearGradient(0, 0, 0, size);
+      base.addColorStop(0, '#454b48');
+      base.addColorStop(0.42, '#343937');
+      base.addColorStop(1, '#232826');
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, size, size);
+
+      for (let i = 0; i < 12000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const a = Math.random() * 0.07;
+        ctx.fillStyle = Math.random() > 0.48
+          ? `rgba(255,255,255,${a})`
+          : `rgba(0,0,0,${a * 1.15})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+
+      const step = 13;
+      for (let y = -step; y < size + step; y += step) {
+        for (let x = -step; x < size + step; x += step) {
+          const ox = (Math.floor(y / step) % 2) * (step / 2);
+          const cx = x + ox + step / 2;
+          const cy = y + step / 2;
+          ctx.beginPath();
+          ctx.moveTo(x + ox, y + step / 2);
+          ctx.lineTo(x + ox + step / 2, y);
+          ctx.lineTo(x + ox + step, y + step / 2);
+          ctx.lineTo(x + ox + step / 2, y + step);
+          ctx.closePath();
+          const dome = ctx.createRadialGradient(cx, cy - 1, 0, cx, cy, step * 0.62);
+          dome.addColorStop(0, 'rgba(210,218,212,.14)');
+          dome.addColorStop(0.45, 'rgba(70,78,74,.42)');
+          dome.addColorStop(1, 'rgba(8,10,9,.38)');
+          ctx.fillStyle = dome;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(0,0,0,.16)';
+          ctx.lineWidth = 0.6;
+          ctx.stroke();
+        }
+      }
+
+      const soft = ctx.createLinearGradient(0, 0, size, size);
+      soft.addColorStop(0, 'rgba(255,255,255,.06)');
+      soft.addColorStop(0.55, 'rgba(0,0,0,0)');
+      soft.addColorStop(1, 'rgba(0,0,0,.14)');
+      ctx.fillStyle = soft;
+      ctx.fillRect(0, 0, size, size);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(11, 4.2);
+      return tex;
+    }
+
+    function makeWoodRailTexture() {
+      const size = 1024;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+
+      const base = ctx.createLinearGradient(0, 0, 0, size);
+      base.addColorStop(0, '#7a4a32');
+      base.addColorStop(0.35, '#9a6040');
+      base.addColorStop(0.72, '#6b4028');
+      base.addColorStop(1, '#52301e');
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, size, size);
+
+      const plankW = 72;
+      for (let px = 0; px < size + plankW; px += plankW) {
+        const tone = 0.88 + ((px * 13) % 97) / 320;
+        const plank = ctx.createLinearGradient(px, 0, px + plankW, 0);
+        plank.addColorStop(0, 'rgba(12,5,2,.32)');
+        plank.addColorStop(0.04, `rgba(255,228,190,${0.05 * tone})`);
+        plank.addColorStop(0.22, `rgba(160,95,58,${0.1 * tone})`);
+        plank.addColorStop(0.5, `rgba(120,68,42,${0.06 * tone})`);
+        plank.addColorStop(0.78, `rgba(200,140,90,${0.07 * tone})`);
+        plank.addColorStop(0.96, `rgba(255,228,190,${0.04 * tone})`);
+        plank.addColorStop(1, 'rgba(8,4,2,.36)');
+        ctx.fillStyle = plank;
+        ctx.fillRect(px, 0, plankW, size);
+
+        const seed = px * 19 + 7;
+        for (let g = 0; g < 34; g++) {
+          const y = ((seed + g * 41) % 991) / 991 * size;
+          const dark = g % 4 !== 1;
+          const a = 0.035 + (g % 6) * 0.014;
+          ctx.strokeStyle = dark
+            ? `rgba(38,16,8,${a})`
+            : `rgba(220,175,120,${a * 0.42})`;
+          ctx.lineWidth = 0.55 + (g % 5) * 0.28;
+          ctx.beginPath();
+          ctx.moveTo(px + 3, y);
+          ctx.bezierCurveTo(
+            px + plankW * 0.28, y + 2 + (g % 8),
+            px + plankW * 0.62, y - 1 - (g % 6),
+            px + plankW - 4, y + (g % 4) - 1
+          );
+          ctx.stroke();
+        }
+
+        for (let k = 0; k < 3; k++) {
+          const ky = ((seed + k * 173) % 887) / 887 * size;
+          ctx.strokeStyle = `rgba(24,10,5,${0.08 + k * 0.04})`;
+          ctx.lineWidth = 2.2 + k * 1.6;
+          ctx.beginPath();
+          ctx.moveTo(px + 6, ky);
+          ctx.bezierCurveTo(px + plankW * 0.5, ky + 10, px + plankW * 0.5, ky - 10, px + plankW - 6, ky);
+          ctx.stroke();
+        }
+      }
+
+      for (let i = 0; i < 6000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const a = Math.random() * 0.045;
+        ctx.fillStyle = Math.random() > 0.5
+          ? `rgba(255,235,200,${a})`
+          : `rgba(30,12,6,${a * 1.1})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+
+      const lacquer = ctx.createLinearGradient(0, 0, 0, size);
+      lacquer.addColorStop(0, 'rgba(255,245,220,.28)');
+      lacquer.addColorStop(0.18, 'rgba(255,245,220,.1)');
+      lacquer.addColorStop(0.55, 'rgba(0,0,0,.02)');
+      lacquer.addColorStop(1, 'rgba(0,0,0,.22)');
+      ctx.fillStyle = lacquer;
+      ctx.fillRect(0, 0, size, size);
+
+      const edge = ctx.createLinearGradient(0, 0, size, 0);
+      edge.addColorStop(0, 'rgba(0,0,0,.12)');
+      edge.addColorStop(0.5, 'rgba(255,255,255,0)');
+      edge.addColorStop(1, 'rgba(0,0,0,.12)');
+      ctx.fillStyle = edge;
+      ctx.fillRect(0, 0, size, size);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(5.5, 1.35);
+      return tex;
+    }
+
+    function makeWoodRailBumpTexture() {
+      const size = 512;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#808080';
+      ctx.fillRect(0, 0, size, size);
+
+      const plankW = 36;
+      for (let px = 0; px < size + plankW; px += plankW) {
+        ctx.fillStyle = 'rgba(0,0,0,.18)';
+        ctx.fillRect(px, 0, 2, size);
+        ctx.fillStyle = 'rgba(255,255,255,.1)';
+        ctx.fillRect(px + plankW - 3, 0, 2, size);
+        const seed = px * 11;
+        for (let g = 0; g < 20; g++) {
+          const y = ((seed + g * 37) % 503) / 503 * size;
+          ctx.strokeStyle = g % 2 ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.1)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(px + 2, y);
+          ctx.lineTo(px + plankW - 2, y + (g % 5) - 2);
+          ctx.stroke();
+        }
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(5.5, 1.35);
+      return tex;
+    }
+
+    function assignShapeUVs(geometry, w, h) {
+      const uv = geometry.attributes.uv;
+      const pos = geometry.attributes.position;
+      for (let i = 0; i < uv.count; i++) {
+        const x = pos.getX(i);
+        const z = pos.getZ(i);
+        uv.setXY(i, x / w + 0.5, 1 - (z / h + 0.5));
+      }
+      uv.needsUpdate = true;
+    }
+
+    function buildTableShell(group) {
+      const orangeMat = new THREE.MeshStandardMaterial({ color: 0xe86a12, roughness: 0.52, metalness: 0.1 });
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x121212, roughness: 0.62, metalness: 0.08 });
+      const foamMat = new THREE.MeshStandardMaterial({
+        map: makeFoamWallTexture(),
+        roughness: 0.86,
+        metalness: 0,
+        side: THREE.DoubleSide
+      });
+      const woodMat = new THREE.MeshStandardMaterial({
+        map: makeWoodRailTexture(),
+        bumpMap: makeWoodRailBumpTexture(),
+        bumpScale: 0.35,
+        roughness: 0.28,
+        metalness: 0.06,
+        envMapIntensity: 0.45,
+        side: THREE.DoubleSide
+      });
+
+      // Orange apron — kept entirely below the felt
+      const body = new THREE.Mesh(
+        extrudeUp(makeRoundedRectShape(BOARD_W + 88, BOARD_H + 88, TABLE_CORNER + 20), 28),
+        orangeMat
+      );
+      body.position.y = FELT_Y - 30;
+      group.add(body);
+
+      // Padded foam wall ring (outer − inner hole)
+      const walls = new THREE.Mesh(
+        extrudeUp(
+          makeRoundedRectRing(
+            BOARD_W + WALL_THICK, BOARD_H + WALL_THICK, TABLE_CORNER + 6,
+            BOARD_W - WALL_THICK, BOARD_H - WALL_THICK, TABLE_CORNER - 8
+          ),
+          WALL_HEIGHT
+        ),
+        foamMat
+      );
+      walls.position.y = FELT_Y;
+      group.add(walls);
+
+      // Wooden rail ring on top of the walls
+      const rail = new THREE.Mesh(
+        extrudeUp(
+          makeRoundedRectRing(
+            BOARD_W + RAIL_THICK * 2, BOARD_H + RAIL_THICK * 2, TABLE_CORNER + 18,
+            BOARD_W - 4, BOARD_H - 4, TABLE_CORNER - 2
+          ),
+          RAIL_HEIGHT
+        ),
+        woodMat
+      );
+      rail.position.y = FELT_Y + WALL_HEIGHT - 1;
+      group.add(rail);
+
+      // Legs
+      const legGeo = new THREE.CylinderGeometry(11, 13, 78, 14);
+      const legInset = 80;
+      for (const [x, z] of [
+        [-BOARD_W / 2 + legInset, -BOARD_H / 2 + legInset],
+        [BOARD_W / 2 - legInset, -BOARD_H / 2 + legInset],
+        [-BOARD_W / 2 + legInset, BOARD_H / 2 - legInset],
+        [BOARD_W / 2 - legInset, BOARD_H / 2 - legInset]
+      ]) {
+        const leg = new THREE.Mesh(legGeo, legMat);
+        leg.position.set(x, -70, z);
+        group.add(leg);
+      }
+    }
+
+    function createFeltMesh(texture) {
+      // Simple rounded felt sitting above the apron, open inside the wall ring
+      const shape = makeRoundedRectShape(BOARD_W - 2, BOARD_H - 2, TABLE_CORNER - 2);
+      const geo = new THREE.ShapeGeometry(shape, 40);
+      geo.rotateX(-Math.PI / 2);
+      assignShapeUVs(geo, BOARD_W, BOARD_H);
+      const mesh = new THREE.Mesh(
+        geo,
+        new THREE.MeshStandardMaterial({
+          map: texture,
+          roughness: 0.94,
+          metalness: 0,
+          envMapIntensity: 0.12
+        })
+      );
+      mesh.position.y = FELT_Y + 0.4;
+      mesh.renderOrder = 2;
+      return mesh;
+    }
+
+    function updatePointPuck() {
+      if (!pointPuck) return;
+      if (state.point == null) {
+        pointPuck.visible = false;
+        return;
+      }
+      const t = targetMap.get(`place${state.point}`);
+      if (!t) {
+        pointPuck.visible = false;
+        return;
+      }
+      const c = targetCenter(t);
+      pointPuck.position.set(c.x, FELT_Y + 2.2, c.z - t.height * 0.28);
+      pointPuck.visible = true;
+    }
+
+    function flashTarget(key, kind) {
+      const t = targetMap.get(key);
+      if (!t || !highlightGroup) return;
+      const c = targetCenter(t);
+      const mat = new THREE.MeshBasicMaterial({
+        color: kind === 'win' ? 0x71d189 : 0xf26e89,
+        transparent: true,
+        opacity: 0.4,
+        depthWrite: false
+      });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(t.width * 0.92, t.height * 0.92), mat);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(c.x, FELT_Y + 1.4, c.z);
+      highlightGroup.add(mesh);
+      const start = performance.now();
+      const tick = (now) => {
+        const u = (now - start) / 700;
+        if (u >= 1) {
+          highlightGroup.remove(mesh);
+          mat.dispose();
+          mesh.geometry.dispose();
+          return;
+        }
+        mat.opacity = 0.45 * (1 - u) * (0.6 + 0.4 * Math.sin(u * Math.PI * 4));
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    // ——— camera ———
+    function lookPointFromRig(position, baseLookAt, yaw, pitch, target = _lookResult) {
+      const dist = position.distanceTo(baseLookAt);
+      _lookForward.copy(baseLookAt).sub(position).normalize();
+      _yawQuat.setFromAxisAngle(Y_AXIS, yaw);
+      target.copy(_lookForward).applyQuaternion(_yawQuat);
+      _lookRight.crossVectors(Y_AXIS, target);
+      if (_lookRight.lengthSq() < 1e-8) _lookRight.set(1, 0, 0);
+      else _lookRight.normalize();
+      _pitchQuat.setFromAxisAngle(_lookRight, pitch);
+      target.applyQuaternion(_pitchQuat);
+      return target.multiplyScalar(dist).add(position);
+    }
+
+    function applyCameraRig(force = false) {
+      if (!camera) return;
+      const k = force ? 1 : CAMERA_LIMITS.damp;
+      cameraRig.targetYaw = THREE.MathUtils.clamp(cameraRig.targetYaw, CAMERA_LIMITS.minYaw, CAMERA_LIMITS.maxYaw);
+      cameraRig.targetPitch = THREE.MathUtils.clamp(cameraRig.targetPitch, CAMERA_LIMITS.minPitch, CAMERA_LIMITS.maxPitch);
+      cameraRig.targetFov = THREE.MathUtils.clamp(cameraRig.targetFov, CAMERA_LIMITS.minFov, CAMERA_LIMITS.maxFov);
+      cameraRig.yaw += (cameraRig.targetYaw - cameraRig.yaw) * k;
+      cameraRig.pitch += (cameraRig.targetPitch - cameraRig.pitch) * k;
+      cameraRig.fov += (cameraRig.targetFov - cameraRig.fov) * k;
+      camera.position.copy(cameraRig.position);
+      if (impactShake > 0.001) {
+        const s = impactShake;
+        camera.position.x += (Math.random() - 0.5) * 10 * s;
+        camera.position.y += (Math.random() - 0.5) * 6 * s;
+        camera.position.z += (Math.random() - 0.5) * 8 * s;
+        impactShake *= force ? 0 : 0.86;
+      } else {
+        impactShake = 0;
+      }
+      camera.lookAt(lookPointFromRig(cameraRig.position, cameraRig.baseLookAt, cameraRig.yaw, cameraRig.pitch));
+      const prevFov = camera.fov;
+      camera.fov = cameraRig.fov;
+      if (force || Math.abs(prevFov - cameraRig.fov) > 0.01) {
+        camera.updateProjectionMatrix();
+      }
+    }
+
+    function panDragScale() {
+      return THREE.MathUtils.clamp(cameraRig.fov / 34, 0.38, 1);
+    }
+
+    function beginCameraDrag(event) {
+      cameraDrag = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+      cameraDragMoved = false;
+      els.board3d.style.cursor = 'grabbing';
+      try { renderer.domElement.setPointerCapture(event.pointerId); } catch (_) { /* ignore */ }
+    }
+
+    function endCameraDrag(event) {
+      if (!cameraDrag) return;
+      if (event && renderer.domElement.hasPointerCapture?.(cameraDrag.pointerId)) {
+        try { renderer.domElement.releasePointerCapture(cameraDrag.pointerId); } catch (_) { /* ignore */ }
+      }
+      cameraDrag = null;
+      els.board3d.style.cursor = 'grab';
+    }
+
+    function moveCameraDrag(event) {
+      if (!cameraDrag) return;
+      const dx = event.clientX - cameraDrag.x;
+      const dy = event.clientY - cameraDrag.y;
+      if (dx || dy) cameraDragMoved = true;
+      cameraDrag.x = event.clientX;
+      cameraDrag.y = event.clientY;
+      const panScale = panDragScale();
+      cameraRig.targetYaw = THREE.MathUtils.clamp(
+        cameraRig.targetYaw + dx * CAMERA_LIMITS.panYaw * panScale,
+        CAMERA_LIMITS.minYaw,
+        CAMERA_LIMITS.maxYaw
+      );
+      cameraRig.targetPitch = THREE.MathUtils.clamp(
+        cameraRig.targetPitch - dy * CAMERA_LIMITS.panPitch * panScale,
+        CAMERA_LIMITS.minPitch,
+        CAMERA_LIMITS.maxPitch
+      );
+      // Snappy while dragging — same feel as roulette
+      cameraRig.yaw = cameraRig.targetYaw;
+      cameraRig.pitch = cameraRig.targetPitch;
+    }
+
+    function syncViewport() {
+      if (!renderer || !camera || !els.board3d) return;
+      const w = els.board3d.clientWidth;
+      const h = els.board3d.clientHeight;
+      if (w < 2 || h < 2) return;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+
+    // ——— game logic ———
+    function takeGrillTips() {
+      const tips = Math.max(0, Math.round(Number(localStorage.getItem(GRILL_TIPS_KEY) || 0)));
+      if (tips > 0) localStorage.setItem(GRILL_TIPS_KEY, '0');
+      return tips;
+    }
+
+    function totalAtRisk() {
+      let n = 0;
+      for (const v of Object.values(state.bets)) n += v;
+      for (const v of Object.values(state.comePoints)) n += v;
+      for (const v of Object.values(state.dontComePoints)) n += v;
+      return n;
+    }
+
+    function maxPassOdds() {
+      if (!state.point || state.bets.pass <= 0) return 0;
+      const mult = state.point === 4 || state.point === 10 ? 3
+        : state.point === 5 || state.point === 9 ? 4 : 5;
+      return state.bets.pass * mult;
+    }
+
+    function oddsPayout(point, amount) {
+      if (point === 4 || point === 10) return amount * 2;
+      if (point === 5 || point === 9) return Math.floor(amount * 3 / 2);
+      return Math.floor(amount * 6 / 5);
+    }
+
+    function placePayout(num, amount) {
+      if (num === 4 || num === 10) return Math.floor(amount * 9 / 5);
+      if (num === 5 || num === 9) return Math.floor(amount * 7 / 5);
+      return Math.floor(amount * 7 / 6);
+    }
+
+    function hardPayout(num, amount) {
+      return (num === 6 || num === 8) ? amount * 9 : amount * 7;
+    }
+
+    function isHard(d1, d2, total) {
+      return d1 === d2 && (total === 4 || total === 6 || total === 8 || total === 10);
+    }
+
+    function showToast(msg, kind = '') {
+      els.toast.textContent = msg;
+      els.toast.className = 'toast show' + (kind ? ` ${kind}` : '');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { els.toast.className = 'toast'; }, 2200);
+    }
+
+    function totalOneRollBets() {
+      return state.bets.field + state.bets.any7 + state.bets.anyCraps +
+        state.bets.horn2 + state.bets.horn3 + state.bets.horn11 + state.bets.horn12;
+    }
+
+    function hasWorkingBets() {
+      if (PLACE_NUMS.some((n) => state.bets[`place${n}`] > 0)) return true;
+      if (state.bets.big6 > 0 || state.bets.big8 > 0) return true;
+      if (['hard4', 'hard6', 'hard8', 'hard10'].some((k) => state.bets[k] > 0)) return true;
+      if (PLACE_NUMS.some((n) => state.comePoints[n] > 0 || state.dontComePoints[n] > 0)) return true;
+      return false;
+    }
+
+    const DICE_TOTALS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const DICE_WAYS = [1, 2, 3, 4, 5, 6, 5, 4, 3, 2, 1];
+    let statsOpen = false;
+
+    function isZeroPayout(value) {
+      return Math.abs(value) < 1e-9;
+    }
+
+    function payoutResult(value) {
+      if (isZeroPayout(value)) return 'even';
+      if (value > 0) return 'win';
+      return 'loss';
+    }
+
+    function gameSnapshot() {
+      return {
+        point: state.point,
+        bets: { ...state.bets },
+        comePoints: { ...state.comePoints },
+        dontComePoints: { ...state.dontComePoints }
+      };
+    }
+
+    function netSettleHorn(total, b) {
+      let net = 0;
+      for (const [key, target] of Object.entries(HORN)) {
+        const amt = b[key];
+        if (!amt) continue;
+        net += total === target ? amt * HORN_PAY[key] : -amt;
+      }
+      return net;
+    }
+
+    function netSettleOneRoll(total, d1, d2, b) {
+      let net = 0;
+      if (b.field > 0) {
+        net += FIELD_WIN.has(total)
+          ? (FIELD_DOUBLE.has(total) ? b.field * 2 : b.field)
+          : -b.field;
+      }
+      if (b.any7 > 0) net += total === 7 ? b.any7 * 4 : -b.any7;
+      if (b.anyCraps > 0) {
+        net += (total === 2 || total === 3 || total === 12) ? b.anyCraps * 7 : -b.anyCraps;
+      }
+      net += netSettleHorn(total, b);
+      for (const num of [4, 6, 8, 10]) {
+        const amt = b[`hard${num}`];
+        if (!amt) continue;
+        if (total === 7) net -= amt;
+        else if (total === num) net += isHard(d1, d2, total) ? hardPayout(num, amt) : -amt;
+      }
+      return net;
+    }
+
+    function netSettleComePoints(total, snap) {
+      let net = 0;
+      for (const n of PLACE_NUMS) {
+        const comeAmt = snap.comePoints[n];
+        if (comeAmt > 0) {
+          if (total === 7) net -= comeAmt;
+          else if (total === n) net += comeAmt;
+        }
+        const dontAmt = snap.dontComePoints[n];
+        if (dontAmt > 0) {
+          if (total === 7) net += dontAmt;
+          else if (total === n) net -= dontAmt;
+        }
+      }
+      return net;
+    }
+
+    function netSettlePlaceAndBig(total, snap) {
+      if (snap.point == null) return 0;
+      let net = 0;
+      const b = snap.bets;
+      for (const n of PLACE_NUMS) {
+        const amt = b[`place${n}`];
+        if (!amt) continue;
+        if (total === 7) net -= amt;
+        else if (total === n) net += placePayout(n, amt);
+      }
+      for (const [key, num] of [['big6', 6], ['big8', 8]]) {
+        const amt = b[key];
+        if (!amt) continue;
+        if (total === 7) net -= amt;
+        else if (total === num) net += amt;
+      }
+      return net;
+    }
+
+    function netForRoll(d1, d2, snap) {
+      const total = d1 + d2;
+      const b = snap.bets;
+      const comeOut = snap.point == null;
+      let net = netSettleOneRoll(total, d1, d2, b) + netSettleComePoints(total, snap);
+
+      if (comeOut) {
+        if (total === 7 || total === 11) {
+          if (b.pass > 0) net += b.pass;
+          if (b.dontPass > 0) net -= b.dontPass;
+        } else if (total === 2 || total === 3) {
+          if (b.pass > 0) net -= b.pass;
+          if (b.dontPass > 0) net += b.dontPass;
+        } else if (total === 12) {
+          if (b.pass > 0) net -= b.pass;
+        }
+      } else {
+        net += netSettlePlaceAndBig(total, snap);
+
+        if (b.come > 0) {
+          if (total === 7 || total === 11) net += b.come;
+          else if (total === 2 || total === 3 || total === 12) net -= b.come;
+        }
+        if (b.dontCome > 0) {
+          if (total === 7 || total === 11) net -= b.dontCome;
+          else if (total === 2 || total === 3) net += b.dontCome;
+        }
+
+        if (total === 7) {
+          if (b.pass > 0) net -= b.pass;
+          if (b.passOdds > 0) net -= b.passOdds;
+          if (b.dontPass > 0) net += b.dontPass;
+        } else if (total === snap.point) {
+          if (b.pass > 0) net += b.pass;
+          if (b.passOdds > 0) net += oddsPayout(snap.point, b.passOdds);
+          if (b.dontPass > 0) net -= b.dontPass;
+        }
+      }
+      return net;
+    }
+
+    function calcNextRollMetrics() {
+      const snap = gameSnapshot();
+      const atRisk = totalAtRisk();
+      const allProfits = [];
+      const profitByTotal = Object.fromEntries(DICE_TOTALS.map((t) => [t, []]));
+
+      for (let d1 = 1; d1 <= 6; d1++) {
+        for (let d2 = 1; d2 <= 6; d2++) {
+          const net = netForRoll(d1, d2, snap);
+          const total = d1 + d2;
+          allProfits.push(net);
+          profitByTotal[total].push(net);
+        }
+      }
+
+      const profits = DICE_TOTALS.map((t) => {
+        const arr = profitByTotal[t];
+        return arr.reduce((a, b) => a + b, 0) / arr.length;
+      });
+
+      if (!atRisk) {
+        return {
+          atRisk: 0,
+          labels: DICE_TOTALS.map(String),
+          profits,
+          winProb: 0,
+          evenProb: 1,
+          lossProb: 0,
+          ev: 0,
+          maxProfit: 0,
+          minProfit: 0
+        };
+      }
+
+      let win = 0;
+      let loss = 0;
+      let even = 0;
+      for (const net of allProfits) {
+        const result = payoutResult(net);
+        if (result === 'win') win++;
+        else if (result === 'loss') loss++;
+        else even++;
+      }
+
+      const ev = DICE_TOTALS.reduce((sum, t, i) => sum + profits[i] * DICE_WAYS[i], 0) / 36;
+      return {
+        atRisk,
+        labels: DICE_TOTALS.map(String),
+        profits,
+        winProb: win / 36,
+        evenProb: even / 36,
+        lossProb: loss / 36,
+        ev,
+        maxProfit: Math.max(...allProfits),
+        minProfit: Math.min(...allProfits)
+      };
+    }
+
+    function statClass(v) {
+      return v > 0 ? 'positive' : v < 0 ? 'negative' : 'neutral';
+    }
+
+    function ensureChart() {
+      if (payoutChart || typeof Chart === 'undefined') return;
+      payoutChart = new Chart(document.getElementById('payoutChart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: DICE_TOTALS.map(String),
+          datasets: [{
+            label: 'Net profit',
+            data: [],
+            borderColor: '#efbb49',
+            backgroundColor: 'rgba(239,187,73,0.12)',
+            fill: true,
+            tension: 0.22,
+            pointRadius: 3,
+            pointHoverRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              title: { display: true, text: 'Dice total', color: '#c8ddd4' },
+              ticks: { color: '#8aa89a', maxRotation: 0 },
+              grid: { color: 'rgba(255,255,255,0.08)' }
+            },
+            y: {
+              title: { display: true, text: 'Avg net profit ($)', color: '#c8ddd4' },
+              ticks: { color: '#8aa89a' },
+              grid: { color: 'rgba(255,255,255,0.08)' }
+            }
+          }
+        }
+      });
+      const wrap = document.querySelector('.analytics-dock .chart-wrap');
+      if (wrap) new ResizeObserver(() => payoutChart?.resize()).observe(wrap);
+    }
+
+    function updateStats() {
+      if (!statsOpen) return;
+      ensureChart();
+      const m = calcNextRollMetrics();
+      const pct = (p) => `${(p * 100).toFixed(1)}%`;
+
+      els.scoreWin.textContent = pct(m.winProb);
+      els.scoreEven.textContent = pct(m.evenProb);
+      els.scoreLoss.textContent = pct(m.lossProb);
+      els.scoreEv.textContent = formatMoney(m.ev);
+      els.scoreEv.className = `value ${statClass(m.ev)}`;
+      els.scoreMax.textContent = formatMoney(m.maxProfit);
+      els.scoreMin.textContent = formatMoney(m.minProfit);
+
+      if (m.atRisk <= 0) {
+        els.statsNote.textContent = 'No chips on the table — place bets to see next-roll odds and payout curve.';
+      } else if (state.point == null) {
+        els.statsNote.textContent = 'Expected profit weights each dice total by its ways to roll (1 way for 2/12, 6 for 7, etc.).';
+      } else {
+        els.statsNote.textContent = `Next roll with point ${state.point}. Expected profit is probability-weighted across all 36 combinations.`;
+      }
+
+      if (!payoutChart) return;
+      const primary = '#efbb49';
+      const success = '#71d189';
+      payoutChart.data.labels = m.labels;
+      payoutChart.data.datasets[0].data = m.profits;
+      payoutChart.data.datasets[0].pointBackgroundColor = m.profits.map((p) =>
+        p > 0 ? `${success}cc` : p < 0 ? '#f26e89aa' : `${primary}44`
+      );
+      payoutChart.update('none');
+    }
+
+    function setStatsOpen(open) {
+      statsOpen = open;
+      els.stage.classList.toggle('stats-open', open);
+      els.statsToggle.classList.toggle('active', open);
+      els.statsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {
+        ensureChart();
+        updateStats();
+        syncViewport();
+        requestAnimationFrame(() => {
+          payoutChart?.resize();
+          syncViewport();
+        });
+      }
+    }
+
+    function updateUI() {
+      const comeOut = state.point == null;
+      els.phaseLabel.textContent = comeOut ? 'Come-out' : `Point ${state.point}`;
+      els.purseEl.textContent = purseFmt.format(state.purse);
+      els.atRiskEl.textContent = `At risk ${purseFmt.format(totalAtRisk())}`;
+      els.lastRollLabel.innerHTML = `Last: <strong>${state.lastDice[0] + state.lastDice[1]}</strong> (${state.lastDice[0]}+${state.lastDice[1]})`;
+      els.rollBtn.disabled = state.rolling || (!throwCtrl.charging && !canThrow());
+      els.clearBtn.disabled = state.rolling || throwCtrl.charging;
+      if (comeOut) {
+        els.statusMsg.textContent = state.bets.pass || state.bets.dontPass
+          ? 'Come-out roll. Aim with arrows, hold Space to charge, release to throw.'
+          : 'Tap the felt to place a Pass or Don\'t Pass bet, then throw.';
+      } else {
+        els.statusMsg.textContent = `Point is ${state.point}. Odds and Come are open. Hit the point before 7.`;
+      }
+      updatePointPuck();
+      updateStats();
+      updateThrowMeter();
+      updateAimArrow();
+    }
+
+    function canPlace(key) {
+      if (state.rolling) return false;
+      const comeOut = state.point == null;
+      if (key === 'passOdds') return !comeOut && state.bets.pass > 0;
+      if (key === 'come' || key === 'dontCome') return !comeOut;
+      if (key === 'pass') return comeOut || state.bets.pass === 0;
+      if (key === 'dontPass') return comeOut || state.bets.dontPass === 0;
+      return true;
+    }
+
+    function placeChip(key) {
+      if (!canPlace(key)) {
+        if (key === 'passOdds') showToast('Odds open after a Pass point is set');
+        else if (key === 'come' || key === 'dontCome') showToast('Come bets open after the point');
+        else if (key === 'pass' || key === 'dontPass') showToast('Line bet is locked for this point');
+        return;
+      }
+      if (state.purse < state.chip) {
+        showToast('Not enough in your purse', 'lose');
+        return;
+      }
+      if (key === 'passOdds') {
+        const room = maxPassOdds() - state.bets.passOdds;
+        if (room <= 0) {
+          showToast(`Odds maxed at ${purseFmt.format(maxPassOdds())}`);
+          return;
+        }
+        const add = Math.min(state.chip, room, state.purse);
+        state.purse -= add;
+        state.bets.passOdds += add;
+        renderChips(key);
+        updateUI();
+        return;
+      }
+      if (state.point == null) {
+        if (key === 'pass' && state.bets.dontPass > 0) {
+          showToast('Clear Don\'t Pass first');
+          return;
+        }
+        if (key === 'dontPass' && state.bets.pass > 0) {
+          showToast('Clear Pass first');
+          return;
+        }
+      }
+      state.purse -= state.chip;
+      state.bets[key] += state.chip;
+      renderChips(key);
+      updateUI();
+    }
+
+    function clearBets() {
+      if (state.rolling) return;
+      const refundKeys = [
+        'field', 'any7', 'anyCraps', 'big6', 'big8',
+        'place4', 'place5', 'place6', 'place8', 'place9', 'place10',
+        'hard4', 'hard6', 'hard8', 'hard10',
+        'horn2', 'horn3', 'horn11', 'horn12',
+        'come', 'dontCome', 'passOdds'
+      ];
+      if (state.point == null) refundKeys.push('pass', 'dontPass');
+      let refund = 0;
+      for (const key of refundKeys) {
+        refund += state.bets[key];
+        state.bets[key] = 0;
+      }
+      state.purse += refund;
+      if (refund > 0) showToast(`Cleared ${purseFmt.format(refund)}`);
+      else showToast(state.point ? 'Line bets stay until the point resolves' : 'Nothing to clear');
+      renderChips();
+      updateUI();
+    }
+
+    function settleHorn(total) {
+      let net = 0;
+      for (const [key, target] of Object.entries(HORN)) {
+        const amt = state.bets[key];
+        if (!amt) continue;
+        if (total === target) {
+          const win = amt * HORN_PAY[key];
+          net += win;
+          state.purse += amt + win;
+          flashTarget(key, 'win');
+        } else {
+          net -= amt;
+          flashTarget(key, 'lose');
+        }
+        state.bets[key] = 0;
+      }
+      return net;
+    }
+
+    function settleOneRoll(total, d1, d2) {
+      let net = 0;
+      if (state.bets.field > 0) {
+        const amt = state.bets.field;
+        if (FIELD_WIN.has(total)) {
+          const win = FIELD_DOUBLE.has(total) ? amt * 2 : amt;
+          net += win;
+          state.purse += amt + win;
+          flashTarget('field', 'win');
+        } else {
+          net -= amt;
+          flashTarget('field', 'lose');
+        }
+        state.bets.field = 0;
+      }
+      if (state.bets.any7 > 0) {
+        const amt = state.bets.any7;
+        if (total === 7) {
+          const win = amt * 4;
+          net += win;
+          state.purse += amt + win;
+          flashTarget('any7', 'win');
+        } else {
+          net -= amt;
+          flashTarget('any7', 'lose');
+        }
+        state.bets.any7 = 0;
+      }
+      if (state.bets.anyCraps > 0) {
+        const amt = state.bets.anyCraps;
+        if (total === 2 || total === 3 || total === 12) {
+          const win = amt * 7;
+          net += win;
+          state.purse += amt + win;
+          flashTarget('anyCraps', 'win');
+        } else {
+          net -= amt;
+          flashTarget('anyCraps', 'lose');
+        }
+        state.bets.anyCraps = 0;
+      }
+      net += settleHorn(total);
+      for (const num of [4, 6, 8, 10]) {
+        const key = `hard${num}`;
+        const amt = state.bets[key];
+        if (!amt) continue;
+        if (total === 7) {
+          net -= amt;
+          flashTarget(key, 'lose');
+          state.bets[key] = 0;
+        } else if (total === num) {
+          if (isHard(d1, d2, total)) {
+            const win = hardPayout(num, amt);
+            net += win;
+            state.purse += amt + win;
+            flashTarget(key, 'win');
+          } else {
+            net -= amt;
+            flashTarget(key, 'lose');
+          }
+          state.bets[key] = 0;
+        }
+      }
+      return net;
+    }
+
+    function settlePlaceAndBig(total) {
+      let net = 0;
+      if (state.point == null) return 0;
+      for (const n of PLACE_NUMS) {
+        const key = `place${n}`;
+        const amt = state.bets[key];
+        if (!amt) continue;
+        if (total === 7) {
+          net -= amt;
+          flashTarget(key, 'lose');
+          state.bets[key] = 0;
+        } else if (total === n) {
+          const win = placePayout(n, amt);
+          net += win;
+          state.purse += win;
+          flashTarget(key, 'win');
+        }
+      }
+      for (const [key, num] of [['big6', 6], ['big8', 8]]) {
+        const amt = state.bets[key];
+        if (!amt) continue;
+        if (total === 7) {
+          net -= amt;
+          flashTarget(key, 'lose');
+          state.bets[key] = 0;
+        } else if (total === num) {
+          net += amt;
+          state.purse += amt;
+          flashTarget(key, 'win');
+        }
+      }
+      return net;
+    }
+
+    function settleComePoints(total) {
+      let net = 0;
+      for (const n of PLACE_NUMS) {
+        if (state.comePoints[n] > 0) {
+          const amt = state.comePoints[n];
+          if (total === 7) {
+            net -= amt;
+            state.comePoints[n] = 0;
+            flashTarget(`place${n}`, 'lose');
+          } else if (total === n) {
+            net += amt;
+            state.purse += amt + amt;
+            state.comePoints[n] = 0;
+            flashTarget(`place${n}`, 'win');
+          }
+        }
+        if (state.dontComePoints[n] > 0) {
+          const amt = state.dontComePoints[n];
+          if (total === 7) {
+            net += amt;
+            state.purse += amt + amt;
+            state.dontComePoints[n] = 0;
+            flashTarget(`place${n}`, 'win');
+          } else if (total === n) {
+            net -= amt;
+            state.dontComePoints[n] = 0;
+            flashTarget(`place${n}`, 'lose');
+          }
+        }
+      }
+      return net;
+    }
+
+    function resolveRoll(d1, d2) {
+      const total = d1 + d2;
+      state.lastDice = [d1, d2];
+      let net = 0;
+      let note = '';
+      const comeOut = state.point == null;
+
+      net += settleOneRoll(total, d1, d2);
+      net += settleComePoints(total);
+
+      if (comeOut) {
+        if (total === 7 || total === 11) {
+          if (state.bets.pass > 0) {
+            const amt = state.bets.pass;
+            net += amt;
+            state.purse += amt + amt;
+            flashTarget('pass', 'win');
+            state.bets.pass = 0;
+          }
+          if (state.bets.dontPass > 0) {
+            net -= state.bets.dontPass;
+            flashTarget('dontPass', 'lose');
+            state.bets.dontPass = 0;
+          }
+        } else if (total === 2 || total === 3) {
+          if (state.bets.pass > 0) {
+            net -= state.bets.pass;
+            flashTarget('pass', 'lose');
+            state.bets.pass = 0;
+          }
+          if (state.bets.dontPass > 0) {
+            const amt = state.bets.dontPass;
+            net += amt;
+            state.purse += amt + amt;
+            flashTarget('dontPass', 'win');
+            state.bets.dontPass = 0;
+          }
+        } else if (total === 12) {
+          if (state.bets.pass > 0) {
+            net -= state.bets.pass;
+            flashTarget('pass', 'lose');
+            state.bets.pass = 0;
+          }
+          if (state.bets.dontPass > 0) {
+            state.purse += state.bets.dontPass;
+            state.bets.dontPass = 0;
+            note = "Don't Pass pushes on 12";
+          }
+        } else if (PLACE_NUMS.includes(total)) {
+          state.point = total;
+          note = `Point is ${total}`;
+        }
+      } else {
+        net += settlePlaceAndBig(total);
+
+        if (state.bets.come > 0) {
+          const amt = state.bets.come;
+          if (total === 7 || total === 11) {
+            net += amt;
+            state.purse += amt + amt;
+            flashTarget('come', 'win');
+            state.bets.come = 0;
+          } else if (total === 2 || total === 3 || total === 12) {
+            net -= amt;
+            flashTarget('come', 'lose');
+            state.bets.come = 0;
+          } else if (PLACE_NUMS.includes(total)) {
+            state.comePoints[total] += amt;
+            state.bets.come = 0;
+          }
+        }
+
+        if (state.bets.dontCome > 0) {
+          const amt = state.bets.dontCome;
+          if (total === 7 || total === 11) {
+            net -= amt;
+            flashTarget('dontCome', 'lose');
+            state.bets.dontCome = 0;
+          } else if (total === 2 || total === 3) {
+            net += amt;
+            state.purse += amt + amt;
+            flashTarget('dontCome', 'win');
+            state.bets.dontCome = 0;
+          } else if (total === 12) {
+            state.purse += amt;
+            state.bets.dontCome = 0;
+          } else if (PLACE_NUMS.includes(total)) {
+            state.dontComePoints[total] += amt;
+            state.bets.dontCome = 0;
+          }
+        }
+
+        if (total === 7) {
+          if (state.bets.pass > 0) {
+            net -= state.bets.pass;
+            flashTarget('pass', 'lose');
+            state.bets.pass = 0;
+          }
+          if (state.bets.passOdds > 0) {
+            net -= state.bets.passOdds;
+            flashTarget('passOdds', 'lose');
+            state.bets.passOdds = 0;
+          }
+          if (state.bets.dontPass > 0) {
+            const amt = state.bets.dontPass;
+            net += amt;
+            state.purse += amt + amt;
+            flashTarget('dontPass', 'win');
+            state.bets.dontPass = 0;
+          }
+          state.point = null;
+        } else if (total === state.point) {
+          if (state.bets.pass > 0) {
+            const amt = state.bets.pass;
+            net += amt;
+            state.purse += amt + amt;
+            flashTarget('pass', 'win');
+            state.bets.pass = 0;
+          }
+          if (state.bets.passOdds > 0) {
+            const amt = state.bets.passOdds;
+            const win = oddsPayout(state.point, amt);
+            net += win;
+            state.purse += amt + win;
+            flashTarget('passOdds', 'win');
+            state.bets.passOdds = 0;
+          }
+          if (state.bets.dontPass > 0) {
+            net -= state.bets.dontPass;
+            flashTarget('dontPass', 'lose');
+            state.bets.dontPass = 0;
+          }
+          state.point = null;
+        }
+      }
+
+      if (net > 0) showToast(note ? `${note} · won ${purseFmt.format(net)}` : `Won ${purseFmt.format(net)}`, 'win');
+      else if (net < 0) showToast(note ? `${note} · lost ${purseFmt.format(Math.abs(net))}` : `Lost ${purseFmt.format(Math.abs(net))}`, 'lose');
+      else if (note) showToast(note);
+      else showToast('No decision');
+
+      if (state.purse <= 0 && totalAtRisk() <= 0) {
+        state.purse = 100;
+        showToast('House floated you another $100', 'win');
+      }
+      renderChips();
+      updateUI();
+    }
+
+    function rollDice() {
+      // Convenience: tap without hold fires a medium throw
+      if (state.rolling || throwCtrl.charging) return;
+      if (!canThrow()) {
+        showToast('Need a line bet on the come-out');
+        return;
+      }
+      launchDice(0.55);
+    }
+
+    // ——— pointer / raycast ———
+    function setPointerFromEvent(event) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    function raycastTarget() {
+      raycaster.setFromCamera(pointer, camera);
+      if (!raycaster.ray.intersectPlane(feltPlane, planeHit)) return null;
+      const boardX = planeHit.x + BOARD_W / 2;
+      const boardY = planeHit.z + BOARD_H / 2;
+      let best = null;
+      let bestArea = Infinity;
+      for (const t of targets) {
+        if (boardX < t.x || boardX > t.x + t.width) continue;
+        if (boardY < t.y || boardY > t.y + t.height) continue;
+        const area = t.width * t.height;
+        if (area < bestArea) {
+          bestArea = area;
+          best = t;
+        }
+      }
+      return best;
+    }
+
+    function onPointerDown(event) {
+      cameraDragMoved = false;
+      if (event.button === 2 || event.button === 1 || event.shiftKey || event.altKey) {
+        beginCameraDrag(event);
+        event.preventDefault();
+        return;
+      }
+      if (event.button !== 0) return;
+      leftPointer = { active: true, x: event.clientX, y: event.clientY, moved: false };
+    }
+
+    function onPointerMove(event) {
+      if (cameraDrag) {
+        moveCameraDrag(event);
+        event.preventDefault();
+        return;
+      }
+      if (leftPointer.active) {
+        const dx = event.clientX - leftPointer.x;
+        const dy = event.clientY - leftPointer.y;
+        if (Math.hypot(dx, dy) > 6) {
+          leftPointer.moved = true;
+          beginCameraDrag({ clientX: leftPointer.x, clientY: leftPointer.y, pointerId: event.pointerId });
+          moveCameraDrag(event);
+          event.preventDefault();
+        }
+      }
+    }
+
+    function onPointerUp(event) {
+      const wasDragging = Boolean(cameraDrag);
+      const dragged = cameraDragMoved;
+      endCameraDrag(event);
+      if (event.button !== 0) return;
+      const shouldPlace = leftPointer.active && !leftPointer.moved && !wasDragging && !dragged && !state.rolling;
+      leftPointer.active = false;
+      leftPointer.moved = false;
+      cameraDragMoved = false;
+      if (!shouldPlace) return;
+      setPointerFromEvent(event);
+      const target = raycastTarget();
+      if (target) placeChip(target.key);
+    }
+
+    // ——— init three ———
+    function initThree() {
+      raycaster = new THREE.Raycaster();
+      pointer = new THREE.Vector2();
+      feltPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -FELT_Y);
+      planeHit = new THREE.Vector3();
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b3d28);
+
+      camera = new THREE.PerspectiveCamera(32, 1, 1, 4000);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer.setClearColor(0x0b3d28, 1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.05;
+      els.board3d.appendChild(renderer.domElement);
+
+      scene.add(new THREE.HemisphereLight(0xdde8e0, 0x1a1008, 0.5));
+      scene.add(new THREE.AmbientLight(0xfff0d0, 0.24));
+      const key = new THREE.DirectionalLight(0xfff0d4, 1.15);
+      key.position.set(160, 640, 240);
+      scene.add(key);
+      const fill = new THREE.DirectionalLight(0xa8c4b0, 0.4);
+      fill.position.set(-240, 360, -140);
+      scene.add(fill);
+
+      tableGroup = new THREE.Group();
+      scene.add(tableGroup);
+      buildTableShell(tableGroup);
+
+      const feltCanvas = drawFelt();
+      boardTexture = new THREE.CanvasTexture(feltCanvas);
+      boardTexture.colorSpace = THREE.SRGBColorSpace;
+      boardTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+      feltMesh = createFeltMesh(boardTexture);
+      tableGroup.add(feltMesh);
+
+      // Inner cutout over rail: dark green under-felt rim already via apron
+      chipGroup = new THREE.Group();
+      tableGroup.add(chipGroup);
+      highlightGroup = new THREE.Group();
+      tableGroup.add(highlightGroup);
+      diceGroup = new THREE.Group();
+      tableGroup.add(diceGroup);
+
+      dieMeshes = [createDieMesh(), createDieMesh()];
+      dieMeshes.forEach((m) => diceGroup.add(m));
+      resetDiceToHand();
+
+      aimArrow = buildAimArrow();
+      tableGroup.add(aimArrow);
+      updateAimArrow();
+
+      const puckMat = new THREE.MeshStandardMaterial({ color: 0xd0a23a, roughness: 0.35, metalness: 0.25 });
+      pointPuck = new THREE.Mesh(new THREE.CylinderGeometry(16, 16, 4, 28), puckMat);
+      const puckLabel = makeOnPuckTexture();
+      const puckTop = new THREE.Mesh(
+        new THREE.CircleGeometry(15.2, 28),
+        new THREE.MeshStandardMaterial({ map: puckLabel, roughness: 0.4, metalness: 0.1 })
+      );
+      puckTop.rotation.x = -Math.PI / 2;
+      puckTop.position.y = 2.1;
+      pointPuck.add(puckTop);
+      pointPuck.visible = false;
+      tableGroup.add(pointPuck);
+
+      applyCameraRig(true);
+      syncViewport();
+      new ResizeObserver(syncViewport).observe(els.board3d);
+      window.addEventListener('resize', syncViewport, { passive: true });
+
+      renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+      renderer.domElement.addEventListener('pointerdown', onPointerDown);
+      renderer.domElement.addEventListener('pointermove', onPointerMove);
+      renderer.domElement.addEventListener('pointerup', onPointerUp);
+      renderer.domElement.addEventListener('pointercancel', onPointerUp);
+      els.board3d.style.cursor = 'grab';
+      renderer.domElement.addEventListener('pointerleave', (e) => {
+        endCameraDrag(e);
+        leftPointer.active = false;
+      });
+      renderer.domElement.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        cameraRig.targetFov = THREE.MathUtils.clamp(
+          cameraRig.targetFov + e.deltaY * 0.02,
+          CAMERA_LIMITS.minFov,
+          CAMERA_LIMITS.maxFov
+        );
+      }, { passive: false });
+
+      animate();
+    }
+
+    function makeOnPuckTexture() {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#d0a23a';
+      ctx.beginPath();
+      ctx.arc(64, 64, 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1a1307';
+      ctx.font = '900 42px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('ON', 64, 66);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+      if (!renderer || !scene || !camera) return;
+      const t = now ?? performance.now();
+      const dt = lastAnimTime ? Math.min(0.05, (t - lastAnimTime) / 1000) : 0.016;
+      lastAnimTime = t;
+      applyCameraRig(false);
+      updateChipDropAnims(t);
+      updateThrowAim(dt);
+      updateDicePhysics(dt);
+      renderer.render(scene, camera);
+    }
+
+    // ——— UI events ———
+    for (const btn of els.chipBtns) {
+      btn.addEventListener('click', () => {
+        state.chip = Number(btn.dataset.chip);
+        for (const b of els.chipBtns) b.classList.toggle('active', Number(b.dataset.chip) === state.chip);
+      });
+    }
+
+    let rollPointerCharging = false;
+    els.rollBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      rollPointerCharging = true;
+      beginCharge();
+    });
+    const endRollPointer = () => {
+      if (!rollPointerCharging) return;
+      rollPointerCharging = false;
+      releaseThrow();
+    };
+    els.rollBtn.addEventListener('pointerup', endRollPointer);
+    els.rollBtn.addEventListener('pointerleave', endRollPointer);
+    els.rollBtn.addEventListener('pointercancel', endRollPointer);
+    // Prevent click from double-firing a medium toss after hold/release
+    els.rollBtn.addEventListener('click', (e) => e.preventDefault());
+
+    els.clearBtn.addEventListener('click', clearBets);
+    els.statsToggle.addEventListener('click', () => setStatsOpen(!statsOpen));
+    els.helpBtn.addEventListener('click', () => { els.helpPanel.hidden = false; });
+    els.helpClose.addEventListener('click', () => { els.helpPanel.hidden = true; });
+    els.helpPanel.addEventListener('click', (e) => {
+      if (e.target === els.helpPanel) els.helpPanel.hidden = true;
+    });
+
+    function isAimKey(key) {
+      return key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown';
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+      if (!els.helpPanel.hidden) return;
+
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        if (!e.repeat) beginCharge();
+        return;
+      }
+      if (isAimKey(e.key)) {
+        e.preventDefault();
+        if (e.key === 'ArrowLeft') throwCtrl.keys.left = true;
+        if (e.key === 'ArrowRight') throwCtrl.keys.right = true;
+        if (e.key === 'ArrowUp') throwCtrl.keys.up = true;
+        if (e.key === 'ArrowDown') throwCtrl.keys.down = true;
+        return;
+      }
+      if (e.key === 'Escape') els.helpPanel.hidden = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        releaseThrow();
+        return;
+      }
+      if (e.key === 'ArrowLeft') throwCtrl.keys.left = false;
+      if (e.key === 'ArrowRight') throwCtrl.keys.right = false;
+      if (e.key === 'ArrowUp') throwCtrl.keys.up = false;
+      if (e.key === 'ArrowDown') throwCtrl.keys.down = false;
+    });
+
+    window.addEventListener('blur', () => {
+      throwCtrl.keys.left = throwCtrl.keys.right = throwCtrl.keys.up = throwCtrl.keys.down = false;
+      if (throwCtrl.charging) releaseThrow();
+    });
+
+    const tips = takeGrillTips();
+    if (tips > 0) {
+      state.purse += tips;
+      showToast(`Night Shift tips +${purseFmt.format(tips)}`, 'win');
+    }
+    initThree();
+    ensureChart();
+    updateUI();
+  </script>
+</body>
+</html>
