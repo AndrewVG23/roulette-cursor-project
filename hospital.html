@@ -291,7 +291,23 @@
   const GOAL_W = 18;
   const GOAL_H = 92;
   const GOAL_TOP = FLOOR_Y - GOAL_H;
+  const MOUTH_OPEN_TOP = 262;
+  const MOUTH_OPEN_BOTTOM = 342;
+  const MOUTH_PLANE_TOP_Y = 267;
+  const MOUTH_PLANE_BOTTOM_Y = 336;
+  const MOUTH_PLANE_TOP_X = GOAL_W + 8;
+  const MOUTH_PLANE_BOTTOM_X = GOAL_W + 6;
   const WIN_SCORE = 3;
+
+  function mouthPlaneX(y) {
+    const t = Math.max(0, Math.min(1, (y - MOUTH_PLANE_TOP_Y) / (MOUTH_PLANE_BOTTOM_Y - MOUTH_PLANE_TOP_Y)));
+    return MOUTH_PLANE_TOP_X + (MOUTH_PLANE_BOTTOM_X - MOUTH_PLANE_TOP_X) * t;
+  }
+
+  function ballInMouthOpening(ball) {
+    const by = FLOOR_Y + ball.y;
+    return by >= MOUTH_OPEN_TOP && by <= MOUTH_OPEN_BOTTOM;
+  }
 
   const GRAVITY = 1650;
   const SLIME_R = 34;
@@ -559,7 +575,11 @@
       ball.vy = Math.abs(ball.vy) * 0.35;
     }
 
-    const leftWall = GOAL_W + ball.r;
+    let leftWall = GOAL_W + ball.r;
+    if (ballInMouthOpening(ball)) {
+      const planeX = mouthPlaneX(FLOOR_Y + ball.y);
+      leftWall = ball.x - ball.r < planeX ? ball.r : planeX + ball.r;
+    }
     const rightWall = W - GOAL_W - ball.r;
     if (ball.x < leftWall) {
       ball.x = leftWall;
@@ -576,10 +596,13 @@
 
   function ballInGoal(side) {
     const ball = state.ball;
+    if (side === 'left') {
+      if (!ballInMouthOpening(ball)) return false;
+      return ball.x - ball.r < mouthPlaneX(FLOOR_Y + ball.y);
+    }
     const by = FLOOR_Y + ball.y;
     if (by > FLOOR_Y - 4) return false;
     if (by < GOAL_TOP + ball.r) return false;
-    if (side === 'left') return ball.x - ball.r < GOAL_W;
     return ball.x + ball.r > W - GOAL_W;
   }
 
@@ -933,6 +956,7 @@
 
     drawMouthGoal();
     drawTrashGoal();
+    drawGoalBounds();
 
     if (state.kickoffTimer > 0) {
       ctx.fillStyle = '#1878a8';
@@ -1203,6 +1227,62 @@
     ctx.translate(left + GOAL_W / 2 + 1, GOAL_TOP + GOAL_H / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('MEDS', 0, 3);
+    ctx.restore();
+  }
+
+  function drawGoalBounds() {
+    const top = GOAL_TOP;
+    const bottom = FLOOR_Y - 4;
+    const height = bottom - top;
+    const right = W - GOAL_W;
+    const pulse = state.goalFlash > 0 ? state.goalFlash * 0.35 : 0;
+
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.lineWidth = 2;
+
+    ctx.fillStyle = `rgba(255,120,140,${0.12 + pulse})`;
+    ctx.beginPath();
+    ctx.moveTo(mouthPlaneX(MOUTH_OPEN_TOP), MOUTH_OPEN_TOP);
+    for (let y = MOUTH_OPEN_TOP; y <= MOUTH_OPEN_BOTTOM; y += 3) {
+      ctx.lineTo(mouthPlaneX(y), y);
+    }
+    ctx.lineTo(0, MOUTH_OPEN_BOTTOM);
+    ctx.lineTo(0, MOUTH_OPEN_TOP);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255,138,168,${0.72 + pulse})`;
+    ctx.stroke();
+
+    ctx.setLineDash([4, 5]);
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = `rgba(255,210,220,${0.85 + pulse})`;
+    ctx.beginPath();
+    for (let y = MOUTH_OPEN_TOP; y <= MOUTH_OPEN_BOTTOM; y += 3) {
+      const x = mouthPlaneX(y);
+      if (y === MOUTH_OPEN_TOP) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    ctx.setLineDash([6, 5]);
+    ctx.lineWidth = 2;
+    ctx.fillStyle = `rgba(110,224,168,${0.12 + pulse})`;
+    ctx.fillRect(right, top, GOAL_W, height);
+    ctx.strokeStyle = `rgba(110,224,168,${0.72 + pulse})`;
+    ctx.strokeRect(right + 0.5, top + 0.5, GOAL_W - 1, height - 1);
+
+    ctx.setLineDash([4, 6]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(240,250,255,.42)';
+    ctx.beginPath();
+    ctx.moveTo(right, top);
+    ctx.lineTo(right, bottom);
+    ctx.moveTo(right, top);
+    ctx.lineTo(W, top);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
     ctx.restore();
   }
 
