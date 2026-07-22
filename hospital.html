@@ -264,7 +264,7 @@
     <div class="help-panel" id="helpPanel" hidden>
       <div><strong>A / D</strong> — slide your fingertip left and right</div>
       <div><strong>W</strong> — flick up (only from the sheets)</div>
-      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. First to 3.</div>
+      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. First to 3. Every swallow costs <strong>$100</strong> — except the red pill (1 in 4), which heals you for <strong>$1</strong>.</div>
     </div>
 
     <div class="controls">
@@ -348,6 +348,11 @@
     };
   }
 
+  function nextPillKind() {
+    state.pillSerial += 1;
+    return state.pillSerial % 4 === 0 ? 'heal' : 'standard';
+  }
+
   function resetBall(center = true) {
     return {
       x: center ? W / 2 : W / 2 + (Math.random() - 0.5) * 30,
@@ -355,7 +360,8 @@
       vx: 0,
       vy: 0,
       r: BALL_R,
-      spin: 0
+      spin: 0,
+      kind: nextPillKind()
     };
   }
 
@@ -365,13 +371,19 @@
     state.ball = resetBall();
   }
 
+  const patientMaxHp = admit?.maxHealth ?? admit?.maxHp ?? 100;
+  const patientStartHp = admit?.health ?? admit?.hp ?? patientMaxHp;
+
   const state = {
     mode: 'title',
     you: makeSlime('you'),
     cpu: makeSlime('cpu'),
-    ball: resetBall(),
+    ball: null,
     scoreYou: 0,
     scoreCpu: 0,
+    pillSerial: 0,
+    patientHp: patientStartHp,
+    patientMaxHp,
     floatText: [],
     screenShake: 0,
     goalFlash: 0,
@@ -380,6 +392,7 @@
     lastTs: 0,
     keys: { left: false, right: false, up: false }
   };
+  state.ball = resetBall();
 
   let audioCtx = null;
   function ensureAudio() {
@@ -570,21 +583,57 @@
     return ball.x + ball.r > W - GOAL_W;
   }
 
+  function healPatient() {
+    state.patientHp = state.patientMaxHp;
+    if (admit) admit.health = state.patientMaxHp;
+    if (admit && admit.from === 'drive') {
+      try {
+        const cpRaw = sessionStorage.getItem('drive-checkpoint');
+        if (cpRaw) {
+          const data = JSON.parse(cpRaw);
+          if (data.drive) {
+            data.drive.hp = data.drive.maxHp;
+            sessionStorage.setItem('drive-checkpoint', JSON.stringify(data));
+          }
+        }
+      } catch (_) { /* ignore */ }
+    }
+  }
+
   function scoreGoal(scorer) {
+    const pillKind = state.ball.kind;
     if (scorer === 'you') {
       state.scoreYou++;
       state.floatText.push({ x: W * 0.72, y: FLOOR_Y - 120, text: 'TRASHED!', life: 1.4, color: '#6ee0a8' });
+      beep(440, 0.08);
+      beep(554, 0.1);
+      beep(659, 0.14);
     } else {
       state.scoreCpu++;
-      state.floatText.push({ x: W * 0.28, y: FLOOR_Y - 120, text: 'SWALLOWED!', life: 1.4, color: '#ff8aa8' });
+      if (pillKind === 'heal') {
+        Wallet.take(1);
+        healPatient();
+        state.floatText.push({
+          x: W * 0.28, y: FLOOR_Y - 120,
+          text: '−$1 · FULL HEALTH', life: 1.6, color: '#6ee0a8'
+        });
+        beep(523, 0.08);
+        beep(659, 0.1);
+        beep(784, 0.12);
+      } else {
+        Wallet.take(100);
+        state.floatText.push({
+          x: W * 0.28, y: FLOOR_Y - 120,
+          text: '−$100', life: 1.4, color: '#ff6b6b'
+        });
+        beep(110, 0.12, 'sawtooth', 0.04);
+        beep(180, 0.08);
+      }
     }
     state.goalFlash = 0.55;
     state.screenShake = 0.45;
     resetSlimesAndBall();
     state.kickoffTimer = 1.0;
-    beep(440, 0.08);
-    beep(554, 0.1);
-    beep(659, 0.14);
     updateHUD();
     checkEnd();
   }
@@ -644,6 +693,8 @@
   function startGame() {
     state.scoreYou = 0;
     state.scoreCpu = 0;
+    state.pillSerial = 0;
+    state.patientHp = patientStartHp;
     state.floatText = [];
     state.screenShake = 0;
     state.goalFlash = 0;
@@ -723,6 +774,22 @@
       ctx.stroke();
     }
 
+    // Fluorescent panels shrinking with distance
+    ctx.fillStyle = '#f2fbff';
+    for (const [ax, ay, bx, by, cxp, cyp, dx, dy] of [
+      [58, 72, 152, 60, 142, 46, 66, 54],
+      [258, 45, 330, 37, 322, 28, 264, 34],
+      [428, 25, 470, 21, 465, 15, 432, 18]
+    ]) {
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+      ctx.lineTo(cxp, cyp);
+      ctx.lineTo(dx, dy);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     // Wall bumper rail — thick up close, thin far away
     ctx.fillStyle = 'rgba(122,152,168,.75)';
     ctx.beginPath();
@@ -748,6 +815,34 @@
     ctx.lineTo(W - 123, 146);
     ctx.stroke();
 
+    // Door at the far end — normal-size next to the doctor, selling his scale
+    ctx.fillStyle = '#8fa8b8';
+    ctx.fillRect(W - 132, FLOOR_Y - 110, 56, 110);
+    ctx.fillStyle = '#b8ccd8';
+    ctx.fillRect(W - 128, FLOOR_Y - 106, 48, 106);
+    ctx.fillStyle = '#d8e6ee';
+    ctx.fillRect(W - 120, FLOOR_Y - 98, 32, 26);
+    ctx.fillStyle = '#5a7484';
+    ctx.beginPath();
+    ctx.arc(W - 88, FLOOR_Y - 52, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wall clock, tiny with distance
+    ctx.fillStyle = '#f4f8fa';
+    ctx.beginPath();
+    ctx.arc(W - 176, 94, 6.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#5a7484';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(W - 176, 94);
+    ctx.lineTo(W - 176, 90.5);
+    ctx.moveTo(W - 176, 94);
+    ctx.lineTo(W - 173.5, 95);
+    ctx.stroke();
+
     // Small vitals monitor on the far wall
     ctx.fillStyle = '#12222c';
     ctx.fillRect(W - 218, 128, 36, 26);
@@ -771,6 +866,20 @@
     // Room floor beyond the bed (dark, bottom-right)
     ctx.fillStyle = '#2c4250';
     ctx.fillRect(0, FLOOR_Y, W, H - FLOOR_Y);
+
+    // Floor tile joints converging toward the far corner
+    ctx.strokeStyle = 'rgba(150,180,200,.16)';
+    ctx.lineWidth = 1.5;
+    for (const bx of [300, 390, 480]) {
+      ctx.beginPath();
+      ctx.moveTo(W - 26, FLOOR_Y + 6);
+      ctx.lineTo(bx, H);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(250, H - 4);
+    ctx.quadraticCurveTo(W * 0.7, FLOOR_Y + 42, W, FLOOR_Y + 24);
+    ctx.stroke();
 
     // The playing surface: the patient's blanket, huge in the foreground,
     // receding to almost nothing at the doctor's end
@@ -805,6 +914,22 @@
       ctx.quadraticCurveTo(W * 0.5, (lx + rx) / 2 + 6, W, rx);
       ctx.stroke();
     }
+
+    // Pillow corner in the extreme foreground, under the patient's jaw
+    ctx.fillStyle = '#eef2f6';
+    ctx.beginPath();
+    ctx.moveTo(0, 386);
+    ctx.quadraticCurveTo(70, 376, 104, 412);
+    ctx.quadraticCurveTo(110, 418, 108, H);
+    ctx.lineTo(0, H);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(150,168,184,.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(12, 398);
+    ctx.quadraticCurveTo(58, 392, 88, 414);
+    ctx.stroke();
 
     drawMouthGoal();
     drawTrashGoal();
@@ -1149,88 +1274,204 @@
   }
 
   function drawDoctor(slime) {
+    // A realistically proportioned doctor bent over in a goalkeeper crouch,
+    // lunging toward the field — the hunched pose fits the wide, low
+    // collision dome without breaking the physics.
     const cx = slime.x;
     const cy = slimeCenterY(slime);
-    const r = slime.r * (1 + slime.stretch * 0.12 - slime.squash * 0.18);
     const hScale = 1 + slime.stretch * 0.22 - slime.squash * 0.28;
 
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(1, hScale);
 
-    // White coat body (dome)
-    const grad = ctx.createRadialGradient(-r * 0.2, -r * 0.35, r * 0.1, 0, 0, r);
-    grad.addColorStop(0, slime.color);
-    grad.addColorStop(1, slime.dark);
-    ctx.fillStyle = grad;
+    // Back leg (further from camera, slightly darker scrubs)
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#2f6472';
+    ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.arc(0, 0, r, Math.PI, 0);
+    ctx.moveTo(13, -15);
+    ctx.quadraticCurveTo(20, -10, 24, -3);
+    ctx.stroke();
+    ctx.fillStyle = '#dfe3e8';
+    ctx.beginPath();
+    ctx.ellipse(26, -2, 6, 3, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Front leg
+    ctx.strokeStyle = '#3a7a8a';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(10, -14);
+    ctx.quadraticCurveTo(9, -8, 11, -3);
+    ctx.stroke();
+    ctx.fillStyle = '#f0f2f4';
+    ctx.beginPath();
+    ctx.ellipse(9, -2, 6, 3, -0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(90,104,116,.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(9, -2, 6, 3, -0.08, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Far arm reaching down (behind the torso)
+    ctx.strokeStyle = '#d4dae2';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-4, -22);
+    ctx.quadraticCurveTo(-12, -14, -18, -5);
+    ctx.stroke();
+    ctx.fillStyle = '#d9ad82';
+    ctx.beginPath();
+    ctx.arc(-19, -4, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Torso: white coat, back arched over like a keeper set for a save
+    const coat = ctx.createLinearGradient(0, -32, 0, -8);
+    coat.addColorStop(0, '#fbfcfe');
+    coat.addColorStop(1, '#d5dbe3');
+    ctx.fillStyle = coat;
+    ctx.beginPath();
+    ctx.moveTo(18, -12);                        // tailbone
+    ctx.quadraticCurveTo(16, -26, 2, -29);      // arched back
+    ctx.quadraticCurveTo(-7, -30, -11, -25);    // over the shoulders
+    ctx.quadraticCurveTo(-13, -18, -8, -13);    // chest drops toward the pill
+    ctx.quadraticCurveTo(2, -8, 12, -10);       // belly
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(80,96,112,.4)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(122,134,148,.55)';
+    ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Coat lapels
-    ctx.strokeStyle = '#aab4c4';
-    ctx.lineWidth = 2;
+    // Coat tail flapping behind
+    ctx.fillStyle = '#e8ecf1';
     ctx.beginPath();
-    ctx.moveTo(-r * 0.18, -r * 0.5);
-    ctx.lineTo(-r * 0.3, 0);
-    ctx.moveTo(r * 0.18, -r * 0.5);
-    ctx.lineTo(r * 0.3, 0);
-    ctx.stroke();
+    ctx.moveTo(16, -14);
+    ctx.quadraticCurveTo(23, -12, 25, -6);
+    ctx.quadraticCurveTo(19, -8, 15, -10);
+    ctx.closePath();
+    ctx.fill();
 
-    // Head
-    const headY = -r * 0.62;
+    // Scrubs at the collar
+    ctx.fillStyle = '#3a7a8a';
+    ctx.beginPath();
+    ctx.moveTo(-9, -24);
+    ctx.quadraticCurveTo(-6, -26, -3, -26.5);
+    ctx.lineTo(-4, -22);
+    ctx.quadraticCurveTo(-7, -22, -9, -24);
+    ctx.closePath();
+    ctx.fill();
+
+    // ID badge clipped to the coat
+    ctx.fillStyle = '#e8c968';
+    ctx.fillRect(-6, -20, 3.6, 4.6);
+    ctx.strokeStyle = 'rgba(90,80,40,.5)';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(-6, -20, 3.6, 4.6);
+
+    // Stethoscope hanging from the neck
+    ctx.strokeStyle = '#37424e';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(-10, -23);
+    ctx.quadraticCurveTo(-11, -16, -8, -11);
+    ctx.stroke();
+    ctx.fillStyle = '#37424e';
+    ctx.beginPath();
+    ctx.arc(-8, -10, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#aab6c2';
+    ctx.beginPath();
+    ctx.arc(-8, -10, 1.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Near arm reaching for the pill
+    ctx.strokeStyle = '#c8ced6';
+    ctx.lineWidth = 6.5;
+    ctx.beginPath();
+    ctx.moveTo(-7, -23);
+    ctx.quadraticCurveTo(-16, -18, -25, -7);
+    ctx.stroke();
+    ctx.strokeStyle = '#f4f6f8';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(-7, -23);
+    ctx.quadraticCurveTo(-16, -18, -25, -7);
+    ctx.stroke();
     ctx.fillStyle = '#e8bc90';
     ctx.beginPath();
-    ctx.arc(0, headY, r * 0.34, 0, Math.PI * 2);
+    ctx.arc(-26, -6, 3.6, 0, Math.PI * 2);
     ctx.fill();
 
-    // Eyes looking at the pill
-    const lookX = Math.max(-1, Math.min(1, (state.ball.x - cx) / 200));
+    // Neck and head, tucked forward watching the pill
+    ctx.fillStyle = '#e8bc90';
+    ctx.beginPath();
+    ctx.moveTo(-13, -26);
+    ctx.lineTo(-10, -28);
+    ctx.lineTo(-8, -24);
+    ctx.lineTo(-11, -22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(-17, -25, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Nose in profile
+    ctx.beginPath();
+    ctx.moveTo(-23.6, -25.5);
+    ctx.lineTo(-25.6, -23.6);
+    ctx.lineTo(-23.2, -22.6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Hair: short cut with a hard part, covers the back half of the head
+    ctx.fillStyle = '#4a3a2c';
+    ctx.beginPath();
+    ctx.arc(-17, -25, 7.3, Math.PI * 0.95, Math.PI * 1.85);
+    ctx.quadraticCurveTo(-13, -30, -11, -26);
+    ctx.quadraticCurveTo(-11.5, -23, -10.5, -21);
+    ctx.quadraticCurveTo(-13, -20.5, -14, -21.5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ear
+    ctx.fillStyle = '#d9a878';
+    ctx.beginPath();
+    ctx.ellipse(-13.5, -24, 1.8, 2.4, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glasses: one visible lens in near-profile + temple arm to the ear
+    ctx.strokeStyle = '#2a3644';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.arc(-21, -25.5, 2.7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-18.4, -25.8);
+    ctx.lineTo(-13.8, -25.2);
+    ctx.stroke();
+
+    // Eye behind the lens
     ctx.fillStyle = '#203040';
     ctx.beginPath();
-    ctx.arc(-r * 0.12 + lookX * 2, headY - 1, 2.2, 0, Math.PI * 2);
-    ctx.arc(r * 0.12 + lookX * 2, headY - 1, 2.2, 0, Math.PI * 2);
+    ctx.arc(-21.4, -25.4, 1, 0, Math.PI * 2);
     ctx.fill();
 
-    // Head mirror
-    ctx.strokeStyle = '#d0a23a';
-    ctx.lineWidth = 2;
+    // Set jaw
+    ctx.strokeStyle = 'rgba(120,70,40,.7)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.arc(0, headY - r * 0.3, r * 0.14, 0, Math.PI * 2);
+    ctx.moveTo(-22.5, -20.6);
+    ctx.lineTo(-19.5, -20.2);
     ctx.stroke();
 
-    // Stethoscope
-    ctx.strokeStyle = '#3a4858';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, -r * 0.18, r * 0.28, 0.3, Math.PI - 0.3);
-    ctx.stroke();
-    ctx.fillStyle = '#3a4858';
-    ctx.beginPath();
-    ctx.arc(-r * 0.26, -r * 0.08, 3.4, 0, Math.PI * 2);
-    ctx.fill();
-
+    ctx.lineCap = 'butt';
     ctx.restore();
   }
 
-  function drawBall() {
-    // The "ball" is a capsule pill
-    const ball = state.ball;
-    const bx = ball.x;
-    const by = FLOOR_Y + ball.y;
-    const len = ball.r * 1.9;
-    const rad = ball.r * 0.62;
-
-    ctx.save();
-    ctx.translate(bx, by);
-    ctx.rotate(ball.spin);
-
-    // White half
-    ctx.fillStyle = '#f8f8f4';
+  function drawCapsulePill(len, rad, leftColor, rightColor, outlineColor, seam) {
+    ctx.fillStyle = leftColor;
     ctx.beginPath();
     ctx.arc(-len / 2 + rad, 0, rad, Math.PI / 2, -Math.PI / 2);
     ctx.lineTo(0, -rad);
@@ -1238,8 +1479,7 @@
     ctx.closePath();
     ctx.fill();
 
-    // Red half
-    ctx.fillStyle = '#e84048';
+    ctx.fillStyle = rightColor;
     ctx.beginPath();
     ctx.arc(len / 2 - rad, 0, rad, -Math.PI / 2, Math.PI / 2);
     ctx.lineTo(0, rad);
@@ -1247,26 +1487,45 @@
     ctx.closePath();
     ctx.fill();
 
-    // Outline + seam
-    ctx.strokeStyle = '#802028';
+    ctx.strokeStyle = outlineColor;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(-len / 2 + rad, 0, rad, Math.PI / 2, -Math.PI / 2);
     ctx.arc(len / 2 - rad, 0, rad, -Math.PI / 2, Math.PI / 2);
     ctx.closePath();
     ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, -rad);
-    ctx.lineTo(0, rad);
-    ctx.stroke();
+    if (seam) {
+      ctx.beginPath();
+      ctx.moveTo(0, -rad);
+      ctx.lineTo(0, rad);
+      ctx.stroke();
+    }
 
-    // Shine
     ctx.strokeStyle = 'rgba(255,255,255,.7)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(-len / 2 + rad, -rad * 0.45);
     ctx.lineTo(len / 2 - rad, -rad * 0.45);
     ctx.stroke();
+  }
+
+  function drawBall() {
+    const ball = state.ball;
+    const bx = ball.x;
+    const by = FLOOR_Y + ball.y;
+    const len = ball.r * 1.9;
+    const rad = ball.r * 0.62;
+    const isHeal = ball.kind === 'heal';
+
+    ctx.save();
+    ctx.translate(bx, by);
+    ctx.rotate(ball.spin);
+
+    if (isHeal) {
+      drawCapsulePill(len, rad, '#e84048', '#c82030', '#802028', false);
+    } else {
+      drawCapsulePill(len, rad, '#f8f8f4', '#dce8f0', '#98a8b4', true);
+    }
 
     ctx.restore();
     ball.spin += ball.vx * 0.0007;
@@ -1281,6 +1540,16 @@
       ctx.fillText(f.text, f.x, f.y - (1 - f.life) * 30);
       ctx.globalAlpha = 1;
     }
+  }
+
+  function drawLabels() {
+    // Perspective-scaled labels: near text is big, far text is small
+    ctx.fillStyle = 'rgba(240,250,255,.6)';
+    ctx.textAlign = 'center';
+    ctx.font = '800 14px Nunito, sans-serif';
+    ctx.fillText('YOUR FINGER', W * 0.28, FLOOR_Y + 30);
+    ctx.font = '800 8px Nunito, sans-serif';
+    ctx.fillText('THE DOCTOR', W * 0.72, FLOOR_Y + 16);
   }
 
   function draw() {
@@ -1298,6 +1567,15 @@
     drawBall();
     drawFinger(state.you);
     drawDoctor(state.cpu);
+
+    // Atmospheric haze: the far end of the room fades slightly
+    const haze = ctx.createLinearGradient(W * 0.35, 0, W, 0);
+    haze.addColorStop(0, 'rgba(214,232,242,0)');
+    haze.addColorStop(1, 'rgba(214,232,242,.17)');
+    ctx.fillStyle = haze;
+    ctx.fillRect(W * 0.35, 0, W * 0.65, H);
+
+    drawLabels();
     drawFloatText();
 
     if (state.mode === 'pause') {
@@ -1373,7 +1651,10 @@
         returnToDrive(true);
         return;
       }
-      try { sessionStorage.setItem('passed-entry-grill', '1'); } catch (e) {}
+      try {
+        sessionStorage.setItem('passed-entry-grill', '1');
+        sessionStorage.setItem('grill-resume', JSON.stringify({ health: state.patientHp }));
+      } catch (e) {}
       location.href = 'burger.html';
       return;
     }
@@ -1445,10 +1726,10 @@
   showOverlay(
     'County General',
     fromDrive
-      ? `Pulled off for ER. Flick ${WIN_SCORE} pills into the trash to get patched up and back on the road. Don't swallow them.`
+      ? `Pulled off for ER. Flick ${WIN_SCORE} pills into the trash to get patched up and back on the road. Every swallow costs $100 — except the red pill (1 in 4), which heals you for $1.`
       : admit
-        ? `${introWho} sent you here. You're the fingertip — flick ${WIN_SCORE} pills into the trash to get discharged. Don't let them in your mouth.`
-        : `Medication time. Flick ${WIN_SCORE} pills into the trash before the doctor bounces ${WIN_SCORE} into your mouth.`,
+        ? `${introWho} sent you here. Flick ${WIN_SCORE} pills into the trash. Swallowing costs $100 — the red pill (1 in 4) heals you for $1.`
+        : `Medication time. Flick ${WIN_SCORE} pills into the trash. Every swallow costs $100 — the red pill (1 in 4) heals you for $1.`,
     'Kick Off'
   );
   updateHUD();

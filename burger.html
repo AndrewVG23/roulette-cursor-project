@@ -1573,7 +1573,9 @@
         sessionStorage.setItem('hospital-admit', JSON.stringify({
           score: Wallet.read(),
           shift: state.money,
-          who
+          who,
+          health: state.health,
+          maxHealth: MAX_HEALTH
         }));
       } catch (e) {}
       showOverlay(
@@ -1599,6 +1601,14 @@
     state.money = 0;
     state.level = 1;
     state.health = MAX_HEALTH;
+    try {
+      const raw = sessionStorage.getItem('grill-resume');
+      if (raw) {
+        sessionStorage.removeItem('grill-resume');
+        const data = JSON.parse(raw);
+        if (data.health != null) state.health = Math.max(0, Math.min(MAX_HEALTH, Math.round(data.health)));
+      }
+    } catch (_) { /* ignore */ }
     state.served = 0;
     state.combo = 0;
     state.tickets = [];
