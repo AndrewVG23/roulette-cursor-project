@@ -417,6 +417,13 @@
     </main>
   </div>
 
+  <script type="importmap">
+  {
+    "imports": {
+      "mediabunny": "https://cdn.jsdelivr.net/npm/mediabunny@1.50.9/+esm"
+    }
+  }
+  </script>
   <script>
 (() => {
   const COLS = 12;
@@ -439,7 +446,7 @@
   // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
   // n = north address, e = east blocks from Michigan Ave
   const NIGHT_DRIVE_MAP = {
-    name: 'LSD Loop',
+    name: 'Gold Coast',
     zPerNorth: 9,
     zPerEastBlock: 640,
     xPerBlock: 0.74,
@@ -1220,7 +1227,8 @@
       exporting: false,
       sharing: false,
       exportWaiter: null,
-      exportReject: null
+      exportReject: null,
+      mp4Encoder: null
     }
   };
 
@@ -1270,7 +1278,7 @@
   function setPhaseUI() {
     if (state.phase === 'drive') {
       brandTitle.textContent = 'Night Drive';
-      brandSub.textContent = 'LSD loop · stop at red · steer to turn';
+      brandSub.textContent = 'Gold Coast · stop at red · steer to turn';
       meterLabel.textContent = 'Lap';
       livesLabel.textContent = 'HP';
       hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · R replay · Share last 5 sec';
@@ -1440,7 +1448,10 @@
     LANE: 0.42,      // lane center offsets
     MPH_Z: 11,       // world-Z units per mph per second
     CAR_LEN: 28,     // collision length in Z
-    CAR_HALF_W: 0.2
+    CAR_HALF_W: 0.2,
+    FACADE_MIN_Z: 98,   // skip facades closer than this (they fill the windshield)
+    FACADE_FADE_Z: 290, // full opacity beyond this distance
+    FACADE_MIN_SCALE: 0.055
   };
 
   function beginDrive() {
@@ -1522,6 +1533,7 @@
     state.replay.sharing = false;
     state.replay.exportWaiter = null;
     state.replay.exportReject = null;
+    state.replay.mp4Encoder = null;
     seedChicagoLandmarks(state.drive);
     seedCityBlocks(state.drive, 0, route.length + 56);
     state.drive.routeEnvSeeded = true;
@@ -1801,18 +1813,77 @@
     }
   }
 
-  function pickRecorderMime() {
-    const candidates = [
-      'video/webm;codecs=vp9',
-      'video/webm;codecs=vp8',
-      'video/webm',
-      'video/mp4'
-    ];
-    return candidates.find(m => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(m)) || '';
+  function canShareReplayVideo() {
+    return !!(canvas && typeof VideoEncoder !== 'undefined');
   }
 
-  function canShareReplayVideo() {
-    return !!(canvas && typeof canvas.captureStream === 'function' && pickRecorderMime());
+  async function createDriveMp4Encoder(sourceCanvas) {
+    if (!canShareReplayVideo() || !sourceCanvas) return null;
+    if ((sourceCanvas.width || 0) < 2 || (sourceCanvas.height || 0) < 2) return null;
+
+    const { Output, Mp4OutputFormat, BufferTarget, CanvasSource } = await import('mediabunny');
+    const output = new Output({
+      format: new Mp4OutputFormat({ fastStart: 'in-memory' }),
+      target: new BufferTarget()
+    });
+    const videoSource = new CanvasSource(sourceCanvas, {
+      codec: 'avc',
+      bitrate: 4_500_000
+    });
+    output.addVideoTrack(videoSource, { frameRate: 30 });
+    await output.start();
+
+    const frameDuration = 1 / 30;
+    let framesAdded = 0;
+    let running = true;
+    let encoding = false;
+    let pumpError = null;
+    let idleWaiters = [];
+    let lastCaptureAt = 0;
+    const captureIntervalMs = 1000 / 30;
+
+    const notifyIdle = () => {
+      const waiters = idleWaiters;
+      idleWaiters = [];
+      waiters.forEach((resolve) => resolve());
+    };
+
+    return {
+      tick() {
+        if (!running || encoding || pumpError) return;
+        const now = performance.now();
+        if (now - lastCaptureAt < captureIntervalMs) return;
+        lastCaptureAt = now;
+        encoding = true;
+        const timestamp = framesAdded * frameDuration;
+        videoSource.add(timestamp, frameDuration).then(() => {
+          framesAdded += 1;
+          encoding = false;
+          notifyIdle();
+        }).catch((err) => {
+          encoding = false;
+          if (running) pumpError = err;
+          notifyIdle();
+        });
+      },
+      async stop() {
+        running = false;
+        if (encoding) {
+          await new Promise((resolve) => { idleWaiters.push(resolve); });
+        }
+        if (pumpError) throw pumpError;
+        if (framesAdded < 2) throw new Error('Recording was too short');
+        await output.finalize();
+        const buffer = output.target.buffer;
+        if (!buffer || buffer.byteLength < 32) throw new Error('MP4 encoding failed');
+        return new Blob([buffer], { type: 'video/mp4' });
+      },
+      abort() {
+        running = false;
+        try { output.cancel?.(); } catch { /* ignore */ }
+        notifyIdle();
+      }
+    };
   }
 
   function getShareableClip() {
@@ -1844,24 +1915,24 @@
     return 'downloaded';
   }
 
-  function exportReplayVideo(clip) {
-    const mime = pickRecorderMime();
-    if (!mime) return Promise.reject(new Error('Video recording is not supported in this browser'));
-    if (!clip || clip.length < 2) return Promise.reject(new Error('Nothing to share yet'));
+  async function exportReplayVideo(clip) {
+    if (!clip || clip.length < 2) throw new Error('Nothing to share yet');
+    if (!canShareReplayVideo()) throw new Error('MP4 recording is not supported in this browser');
+
+    const encoder = await createDriveMp4Encoder(canvas);
+    if (!encoder) throw new Error('MP4 recording is not supported in this browser');
 
     return new Promise((resolve, reject) => {
-      let recorder;
-      let stream;
       let settled = false;
       const wasWatching = state.replay.playing && !state.replay.exporting;
 
-      const cleanup = (err, blob) => {
+      const finish = (err, blob) => {
         if (settled) return;
         settled = true;
+        state.replay.mp4Encoder = null;
         state.replay.exporting = false;
         state.replay.exportWaiter = null;
         state.replay.exportReject = null;
-        stream?.getTracks().forEach(t => t.stop());
         if (state.replay.playing) {
           if (state.replay.savedLive) restoreLiveCheckpoint(state.replay.savedLive);
           state.replay.playing = false;
@@ -1878,8 +1949,8 @@
       };
 
       state.replay.exportReject = (err) => {
-        try { recorder?.stop(); } catch { /* ignore */ }
-        cleanup(err || new Error('Export cancelled'));
+        encoder.abort();
+        finish(err || new Error('Export cancelled'));
       };
 
       if (!wasWatching) state.replay.savedLive = captureLiveCheckpoint();
@@ -1888,32 +1959,15 @@
       state.replay.elapsed = 0;
       state.replay.playing = true;
       state.replay.exporting = true;
+      state.replay.mp4Encoder = encoder;
       state._resumeMode = state.mode === 'pause' ? 'drive' : state.mode;
       state.mode = 'replay';
       applyReplayFrame(state.replay.clip[0]);
 
-      stream = canvas.captureStream(30);
-      recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 4_000_000 });
-      const chunks = [];
-      recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-      recorder.onerror = () => cleanup(recorder.error || new Error('Recording failed'));
-      recorder.onstop = () => {
-        const type = mime.split(';')[0];
-        const blob = new Blob(chunks, { type });
-        if (blob.size < 32) cleanup(new Error('Recording was too short'));
-        else cleanup(null, blob);
-      };
-
       state.replay.exportWaiter = () => {
-        try { recorder.stop(); } catch (err) { cleanup(err); }
+        encoder.stop().then((blob) => finish(null, blob)).catch((err) => finish(err));
       };
 
-      try {
-        recorder.start(200);
-      } catch (err) {
-        cleanup(err);
-        return;
-      }
       updateReplayButton();
       updateShareReplayButton();
     });
@@ -1927,7 +1981,7 @@
       return;
     }
     if (!canShareReplayVideo()) {
-      window.alert('Sharing replays is not supported in this browser.');
+      window.alert('MP4 replay sharing is not supported in this browser.');
       return;
     }
 
@@ -1938,11 +1992,13 @@
     try {
       const clip = clipSource.map(f => structuredClone(f));
       const blob = await exportReplayVideo(clip);
-      const ext = (blob.type || '').includes('mp4') ? 'mp4' : 'webm';
+      if (!(blob.type || '').includes('mp4')) {
+        throw new Error('Share requires an MP4 recording');
+      }
       const file = new File(
         [blob],
-        `night-drive-replay.${ext}`,
-        { type: blob.type || `video/${ext}` }
+        'night-drive-replay.mp4',
+        { type: 'video/mp4' }
       );
       shareResult = await shareOrDownloadReplayVideo(file);
     } catch (err) {
@@ -4788,6 +4844,42 @@
     return { x, y, scale, relZ: rz };
   }
 
+  function facadeProximityFade(ground, d, opts = {}) {
+    const minZ = opts.minZ != null ? opts.minZ : DW.FACADE_MIN_Z;
+    const fadeZ = opts.fadeZ != null ? opts.fadeZ : DW.FACADE_FADE_Z;
+    const minScale = opts.minScale != null ? opts.minScale : DW.FACADE_MIN_SCALE;
+    if (ground.relZ < minZ || ground.scale < minScale) return 0;
+    let a = ground.relZ >= fadeZ ? 1
+      : (ground.relZ - minZ) / (fadeZ - minZ);
+    const playerG = projectWorld(d.playerX, 0, d.z + 14, d);
+    if (ground.relZ < playerG.relZ + 20) {
+      a *= Math.max(0, (ground.relZ - minZ) / Math.max(14, playerG.relZ + 20 - minZ));
+    }
+    return Math.max(0, Math.min(1, a));
+  }
+
+  function capFacadeScreen(y, bh, ground, topFrac) {
+    const frac = topFrac != null ? topFrac
+      : (ground.relZ < 150 ? 0.30 : (ground.relZ < 260 ? 0.24 : 0.18));
+    const topLimit = H * frac;
+    if (y >= topLimit) return { y, bh };
+    const trim = topLimit - y;
+    return { y: topLimit, bh: Math.max(8, bh - trim) };
+  }
+
+  function facadeRoadOverlapFade(ground, x, bw) {
+    if (ground.relZ > 220) return 1;
+    const roadL = W * 0.26;
+    const roadR = W * 0.74;
+    const bxL = Math.min(x, x + bw);
+    const bxR = Math.max(x, x + bw);
+    const overlap = Math.max(0, Math.min(bxR, roadR) - Math.max(bxL, roadL));
+    if (overlap <= 0) return 1;
+    const overlapFrac = overlap / (roadR - roadL);
+    const close = Math.max(0, 1 - (ground.relZ - 90) / 110);
+    return Math.max(0, 1 - overlapFrac * (1.4 + close * 1.8));
+  }
+
   // Blend two [r,g,b] colors — used for atmospheric haze with distance
   function hazeMix(c, f, t) {
     const k = Math.max(0, Math.min(1, t));
@@ -5317,11 +5409,17 @@
     const inset = lakeKinds.includes(lm.kind) ? 0.38 : (lm.kind === 'hancock' ? 0.22 : 0.12);
     const xWorld = side * (DW.BUILD + inset);
     const ground = projectWorld(xWorld, 0, lm.z, d);
-    if (ground.relZ < 12 || ground.relZ > 2400 || ground.scale < 0.018) return;
-    const fade = Math.max(0, Math.min(1, (2400 - ground.relZ) / 620));
+    if (ground.relZ > 2400) return;
+    const nearFade = facadeProximityFade(ground, d, { minZ: 82, fadeZ: 320, minScale: 0.04 });
+    if (nearFade <= 0) return;
+    const fade = Math.max(0, Math.min(1, (2400 - ground.relZ) / 620)) * nearFade;
     const near = Math.max(0, 1 - ground.relZ / 480);
     ctx.save();
     ctx.globalAlpha = fade;
+    const topClip = H * (ground.relZ < 160 ? 0.29 : 0.24);
+    ctx.beginPath();
+    ctx.rect(-40, topClip, W + 80, H - topClip + 40);
+    ctx.clip();
     const s = ground.scale;
     const gx = ground.x;
     const gy = ground.y;
@@ -6279,17 +6377,23 @@
     // Buildings sit on the lot line just outside the sidewalk
     const edge = b.side * (DW.BUILD + b.w * 0.15);
     const ground = projectWorld(edge, 0, b.z, d);
-    if (ground.relZ < 40 || ground.relZ > 1400 || ground.scale < 0.04) return;
+    if (ground.relZ > 1400) return;
+    const nearFade = facadeProximityFade(ground, d);
+    if (nearFade <= 0) return;
     // Fade in from the haze instead of popping
-    const fade = Math.max(0, Math.min(1, (1400 - ground.relZ) / 320));
+    const fade = Math.max(0, Math.min(1, (1400 - ground.relZ) / 320)) * nearFade;
     ctx.save();
     ctx.globalAlpha = fade;
     const top = projectWorld(edge, b.h * 0.55, b.z, d);
     const bw = (50 + b.w * 80) * ground.scale;
-    const bh = Math.max(8, ground.y - top.y);
+    let bh = Math.max(8, ground.y - top.y);
     const lean = (b.lean || 0) * bh;
-    const x = ground.x - (b.side < 0 ? bw : 0) + lean * 0.5;
-    const y = ground.y - bh;
+    let x = ground.x - (b.side < 0 ? bw : 0) + lean * 0.5;
+    let y = ground.y - bh;
+    ({ y, bh } = capFacadeScreen(y, bh, ground));
+    const roadFade = facadeRoadOverlapFade(ground, x, bw);
+    if (roadFade <= 0) { ctx.restore(); return; }
+    ctx.globalAlpha = fade * roadFade;
 
     // Side depth facet
     ctx.fillStyle = shade(b.color, -40);
@@ -6759,9 +6863,11 @@
     // Furniture lives on the concrete sidewalk strip
     const xWorld = pr.side * ((DW.ROAD + DW.WALK) * 0.5);
     const p = projectWorld(xWorld, 0, pr.z, d);
-    if (p.relZ < 45 || p.relZ > 1100) return;
+    if (p.relZ > 1100) return;
+    const nearFade = facadeProximityFade(p, d, { minZ: 78, fadeZ: 230 });
+    if (nearFade <= 0) return;
     ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, (1100 - p.relZ) / 260));
+    ctx.globalAlpha = Math.max(0, Math.min(1, (1100 - p.relZ) / 260)) * nearFade;
     if (pr.kind === 'light') {
       const top = projectWorld(xWorld, 55, pr.z, d);
       ctx.strokeStyle = '#2a2a30';
@@ -7538,6 +7644,9 @@
     dt = Math.min(dt, 0.05);
     update(dt);
     draw();
+    if (state.replay.exporting && state.replay.mp4Encoder) {
+      state.replay.mp4Encoder.tick();
+    }
     requestAnimationFrame(frame);
   }
 
