@@ -234,20 +234,53 @@
   const GOAL_W = 18;
   const GOAL_H = 92;
   const GOAL_TOP = FLOOR_Y - GOAL_H;
-  const MOUTH_OPEN_TOP = 262;
-  const MOUTH_OPEN_BOTTOM = 342;
-  const MOUTH_PLANE_TOP_Y = 267;
-  const MOUTH_PLANE_BOTTOM_Y = 336;
+  const MOUTH_MID_Y = 301;
+  const MOUTH_HALF_OPEN = 35; // full open half-height from the lip mid-line
   const MOUTH_PLANE_TOP_X = GOAL_W + 8;
   const MOUTH_PLANE_BOTTOM_X = GOAL_W + 6;
+
+  function mouthOpenAmount() {
+    return state.mouthOpen ?? 0;
+  }
+
+  function mouthLipBounds() {
+    const open = mouthOpenAmount();
+    return {
+      top: MOUTH_MID_Y - MOUTH_HALF_OPEN * open,
+      bottom: MOUTH_MID_Y + MOUTH_HALF_OPEN * open,
+      open
+    };
+  }
+
   function mouthPlaneX(y) {
-    const t = Math.max(0, Math.min(1, (y - MOUTH_PLANE_TOP_Y) / (MOUTH_PLANE_BOTTOM_Y - MOUTH_PLANE_TOP_Y)));
+    const { top, bottom } = mouthLipBounds();
+    const span = Math.max(1, bottom - top);
+    const t = Math.max(0, Math.min(1, (y - top) / span));
     return MOUTH_PLANE_TOP_X + (MOUTH_PLANE_BOTTOM_X - MOUTH_PLANE_TOP_X) * t;
   }
 
   function ballInMouthOpening(ball) {
+    const { top, bottom, open } = mouthLipBounds();
+    if (open < 0.45) return false;
     const by = FLOOR_Y + ball.y;
-    return by >= MOUTH_OPEN_TOP && by <= MOUTH_OPEN_BOTTOM;
+    const pad = 4 * open;
+    return by >= top - pad && by <= bottom + pad;
+  }
+
+  function updateMouth(dt) {
+    const ball = state.ball;
+    let target = 0;
+    if (ball) {
+      const bx = ball.x;
+      const by = FLOOR_Y + ball.y;
+      const proxX = Math.max(0, 1 - (bx - 30) / 150); // open when pill is near the left
+      const proxY = Math.max(0, 1 - Math.abs(by - MOUTH_MID_Y) / 95);
+      const want = proxX * proxY;
+      target = want > 0.28 ? Math.min(1, want * 1.35) : 0;
+    }
+    const rate = target > mouthOpenAmount() ? 7 : 5;
+    state.mouthOpen += (target - state.mouthOpen) * Math.min(1, rate * dt);
+    if (Math.abs(state.mouthOpen - target) < 0.004) state.mouthOpen = target;
   }
 
   const GRAVITY = 1650;
@@ -258,14 +291,39 @@
   const SLIME_AIR_FRICTION = 1.2;
   const SLIME_JUMP = -560;
   const BALL_R = 11;
-  const BALL_GRAVITY = 1500;
-  const BALL_BOUNCE = 0.78;
-  const BALL_WALL_BOUNCE = 0.72;
-  const BALL_FRICTION = 0.992;
-  const BALL_SLIME_BOUNCE = 0.88;
+  const BALL_GRAVITY = 1380;
+  const BALL_BOUNCE = 0.68;
+  const BALL_WALL_BOUNCE = 0.78;
+  const BALL_AIR_DRAG = 0.996;
+  const BALL_SLIME_BOUNCE = 0.94;
+  const BALL_MAX_SPEED = 780;
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+  const pyramidPoster = new Image();
+  let pyramidPosterReady = false;
+  pyramidPoster.onload = () => { pyramidPosterReady = true; };
+  pyramidPoster.src = 'assets/food-guide-pyramid.png';
+
+  // Hand photo for the player: key out the white studio background so it
+  // composites onto the bed like a cutout.
+  const handImg = new Image();
+  let handSprite = null;
+  handImg.onload = () => {
+    const oc = document.createElement('canvas');
+    oc.width = handImg.width;
+    oc.height = handImg.height;
+    const octx = oc.getContext('2d');
+    octx.drawImage(handImg, 0, 0);
+    const d = octx.getImageData(0, 0, oc.width, oc.height);
+    const p = d.data;
+    for (let i = 0; i < p.length; i += 4) {
+      if (p[i] > 235 && p[i + 1] > 235 && p[i + 2] > 235) p[i + 3] = 0;
+    }
+    octx.putImageData(d, 0, 0);
+    handSprite = oc;
+  };
+  handImg.src = 'assets/hand.png';
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
@@ -315,6 +373,8 @@
       vy: 0,
       r: BALL_R,
       spin: 0,
+      angularVelocity: (Math.random() - 0.5) * 2,
+      enteredTrash: false,
       kind: nextPillKind()
     };
   }
@@ -340,6 +400,7 @@
     screenShake: 0,
     goalFlash: 0,
     kickoffTimer: 0,
+    mouthOpen: 0,
     muted: false,
     lastTs: 0,
     keys: { left: false, right: false, up: false }
@@ -471,20 +532,34 @@
     const relDot = relVx * nx + relVy * ny;
     if (relDot > 0) return;
 
+    // Reflect against the moving fingertip/doctor, then transfer a little
+    // tangential motion into capsule spin. Fast swipes create stronger flicks.
     const impulse = -(1 + BALL_SLIME_BOUNCE) * relDot;
-    ball.vx += impulse * nx + slime.vx * 0.55;
-    ball.vy += impulse * ny + slime.vy * 0.35;
-    ball.vx += slime.vx * 0.35;
-    ball.vy += (slime.grounded ? 0 : slime.vy) * 0.25 - 40;
+    ball.vx += impulse * nx;
+    ball.vy += impulse * ny;
+
+    const tx = -ny;
+    const ty = nx;
+    const tangentSpeed = relVx * tx + relVy * ty;
+    const contactVariation = 0.86 + Math.random() * 0.28;
+    const tangentImpulse = Math.max(-95, Math.min(95, -tangentSpeed * 0.24 * contactVariation));
+    ball.vx += tangentImpulse * tx;
+    ball.vy += tangentImpulse * ty;
+    ball.angularVelocity -= tangentImpulse / ball.r * 0.75;
+
+    const swipeSpeed = Math.hypot(slime.vx, slime.grounded ? 0 : slime.vy);
+    const hitBoost = 28 + Math.min(95, swipeSpeed * 0.2);
+    ball.vx += nx * hitBoost;
+    ball.vy += ny * hitBoost - 34;
 
     const speed = Math.hypot(ball.vx, ball.vy);
-    if (speed > 620) {
-      ball.vx = ball.vx / speed * 620;
-      ball.vy = ball.vy / speed * 620;
+    if (speed > BALL_MAX_SPEED) {
+      ball.vx = ball.vx / speed * BALL_MAX_SPEED;
+      ball.vy = ball.vy / speed * BALL_MAX_SPEED;
     }
 
     slime.squash = Math.min(0.28, speed / 1800);
-    ball.spin += slime.vx * 0.01;
+    ball.angularVelocity += slime.vx * 0.018 + (Math.random() - 0.5) * 3;
     beep(180 + speed * 0.15, 0.04, 'triangle', 0.025);
   }
 
@@ -492,42 +567,79 @@
     if (state.kickoffTimer > 0) return;
 
     const ball = state.ball;
-    ball.vy += BALL_GRAVITY * dt;
-    ball.x += ball.vx * dt;
-    ball.y += ball.vy * dt;
-    ball.vx *= Math.pow(BALL_FRICTION, dt * 60);
+    // Small fixed-ish steps keep energetic hits from tunneling through players.
+    const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
+    const step = dt / steps;
+    for (let i = 0; i < steps; i++) {
+      const previousBy = FLOOR_Y + ball.y;
+      ball.vy += BALL_GRAVITY * step;
+      ball.x += ball.vx * step;
+      ball.y += ball.vy * step;
+      ball.spin += ball.angularVelocity * step;
+      const airDrag = Math.pow(BALL_AIR_DRAG, step * 60);
+      ball.vx *= airDrag;
+      ball.angularVelocity *= Math.pow(0.997, step * 60);
 
-    const floorContact = -ball.r;
-    if (ball.y > floorContact) {
-      ball.y = floorContact;
-      ball.vy = -Math.abs(ball.vy) * BALL_BOUNCE;
-      ball.vx *= 0.94;
-      if (Math.abs(ball.vy) > 60) beep(120, 0.03, 'square', 0.02);
-    }
+      const floorContact = -ball.r;
+      if (ball.y > floorContact) {
+        const impactSpeed = Math.abs(ball.vy);
+        ball.y = floorContact;
+        if (impactSpeed < 72) {
+          ball.vy = 0;
+          ball.vx *= Math.pow(0.965, step * 60);
+          // A rolling capsule gradually matches its spin to ground speed.
+          ball.angularVelocity += (-ball.vx / ball.r - ball.angularVelocity) * Math.min(1, step * 9);
+        } else {
+          const bounceVariation = 0.86 + Math.random() * 0.28;
+          const irregularKick = (Math.random() - 0.5) * Math.min(54, impactSpeed * 0.1);
+          ball.vy = -impactSpeed * BALL_BOUNCE * bounceVariation;
+          ball.vx += ball.angularVelocity * ball.r * 0.035 + irregularKick;
+          ball.vx *= 0.9;
+          ball.angularVelocity = -ball.vx / ball.r + ball.angularVelocity * 0.35
+            + (Math.random() - 0.5) * 5;
+          beep(115 + Math.min(80, impactSpeed * 0.08), 0.025, 'square', 0.018);
+        }
+      }
 
-    const minY = -GOAL_H + ball.r;
-    if (ball.y < minY) {
-      ball.y = minY;
-      ball.vy = Math.abs(ball.vy) * 0.35;
-    }
+      // Give high flicks room to arc above the trash-can rim.
+      const minY = -142;
+      if (ball.y < minY) {
+        ball.y = minY;
+        ball.vy = Math.abs(ball.vy) * (0.34 + Math.random() * 0.16);
+        ball.vx += (Math.random() - 0.5) * 34;
+        ball.angularVelocity = ball.angularVelocity * 0.8 + (Math.random() - 0.5) * 3;
+      }
 
-    let leftWall = GOAL_W + ball.r;
-    if (ballInMouthOpening(ball)) {
-      const planeX = mouthPlaneX(FLOOR_Y + ball.y);
-      leftWall = ball.x - ball.r < planeX ? ball.r : planeX + ball.r;
-    }
-    const rightWall = W - GOAL_W - ball.r;
-    if (ball.x < leftWall) {
-      ball.x = leftWall;
-      ball.vx = Math.abs(ball.vx) * BALL_WALL_BOUNCE;
-    }
-    if (ball.x > rightWall) {
-      ball.x = rightWall;
-      ball.vx = -Math.abs(ball.vx) * BALL_WALL_BOUNCE;
-    }
+      let leftWall = GOAL_W + ball.r;
+      if (ballInMouthOpening(ball)) {
+        const planeX = mouthPlaneX(FLOOR_Y + ball.y);
+        leftWall = ball.x - ball.r < planeX ? ball.r : planeX + ball.r;
+      }
+      const by = FLOOR_Y + ball.y;
+      const trashRimY = GOAL_TOP + 4;
+      const aboveTrashRim = by + ball.r <= trashRimY;
+      const overTrashOpening = ball.x > W - GOAL_W - ball.r * 0.35;
+      if (overTrashOpening && ball.vy > 0
+          && previousBy + ball.r < trashRimY && by + ball.r >= trashRimY) {
+        ball.enteredTrash = true;
+      }
+      const rightWall = aboveTrashRim ? W - ball.r : W - GOAL_W - ball.r;
+      if (ball.x < leftWall) {
+        ball.x = leftWall;
+        ball.vx = Math.abs(ball.vx) * BALL_WALL_BOUNCE;
+        ball.vy += (Math.random() - 0.5) * 30;
+        ball.angularVelocity += ball.vy * 0.012 + (Math.random() - 0.5) * 2.5;
+      }
+      if (ball.x > rightWall) {
+        ball.x = rightWall;
+        ball.vx = -Math.abs(ball.vx) * BALL_WALL_BOUNCE;
+        ball.vy += (Math.random() - 0.5) * 30;
+        ball.angularVelocity += ball.vy * 0.012 + (Math.random() - 0.5) * 2.5;
+      }
 
-    resolveBallSlime(state.you);
-    resolveBallSlime(state.cpu);
+      resolveBallSlime(state.you);
+      resolveBallSlime(state.cpu);
+    }
   }
 
   function ballInGoal(side) {
@@ -536,10 +648,7 @@
       if (!ballInMouthOpening(ball)) return false;
       return ball.x - ball.r < mouthPlaneX(FLOOR_Y + ball.y);
     }
-    const by = FLOOR_Y + ball.y;
-    if (by > FLOOR_Y - 4) return false;
-    if (by < GOAL_TOP + ball.r) return false;
-    return ball.x + ball.r > W - GOAL_W;
+    return ball.enteredTrash;
   }
 
   function healPatient() {
@@ -659,6 +768,8 @@
     for (const f of state.floatText) f.life -= dt;
     state.floatText = state.floatText.filter(f => f.life > 0);
 
+    updateMouth(dt);
+
     if (state.mode !== 'play') return;
 
     if (state.kickoffTimer > 0) {
@@ -672,6 +783,142 @@
 
     if (ballInGoal('left')) scoreGoal('cpu');
     else if (ballInGoal('right')) scoreGoal('you');
+  }
+
+  function drawFoodPyramidPoster() {
+    const baseY = 324;
+    const posterH = 190;
+    const posterW = posterH * (1024 / 779);
+    const px = 22;
+    const py = baseY - posterH + 4;
+
+    if (pyramidPosterReady) {
+      ctx.fillStyle = 'rgba(0,0,0,.14)';
+      ctx.fillRect(px + 3, py + 3, posterW, posterH);
+      ctx.drawImage(pyramidPoster, px, py, posterW, posterH);
+      ctx.strokeStyle = '#5a5048';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(px + 0.5, py + 0.5, posterW - 1, posterH - 1);
+      return;
+    }
+
+    ctx.fillStyle = '#faf6ec';
+    ctx.fillRect(px, py, posterW, posterH);
+    ctx.strokeStyle = '#6a6050';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(px + 0.5, py + 0.5, posterW - 1, posterH - 1);
+  }
+
+  function drawSillySkeleton() {
+    const sx = 362;
+    const footY = FLOOR_Y - 6;
+
+    ctx.fillStyle = '#eef2f6';
+    ctx.fillRect(sx - 32, footY - 118, 64, 108);
+    ctx.strokeStyle = '#7a90a0';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(sx - 32, footY - 118, 64, 108);
+    ctx.fillStyle = '#5a6878';
+    ctx.font = '800 5.5px Nunito, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BONE BUDDY™', sx, footY - 112);
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.strokeStyle = '#dce4ec';
+    ctx.fillStyle = '#e8eef4';
+    ctx.lineWidth = 2.8;
+
+    ctx.beginPath();
+    ctx.arc(sx, footY - 96, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#9ab0c0';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#203040';
+    ctx.beginPath();
+    ctx.ellipse(sx - 5, footY - 98, 3, 4, -0.1, 0, Math.PI * 2);
+    ctx.ellipse(sx + 6, footY - 97, 3.2, 3.6, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#203040';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.arc(sx + 1, footY - 90, 6, 0.2, Math.PI - 0.35);
+    ctx.stroke();
+    ctx.fillStyle = '#e84858';
+    ctx.beginPath();
+    ctx.ellipse(sx + 4, footY - 87, 2.5, 1.8, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#dce4ec';
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.moveTo(sx, footY - 83);
+    ctx.lineTo(sx + 2, footY - 38);
+    ctx.stroke();
+
+    for (let i = 0; i < 5; i++) {
+      const ry = footY - 76 + i * 8;
+      ctx.beginPath();
+      ctx.moveTo(sx - 9 + i * 0.4, ry);
+      ctx.quadraticCurveTo(sx + 1, ry - 5, sx + 11 - i * 0.5, ry + 1);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#e84858';
+    ctx.beginPath();
+    ctx.moveTo(sx - 3, footY - 62);
+    ctx.lineTo(sx + 3, footY - 58);
+    ctx.lineTo(sx, footY - 54);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#dce4ec';
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.moveTo(sx - 7, footY - 72);
+    ctx.quadraticCurveTo(sx - 26, footY - 82, sx - 28, footY - 98);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(sx - 28, footY - 100, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(sx + 7, footY - 70);
+    ctx.quadraticCurveTo(sx + 20, footY - 58, sx + 16, footY - 44);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(sx - 11, footY - 36);
+    ctx.quadraticCurveTo(sx, footY - 32, sx + 13, footY - 35);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(sx - 3, footY - 32);
+    ctx.quadraticCurveTo(sx - 14, footY - 14, sx - 18, footY - 4);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sx + 5, footY - 32);
+    ctx.quadraticCurveTo(sx + 8, footY - 18, sx + 20, footY - 10);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e8eef4';
+    ctx.beginPath();
+    ctx.ellipse(sx - 18, footY - 3, 5.5, 2.8, -0.25, 0, Math.PI * 2);
+    ctx.ellipse(sx + 20, footY - 8, 5, 2.6, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#708898';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sx, footY - 2);
+    ctx.lineTo(sx, footY + 3);
+    ctx.moveTo(sx - 14, footY + 3);
+    ctx.lineTo(sx + 14, footY + 3);
+    ctx.stroke();
   }
 
   function drawField() {
@@ -788,6 +1035,9 @@
     ctx.lineTo(W - 186, 141);
     ctx.stroke();
 
+    drawFoodPyramidPoster();
+    drawSillySkeleton();
+
     // Ward sign
     ctx.fillStyle = 'rgba(24,120,168,.55)';
     ctx.font = '800 14px Fredoka, Nunito, sans-serif';
@@ -882,6 +1132,8 @@
     // Giant close-up patient profile filling the left edge; the open mouth is
     // the goal. Face spans well above and below the play band to feel near.
     const fx = GOAL_W;
+    const { top: lipTop, bottom: lipBot, open } = mouthLipBounds();
+    const mouthFrontX = fx + 6 + 4 * open; // natural profile pout; fuller when open
 
     // Hair mass at the crown
     ctx.fillStyle = '#4a3828';
@@ -907,10 +1159,14 @@
     ctx.quadraticCurveTo(fx + 47, 232, fx + 36, 238);  // nose tip
     ctx.quadraticCurveTo(fx + 18, 244, fx + 14, 241);  // nostril underside
     ctx.quadraticCurveTo(fx + 9, 246, fx + 15, 251);   // philtrum
-    ctx.quadraticCurveTo(fx + 23, 257, fx + 8, 267);   // upper lip front
-    ctx.lineTo(fx + 6, 336);                            // (mouth cavity zone)
-    ctx.quadraticCurveTo(fx + 25, 343, fx + 22, 356);  // lower lip front
-    ctx.quadraticCurveTo(fx + 16, 362, fx + 20, 368);  // lip-chin crease
+    ctx.quadraticCurveTo(fx + 16 + 8 * open, 256, mouthFrontX, lipTop); // upper lip front
+    if (open > 0.04) {
+      ctx.lineTo(mouthFrontX - 2, lipBot);              // cavity edge when open
+    } else {
+      ctx.lineTo(mouthFrontX + 1, MOUTH_MID_Y);         // sealed lips
+    }
+    ctx.quadraticCurveTo(fx + 16 + 12 * open, lipBot + 6 + 6 * open, fx + 14 + 10 * open, 350 + 6 * open); // lower lip
+    ctx.quadraticCurveTo(fx + 14, 362, fx + 20, 368);  // lip-chin crease
     ctx.quadraticCurveTo(fx + 32, 378, fx + 20, 392);  // chin
     ctx.quadraticCurveTo(fx + 4, 402, 0, 410);         // jaw falls away
     ctx.closePath();
@@ -997,65 +1253,113 @@
     ctx.arc(4, 214, 34, 0, Math.PI * 2);
     ctx.fill();
 
-    // Mouth cavity (the goal) — dark throat
-    const cavity = ctx.createLinearGradient(fx + 6, 0, 0, 0);
-    cavity.addColorStop(0, '#5a1a22');
-    cavity.addColorStop(1, '#280a10');
-    ctx.fillStyle = cavity;
-    ctx.beginPath();
-    ctx.moveTo(fx + 8, 267);
-    ctx.quadraticCurveTo(fx + 10, 300, fx + 6, 336);
-    ctx.lineTo(0, 340);
-    ctx.lineTo(0, 264);
-    ctx.closePath();
-    ctx.fill();
-
-    // Upper teeth
-    ctx.fillStyle = '#f2ead8';
-    for (let i = 0; i < 4; i++) {
-      const tx = 1 + i * 5.5;
+    // Mouth cavity + teeth/tongue only when open enough to see inside.
+    if (open > 0.08) {
+      const cavity = ctx.createLinearGradient(fx + 6, 0, 0, 0);
+      cavity.addColorStop(0, '#5a1a22');
+      cavity.addColorStop(1, '#280a10');
+      ctx.globalAlpha = Math.min(1, open * 1.2);
+      ctx.fillStyle = cavity;
       ctx.beginPath();
-      ctx.moveTo(tx, 268);
-      ctx.lineTo(tx + 4.5, 268);
-      ctx.lineTo(tx + 4, 280);
-      ctx.quadraticCurveTo(tx + 2, 283, tx + 0.5, 280);
+      ctx.moveTo(mouthFrontX, lipTop);
+      ctx.quadraticCurveTo(fx + 10, MOUTH_MID_Y, mouthFrontX - 2, lipBot);
+      ctx.lineTo(0, lipBot + 4);
+      ctx.lineTo(0, lipTop - 3);
       ctx.closePath();
       ctx.fill();
-    }
-    // Tongue
-    ctx.fillStyle = '#b04850';
-    ctx.beginPath();
-    ctx.ellipse(5, 337, 17, 9, -0.12, Math.PI, 0);
-    ctx.fill();
-    // Lower teeth
-    ctx.fillStyle = '#e8dfc8';
-    for (let i = 0; i < 3; i++) {
-      ctx.fillRect(2 + i * 6, 330, 4.5, 8);
+
+      // Upper teeth
+      ctx.fillStyle = '#f2ead8';
+      for (let i = 0; i < 4; i++) {
+        const tx = 1 + i * 5.5;
+        ctx.beginPath();
+        ctx.moveTo(tx, lipTop + 1);
+        ctx.lineTo(tx + 4.5, lipTop + 1);
+        ctx.lineTo(tx + 4, lipTop + 12 * open);
+        ctx.quadraticCurveTo(tx + 2, lipTop + 15 * open, tx + 0.5, lipTop + 12 * open);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Tongue
+      ctx.fillStyle = '#b04850';
+      ctx.beginPath();
+      ctx.ellipse(5, lipBot + 1, 17 * (0.55 + 0.45 * open), 9 * open, -0.12, Math.PI, 0);
+      ctx.fill();
+      // Lower teeth
+      ctx.fillStyle = '#e8dfc8';
+      for (let i = 0; i < 3; i++) {
+        ctx.fillRect(2 + i * 6, lipBot - 8 * open, 4.5, 8 * open);
+      }
+      ctx.globalAlpha = 1;
     }
 
-    // Upper lip
-    ctx.fillStyle = '#c07064';
+    // Realistic lips: upper thinner with a soft cupid's bow, lower fuller.
+    // A bit of bulk at rest; more volume as the mouth opens.
+    const upperLipBot = lipTop;
+    const upperLipTop = lipTop - (10 + 14 * open);
+    const upperReach = fx + 12 + 12 * open;
+    const upperGrad = ctx.createLinearGradient(0, upperLipTop, 0, upperLipBot);
+    upperGrad.addColorStop(0, '#c8786c');
+    upperGrad.addColorStop(0.45, '#b86058');
+    upperGrad.addColorStop(1, '#9a4848');
+    ctx.fillStyle = upperGrad;
     ctx.beginPath();
-    ctx.moveTo(0, 252);
-    ctx.quadraticCurveTo(fx + 12, 250, fx + 23, 257);
-    ctx.quadraticCurveTo(fx + 20, 264, fx + 8, 267);
-    ctx.quadraticCurveTo(fx, 266, 0, 265);
+    ctx.moveTo(0, upperLipTop + 1);
+    // Philtrum tubercle / cupid's bow peak near the front
+    ctx.quadraticCurveTo(fx + 5, upperLipTop - 1, fx + 9 + 4 * open, upperLipTop + 1);
+    ctx.quadraticCurveTo(upperReach, upperLipTop + 3 + 2 * open, mouthFrontX, upperLipBot);
+    ctx.quadraticCurveTo(fx + 2, upperLipBot - 1, 0, upperLipBot - 1);
     ctx.closePath();
     ctx.fill();
-    // Lower lip (catches the light)
-    ctx.fillStyle = '#c8786a';
+    // Soft vermillion highlight on the upper lip
+    ctx.strokeStyle = `rgba(255,210,200,${0.28 + open * 0.15})`;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(0, 338);
-    ctx.quadraticCurveTo(fx + 4, 335, fx + 6, 336);
-    ctx.quadraticCurveTo(fx + 26, 342, fx + 22, 356);
-    ctx.quadraticCurveTo(fx + 10, 362, 0, 361);
+    ctx.moveTo(3, upperLipTop + 3);
+    ctx.quadraticCurveTo(fx + 8, upperLipTop + 2, mouthFrontX - 3, upperLipBot - 2);
+    ctx.stroke();
+
+    // Lower lip — naturally fuller than the upper
+    const lowerLipBot = lipBot + (12 + 34 * open);
+    const lowerGrad = ctx.createLinearGradient(0, lipBot, 0, lowerLipBot + 6);
+    lowerGrad.addColorStop(0, '#a85050');
+    lowerGrad.addColorStop(0.4, '#c8786a');
+    lowerGrad.addColorStop(0.75, '#d09080');
+    lowerGrad.addColorStop(1, '#b87068');
+    ctx.fillStyle = lowerGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, lipBot + 1);
+    ctx.quadraticCurveTo(fx + 4, lipBot - 1, mouthFrontX - 1, lipBot);
+    // Rounded front of the lower lip
+    ctx.quadraticCurveTo(fx + 18 + 10 * open, lipBot + 5 + 6 * open, fx + 14 + 10 * open, lowerLipBot - 2);
+    ctx.quadraticCurveTo(fx + 8, lowerLipBot + 3, 0, lowerLipBot);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,.4)';
-    ctx.lineWidth = 2;
+
+    // Wet highlight on the lower lip
+    ctx.strokeStyle = `rgba(255,230,220,${0.35 + open * 0.2})`;
+    ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.moveTo(2, 350);
-    ctx.quadraticCurveTo(fx + 6, 351, fx + 15, 349);
+    ctx.moveTo(3, lipBot + 5 + 4 * open);
+    ctx.quadraticCurveTo(fx + 8, lipBot + 6 + 5 * open, fx + 14, lipBot + 4 + 4 * open);
+    ctx.stroke();
+
+    if (open < 0.28) {
+      // Closed seam between lips
+      ctx.strokeStyle = `rgba(90,40,40,${0.45 - open})`;
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.moveTo(2, MOUTH_MID_Y);
+      ctx.quadraticCurveTo(fx + 9, MOUTH_MID_Y + 0.8, mouthFrontX + 1, MOUTH_MID_Y);
+      ctx.stroke();
+    }
+
+    // Mental crease under the lower lip
+    ctx.strokeStyle = `rgba(140,90,60,${0.18 + open * 0.1})`;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(2, lowerLipBot + 4);
+    ctx.quadraticCurveTo(fx + 8, lowerLipBot + 6, fx + 14, lowerLipBot + 3);
     ctx.stroke();
 
     // Stubble on the chin and jaw (deterministic so it doesn't shimmer)
@@ -1137,13 +1441,177 @@
     ctx.restore();
   }
 
+  // Wrist → forearm → elbow → short upper-arm stub in a hospital gown.
+  // Drawn in local tip-centered coords. Call before the hand; call
+  // drawGownWristCuff after the hand so the sleeve covers the seam.
+  function drawForearmElbow(r, wristX, wristY, jumpLift = 0) {
+    // Elbow sits down toward the patient/camera with a natural slight bend.
+    const elbowX = wristX - r * 0.35 - jumpLift * r * 0.4;
+    const elbowY = wristY + r * 3.4;
+    const upperX = elbowX - r * 0.55;
+    const upperY = elbowY + r * 2.2;
+    // Sleeve starts ABOVE the wrist so it tucks under the hand photo.
+    const sleeveStartX = wristX + r * 0.04;
+    const sleeveStartY = wristY - r * 0.55;
+    const cuffW = r * 0.95;
+    const wristW = r * 0.78;
+    const elbowW = r * 1.15;
+    const upperW = r * 1.28;
+
+    function limbSide(t, side) {
+      // t: 0 at sleeve start (above wrist) → 0.18 at wrist → 1 at elbow → 1.55 upper tip
+      let x, y, w, ang;
+      if (t <= 0.18) {
+        const u = t / 0.18;
+        x = sleeveStartX + (wristX - sleeveStartX) * u;
+        y = sleeveStartY + (wristY - sleeveStartY) * u;
+        w = cuffW + (wristW - cuffW) * u;
+        ang = Math.atan2(wristY - sleeveStartY, wristX - sleeveStartX);
+      } else if (t <= 1) {
+        const u = (t - 0.18) / 0.82;
+        x = wristX + (elbowX - wristX) * u;
+        y = wristY + (elbowY - wristY) * u;
+        x += Math.sin(u * Math.PI) * r * 0.22;
+        w = wristW + (elbowW - wristW) * u;
+        ang = Math.atan2(elbowY - wristY, elbowX - wristX);
+      } else {
+        const u = (t - 1) / 0.55;
+        x = elbowX + (upperX - elbowX) * u;
+        y = elbowY + (upperY - elbowY) * u;
+        w = elbowW + (upperW - elbowW) * u;
+        ang = Math.atan2(upperY - elbowY, upperX - elbowX);
+      }
+      return {
+        x: x + Math.cos(ang + Math.PI / 2) * w * side,
+        y: y + Math.sin(ang + Math.PI / 2) * w * side
+      };
+    }
+
+    // Soft bed shadow under the forearm / elbow.
+    ctx.fillStyle = 'rgba(10,30,44,.18)';
+    ctx.beginPath();
+    ctx.ellipse(
+      (wristX + elbowX) * 0.5 + r * 0.3,
+      (wristY + elbowY) * 0.5 + r * 0.35,
+      r * 2.4, r * 0.55, 0.55, 0, Math.PI * 2
+    );
+    ctx.fill();
+
+    // Gown sleeve: overlaps up into the wrist, then covers forearm → elbow.
+    const gown = ctx.createLinearGradient(sleeveStartX, sleeveStartY, upperX, upperY);
+    gown.addColorStop(0, '#f4fafc');
+    gown.addColorStop(0.12, '#e8f2f8');
+    gown.addColorStop(0.4, '#d4e6f0');
+    gown.addColorStop(0.75, '#b0ccd8');
+    gown.addColorStop(1, '#8eafc0');
+    ctx.fillStyle = gown;
+    ctx.beginPath();
+    const steps = 16;
+    for (let i = 0; i <= steps; i++) {
+      const p = limbSide(i / steps * 1.55, -1);
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    for (let i = steps; i >= 0; i--) {
+      const p = limbSide(i / steps * 1.55, 1);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(70,100,120,.35)';
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    // Sleeve folds along the forearm.
+    ctx.strokeStyle = 'rgba(60,90,110,.28)';
+    ctx.lineWidth = 1.3;
+    for (const t of [0.32, 0.55, 0.8]) {
+      const a = limbSide(t, -0.7);
+      const b = limbSide(t, 0.7);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(
+        wristX + (elbowX - wristX) * ((t - 0.18) / 0.82) + r * 0.15,
+        wristY + (elbowY - wristY) * ((t - 0.18) / 0.82),
+        b.x, b.y
+      );
+      ctx.stroke();
+    }
+
+    // Elbow joint bulge (olecranon under the gown).
+    const elbowGrad = ctx.createRadialGradient(
+      elbowX - r * 0.15, elbowY - r * 0.1, r * 0.1,
+      elbowX, elbowY, elbowW * 1.15
+    );
+    elbowGrad.addColorStop(0, 'rgba(255,255,255,.45)');
+    elbowGrad.addColorStop(0.45, 'rgba(200,220,232,.35)');
+    elbowGrad.addColorStop(1, 'rgba(140,170,186,0)');
+    ctx.fillStyle = elbowGrad;
+    ctx.beginPath();
+    ctx.ellipse(elbowX, elbowY, elbowW * 1.05, elbowW * 0.85, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(70,100,120,.4)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.ellipse(elbowX + r * 0.05, elbowY + r * 0.05, elbowW * 0.7, elbowW * 0.55, 0.4, 0.2, Math.PI * 1.2);
+    ctx.stroke();
+  }
+
+  // Drawn ON TOP of the hand so the gown cuff hides the photo→vector seam.
+  function drawGownWristCuff(r, wristX, wristY) {
+    const cuffTop = wristY - r * 0.42;
+    const cuffBot = wristY + r * 0.55;
+    const left = wristX - r * 1.15;
+    const right = wristX + r * 1.2;
+
+    const cuff = ctx.createLinearGradient(wristX, cuffTop, wristX, cuffBot);
+    cuff.addColorStop(0, 'rgba(244,250,252,0)');
+    cuff.addColorStop(0.22, '#f2f8fc');
+    cuff.addColorStop(0.55, '#dceaf2');
+    cuff.addColorStop(1, '#c5dbe6');
+    ctx.fillStyle = cuff;
+    ctx.beginPath();
+    ctx.moveTo(left + r * 0.15, cuffTop + r * 0.1);
+    ctx.quadraticCurveTo(wristX, cuffTop - r * 0.05, right - r * 0.1, cuffTop + r * 0.12);
+    ctx.quadraticCurveTo(right + r * 0.08, wristY + r * 0.1, right - r * 0.05, cuffBot);
+    ctx.quadraticCurveTo(wristX, cuffBot + r * 0.18, left + r * 0.1, cuffBot - r * 0.05);
+    ctx.quadraticCurveTo(left - r * 0.08, wristY + r * 0.05, left + r * 0.15, cuffTop + r * 0.1);
+    ctx.closePath();
+    ctx.fill();
+
+    // Soft hem so it reads as fabric wrapping the wrist, not a hard cut.
+    ctx.strokeStyle = 'rgba(70,100,120,.5)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(left + r * 0.2, cuffTop + r * 0.18);
+    ctx.quadraticCurveTo(wristX, cuffTop + r * 0.02, right - r * 0.15, cuffTop + r * 0.2);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(255,255,255,.28)';
+    ctx.beginPath();
+    ctx.moveTo(left + r * 0.25, cuffTop + r * 0.22);
+    ctx.quadraticCurveTo(wristX, cuffTop + r * 0.08, right - r * 0.2, cuffTop + r * 0.24);
+    ctx.quadraticCurveTo(wristX, cuffTop + r * 0.38, left + r * 0.25, cuffTop + r * 0.22);
+    ctx.fill();
+
+    // Slight shadow under the cuff onto the forearm.
+    ctx.fillStyle = 'rgba(40,70,90,.12)';
+    ctx.beginPath();
+    ctx.ellipse(wristX, wristY + r * 0.35, r * 0.95, r * 0.22, 0.05, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   function drawShadows() {
     // Depth cue: the near fingertip throws a big soft shadow, the far doctor
     // a small one, and the pill's shadow shrinks as it rises.
     const fingerLift = Math.max(0.45, 1 + state.you.y / 380);
-    ctx.fillStyle = `rgba(10,30,44,${0.3 * fingerLift})`;
+    ctx.fillStyle = `rgba(10,30,44,${0.28 * fingerLift})`;
     ctx.beginPath();
-    ctx.ellipse(state.you.x, FLOOR_Y + 8, 46 * fingerLift, 10 * fingerLift, 0, 0, Math.PI * 2);
+    ctx.ellipse(state.you.x + 10, FLOOR_Y + 22, 70 * fingerLift, 14 * fingerLift, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(10,30,44,${0.16 * fingerLift})`;
+    ctx.beginPath();
+    ctx.ellipse(state.you.x - 8, FLOOR_Y + 48, 52 * fingerLift, 18 * fingerLift, 0.55, 0, Math.PI * 2);
     ctx.fill();
 
     const docLift = Math.max(0.45, 1 + state.cpu.y / 380);
@@ -1166,40 +1634,343 @@
     const r = slime.r * (1 + slime.stretch * 0.12 - slime.squash * 0.18);
     const hScale = 1 + slime.stretch * 0.22 - slime.squash * 0.28;
 
+    if (handSprite) {
+      // Photo hand: index fingertip sits at the top of the collision dome,
+      // knuckles fill the right side, wrist trails onto the bed.
+      const h = r * 3.0;
+      const w = h * (handSprite.width / handSprite.height);
+      const tipFx = 0.19;  // fingertip position within the image
+      const tipFy = 0.09;
+      const imgX = -r * 0.35 - w * tipFx;
+      const imgY = -r - h * tipFy;
+      // Wrist attachment in the photo (bottom-center of the palm).
+      const wristX = imgX + w * 0.5;
+      const wristY = imgY + h * 0.9;
+      const jumpLift = slime.grounded ? 0 : Math.min(1, -slime.y / 120);
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(1, hScale);
+
+      // Motion streaks on a fast flick
+      const motion = Math.abs(slime.vx) + Math.max(0, -slime.vy) * 0.45;
+      if (motion > 90) {
+        const trailSide = slime.vx >= 0 ? -1 : 1;
+        ctx.strokeStyle = `rgba(255,255,255,${Math.min(0.65, motion / 700)})`;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+          ctx.lineWidth = 3 - i * 0.65;
+          ctx.beginPath();
+          ctx.moveTo(trailSide * (r + 8 + i * 7), -r * (0.7 - i * 0.28));
+          ctx.quadraticCurveTo(
+            trailSide * (r + 18 + i * 8), -r * (0.82 - i * 0.25),
+            trailSide * (r + 30 + i * 10), -r * (0.65 - i * 0.2)
+          );
+          ctx.stroke();
+        }
+        ctx.lineCap = 'butt';
+      }
+
+      // Arm under the photo; gown cuff drawn after so it covers the seam.
+      drawForearmElbow(r, wristX, wristY, jumpLift);
+
+      // Clip the wrist of the photo so it can't stick out past the gown cuff.
+      // Knuckles/fingers above keep full width; only the lower wrist is trimmed.
+      const cuffRight = wristX + r * 1.05;
+      const wristClipY = wristY - r * 0.55;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(imgX - r, imgY - r);
+      ctx.lineTo(imgX + w + r, imgY - r);
+      ctx.lineTo(imgX + w + r, wristClipY);
+      ctx.lineTo(cuffRight, wristClipY + r * 0.25);
+      ctx.lineTo(cuffRight, imgY + h + r);
+      ctx.lineTo(imgX - r, imgY + h + r);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(handSprite, imgX, imgY, w, h);
+      ctx.restore();
+
+      drawGownWristCuff(r, wristX, wristY);
+      ctx.restore();
+      return;
+    }
+
+    const skin = slime.color;
+    const skinDark = slime.dark;
+    const skinMid = '#efc79e';
+    const skinLight = '#ffe0bd';
+
+    // Tip pad matches the playable dome width; shaft stays nearly as wide and
+    // only eases in slowly toward the knuckles.
+    const tipW = r * 0.96;
+    const midW = r * 0.9;
+    const proxW = r * 0.94;
+    const midLen = r * 0.82;
+    const proxLen = r * 1.18;
+    const knuckleY = midLen + proxLen; // MCP joint at base of index
+    // Palm: ~3.5 finger-widths wide; index sits on the radial (left) edge of the knuckle row.
+    const palmCx = r * 0.95;
+    const palmTop = knuckleY - r * 0.08;
+    const palmBot = knuckleY + r * 1.35;
+    const palmLeft = -r * 0.55;
+    const palmRight = r * 2.55;
+    const wristY = palmBot + r * 0.15;
+    const tilt = slime.grounded ? 0.03 : -0.1 - slime.stretch * 0.14;
+
+    function drawPhalanx(x0, y0, x1, y1, w0, w1, seamless = false) {
+      const dx = x1 - x0;
+      const dy = y1 - y0;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len;
+      const ny = dx / len;
+      const grad = ctx.createLinearGradient(x0 + nx * w0, y0 + ny * w0, x0 - nx * w0, y0 - ny * w0);
+      grad.addColorStop(0, skinDark);
+      grad.addColorStop(0.35, skin);
+      grad.addColorStop(0.7, skinMid);
+      grad.addColorStop(1, skinDark);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(x0 + nx * w0, y0 + ny * w0);
+      ctx.lineTo(x1 + nx * w1, y1 + ny * w1);
+      ctx.arc(x1, y1, w1, Math.atan2(ny, nx), Math.atan2(-ny, -nx), false);
+      ctx.lineTo(x0 - nx * w0, y0 - ny * w0);
+      ctx.arc(x0, y0, w0, Math.atan2(-ny, -nx), Math.atan2(ny, nx), false);
+      ctx.closePath();
+      ctx.fill();
+      if (!seamless) {
+        ctx.strokeStyle = 'rgba(120,70,30,.28)';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+    }
+
+    function drawKnuckleCrease(x, y, w, ang) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(ang);
+      ctx.strokeStyle = 'rgba(140,90,55,.4)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.85, 0);
+      ctx.quadraticCurveTo(0, -w * 0.12, w * 0.85, 0);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,230,200,.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.7, w * 0.1);
+      ctx.quadraticCurveTo(0, w * 0.02, w * 0.7, w * 0.1);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.save();
     ctx.translate(cx, cy);
     ctx.scale(1, hScale);
+    ctx.translate(palmCx * 0.35, wristY);
+    ctx.rotate(tilt);
+    ctx.translate(-palmCx * 0.35, -wristY);
 
-    // Fingertip dome
-    const grad = ctx.createRadialGradient(-r * 0.2, -r * 0.35, r * 0.1, 0, 0, r);
-    grad.addColorStop(0, slime.color);
-    grad.addColorStop(1, slime.dark);
-    ctx.fillStyle = grad;
+    // Comic motion accents make a quick flick read clearly without changing
+    // the collision silhouette.
+    const motion = Math.abs(slime.vx) + Math.max(0, -slime.vy) * 0.45;
+    if (motion > 90) {
+      const trailSide = slime.vx >= 0 ? -1 : 1;
+      ctx.strokeStyle = `rgba(255,255,255,${Math.min(0.65, motion / 700)})`;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        ctx.lineWidth = 3 - i * 0.65;
+        ctx.beginPath();
+        ctx.moveTo(trailSide * (r + 8 + i * 7), -r * (0.7 - i * 0.28));
+        ctx.quadraticCurveTo(
+          trailSide * (r + 18 + i * 8), -r * (0.82 - i * 0.25),
+          trailSide * (r + 30 + i * 10), -r * (0.65 - i * 0.2)
+        );
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+    }
+
+    // Full forearm → elbow → upper-arm stub under the drawn hand.
+    drawForearmElbow(
+      r,
+      palmCx * 0.35,
+      wristY + r * 0.05,
+      slime.grounded ? 0 : Math.min(1, -slime.y / 120)
+    );
+
+    // Palm: rounded rectangle, knuckle edge up, wrist edge down.
+    const palmGrad = ctx.createLinearGradient(palmLeft, palmTop, palmRight, palmBot);
+    palmGrad.addColorStop(0, skinDark);
+    palmGrad.addColorStop(0.35, skin);
+    palmGrad.addColorStop(0.75, skinMid);
+    palmGrad.addColorStop(1, skinDark);
+    ctx.fillStyle = palmGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, r, Math.PI, 0);
+    ctx.moveTo(palmLeft + r * 0.2, palmTop);
+    ctx.lineTo(palmRight - r * 0.15, palmTop + r * 0.12);
+    ctx.quadraticCurveTo(palmRight + r * 0.08, palmTop + r * 0.55, palmRight - r * 0.05, palmBot - r * 0.25);
+    ctx.quadraticCurveTo(palmCx + r * 0.2, palmBot + r * 0.12, palmLeft + r * 0.25, palmBot - r * 0.1);
+    ctx.quadraticCurveTo(palmLeft - r * 0.12, palmTop + r * 0.7, palmLeft + r * 0.2, palmTop);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(120,70,30,.3)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(120,70,30,.26)';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Fingernail
+    // County General patient band, wrapped across the back of the hand.
+    const bandY = palmTop + r * 0.42;
+    ctx.fillStyle = '#e9fbff';
+    ctx.beginPath();
+    ctx.moveTo(palmLeft - r * 0.02, bandY - r * 0.16);
+    ctx.lineTo(palmRight, bandY - r * 0.06);
+    ctx.lineTo(palmRight - r * 0.03, bandY + r * 0.24);
+    ctx.lineTo(palmLeft - r * 0.05, bandY + r * 0.14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#53b9d1';
+    ctx.lineWidth = 1.3;
+    ctx.stroke();
+    ctx.fillStyle = '#257f98';
+    ctx.font = `bold ${Math.max(5, r * 0.17)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('PATIENT  ★', palmCx, bandY + r * 0.1);
+
+    // Thenar (thumb pad) bulge on the radial side of the palm.
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.ellipse(palmLeft + r * 0.35, palmTop + r * 0.75, r * 0.42, r * 0.55, -0.25, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Folded middle / ring / pinky: proximal knuckles + curled distal pads.
+    const fist = [
+      { x: r * 0.85, y: palmTop + r * 0.08, w: r * 0.38, curl: 0.15 },
+      { x: r * 1.55, y: palmTop + r * 0.18, w: r * 0.36, curl: 0.22 },
+      { x: r * 2.15, y: palmTop + r * 0.32, w: r * 0.3, curl: 0.3 }
+    ];
+    for (const f of fist) {
+      const knuckleGrad = ctx.createRadialGradient(f.x - r * 0.08, f.y - r * 0.05, 2, f.x, f.y, f.w);
+      knuckleGrad.addColorStop(0, skin);
+      knuckleGrad.addColorStop(1, skinDark);
+      ctx.fillStyle = knuckleGrad;
+      ctx.beginPath();
+      ctx.ellipse(f.x, f.y, f.w, f.w * 0.72, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = skinDark;
+      ctx.beginPath();
+      ctx.ellipse(f.x + r * 0.05, f.y + r * 0.35 + f.curl * r, f.w * 0.7, f.w * 0.45, 1.15, 0, Math.PI * 2);
+      ctx.fill();
+      drawKnuckleCrease(f.x, f.y + f.w * 0.15, f.w * 0.85, 0.08);
+    }
+
+    // Thumb: two segments, opposed along the radial edge, tip curled in.
+    ctx.save();
+    ctx.translate(palmLeft + r * 0.15, palmTop + r * 0.55);
+    ctx.rotate(-0.55);
+    drawPhalanx(0, 0, 0, r * 0.7, r * 0.32, r * 0.28);
+    drawKnuckleCrease(0, r * 0.35, r * 0.28, 0);
+    ctx.translate(0, r * 0.7);
+    ctx.rotate(0.85);
+    drawPhalanx(0, 0, 0, r * 0.55, r * 0.26, r * 0.22);
     ctx.fillStyle = '#fbe8d8';
     ctx.beginPath();
-    ctx.ellipse(0, -r * 0.62, r * 0.42, r * 0.3, 0, Math.PI, 0);
+    ctx.ellipse(0, r * 0.48, r * 0.14, r * 0.1, 0, Math.PI, 0);
+    ctx.fill();
+    ctx.restore();
+
+    // Index finger: proximal → middle → tip, centered on the hitbox (x = 0).
+    // Slight natural lean so it doesn't read as a perfect rectangle.
+    const midJoint = midLen;
+    const tipLean = 0.04;
+    const midX = Math.sin(tipLean) * midLen * 0.15;
+    const baseX = Math.sin(tipLean) * knuckleY * 0.08;
+
+    // One continuous silhouette beneath all three bones prevents capsule-like
+    // gaps at the DIP, PIP and MCP joints as the finger stretches and squashes.
+    // Keep the tip wide for longer before easing into the mid/prox widths.
+    ctx.fillStyle = skin;
+    ctx.strokeStyle = 'rgba(112,62,30,.38)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-tipW, r * 0.12);
+    ctx.bezierCurveTo(-tipW, r * 0.55, midX * 0.5 - tipW * 0.96, midJoint * 0.45, midX * 0.5 - midW, midJoint);
+    ctx.bezierCurveTo(baseX * 0.4 - proxW, knuckleY * 0.78, baseX - proxW * 1.08, knuckleY * 0.96, baseX - proxW * 1.08, knuckleY);
+    ctx.lineTo(baseX + proxW * 1.08, knuckleY);
+    ctx.bezierCurveTo(baseX + proxW * 1.08, knuckleY * 0.96, baseX * 0.4 + proxW, knuckleY * 0.78, midX * 0.5 + midW, midJoint);
+    ctx.bezierCurveTo(midX * 0.5 + tipW * 0.96, midJoint * 0.45, tipW, r * 0.55, tipW, r * 0.12);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = 'rgba(150,100,60,.4)';
-    ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Knuckle creases at the base
-    ctx.strokeStyle = 'rgba(150,100,60,.35)';
-    ctx.lineWidth = 1.5;
+    // MCP metacarpal stub connecting palm to proximal phalanx.
+    drawPhalanx(baseX, knuckleY, baseX * 0.4, knuckleY - r * 0.12, proxW * 1.08, proxW, true);
+    drawPhalanx(baseX * 0.4, knuckleY - r * 0.12, midX * 0.5, midJoint, proxW, midW, true);
+    drawKnuckleCrease(baseX * 0.2, knuckleY - r * 0.02, proxW * 0.95, 0.02);
+    drawKnuckleCrease(midX * 0.35, midJoint, midW * 0.92, tipLean * 0.5);
+
+    // Middle phalanx up to the distal joint under the tip pad.
+    drawPhalanx(midX * 0.5, midJoint, 0, r * 0.08, midW, tipW, true);
+
+    // Distal fingertip: a broad playable dome tapering into the narrower DIP
+    // joint instead of an anatomically impossible full-width cylinder.
+    const tipGrad = ctx.createRadialGradient(-r * 0.2, -r * 0.28, r * 0.06, 0, 0, r);
+    tipGrad.addColorStop(0, skinLight);
+    tipGrad.addColorStop(0.55, skinMid);
+    tipGrad.addColorStop(1, skinDark);
+    ctx.fillStyle = tipGrad;
     ctx.beginPath();
-    ctx.moveTo(-r * 0.7, -3);
-    ctx.quadraticCurveTo(0, -8, r * 0.7, -3);
+    ctx.arc(0, 0, r, Math.PI, 0, false);
+    ctx.quadraticCurveTo(r * 0.92, r * 0.18, tipW, r * 0.24);
+    ctx.lineTo(-tipW, r * 0.24);
+    ctx.quadraticCurveTo(-r * 0.92, r * 0.18, -r, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(112,62,30,.42)';
+    ctx.lineWidth = 1.8;
     ctx.stroke();
+
+    // Proper nail plate with a lunula, highlight and a tiny heart decal.
+    const nailGrad = ctx.createLinearGradient(0, -r * 0.82, 0, -r * 0.14);
+    nailGrad.addColorStop(0, '#fff8ed');
+    nailGrad.addColorStop(0.72, '#f8dfd0');
+    nailGrad.addColorStop(1, '#e8bfae');
+    ctx.fillStyle = nailGrad;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.46, -r * 0.46);
+    ctx.bezierCurveTo(-r * 0.44, -r * 0.76, -r * 0.27, -r * 0.86, 0, -r * 0.88);
+    ctx.bezierCurveTo(r * 0.27, -r * 0.86, r * 0.44, -r * 0.76, r * 0.46, -r * 0.46);
+    ctx.quadraticCurveTo(r * 0.34, -r * 0.16, 0, -r * 0.15);
+    ctx.quadraticCurveTo(-r * 0.34, -r * 0.16, -r * 0.46, -r * 0.46);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(150,100,60,.42)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.35)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.18, -r * 0.68);
+    ctx.quadraticCurveTo(0, -r * 0.78, r * 0.18, -r * 0.68);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.65)';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.13, -r * 0.6, r * 0.055, r * 0.13, -0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ef5c74';
+    ctx.font = `bold ${Math.max(7, r * 0.28)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('♥', r * 0.1, -r * 0.36);
+
+    // Soft pad crease under the nail.
+    ctx.strokeStyle = 'rgba(140,90,55,.28)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.55, -r * 0.08);
+    ctx.quadraticCurveTo(0, r * 0.02, r * 0.55, -r * 0.08);
+    ctx.stroke();
+
+    // Gown cuff over the wrist so the vector arm join is hidden.
+    drawGownWristCuff(r, palmCx * 0.35, wristY + r * 0.05);
 
     ctx.restore();
   }
@@ -1459,7 +2230,6 @@
     }
 
     ctx.restore();
-    ball.spin += ball.vx * 0.0007;
   }
 
   function drawFloatText() {

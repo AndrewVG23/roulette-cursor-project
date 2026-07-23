@@ -2888,16 +2888,20 @@
     { model: 'Audi R8', kind: 'sports', weight: 1, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#f39c12'], bodyScale: 0.87, roof: 0.63, base: 58 },
     { model: 'Tesla Model S Plaid', kind: 'sports', weight: 2, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#148f77'], bodyScale: 0.93, roof: 0.72, base: 56 },
     { model: 'Ford Mustang GT', kind: 'sports', weight: 2, cool: true, colors: ['#c0392b', '#1c2833', '#ecf0f1', '#196f3d'], bodyScale: 0.94, roof: 0.74, base: 51 },
-    { model: 'Nissan GT-R', kind: 'sports', weight: 1, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#5d6d7e'], bodyScale: 0.92, roof: 0.7, base: 54 }
+    { model: 'Nissan GT-R', kind: 'sports', weight: 1, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#5d6d7e'], bodyScale: 0.92, roof: 0.7, base: 54 },
+    { model: 'Lamborghini Countach', kind: 'sports', weight: 0, cool: true, colors: ['#f39c12', '#e67e22', '#d35400', '#ecf0f1'], bodyScale: 0.9, roof: 0.48, base: 62 }
   ];
   const COMMON_CAR_FLEET = REAL_CAR_FLEET.filter(c => !c.cool);
-  const COOL_CAR_FLEET = REAL_CAR_FLEET.filter(c => c.cool);
+  const COOL_CAR_FLEET = REAL_CAR_FLEET.filter(c => c.cool && c.model !== 'Lamborghini Countach');
+  const COUNTACH_CAR = REAL_CAR_FLEET.find(c => c.model === 'Lamborghini Countach');
   const POLICE_CAR = REAL_CAR_FLEET.find(c => c.kind === 'police');
   const COMMON_CAR_FLEET_TOTAL = COMMON_CAR_FLEET.reduce((s, c) => s + c.weight, 0);
   const COOL_CAR_SPAWN_CHANCE = 0.035;
+  const COUNTACH_SPAWN_CHANCE = 0.014;
   const POLICE_SPAWN_CHANCE = 0.12;
 
   function pickRealCar() {
+    if (Math.random() < COUNTACH_SPAWN_CHANCE && COUNTACH_CAR) return COUNTACH_CAR;
     if (Math.random() < COOL_CAR_SPAWN_CHANCE && COOL_CAR_FLEET.length) {
       return COOL_CAR_FLEET[Math.floor(Math.random() * COOL_CAR_FLEET.length)];
     }
@@ -2929,6 +2933,7 @@
     model_y: { wMul: 1.0, hMul: 1.02, roof: 1.05 },
     taxi: { wMul: 1.0, hMul: 0.96, roof: 1.0 },
     lambo: { wMul: 1.06, hMul: 0.76, roof: 0.62 },
+    countach: { wMul: 1.12, hMul: 0.7, roof: 0.48 },
     porsche911: { wMul: 1.0, hMul: 0.8, roof: 0.68 },
     ferrari: { wMul: 1.02, hMul: 0.78, roof: 0.64 },
     corvette: { wMul: 1.0, hMul: 0.82, roof: 0.66 },
@@ -2945,6 +2950,7 @@
     'Tesla Model Y': 'model_y', 'Tesla Model S Plaid': 'model_y',
     'NYC Yellow Cab': 'taxi',
     'Lamborghini Huracán': 'lambo', 'McLaren 720S': 'lambo', 'Mercedes-AMG GT': 'lambo', 'Audi R8': 'lambo',
+    'Lamborghini Countach': 'countach',
     'Porsche 911': 'porsche911',
     'Ferrari Roma': 'ferrari',
     'Corvette Stingray': 'corvette',
@@ -3913,6 +3919,7 @@
           car.kind === 'police' ? 'NYPD launched. $50 bounty.'
             : car.kind === 'bus' ? 'Clipped an MTA bus.'
             : car.kind === 'taxi' ? 'Launched a yellow cab.'
+            : car.model === 'Lamborghini Countach' ? 'Sent a Countach flying!'
             : car.cool ? `Sent a ${car.model} flying!`
             : car.model ? `Bounced off a ${car.model}.`
             : 'Sent them flying.',
@@ -5310,7 +5317,36 @@
 
   function drawCarKindDetails(kind, w, h, rearW, rearY, midY, midW, roofH, lean, s, body, opts) {
     const roofTop = midY - roofH;
-    if (kind === 'sports') {
+    if (kind === 'sports' && opts.rear?.id === 'countach') {
+      ctx.strokeStyle = shade(body, -42);
+      ctx.lineWidth = Math.max(1, 1.3 * s);
+      for (let i = 0; i < 6; i++) {
+        const t = i / 5;
+        const lx = -rearW * 0.82 + t * rearW * 0.35;
+        ctx.beginPath();
+        ctx.moveTo(lx, rearY - h * 0.02);
+        ctx.lineTo(lx + rearW * 0.1 + lean * 0.08, midY + h * 0.04);
+        ctx.stroke();
+        const rx = rearW * 0.47 + t * rearW * 0.35;
+        ctx.beginPath();
+        ctx.moveTo(rx, rearY - h * 0.02);
+        ctx.lineTo(rx - rearW * 0.1 + lean * 0.08, midY + h * 0.04);
+        ctx.stroke();
+      }
+      ctx.fillStyle = shade(body, -24);
+      ctx.fillRect(-w * 0.07 + lean * 0.15, roofTop - h * 0.1, w * 0.14, h * 0.07);
+      ctx.fillStyle = '#101014';
+      ctx.fillRect(-w * 0.04 + lean * 0.15, roofTop - h * 0.08, w * 0.08, h * 0.03);
+      ctx.fillStyle = shade(body, -30);
+      ctx.beginPath();
+      ctx.moveTo(-rearW * 0.55, rearY - h * 0.3);
+      ctx.lineTo(0 + lean * 0.2, rearY - h * 0.38);
+      ctx.lineTo(rearW * 0.55, rearY - h * 0.3);
+      ctx.lineTo(rearW * 0.42, rearY - h * 0.24);
+      ctx.lineTo(-rearW * 0.42, rearY - h * 0.24);
+      ctx.closePath();
+      ctx.fill();
+    } else if (kind === 'sports') {
       ctx.fillStyle = shade(body, -35);
       ctx.beginPath();
       ctx.moveTo(-rearW * 0.75, rearY - h * 0.22);
@@ -5459,6 +5495,44 @@
         ctx.fill();
         ctx.fillStyle = '#1a1a20';
         ctx.fillRect(-w * 0.12, rearY + h * 0.04, w * 0.24, h * 0.06);
+        break;
+      case 'countach':
+        ctx.fillStyle = shade(body, -16);
+        ctx.fillRect(-rearW * 0.58, rearY - h * 0.3, rearW * 1.16, h * 0.09);
+        ctx.strokeStyle = 'rgba(0,0,0,0.38)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 8; i++) {
+          const lx = -rearW * 0.52 + i * rearW * 0.14;
+          ctx.beginPath();
+          ctx.moveTo(lx, rearY - h * 0.29);
+          ctx.lineTo(lx, rearY - h * 0.21);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#121216';
+        ctx.fillRect(-rearW * 0.9, rearY - h * 0.13, rearW * 1.8, h * 0.15);
+        ctx.strokeStyle = '#303038';
+        for (let i = 0; i < 10; i++) {
+          const lx = -rearW * 0.82 + i * rearW * 0.16;
+          ctx.beginPath();
+          ctx.moveTo(lx, rearY - h * 0.12);
+          ctx.lineTo(lx, rearY + h * 0.01);
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#101014';
+        ctx.fillRect(-rearW * 0.98, rearY - h * 0.2, w * 0.1, h * 0.13);
+        ctx.fillRect(rearW * 0.88, rearY - h * 0.2, w * 0.1, h * 0.13);
+        ctx.fillStyle = red;
+        ctx.fillRect(-rearW * 0.88, rearY - h * 0.09, w * 0.17, h * 0.11);
+        ctx.fillRect(rearW * 0.71, rearY - h * 0.09, w * 0.17, h * 0.11);
+        ctx.fillStyle = redHi;
+        ctx.fillRect(-rearW * 0.86, rearY - h * 0.08, w * 0.13, h * 0.04);
+        ctx.fillRect(rearW * 0.73, rearY - h * 0.08, w * 0.13, h * 0.04);
+        ctx.fillStyle = '#f1c40f';
+        ctx.fillRect(-w * 0.11, rearY + h * 0.015, w * 0.22, h * 0.055);
+        ctx.fillStyle = '#1a1814';
+        ctx.font = `700 ${Math.max(4, w * 0.08)}px "General Sans", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('COUNT', lean * 0.05, rearY + h * 0.055);
         break;
       case 'porsche911':
         ctx.fillStyle = shade(body, -22);
