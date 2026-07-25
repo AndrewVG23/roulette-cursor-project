@@ -1460,11 +1460,11 @@
       return d;
     }
     function updateCamera(dt) {
-      // Avatar may whip around; the lens crawls to catch up (hard rate cap).
+      // Avatar may whip around; the lens still lags, but not as heavily.
       const yawErr = shortestAngleDelta(cam.yaw, player.facing);
-      const yawFollow = Math.abs(yawErr) > 1.2 ? 0.55 : 0.32;
+      const yawFollow = Math.abs(yawErr) > 1.2 ? 0.95 : 0.55;
       let dyaw = yawErr * (1 - Math.exp(-yawFollow * dt));
-      const maxYawRate = 0.7; // rad/s ≈ 40°/s — screen never snaps with the body
+      const maxYawRate = 1.15; // rad/s ≈ 66°/s — trails the body without crawling
       const maxStep = maxYawRate * dt;
       if (dyaw > maxStep) dyaw = maxStep;
       if (dyaw < -maxStep) dyaw = -maxStep;
