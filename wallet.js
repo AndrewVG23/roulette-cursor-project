@@ -287,6 +287,9 @@
   function resetTimeline() {
     state.visits = 0;
     state.index = 1;
+    state.digital = DEFAULT_DIGITAL;
+    state.cash = 0;
+    // gold is kept — bullion survives the rewind
     persist();
     return getState();
   }
