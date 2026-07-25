@@ -1131,7 +1131,7 @@
     });
 
     // chase camera — yaw lags facing a bit; wider default framing
-    const cam = { pitch: 0.40, dist: 15, yaw: player.facing, lookY: player.pos.y + 1.5 };
+    const cam = { pitch: 0.34, dist: 11.5, yaw: player.facing, lookY: player.pos.y + 2.15 };
     canvas.addEventListener('wheel', (e) => {
       cam.dist = Math.min(18, Math.max(6, cam.dist + e.deltaY * 0.01));
       e.preventDefault();
@@ -1167,7 +1167,7 @@
     const ACCEL_G = 60;
     const ACCEL_A = 26;
     const JUMP_V = [9.8, 11.4, 13.4];
-    const TURN_RATE = 2.75;
+    const TURN_RATE = 1.55;
 
     function playerBounds() {
       return {
@@ -1470,7 +1470,7 @@
       if (dyaw < -maxStep) dyaw = -maxStep;
       cam.yaw += dyaw;
 
-      const lookYWant = player.pos.y + 1.45;
+      const lookYWant = player.pos.y + 2.15;
       cam.lookY += (lookYWant - cam.lookY) * (1 - Math.exp(-5 * dt));
       camTarget.set(player.pos.x, cam.lookY, player.pos.z);
 
