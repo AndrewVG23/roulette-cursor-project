@@ -1202,17 +1202,21 @@
   const hintText = document.getElementById('hintText');
   const dpad = document.getElementById('dpad');
 
-  // Drive fines and bounties — most scale with debt/inflation; red light stays flat.
+  // Drive fines and payouts track shared inflation (price index); red light stays flat.
   const SIGNAL_FINE = 100;
   const COP_HIT_FINE = 50;
   const CHASER_BUMP_FINE = 10;
   const CRASH_FINE_SOFT = 10;
+  const EXIT_BONUS_BASE = 180;
+  const EXIT_BONUS_PER_LEVEL = 30;
+  const CRUISE_PAY_RATE = 0.2;
   const COP_BOUNTY_CHASER = 150;
   const COP_BOUNTY_POLICE = 50;
   const COP_BOUNTY_PILEUP = 100;
   const COP_BOUNTY_COP_PILEUP = 500;
-  function driveCost(base) { return Wallet.debtScaled(base); }
-  function copBounty(base) { return driveCost(base); }
+  function driveCost(base) { return Wallet.goldScaled(base); }
+  function drivePayout(base) { return Wallet.goldScaled(base); }
+  function copBounty(base) { return drivePayout(base); }
 
   const helpBtn = document.getElementById('helpBtn');
   const helpPanel = document.getElementById('helpPanel');
@@ -2634,7 +2638,7 @@
       d.speed = Math.max(10, d.speed * 0.55);
       d.approachingExit = exit;
     }
-    const bonus = 180 + state.level * 30;
+    const bonus = drivePayout(EXIT_BONUS_BASE + state.level * EXIT_BONUS_PER_LEVEL);
     Wallet.add(bonus);
     state.score += bonus;
     const estab = ESTABLISHMENTS[exit.id] || {
@@ -4243,7 +4247,10 @@
       if (state.mode !== 'drive') return;
     }
 
-    if (d.speed > 40) Wallet.add(Math.floor(d.speed * dt * 0.2));
+    if (d.speed > 40) {
+      const cruisePay = Math.floor(d.speed * dt * CRUISE_PAY_RATE * Wallet.priceMult());
+      if (cruisePay > 0) Wallet.add(cruisePay);
+    }
     updateHUD();
 
     if (Math.floor(d.rpmPulse * 5) !== Math.floor((d.rpmPulse - dt) * 5) && d.speed > 20) {
