@@ -322,6 +322,32 @@
     .dpad .right { grid-column: 3; grid-row: 2; }
     .dpad.drive-mode .up,
     .dpad.drive-mode .down { opacity: 0.35; pointer-events: none; }
+    .panel-inner.drive-phase .controls { display: none; }
+    .map-nav {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+    }
+    .map-dest {
+      position: absolute;
+      pointer-events: auto;
+      width: 30px;
+      height: 30px;
+      padding: 5px;
+      border-radius: 6px;
+      border: 1.5px solid var(--dest-color, #e8a040);
+      background: rgba(12, 14, 18, 0.88);
+      color: var(--dest-color, #e8a040);
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    }
+    .map-dest svg { width: 16px; height: 16px; display: block; }
+    .map-dest:hover { filter: brightness(1.15); }
+    .map-dest:disabled { opacity: 0.35; pointer-events: none; }
     .lives-pips {
       display: flex;
       gap: 4px;
@@ -379,6 +405,7 @@
 
         <div class="canvas-wrap" id="canvasWrap">
           <canvas id="game" width="480" height="600" aria-label="Return to your car"></canvas>
+          <div class="map-nav" id="mapNav" hidden aria-label="Destinations"></div>
           <div class="overlay" id="overlay" hidden>
             <div class="overlay-card">
               <h2 id="overlayTitle"></h2>
@@ -1156,6 +1183,33 @@
   const dpad = document.getElementById('dpad');
   const helpBtn = document.getElementById('helpBtn');
   const helpPanel = document.getElementById('helpPanel');
+  const panelInner = document.querySelector('.panel-inner');
+  const mapNav = document.getElementById('mapNav');
+
+  const MAP_LAYOUT = { mapW: 132, mapH: 132, pad: 10, innerX: 8, innerY: 20 };
+  const MAP_DEST_ICONS = {
+    casino: {
+      label: 'Casino',
+      color: '#7dce7a',
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l7 10H5L12 2zm0 22l-7-10h14l-7 10z"/></svg>'
+    },
+    grill: {
+      label: 'Grill',
+      color: '#e8a040',
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="3" rx="1" fill="currentColor"/><rect x="4" y="10" width="16" height="4" rx="1" fill="currentColor"/><rect x="4" y="16" width="16" height="3" rx="1" fill="currentColor"/></svg>'
+    },
+    hospital: {
+      label: 'Hospital',
+      color: '#e85c5c',
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z"/></svg>'
+    },
+    liquor: {
+      label: 'Liquor',
+      color: '#6eb5ff',
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 2h6v3l-2 3v11a2 2 0 01-4 0V8L9 5V2z"/></svg>'
+    }
+  };
+  let mapNavBuilt = false;
 
   function setHelpOpen(open) {
     helpPanel.hidden = !open;
@@ -1312,14 +1366,91 @@
     return d.exits.find(e => !e.taken && e.z > d.z - 20) || null;
   }
 
+  function mapGeoToCanvas(n, e, route) {
+    const { mapW, mapH, pad, innerX, innerY } = MAP_LAYOUT;
+    const mx = pad;
+    const my = H - mapH - pad - 8;
+    const innerW = mapW - 16;
+    const innerH = mapH - 28;
+    const b = route.geoBounds;
+    const nSpan = b.nMax - b.nMin;
+    const eSpan = b.eMax - b.eMin;
+    return {
+      x: mx + innerX + ((e - b.eMin) / eSpan) * innerW,
+      y: my + innerY + innerH - ((n - b.nMin) / nSpan) * innerH
+    };
+  }
+
+  function ensureMapNav(route) {
+    if (mapNavBuilt || !mapNav) return;
+    mapNavBuilt = true;
+    for (const ex of route.exits || []) {
+      const meta = MAP_DEST_ICONS[ex.id];
+      if (!meta) continue;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'map-dest';
+      btn.dataset.exitId = ex.id;
+      btn.setAttribute('aria-label', meta.label);
+      btn.style.setProperty('--dest-color', meta.color);
+      btn.innerHTML = meta.svg;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        goToMapDestination(ex.id);
+      });
+      btn.addEventListener('pointerdown', (e) => e.stopPropagation());
+      mapNav.appendChild(btn);
+    }
+  }
+
+  function syncMapNav(d) {
+    if (!mapNav || !d || !d.route) return;
+    ensureMapNav(d.route);
+    mapNav.hidden = false;
+    const taken = new Set((d.exits || []).filter(e => e.taken).map(e => e.id));
+    for (const btn of mapNav.querySelectorAll('.map-dest')) {
+      const ex = (d.route.exits || []).find(e => e.id === btn.dataset.exitId);
+      if (!ex) {
+        btn.hidden = true;
+        continue;
+      }
+      const pt = mapGeoToCanvas(ex.n, ex.e, d.route);
+      btn.style.left = `${(pt.x / W) * 100}%`;
+      btn.style.top = `${(pt.y / H) * 100}%`;
+      btn.hidden = taken.has(ex.id);
+      btn.disabled = taken.has(ex.id);
+    }
+  }
+
+  function hideMapNav() {
+    if (mapNav) mapNav.hidden = true;
+  }
+
+  function goToMapDestination(exitId) {
+    if (state.phase !== 'drive' || state.mode !== 'drive' || !state.drive) return;
+    const route = state.drive.route;
+    const def = (route.exits || []).find(e => e.id === exitId);
+    if (!def) return;
+    const live = (state.drive.exits || []).find(e => e.id === exitId && !e.taken);
+    const ex = live || {
+      ...def,
+      taken: false,
+      startZ: def.z - 90,
+      endZ: def.z + 70
+    };
+    if (exitId === 'hospital') takeHospitalExit(ex);
+    else takeExit(ex);
+  }
+
   function setPhaseUI() {
     if (state.phase === 'drive') {
       brandTitle.textContent = 'Night Drive';
       brandSub.textContent = 'Gold Coast · stop at red · steer to turn';
       meterLabel.textContent = 'Route';
       if (livesStat) livesStat.hidden = true;
-      hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · ER exit heals · R replay · Share last 5 sec';
+      hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · tap map icons to go · R replay';
       dpad.classList.add('drive-mode');
+      panelInner?.classList.add('drive-phase');
     } else if (isEnter()) {
       if (livesStat) livesStat.hidden = false;
       const dest = state.entryDest;
@@ -1329,6 +1460,8 @@
       livesLabel.textContent = 'Lives';
       hintText.textContent = 'Arrows / WASD · swipe · get inside';
       dpad.classList.remove('drive-mode');
+      panelInner?.classList.remove('drive-phase');
+      hideMapNav();
     } else if (isGrill()) {
       if (livesStat) livesStat.hidden = false;
       brandTitle.textContent = 'Leave the Grill';
@@ -1337,6 +1470,8 @@
       livesLabel.textContent = 'Lives';
       hintText.textContent = 'Arrows / WASD · dash across · hoopty is across the street';
       dpad.classList.remove('drive-mode');
+      panelInner?.classList.remove('drive-phase');
+      hideMapNav();
     } else {
       if (livesStat) livesStat.hidden = false;
       brandTitle.textContent = 'Return to Your Car';
@@ -1345,6 +1480,8 @@
       livesLabel.textContent = 'Lives';
       hintText.textContent = 'Arrows / WASD · swipe · cross Midtown to your car';
       dpad.classList.remove('drive-mode');
+      panelInner?.classList.remove('drive-phase');
+      hideMapNav();
     }
   }
 
@@ -1809,6 +1946,7 @@
       const pathLen = d.route ? d.route.length : 1;
       const pct = Math.min(99, Math.round((wrapRouteZ(d.z, pathLen) / pathLen) * 100));
       levelVal.textContent = `${pct}%`;
+      syncMapNav(d);
     } else {
       livesVal.textContent = String(state.lives);
       levelVal.textContent = String(state.level);
@@ -7595,33 +7733,6 @@
       const ph = signalPhase(sig, sigTime);
       ctx.fillStyle = ph === 'red' ? '#e74c3c' : ph === 'yellow' ? '#f1c40f' : '#2ecc71';
       ctx.fillRect(pt.px - 2, pt.py - 2, 4, 4);
-    }
-
-    // Exit labels — casino & burger joint
-    for (const ex of d.exits || route.exits || []) {
-      if (ex.taken) continue;
-      const exGeo = ex.n != null ? { n: ex.n, e: ex.e } : interpRouteGeo(wps, ex.z, true);
-      const exPt = geoToMap(exGeo.n, exGeo.e);
-      const isCasino = ex.id === 'casino';
-      const label = ex.mapLabel || ex.name;
-      const color = isCasino ? '#7dce7a' : '#e8a040';
-      const lx = exPt.px + (isCasino ? 6 : -6);
-      const ly = exPt.py - 5;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(exPt.px, exPt.py, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(12,14,18,0.82)';
-      ctx.font = '600 7px "General Sans", sans-serif';
-      const tw = ctx.measureText(label).width + 8;
-      const bx = isCasino ? lx - 2 : lx - tw - 2;
-      ctx.fillRect(bx, ly - 9, tw, 11);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 0.8;
-      ctx.strokeRect(bx + 0.5, ly - 8.5, tw - 1, 10);
-      ctx.fillStyle = color;
-      ctx.textAlign = 'left';
-      ctx.fillText(label, bx + 4, ly);
     }
 
     // Start
