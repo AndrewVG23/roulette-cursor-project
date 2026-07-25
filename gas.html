@@ -85,6 +85,32 @@
     }
     .stat.red .value { color: #f26e6e; }
 
+    @media (max-width: 640px) {
+      .topbar {
+        justify-content: center;
+        gap: 6px;
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+      .stats {
+        gap: 4px;
+        justify-content: center;
+        width: 100%;
+      }
+      .stat {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 4px 5px;
+      }
+      .stat .label {
+        font-size: 0.52rem;
+        letter-spacing: 0.06em;
+      }
+      .stat .value {
+        font-size: 0.82rem;
+      }
+    }
+
     .toast {
       position: absolute;
       left: 50%; top: 14%;

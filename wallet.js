@@ -602,7 +602,7 @@
       '</span>',
       '<span class="purse-hud-slot purse-hud-slot--cash">',
       '<span class="purse-hud-icon purse-hud-icon--cash" aria-hidden="true">',
-      '<img src="assets/hundred-dollar.jpg" alt="" width="58" height="24" draggable="false">',
+      '<img src="assets/hundred-dollar.jpg" alt="" width="62" height="26" draggable="false">',
       '</span>',
       '<span class="purse-hud-value purse-hud-cash" id="purseHudCash"></span>',
       '</span>',

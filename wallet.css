@@ -251,7 +251,7 @@
 
 .purse-hud-icon--cash {
   width: auto;
-  height: 26px;
+  height: auto;
   padding: 1px;
   border-radius: 3px;
   overflow: hidden;
@@ -263,22 +263,21 @@
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.32));
 }
 
-.purse-hud-icon--cash img {
-  display: block;
-  width: 58px;
-  height: 24px;
-  aspect-ratio: 1024 / 433;
-  object-fit: contain;
-  object-position: center;
-  border-radius: 2px;
-}
-
 .purse-hud-icon img {
   display: block;
   width: 22px;
   height: 22px;
   object-fit: contain;
   border-radius: 50%;
+}
+
+.purse-hud-icon--cash img {
+  width: 62px;
+  height: auto;
+  aspect-ratio: 1024 / 433;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 2px;
 }
 
 .purse-hud-icon--gold img {
@@ -544,6 +543,102 @@ body.has-purse-hud > .app > .controls {
 
 body.has-game-logo > .app > .controls {
   padding-left: calc(var(--space-3, 0.75rem) + var(--game-logo-clearance-left) - var(--game-logo-left));
+}
+
+/* Narrow phones: shrink logo + purse cluster so game headers fit */
+@media (max-width: 640px) {
+  :root {
+    --purse-hud-gap: 6px;
+    --purse-hud-width: 108px;
+    --purse-hud-height: 62px;
+    --game-logo-height: 28px;
+    --game-logo-clearance-left: calc(var(--game-logo-left) + min(38vw, 148px) + 8px);
+  }
+
+  .game-logo {
+    max-width: min(38vw, 148px);
+  }
+
+  .purse-hud-cluster {
+    gap: var(--purse-hud-gap);
+  }
+
+  .game-calendar {
+    min-width: 48px;
+    padding: 6px 7px 7px;
+    border-radius: 10px;
+    gap: 3px;
+  }
+
+  .game-calendar-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .game-calendar-date {
+    font-size: 0.58rem;
+  }
+
+  .purse-hud {
+    min-width: 96px;
+    padding: 7px 10px 7px;
+    border-radius: 12px;
+    gap: 4px;
+  }
+
+  .purse-hud.is-expanded {
+    min-width: min(176px, calc(100vw - 72px));
+    padding: 8px 10px 9px;
+  }
+
+  .purse-hud::before {
+    inset: 3px;
+    border-radius: 9px;
+  }
+
+  .purse-hud-title {
+    font-size: 0.52rem;
+    letter-spacing: 0.18em;
+    text-indent: 0.18em;
+    padding-top: 5px;
+  }
+
+  .purse-hud-networth {
+    gap: 2px;
+    padding: 0;
+  }
+
+  .purse-hud-networth-label {
+    font-size: 0.52rem;
+    letter-spacing: 0.12em;
+    text-indent: 0.12em;
+  }
+
+  .purse-hud-networth-value {
+    font-size: clamp(0.92rem, 3.8vw, 1.1rem);
+  }
+
+  .purse-hud.is-expanded .purse-hud-networth-value {
+    font-size: clamp(0.78rem, 3.2vw, 0.92rem);
+  }
+
+  .purse-hud-delta {
+    font-size: clamp(0.95rem, 4vw, 1.2rem);
+  }
+
+  .purse-hud-panel {
+    width: min(236px, calc(100vw - 20px));
+  }
+
+  /* Drop side clearances — park stats under the HUD row instead of beside it */
+  body.has-purse-hud .topbar {
+    padding-right: max(10px, env(safe-area-inset-right, 0px));
+    padding-top: calc(var(--purse-hud-top) + var(--purse-hud-height) + 6px);
+  }
+
+  body.has-game-logo .topbar {
+    padding-left: max(10px, env(safe-area-inset-left, 0px));
+  }
 }
 
 .purse-stack-amount.purse-stack-amount--hidden,
