@@ -428,43 +428,7 @@
       }
       syncHudMetrics();
     }
-    updatePanel();
     lastShown = { digital: state.digital, cash: state.cash, gold: state.gold, index: state.index };
-  }
-
-  // -------------------------------------------------------- exchange panel
-  const BUY_SIZES = [0.1, 0.25, 1];
-
-  function panelEl() { return document.getElementById('purseHudPanel'); }
-
-  function updatePanel() {
-    const panel = panelEl();
-    if (!panel || panel.hidden) return;
-    const spot = goldSpot();
-    const econ = panel.querySelector('[data-role="econ"]');
-    if (econ) {
-      econ.innerHTML =
-        `GAS <b>${gasFmt.format(gasPrice())}</b>/gal · PRICES ×${state.index.toFixed(2)} · SPOT <b>${fmt.format(Math.round(spot))}</b>/oz`;
-    }
-    panel.querySelectorAll('[data-buy]').forEach((btn) => {
-      const oz = Number(btn.dataset.buy);
-      const onCredit = btn.dataset.method === 'credit' || btn.dataset.method === 'phone';
-      const cost = onCredit ? goldCreditCost(oz) : goldBuyCost(oz);
-      btn.querySelector('[data-role="price"]').textContent = fmt.format(cost);
-      if (btn.dataset.method === 'cash') btn.disabled = state.cash < cost;
-    });
-    panel.querySelectorAll('[data-sell]').forEach((btn) => {
-      const oz = Number(btn.dataset.sell);
-      btn.querySelector('[data-role="price"]').textContent = fmt.format(goldSellValue(oz));
-      btn.disabled = state.gold + 1e-9 < oz;
-    });
-  }
-
-  function togglePanel(force) {
-    const panel = panelEl();
-    if (!panel) return;
-    panel.hidden = force != null ? !force : !panel.hidden;
-    updatePanel();
   }
 
   function toggleHudExpanded(force) {
@@ -473,17 +437,10 @@
     const expanded = force != null ? force : !hud.classList.contains('is-expanded');
     hud.classList.toggle('is-expanded', expanded);
     hud.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    if (!expanded) togglePanel(false);
     syncHudMetrics();
   }
 
-  function onHudClick(ev) {
-    const hud = document.getElementById('purseHud');
-    if (!hud) return;
-    if (ev.target.closest('.purse-hud-slot--gold') && hud.classList.contains('is-expanded')) {
-      togglePanel();
-      return;
-    }
+  function onHudClick() {
     toggleHudExpanded();
   }
 
@@ -512,41 +469,6 @@
       '<span class="game-calendar-date" id="gameCalendarDate"></span>'
     ].join('');
     return cal;
-  }
-
-  function buildPanel() {
-    const panel = document.createElement('div');
-    panel.className = 'purse-hud-panel';
-    panel.id = 'purseHudPanel';
-    panel.hidden = true;
-    const rows = [];
-    rows.push('<div class="purse-hud-panel-econ" data-role="econ"></div>');
-    rows.push('<div class="purse-hud-panel-section">Gold</div>');
-    for (const oz of BUY_SIZES) {
-      rows.push(
-        `<div class="purse-hud-panel-row"><span class="purse-hud-panel-lbl">Buy ${oz} oz</span>` +
-        `<button type="button" data-buy="${oz}" data-method="cash"><span data-role="price"></span> cash</button>` +
-        `<button type="button" data-buy="${oz}" data-method="credit"><span data-role="price"></span> credit</button></div>`
-      );
-    }
-    for (const oz of BUY_SIZES) {
-      rows.push(
-        `<div class="purse-hud-panel-row"><span class="purse-hud-panel-lbl">Sell ${oz} oz</span>` +
-        `<button type="button" data-sell="${oz}"><span data-role="price"></span> → cash</button></div>`
-      );
-    }
-    rows.push('<div class="purse-hud-panel-note">Cash ask is +5% over spot. Credit is +10% over the cash ask and can go into debt.</div>');
-    panel.innerHTML = rows.join('');
-    panel.addEventListener('click', (ev) => {
-      const btn = ev.target.closest('button');
-      if (!btn) return;
-      ev.stopPropagation();
-      if (btn.dataset.buy) buyGold(Number(btn.dataset.buy), btn.dataset.method);
-      else if (btn.dataset.sell) sellGold(Number(btn.dataset.sell));
-      btn.blur();
-      updatePanel();
-    });
-    return panel;
   }
 
   function ensureCalendar() {
@@ -581,6 +503,7 @@
       }
       wireHudInteractions(hud);
       ensureCalendar();
+      document.getElementById('purseHudPanel')?.remove();
       updateDisplay();
       syncHudMetrics();
       return;
@@ -625,7 +548,7 @@
     cluster.appendChild(buildCalendar());
     cluster.appendChild(wrap);
     document.body.appendChild(cluster);
-    document.body.appendChild(buildPanel());
+    document.getElementById('purseHudPanel')?.remove();
     document.body.classList.add('has-purse-hud');
     updateDisplay();
     syncHudMetrics();
@@ -701,7 +624,7 @@
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing
     snapshot, restore, getState, reincarnate, resetTimeline,
-    migrateTips, mountHud, mountLogo, updateDisplay, togglePanel, toggleHudExpanded,
+    migrateTips, mountHud, mountLogo, updateDisplay, toggleHudExpanded,
     getInsets, canvasInset, subscribe
   };
 })(window);
