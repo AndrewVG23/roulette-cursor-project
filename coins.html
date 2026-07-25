@@ -17,7 +17,7 @@
       --velvet-deep: #3a080e;
       --font-display: 'Zodiak', Georgia, serif;
       --font-ui: 'Satoshi', 'General Sans', system-ui, sans-serif;
-      --desk-tilt: 56deg;
+      --desk-tilt: 32deg;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -114,9 +114,9 @@
 
     .tray {
       position: relative;
-      width: min(920px, 92vw);
-      aspect-ratio: 16 / 10;
-      max-height: min(68vh, 520px);
+      width: min(980px, 96vw);
+      aspect-ratio: 2.2 / 1;
+      max-height: min(58vh, 420px);
       transform: rotateX(var(--desk-tilt));
       transform-style: preserve-3d;
       border-radius: 14px;
@@ -126,6 +126,7 @@
         0 40px 80px rgba(0, 0, 0, 0.65),
         0 2px 0 rgba(255, 230, 180, 0.12),
         inset 0 1px 0 rgba(255, 230, 180, 0.18);
+      overflow: visible;
     }
 
     .tray-rail {
@@ -143,11 +144,14 @@
       inset: 12px 10px 14px;
       border-radius: 8px;
       display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
       align-items: center;
       justify-content: space-evenly;
-      gap: clamp(8px, 2vw, 24px);
-      padding: 8% 6% 10%;
+      gap: clamp(6px, 1.5vw, 20px);
+      padding: 6% 4% 8%;
       transform-style: preserve-3d;
+      overflow: visible;
       background:
         radial-gradient(ellipse 85% 70% at 50% 45%, #8c1a26 0%, transparent 60%),
         radial-gradient(ellipse 35% 40% at 20% 70%, rgba(0, 0, 0, 0.3), transparent 55%),
@@ -197,7 +201,7 @@
       gap: 0;
       flex: 1 1 0;
       min-width: 0;
-      max-width: 260px;
+      max-width: 280px;
       cursor: pointer;
       transform-style: preserve-3d;
       -webkit-tap-highlight-color: transparent;
@@ -209,9 +213,9 @@
       display: grid;
       place-items: center;
       transform-style: preserve-3d;
-      /* Lift slightly off the cloth; stay in the tray plane so they read as lying down */
-      transform: translateZ(10px);
-      filter: drop-shadow(0 18px 14px rgba(0, 0, 0, 0.55));
+      /* Slight counter-tilt so faces stay readable while still lying on the cloth */
+      transform: translateZ(14px) rotateX(calc(var(--desk-tilt) * -0.35));
+      filter: drop-shadow(0 14px 12px rgba(0, 0, 0, 0.55));
     }
 
     .coin-stage::after {
@@ -242,15 +246,15 @@
     }
 
     .coin.size-tenth {
-      --coin-d: clamp(64px, 11vw, 96px);
+      --coin-d: clamp(56px, 10vw, 88px);
       --coin-depth: 7px;
     }
     .coin.size-quarter {
-      --coin-d: clamp(96px, 15vw, 132px);
+      --coin-d: clamp(78px, 13vw, 118px);
       --coin-depth: 9px;
     }
     .coin.size-ounce {
-      --coin-d: clamp(132px, 20vw, 180px);
+      --coin-d: clamp(104px, 17vw, 156px);
       --coin-depth: 11px;
     }
 
@@ -377,20 +381,25 @@
     .toast.bad { color: #f28a8a; border-color: rgba(242, 138, 138, 0.45); }
 
     @media (max-width: 720px) {
-      :root { --desk-tilt: 48deg; }
+      :root { --desk-tilt: 26deg; }
       .tray {
-        width: min(96vw, 520px);
-        aspect-ratio: 10 / 12;
-        max-height: 62vh;
+        width: min(98vw, 640px);
+        aspect-ratio: 2.05 / 1;
+        max-height: 46vh;
       }
       .velvet {
-        flex-direction: column;
+        flex-direction: row;
+        flex-wrap: nowrap;
         justify-content: space-evenly;
-        padding: 8% 10%;
+        gap: 4px;
+        padding: 7% 3% 9%;
       }
-      .coin.size-tenth { --coin-d: clamp(70px, 18vw, 96px); }
-      .coin.size-quarter { --coin-d: clamp(96px, 24vw, 128px); }
-      .coin.size-ounce { --coin-d: clamp(120px, 30vw, 160px); }
+      .tag { margin-top: 6px; }
+      .tag .denom { font-size: clamp(0.72rem, 2.6vw, 0.95rem); }
+      .ask { font-size: clamp(0.9rem, 3.2vw, 1.15rem); }
+      .coin.size-tenth { --coin-d: clamp(52px, 14vw, 72px); }
+      .coin.size-quarter { --coin-d: clamp(68px, 18vw, 96px); }
+      .coin.size-ounce { --coin-d: clamp(86px, 22vw, 120px); }
     }
 
     @media (prefers-reduced-motion: reduce) {

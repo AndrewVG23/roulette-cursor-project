@@ -933,17 +933,9 @@
     state.mode = 'win';
     const fromDrive = admit && admit.from === 'drive';
     const fromCross = admit && admit.from === 'cross';
-    const dateLine = Wallet.formatGameDate();
-    const walletLine = `${Wallet.format(Wallet.digital())} on the phone, no cash — gold kept (${Wallet.formatGold(Wallet.gold())}).`;
     showOverlay(
-      'Time Travel',
-      fromDrive
-        ? `The gold pill hits. Calendar rewinds to ${dateLine}. ${walletLine} Patched up — back on the road.`
-        : fromCross
-          ? `The gold pill hits. Calendar rewinds to ${dateLine}. ${walletLine} ${admit.who} is still out there — back to the street.`
-        : admit
-          ? `The gold pill hits. Calendar rewinds to ${dateLine}. ${walletLine} ${admit.who} is still out there — back to the grill.`
-          : `The gold pill hits. Calendar rewinds to ${dateLine}. Prices reset. ${walletLine}`,
+      'Gold travels well',
+      '',
       fromDrive ? 'Back on the Road' : (fromCross ? 'Back to the Street' : 'Back to Grill')
     );
     drag.active = false;
