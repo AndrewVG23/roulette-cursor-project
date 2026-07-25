@@ -271,6 +271,28 @@
       background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
       border-color: rgba(255,210,200,.35);
     }
+    .panel-inner.drive-phase .help-btn {
+      width: auto;
+      height: auto;
+      min-width: 0;
+      min-height: 0;
+      padding: 2px;
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+    .panel-inner.drive-phase .help-btn:hover,
+    .panel-inner.drive-phase .help-btn:active,
+    .panel-inner.drive-phase .help-btn[aria-expanded="true"] {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      transform: scale(1.06);
+    }
+    .panel-inner.drive-phase .help-btn-icon {
+      width: 18px;
+    }
     .help-btn-icon {
       width: 15px;
       height: auto;
@@ -333,9 +355,13 @@
     .dpad.drive-mode .up,
     .dpad.drive-mode .down { opacity: 0.35; pointer-events: none; }
     .panel-inner.drive-phase .controls { display: none; }
-    .panel-inner.phone-open .help-btn {
-      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
-      border-color: rgba(255,210,200,.35);
+    .map-nav[hidden] { display: none !important; }
+    .panel-inner.drive-phase:not(.phone-open) .map-nav {
+      display: none !important;
+      pointer-events: none !important;
+    }
+    .panel-inner.drive-phase.phone-open .map-nav {
+      display: flex !important;
     }
     .map-nav {
       position: absolute;
@@ -414,6 +440,7 @@
         grid-template-rows: repeat(2, 44px);
       }
       .help-btn { width: 40px; height: 40px; font-size: 1.1rem; }
+      .panel-inner.drive-phase .help-btn { width: auto; height: auto; }
       .help-panel { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
     }
   </style>
@@ -1349,7 +1376,8 @@
       panelInner?.classList.toggle('phone-open', open);
       helpBtn.setAttribute('aria-expanded', String(open));
       helpBtn.setAttribute('aria-label', open ? 'Hide phone' : 'Show phone');
-      if (state.drive) syncMapNav(state.drive);
+      if (open && state.drive) syncMapNav(state.drive);
+      else hideMapNav();
       return;
     }
     panelInner?.classList.remove('phone-open');
@@ -1561,10 +1589,12 @@
 
   function syncMapNav(d) {
     if (!mapNav || !d || !d.route) return;
+    if (!isPhoneOpen()) {
+      hideMapNav();
+      return;
+    }
     ensureMapNav(d.route);
-    const show = isPhoneOpen();
-    mapNav.hidden = !show;
-    if (!show) return;
+    mapNav.hidden = false;
     const { mx, my, mapW, mapH } = getMapRect();
     const gap = 6;
     mapNav.style.left = `${((mx + mapW + gap) / W) * 100}%`;

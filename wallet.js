@@ -445,6 +445,33 @@
     updatePanel();
   }
 
+  function toggleHudExpanded(force) {
+    const hud = document.getElementById('purseHud');
+    if (!hud) return;
+    const expanded = force != null ? force : !hud.classList.contains('is-expanded');
+    hud.classList.toggle('is-expanded', expanded);
+    hud.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    if (!expanded) togglePanel(false);
+    syncHudMetrics();
+  }
+
+  function onHudClick(ev) {
+    const hud = document.getElementById('purseHud');
+    if (!hud) return;
+    if (ev.target.closest('.purse-hud-slot--gold') && hud.classList.contains('is-expanded')) {
+      togglePanel();
+      return;
+    }
+    toggleHudExpanded();
+  }
+
+  function wireHudInteractions(hud) {
+    if (!hud || hud.dataset.wired) return;
+    hud.dataset.wired = '1';
+    hud.setAttribute('aria-expanded', hud.classList.contains('is-expanded') ? 'true' : 'false');
+    hud.addEventListener('click', onHudClick);
+  }
+
   const CALENDAR_ICON = [
     '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">',
     '<rect x="3" y="4.5" width="18" height="16.5" rx="2" stroke="currentColor" stroke-width="1.5"/>',
@@ -519,8 +546,8 @@
     if (hudDisabled()) return;
     if (document.getElementById('purseHud')) {
       document.body.classList.add('has-purse-hud');
+      const hud = document.getElementById('purseHud');
       if (!document.getElementById('purseHudNetWorth')) {
-        const hud = document.getElementById('purseHud');
         const row = document.createElement('span');
         row.className = 'purse-hud-networth';
         row.innerHTML =
@@ -529,6 +556,7 @@
         const delta = document.getElementById('purseHudDelta');
         hud.insertBefore(row, delta);
       }
+      wireHudInteractions(hud);
       ensureCalendar();
       updateDisplay();
       syncHudMetrics();
@@ -541,11 +569,12 @@
     wrap.className = 'purse-hud';
     wrap.id = 'purseHud';
     wrap.setAttribute('aria-live', 'polite');
+    wrap.setAttribute('aria-expanded', 'false');
     wrap.innerHTML = [
       '<span class="purse-hud-slots">',
       '<span class="purse-hud-slot purse-hud-slot--credit">',
       '<span class="purse-hud-icon purse-hud-icon--credit" aria-hidden="true">',
-      '<svg viewBox="0 0 48 32" width="34" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">',
+      '<svg viewBox="0 0 48 32" width="38" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">',
       '<rect x="1" y="1" width="46" height="30" rx="4" fill="#1a2848" stroke="#6eb5ff" stroke-width="1.5"/>',
       '<rect x="1" y="8" width="46" height="7" fill="#243868"/>',
       '<rect x="6" y="20" width="16" height="3" rx="1" fill="#c9d8f0" opacity="0.85"/>',
@@ -556,13 +585,13 @@
       '</span>',
       '<span class="purse-hud-slot purse-hud-slot--cash">',
       '<span class="purse-hud-icon purse-hud-icon--cash" aria-hidden="true">',
-      '<img src="assets/hundred-dollar.jpg" alt="" width="38" height="16" draggable="false">',
+      '<img src="assets/hundred-dollar.jpg" alt="" width="58" height="24" draggable="false">',
       '</span>',
       '<span class="purse-hud-value purse-hud-cash" id="purseHudCash"></span>',
       '</span>',
       '<span class="purse-hud-slot purse-hud-slot--gold">',
       '<span class="purse-hud-icon purse-hud-icon--gold" aria-hidden="true">',
-      '<img src="assets/krugerrand-reverse.png" alt="" width="24" height="24" draggable="false">',
+      '<img src="assets/krugerrand-reverse.png" alt="" width="26" height="26" draggable="false">',
       '</span>',
       '<span class="purse-hud-value purse-hud-gold" id="purseHudGold"></span>',
       '</span>',
@@ -574,7 +603,7 @@
       '<span class="purse-hud-title">Purse</span>',
       '<span class="purse-hud-delta" id="purseHudDelta" aria-hidden="true"></span>'
     ].join('');
-    wrap.addEventListener('click', () => togglePanel());
+    wireHudInteractions(wrap);
     cluster.appendChild(buildCalendar());
     cluster.appendChild(wrap);
     document.body.appendChild(cluster);
@@ -654,7 +683,7 @@
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing
     snapshot, restore, getState, reincarnate, resetTimeline,
-    migrateTips, mountHud, updateDisplay, togglePanel,
+    migrateTips, mountHud, updateDisplay, togglePanel, toggleHudExpanded,
     getInsets, canvasInset, subscribe
   };
 })(window);
