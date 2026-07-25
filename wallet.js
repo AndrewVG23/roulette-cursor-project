@@ -158,13 +158,19 @@
   function netWorth() {
     return Math.round(state.digital + state.cash + state.gold * goldSpot());
   }
-  function goldBuyCost(oz) { return Math.ceil(goldSpot() * (1 + GOLD_FEE) * oz); }
-  function goldCreditCost(oz) { return Math.ceil(goldBuyCost(oz) * (1 + GOLD_CREDIT_FEE)); }
+  function goldBuyCost(oz, fee) {
+    const f = fee == null ? GOLD_FEE : Number(fee);
+    return Math.ceil(goldSpot() * (1 + f) * oz);
+  }
+  function goldCreditCost(oz, fee) {
+    return Math.ceil(goldBuyCost(oz, fee) * (1 + GOLD_CREDIT_FEE));
+  }
   function goldSellValue(oz) { return Math.floor(goldSpot() * (1 - GOLD_FEE) * oz); }
 
-  function buyGold(oz, method) {
+  function buyGold(oz, method, opts = {}) {
+    const fee = opts.fee;
     const onCredit = method === 'credit' || method === 'phone';
-    const cost = onCredit ? goldCreditCost(oz) : goldBuyCost(oz);
+    const cost = onCredit ? goldCreditCost(oz, fee) : goldBuyCost(oz, fee);
     if (method === 'cash') {
       if (!spendCash(cost)) return { ok: false, cost, reason: 'Not enough cash' };
     } else {
@@ -591,12 +597,7 @@
       '<span class="purse-hud-slots">',
       '<span class="purse-hud-slot purse-hud-slot--credit">',
       '<span class="purse-hud-icon purse-hud-icon--credit" aria-hidden="true">',
-      '<svg viewBox="0 0 48 32" width="38" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">',
-      '<rect x="1" y="1" width="46" height="30" rx="4" fill="#1a2848" stroke="#6eb5ff" stroke-width="1.5"/>',
-      '<rect x="1" y="8" width="46" height="7" fill="#243868"/>',
-      '<rect x="6" y="20" width="16" height="3" rx="1" fill="#c9d8f0" opacity="0.85"/>',
-      '<rect x="6" y="25" width="10" height="2" rx="1" fill="#8faee0" opacity="0.55"/>',
-      '</svg>',
+      '<img src="assets/visa-platinum.png" alt="" width="62" height="39" draggable="false">',
       '</span>',
       '<span class="purse-hud-value purse-hud-digital" id="purseHudDigital"></span>',
       '</span>',

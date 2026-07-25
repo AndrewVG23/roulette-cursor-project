@@ -221,10 +221,18 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
 }
 
-.purse-hud-icon--credit svg {
-  display: block;
-  width: 38px;
-  height: 24px;
+.purse-hud-icon--credit {
+  width: auto;
+  height: auto;
+  padding: 1px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(110, 181, 255, 0.12), rgba(0, 0, 0, 0.14));
+  border: 1px solid rgba(110, 181, 255, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 2px 6px rgba(0, 0, 0, 0.36);
+  filter: drop-shadow(0 2px 5px rgba(26, 60, 120, 0.4));
 }
 
 .purse-hud-icon--gold {
@@ -278,6 +286,15 @@
   object-fit: cover;
   object-position: center;
   border-radius: 2px;
+}
+
+.purse-hud-icon--credit img {
+  width: 62px;
+  height: auto;
+  aspect-ratio: 506 / 322;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 3px;
 }
 
 .purse-hud-icon--gold img {
@@ -367,7 +384,7 @@
 .purse-hud-delta {
   position: absolute;
   left: 50%;
-  top: -6px;
+  top: 50%;
   z-index: 3;
   font-family: 'Zodiak', Georgia, serif;
   font-size: clamp(1.2rem, 1.05rem + 0.7vw, 1.65rem);
@@ -375,7 +392,7 @@
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums lining-nums;
   opacity: 0;
-  transform: translate(-50%, 8px);
+  transform: translate(-50%, -40%);
   pointer-events: none;
   white-space: nowrap;
   text-shadow:
@@ -422,23 +439,23 @@
 @keyframes purseHudDelta {
   0% {
     opacity: 0;
-    transform: translate(-50%, 14px) scale(0.82);
+    transform: translate(-50%, -30%) scale(0.82);
   }
   10% {
     opacity: 1;
-    transform: translate(-50%, 0) scale(1.1);
+    transform: translate(-50%, -45%) scale(1.1);
   }
   18% {
     opacity: 1;
-    transform: translate(-50%, -6px) scale(1);
+    transform: translate(-50%, -20%) scale(1);
   }
   68% {
     opacity: 1;
-    transform: translate(-50%, -22px) scale(1);
+    transform: translate(-50%, 18%) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -42px) scale(0.94);
+    transform: translate(-50%, 55%) scale(0.94);
   }
 }
 
