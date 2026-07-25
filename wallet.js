@@ -9,17 +9,22 @@
   // One shared price index drives gas price, gold spot, and every inflated
   // price. Each gas-station visit compounds the index at a rate that rises
   // one point per visit.
-  const STATE_KEY = 'walletV2';
+  const STATE_KEY = 'walletV3';
   const LEGACY_PURSE_KEY = 'casinoPurse';
+  const LEGACY_STATE_KEYS = ['walletV2'];
   const GRILL_TIPS_KEY = 'grillTipsPending';
-  const DEFAULT = 100;
+  const DEFAULT_CASH = 100;
+  const DEFAULT_DIGITAL = -10000; // start in the hole on the phone
+  const DEFAULT = DEFAULT_CASH;   // legacy alias
 
   const GAS_BASE = 3.89;      // $/gal at index 1.0
-  const GOLD_BASE = 200;      // $/oz at index 1.0
+  const GOLD_BASE = 2000;     // $/oz at index 1.0 — roughly real spot
   const GOLD_FEE = 0.05;      // buy 5% over spot, sell 5% under
+  const CASH_OUT_FEE = 0.10;  // phone → cash at casino/liquor: 10% haircut
   const VISIT_RATE_BASE = 0.02;  // first visit: +3% (base + step)
   const VISIT_RATE_STEP = 0.01;  // each visit inflates harder than the last
   const VISIT_RATE_CAP = 0.25;
+  const CASH_OUT_AMOUNTS = [20, 50, 100];
 
   const fmt = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -54,10 +59,26 @@
         };
       }
     } catch (_) { /* fall through to migration */ }
-    // Migrate the old single purse: treat it as paper money in hand.
-    const legacy = Number(global.localStorage.getItem(LEGACY_PURSE_KEY));
-    const cash = Number.isFinite(legacy) && legacy >= 0 ? Math.round(legacy) : DEFAULT;
-    return { digital: 0, cash, gold: 0, index: 1, visits: 0 };
+
+    // Pull cash forward from older wallet versions / legacy purse; reset
+    // phone debt and gold spot baseline for the new economy.
+    let cash = DEFAULT_CASH;
+    for (const key of LEGACY_STATE_KEYS) {
+      try {
+        const raw = global.localStorage.getItem(key);
+        if (!raw) continue;
+        const s = JSON.parse(raw);
+        if (s && Number.isFinite(Number(s.cash))) {
+          cash = Math.max(0, Math.round(Number(s.cash)));
+          break;
+        }
+      } catch (_) { /* ignore */ }
+    }
+    if (cash === DEFAULT_CASH) {
+      const legacy = Number(global.localStorage.getItem(LEGACY_PURSE_KEY));
+      if (Number.isFinite(legacy) && legacy >= 0) cash = Math.round(legacy);
+    }
+    return { digital: DEFAULT_DIGITAL, cash, gold: 0, index: 1, visits: 0 };
   }
 
   let state = loadState();
@@ -99,6 +120,30 @@
     if (state.cash < cost) return false;
     setCash(state.cash - cost);
     return true;
+  }
+
+  // Phone → paper cash. Casino cage / liquor counter only (UI-gated).
+  // Requires a positive phone balance — debt can't be cashed out.
+  function cashOutPayout(amount) {
+    return Math.floor(Math.max(0, Math.round(amount)) * (1 - CASH_OUT_FEE));
+  }
+  function cashOut(amount) {
+    if (state.digital <= 0) {
+      return { ok: false, reason: 'Need a positive phone balance' };
+    }
+    const n = Math.round(amount);
+    if (n <= 0) return { ok: false, reason: 'Bad amount' };
+    if (state.digital < n) return { ok: false, reason: 'Not enough on phone' };
+    const payout = cashOutPayout(n);
+    takeDigital(n);
+    addCash(payout);
+    return { ok: true, taken: n, cash: payout, fee: n - payout };
+  }
+  function cashOutAll() {
+    if (state.digital <= 0) {
+      return { ok: false, reason: 'Need a positive phone balance' };
+    }
+    return cashOut(state.digital);
   }
 
   // ------------------------------------------------------------------ gold
@@ -261,14 +306,23 @@
   // -------------------------------------------------------- exchange panel
   const BUY_SIZES = [0.1, 0.25, 1];
 
+  function cashDeskAllowed() {
+    const root = document.documentElement;
+    const body = document.body;
+    return root?.dataset?.cashDesk === 'on' || body?.dataset?.cashDesk === 'on';
+  }
+
   function panelEl() { return document.getElementById('purseHudPanel'); }
 
   function updatePanel() {
     const panel = panelEl();
     if (!panel || panel.hidden) return;
     const spot = goldSpot();
-    panel.querySelector('[data-role="econ"]').innerHTML =
-      `GAS <b>${gasFmt.format(gasPrice())}</b>/gal · PRICES ×${state.index.toFixed(2)} · SPOT <b>${fmt.format(Math.round(spot))}</b>/oz`;
+    const econ = panel.querySelector('[data-role="econ"]');
+    if (econ) {
+      econ.innerHTML =
+        `GAS <b>${gasFmt.format(gasPrice())}</b>/gal · PRICES ×${state.index.toFixed(2)} · SPOT <b>${fmt.format(Math.round(spot))}</b>/oz`;
+    }
     panel.querySelectorAll('[data-buy]').forEach((btn) => {
       const oz = Number(btn.dataset.buy);
       const cost = goldBuyCost(oz);
@@ -280,6 +334,25 @@
       btn.querySelector('[data-role="price"]').textContent = fmt.format(goldSellValue(oz));
       btn.disabled = state.gold + 1e-9 < oz;
     });
+    const canCashOut = state.digital > 0;
+    panel.querySelectorAll('[data-cashout]').forEach((btn) => {
+      const all = btn.dataset.cashout === 'all';
+      const amt = all ? state.digital : Number(btn.dataset.cashout);
+      const payout = cashOutPayout(Math.max(0, amt));
+      const priceEl = btn.querySelector('[data-role="price"]');
+      if (priceEl) {
+        priceEl.textContent = all
+          ? (canCashOut ? `→ ${fmt.format(payout)}` : '—')
+          : `→ ${fmt.format(cashOutPayout(Number(btn.dataset.cashout)))}`;
+      }
+      btn.disabled = !canCashOut || (!all && state.digital < Number(btn.dataset.cashout));
+    });
+    const cashNote = panel.querySelector('[data-role="cashdesk-note"]');
+    if (cashNote) {
+      cashNote.textContent = canCashOut
+        ? 'Cage takes 10%. Positive phone balance only — debt stays on the phone.'
+        : 'Cash desk closed — phone needs a positive balance (debt can\'t walk out as paper).';
+    }
   }
 
   function togglePanel(force) {
@@ -289,6 +362,21 @@
     updatePanel();
   }
 
+  function buildCashDeskRows() {
+    if (!cashDeskAllowed()) return [];
+    const rows = ['<div class="purse-hud-panel-section">Cash desk</div>'];
+    rows.push(
+      '<div class="purse-hud-panel-row purse-hud-panel-row--wrap">' +
+      CASH_OUT_AMOUNTS.map((n) =>
+        `<button type="button" data-cashout="${n}">${fmt.format(n)} <span data-role="price"></span></button>`
+      ).join('') +
+      '<button type="button" data-cashout="all">All <span data-role="price"></span></button>' +
+      '</div>'
+    );
+    rows.push('<div class="purse-hud-panel-note" data-role="cashdesk-note"></div>');
+    return rows;
+  }
+
   function buildPanel() {
     const panel = document.createElement('div');
     panel.className = 'purse-hud-panel';
@@ -296,6 +384,8 @@
     panel.hidden = true;
     const rows = [];
     rows.push('<div class="purse-hud-panel-econ" data-role="econ"></div>');
+    rows.push(...buildCashDeskRows());
+    rows.push('<div class="purse-hud-panel-section">Gold</div>');
     for (const oz of BUY_SIZES) {
       rows.push(
         `<div class="purse-hud-panel-row"><span class="purse-hud-panel-lbl">Buy ${oz} oz</span>` +
@@ -317,14 +407,40 @@
       ev.stopPropagation();
       if (btn.dataset.buy) buyGold(Number(btn.dataset.buy), btn.dataset.method);
       else if (btn.dataset.sell) sellGold(Number(btn.dataset.sell));
+      else if (btn.dataset.cashout != null) {
+        if (!cashDeskAllowed()) return;
+        if (btn.dataset.cashout === 'all') cashOutAll();
+        else cashOut(Number(btn.dataset.cashout));
+      }
       btn.blur();
       updatePanel();
     });
     return panel;
   }
 
+  // Casino floor keeps the full HUD off — mount a slim cash-desk trigger instead.
+  function mountCashDeskButton() {
+    if (!cashDeskAllowed() || document.getElementById('purseCashDeskBtn')) return;
+    if (!panelEl()) document.body.appendChild(buildPanel());
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'purseCashDeskBtn';
+    btn.className = 'purse-cash-desk-btn';
+    btn.textContent = 'Cash desk';
+    btn.title = 'Turn phone money into paper — 10% fee, positive balance only';
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      togglePanel();
+    });
+    document.body.appendChild(btn);
+    document.body.classList.add('has-cash-desk');
+  }
+
   function mountHud() {
-    if (hudDisabled()) return;
+    if (hudDisabled()) {
+      mountCashDeskButton();
+      return;
+    }
     if (document.getElementById('purseHud')) {
       document.body.classList.add('has-purse-hud');
       updateDisplay();
@@ -411,6 +527,7 @@
     digital, setDigital, addDigital, takeDigital,
     // paper cash
     cash, setCash, addCash, takeCash, spendCash,
+    cashOut, cashOutAll, cashOutPayout, cashDeskAllowed,
     // gold
     gold, goldSpot, goldBuyCost, goldSellValue, buyGold, sellGold,
     // economy

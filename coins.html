@@ -240,10 +240,11 @@
       display: block;
       border-radius: 50%;
       transform-style: preserve-3d;
+      filter: contrast(1.05) saturate(1.08);
     }
-    .coin.size-tenth { width: min(112px, 28vw); height: min(112px, 28vw); }
-    .coin.size-quarter { width: min(148px, 34vw); height: min(148px, 34vw); }
-    .coin.size-ounce { width: min(188px, 40vw); height: min(188px, 40vw); }
+    .coin.size-tenth { width: min(128px, 30vw); height: min(128px, 30vw); }
+    .coin.size-quarter { width: min(162px, 36vw); height: min(162px, 36vw); }
+    .coin.size-ounce { width: min(200px, 42vw); height: min(200px, 42vw); }
 
     .plinth {
       position: absolute;
@@ -450,47 +451,100 @@
       </div>
       <div class="ticker" aria-live="polite">
         Live spot
-        <b id="spotVal">$200/oz</b>
+        <b id="spotVal">$2,000/oz</b>
         <div class="fee">Buy +5% · Sell −5%</div>
       </div>
     </header>
 
     <section class="cases" aria-label="Gold coins for sale">
-      <!-- 1/10 oz -->
+      <!-- 1/10 oz — American Gold Eagle (Walking Liberty) -->
       <article class="case" data-oz="0.1">
         <div class="case-rail" aria-hidden="true"></div>
         <div class="vitrine">
           <div class="glass-glint" aria-hidden="true"></div>
           <div class="coin-stage">
-            <svg class="coin size-tenth" viewBox="0 0 120 120" aria-hidden="true">
+            <svg class="coin size-tenth" viewBox="0 0 200 200" aria-hidden="true">
               <defs>
-                <radialGradient id="g10" cx="35%" cy="30%" r="70%">
-                  <stop offset="0%" stop-color="#fff6d0"/>
-                  <stop offset="35%" stop-color="#e8c05a"/>
-                  <stop offset="72%" stop-color="#b8861a"/>
-                  <stop offset="100%" stop-color="#6a4a10"/>
+                <radialGradient id="face10" cx="32%" cy="28%" r="72%">
+                  <stop offset="0%" stop-color="#fff8e0"/>
+                  <stop offset="28%" stop-color="#f0d070"/>
+                  <stop offset="62%" stop-color="#c9a24a"/>
+                  <stop offset="100%" stop-color="#6a4814"/>
                 </radialGradient>
                 <linearGradient id="rim10" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stop-color="#fff2c0"/>
-                  <stop offset="50%" stop-color="#a07018"/>
-                  <stop offset="100%" stop-color="#5a3c0c"/>
+                  <stop offset="0%" stop-color="#fff4d0"/>
+                  <stop offset="45%" stop-color="#a87820"/>
+                  <stop offset="100%" stop-color="#3a2808"/>
+                </linearGradient>
+                <linearGradient id="relief10" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#5a4010"/>
+                  <stop offset="100%" stop-color="#2a1804"/>
                 </linearGradient>
               </defs>
-              <circle cx="60" cy="60" r="57" fill="url(#rim10)"/>
-              <circle cx="60" cy="60" r="50" fill="url(#g10)"/>
-              <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(80,50,10,0.35)" stroke-width="1.2"/>
-              <circle cx="60" cy="60" r="42" fill="none" stroke="rgba(255,230,160,0.35)" stroke-width="0.8" stroke-dasharray="2 3"/>
-              <path d="M60 28c8 10 14 18 14 28a14 14 0 11-28 0c0-10 6-18 14-28z" fill="rgba(80,48,8,0.22)"/>
-              <text x="60" y="54" text-anchor="middle" font-family="Zodiak, Georgia, serif" font-size="18" font-weight="700" fill="#3a2808">1/10</text>
-              <text x="60" y="72" text-anchor="middle" font-family="Satoshi, sans-serif" font-size="9" letter-spacing="2" fill="#5a4010">TROY OZ</text>
-              <text x="60" y="88" text-anchor="middle" font-family="Satoshi, sans-serif" font-size="7" letter-spacing="1.5" fill="#6a5018">.999 FINE</text>
+              <circle cx="100" cy="100" r="96" fill="url(#rim10)"/>
+              <!-- reeded edge -->
+              <g id="reeds10" stroke="#3a2808" stroke-width="1.15" opacity="0.5">
+                <!-- generated via lines around rim -->
+                <line x1="100" y1="6" x2="100" y2="14"/><line x1="112.5" y1="6.8" x2="111.4" y2="14.7"/>
+                <line x1="124.7" y1="9.2" x2="122.5" y2="16.8"/><line x1="136.1" y1="13.4" x2="132.7" y2="20.4"/>
+                <line x1="146.3" y1="19.2" x2="141.8" y2="25.4"/><line x1="155" y1="26.4" x2="149.5" y2="31.5"/>
+                <line x1="161.8" y1="34.8" x2="155.5" y2="38.6"/><line x1="166.6" y1="44.1" x2="159.6" y2="46.5"/>
+                <line x1="169.2" y1="54" x2="161.9" y2="55"/><line x1="169.2" y1="64.1" x2="161.9" y2="63.5"/>
+                <line x1="166.6" y1="74" x2="159.6" y2="71.9"/><line x1="161.8" y1="83.3" x2="155.5" y2="79.8"/>
+                <line x1="155" y1="91.7" x2="149.5" y2="86.9"/><line x1="146.3" y1="98.9" x2="141.8" y2="93"/><line x1="136.1" y1="104.7" x2="132.7" y2="98"/>
+                <line x1="124.7" y1="108.9" x2="122.5" y2="101.6"/><line x1="112.5" y1="111.3" x2="111.4" y2="103.7"/>
+                <line x1="100" y1="112.1" x2="100" y2="104.1"/><line x1="87.5" y1="111.3" x2="88.6" y2="103.7"/>
+                <line x1="75.3" y1="108.9" x2="77.5" y2="101.6"/><line x1="63.9" y1="104.7" x2="67.3" y2="98"/>
+                <line x1="53.7" y1="98.9" x2="58.2" y2="93"/><line x1="45" y1="91.7" x2="50.5" y2="86.9"/>
+                <line x1="38.2" y1="83.3" x2="44.5" y2="79.8"/><line x1="33.4" y1="74" x2="40.4" y2="71.9"/>
+                <line x1="30.8" y1="64.1" x2="38.1" y2="63.5"/><line x1="30.8" y1="54" x2="38.1" y2="55"/>
+                <line x1="33.4" y1="44.1" x2="40.4" y2="46.5"/><line x1="38.2" y1="34.8" x2="44.5" y2="38.6"/>
+                <line x1="45" y1="26.4" x2="50.5" y2="31.5"/><line x1="53.7" y1="19.2" x2="58.2" y2="25.4"/>
+                <line x1="63.9" y1="13.4" x2="67.3" y2="20.4"/><line x1="75.3" y1="9.2" x2="77.5" y2="16.8"/>
+                <line x1="87.5" y1="6.8" x2="88.6" y2="14.7"/>
+              </g>
+              <circle cx="100" cy="100" r="86" fill="url(#face10)"/>
+              <circle cx="100" cy="100" r="81" fill="none" stroke="rgba(60,40,8,0.35)" stroke-width="1.2"/>
+              <circle cx="100" cy="100" r="76" fill="none" stroke="rgba(255,230,160,0.28)" stroke-width="0.7"/>
+              <!-- legend -->
+              <text x="100" y="28" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="7.5" letter-spacing="2.2" fill="#4a340c" font-weight="700">LIBERTY</text>
+              <text x="100" y="178" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="6.5" letter-spacing="1.4" fill="#5a4010" font-weight="700">1/10 OZ. FINE GOLD · 2026</text>
+              <!-- Walking Liberty inspired figure -->
+              <g fill="url(#relief10)" opacity="0.82">
+                <!-- torch arm up -->
+                <path d="M118 52c2 8 1 16-2 24l-4 2c4-10 5-18 3-26l3 0z"/>
+                <rect x="115" y="44" width="3.2" height="14" rx="1" transform="rotate(-12 116 51)"/>
+                <path d="M112 42l8-2 1 4-7 3z"/>
+                <!-- head + hair -->
+                <ellipse cx="98" cy="58" rx="7.5" ry="9"/>
+                <path d="M92 52c2-6 8-9 14-7 2 4 1 9-2 12-4-1-8 0-12-1z" opacity="0.9"/>
+                <!-- flowing gown -->
+                <path d="M90 68c-4 6-6 14-5 24 2 12 6 22 12 30 4-2 8-8 10-16 3-10 2-22-2-32-2-4-8-8-15-6z"/>
+                <path d="M98 72c8 2 14 10 16 20 2 12-1 24-6 32l-8 4c6-10 8-22 6-32-2-8-6-14-12-18z" opacity="0.75"/>
+                <!-- stride leg -->
+                <path d="M104 118c4 8 6 16 4 24-1 4-4 6-6 4 0-8-2-16-4-24 2-2 4-4 6-4z"/>
+                <path d="M92 120c-2 10-1 20 3 28 2 2 5 1 5-2-2-8-3-16-2-24-2-1-4-2-6-2z" opacity="0.85"/>
+                <!-- olive branch -->
+                <path d="M78 96c8 2 14 0 18-4-6 1-12 0-18 1z" opacity="0.7"/>
+                <ellipse cx="80" cy="94" rx="2.2" ry="1.4" transform="rotate(-20 80 94)"/>
+                <ellipse cx="86" cy="93" rx="2.2" ry="1.4" transform="rotate(-10 86 93)"/>
+                <ellipse cx="92" cy="93" rx="2" ry="1.3"/>
+              </g>
+              <!-- sun rays behind -->
+              <g stroke="#6a5018" stroke-width="1.1" opacity="0.35" stroke-linecap="round">
+                <line x1="56" y1="70" x2="48" y2="64"/><line x1="54" y1="80" x2="44" y2="78"/>
+                <line x1="54" y1="90" x2="44" y2="92"/><line x1="58" y1="100" x2="48" y2="106"/>
+                <line x1="64" y1="108" x2="56" y2="116"/>
+              </g>
+              <text x="148" y="108" text-anchor="middle" font-family="Zodiak,Georgia,serif" font-size="11" font-weight="700" fill="#3a2808" opacity="0.7">E</text>
+              <text x="148" y="118" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="5.5" letter-spacing="0.5" fill="#5a4010" opacity="0.75">PLURIBUS</text>
             </svg>
           </div>
           <div class="plinth" aria-hidden="true"></div>
           <div class="tag">
             <div>
-              <span class="denom">Tenth</span>
-              <span class="fine">0.10 troy oz</span>
+              <span class="denom">Gold Eagle</span>
+              <span class="fine">1/10 oz · American</span>
             </div>
             <div class="price-pill"><span data-price>——</span><small>ask</small></div>
           </div>
@@ -501,43 +555,84 @@
         </div>
       </article>
 
-      <!-- 1/4 oz -->
+      <!-- 1/4 oz — Canadian Maple Leaf -->
       <article class="case" data-oz="0.25">
         <div class="case-rail" aria-hidden="true"></div>
         <div class="vitrine">
           <div class="glass-glint" aria-hidden="true"></div>
           <div class="coin-stage">
-            <svg class="coin size-quarter" viewBox="0 0 140 140" aria-hidden="true">
+            <svg class="coin size-quarter" viewBox="0 0 200 200" aria-hidden="true">
               <defs>
-                <radialGradient id="g25" cx="32%" cy="28%" r="72%">
-                  <stop offset="0%" stop-color="#fff8d8"/>
-                  <stop offset="30%" stop-color="#f0d078"/>
-                  <stop offset="68%" stop-color="#c9a24a"/>
-                  <stop offset="100%" stop-color="#6a4810"/>
+                <radialGradient id="face25" cx="30%" cy="26%" r="74%">
+                  <stop offset="0%" stop-color="#fffaf0"/>
+                  <stop offset="24%" stop-color="#f5d88a"/>
+                  <stop offset="58%" stop-color="#d0a23a"/>
+                  <stop offset="100%" stop-color="#5a3c10"/>
                 </radialGradient>
                 <linearGradient id="rim25" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stop-color="#fff0c8"/>
-                  <stop offset="45%" stop-color="#b8861a"/>
-                  <stop offset="100%" stop-color="#4a3008"/>
+                  <stop offset="0%" stop-color="#fff6d8"/>
+                  <stop offset="50%" stop-color="#b8861a"/>
+                  <stop offset="100%" stop-color="#3a2808"/>
                 </linearGradient>
+                <radialGradient id="leaf25" cx="45%" cy="40%" r="60%">
+                  <stop offset="0%" stop-color="#6a4814"/>
+                  <stop offset="100%" stop-color="#2a1804"/>
+                </radialGradient>
               </defs>
-              <circle cx="70" cy="70" r="67" fill="url(#rim25)"/>
-              <circle cx="70" cy="70" r="59" fill="url(#g25)"/>
-              <circle cx="70" cy="70" r="54" fill="none" stroke="rgba(60,40,8,0.4)" stroke-width="1.4"/>
-              <circle cx="70" cy="70" r="49" fill="none" stroke="rgba(255,235,180,0.4)" stroke-width="1" stroke-dasharray="1.5 2.5"/>
-              <!-- stylized eagle wings -->
-              <path d="M70 42c-10 8-18 18-20 30 8-4 14-4 20-4s12 0 20 4c-2-12-10-22-20-30z" fill="rgba(70,45,10,0.28)"/>
-              <path d="M48 78c8 10 14 16 22 20 8-4 14-10 22-20-10 4-16 6-22 6s-12-2-22-6z" fill="rgba(70,45,10,0.2)"/>
-              <text x="70" y="66" text-anchor="middle" font-family="Zodiak, Georgia, serif" font-size="26" font-weight="700" fill="#3a2808">1/4</text>
-              <text x="70" y="84" text-anchor="middle" font-family="Satoshi, sans-serif" font-size="10" letter-spacing="2.5" fill="#5a4010">TROY OZ</text>
-              <text x="70" y="100" text-anchor="middle" font-family="Satoshi, sans-serif" font-size="8" letter-spacing="1.8" fill="#6a5018">AMERICAN GOLD</text>
+              <circle cx="100" cy="100" r="96" fill="url(#rim25)"/>
+              <g stroke="#3a2808" stroke-width="1.15" opacity="0.5">
+                <line x1="100" y1="6" x2="100" y2="14"/><line x1="118" y1="8" x2="116" y2="15.5"/>
+                <line x1="134" y1="14" x2="130.5" y2="20.5"/><line x1="147" y1="24" x2="142" y2="29"/>
+                <line x1="157" y1="37" x2="151" y2="40.5"/><line x1="163.5" y1="52" x2="156.5" y2="53.5"/>
+                <line x1="166.5" y1="68" x2="159" y2="68"/><line x1="165" y1="84" x2="157.5" y2="82.5"/>
+                <line x1="159" y1="99" x2="152" y2="96"/><line x1="149" y1="112" x2="143" y2="107"/>
+                <line x1="135" y1="122" x2="131" y2="115.5"/><line x1="119" y1="128" x2="117" y2="121"/>
+                <line x1="100" y1="130" x2="100" y2="122.5"/><line x1="81" y1="128" x2="83" y2="121"/>
+                <line x1="65" y1="122" x2="69" y2="115.5"/><line x1="51" y1="112" x2="57" y2="107"/>
+                <line x1="41" y1="99" x2="48" y2="96"/><line x1="35" y1="84" x2="42.5" y2="82.5"/>
+                <line x1="33.5" y1="68" x2="41" y2="68"/><line x1="36.5" y1="52" x2="43.5" y2="53.5"/>
+                <line x1="43" y1="37" x2="49" y2="40.5"/><line x1="53" y1="24" x2="58" y2="29"/>
+                <line x1="66" y1="14" x2="69.5" y2="20.5"/><line x1="82" y1="8" x2="84" y2="15.5"/>
+              </g>
+              <circle cx="100" cy="100" r="86" fill="url(#face25)"/>
+              <circle cx="100" cy="100" r="81" fill="none" stroke="rgba(60,40,8,0.35)" stroke-width="1.2"/>
+              <circle cx="100" cy="100" r="76" fill="none" stroke="rgba(255,230,160,0.25)" stroke-width="0.7"/>
+              <text x="100" y="30" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="7" letter-spacing="1.8" fill="#4a340c" font-weight="700">CANADA</text>
+              <text x="100" y="176" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="6.2" letter-spacing="1.2" fill="#5a4010" font-weight="700">9999 FINE GOLD · 1/4 OZ</text>
+              <!-- maple leaf -->
+              <g fill="url(#leaf25)" opacity="0.88" transform="translate(100 102) scale(1.05)">
+                <path d="M0-42
+                  C6-36 10-28 8-20
+                  C18-28 28-26 34-18
+                  C28-16 22-12 18-6
+                  C30-8 40-2 42 8
+                  C34 6 26 8 20 14
+                  C28 20 30 30 26 40
+                  C18 32 10 28 4 28
+                  L4 44 L-4 44 L-4 28
+                  C-10 28-18 32-26 40
+                  C-30 30-28 20-20 14
+                  C-26 8-34 6-42 8
+                  C-40-2-30-8-18-6
+                  C-22-12-28-16-34-18
+                  C-28-26-18-28-8-20
+                  C-10-28-6-36 0-42 Z"/>
+                <!-- veins -->
+                <g stroke="#f0d078" stroke-width="1.1" fill="none" opacity="0.35" stroke-linecap="round">
+                  <path d="M0-36 L0 26"/>
+                  <path d="M0-8 L16-22"/><path d="M0-4 L24 2"/><path d="M0 8 L18 22"/>
+                  <path d="M0-8 L-16-22"/><path d="M0-4 L-24 2"/><path d="M0 8 L-18 22"/>
+                </g>
+              </g>
+              <text x="36" y="104" text-anchor="middle" font-family="Zodiak,Georgia,serif" font-size="10" font-weight="700" fill="#3a2808" opacity="0.55">¼</text>
+              <text x="164" y="104" text-anchor="middle" font-family="Zodiak,Georgia,serif" font-size="10" font-weight="700" fill="#3a2808" opacity="0.55">oz</text>
             </svg>
           </div>
           <div class="plinth" aria-hidden="true"></div>
           <div class="tag">
             <div>
-              <span class="denom">Quarter</span>
-              <span class="fine">0.25 troy oz</span>
+              <span class="denom">Maple Leaf</span>
+              <span class="fine">1/4 oz · Canada .9999</span>
             </div>
             <div class="price-pill"><span data-price>——</span><small>ask</small></div>
           </div>
@@ -548,51 +643,88 @@
         </div>
       </article>
 
-      <!-- 1 oz -->
+      <!-- 1 oz — Krugerrand -->
       <article class="case" data-oz="1">
         <div class="case-rail" aria-hidden="true"></div>
         <div class="vitrine">
           <div class="glass-glint" aria-hidden="true"></div>
           <div class="coin-stage">
-            <svg class="coin size-ounce" viewBox="0 0 180 180" aria-hidden="true">
+            <svg class="coin size-ounce" viewBox="0 0 220 220" aria-hidden="true">
               <defs>
-                <radialGradient id="g1" cx="30%" cy="26%" r="74%">
+                <radialGradient id="face1" cx="30%" cy="24%" r="76%">
                   <stop offset="0%" stop-color="#fffaf0"/>
-                  <stop offset="22%" stop-color="#f5d88a"/>
-                  <stop offset="55%" stop-color="#d0a23a"/>
-                  <stop offset="82%" stop-color="#8a6018"/>
-                  <stop offset="100%" stop-color="#4a3008"/>
+                  <stop offset="20%" stop-color="#f5d88a"/>
+                  <stop offset="48%" stop-color="#d4a84a"/>
+                  <stop offset="78%" stop-color="#8a6018"/>
+                  <stop offset="100%" stop-color="#3a2808"/>
                 </radialGradient>
                 <linearGradient id="rim1" x1="0" y1="0" x2="1" y2="1">
                   <stop offset="0%" stop-color="#fff6d8"/>
                   <stop offset="40%" stop-color="#c9a24a"/>
-                  <stop offset="100%" stop-color="#3a2808"/>
+                  <stop offset="100%" stop-color="#2a1804"/>
                 </linearGradient>
-                <filter id="emboss" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="1" stdDeviation="0.8" flood-color="#fff8d0" flood-opacity="0.35"/>
-                  <feDropShadow dx="0" dy="-1" stdDeviation="0.6" flood-color="#4a3008" flood-opacity="0.4"/>
-                </filter>
+                <linearGradient id="springbok" x1="0" y1="0" x2="0.3" y2="1">
+                  <stop offset="0%" stop-color="#5a4010"/>
+                  <stop offset="100%" stop-color="#241404"/>
+                </linearGradient>
               </defs>
-              <circle cx="90" cy="90" r="86" fill="url(#rim1)"/>
-              <circle cx="90" cy="90" r="76" fill="url(#g1)"/>
-              <circle cx="90" cy="90" r="70" fill="none" stroke="rgba(50,32,6,0.45)" stroke-width="1.6"/>
-              <circle cx="90" cy="90" r="64" fill="none" stroke="rgba(255,236,180,0.42)" stroke-width="1.1" stroke-dasharray="2 2.8"/>
-              <!-- liberty-ish figure silhouette -->
-              <g filter="url(#emboss)" opacity="0.55">
-                <ellipse cx="90" cy="78" rx="14" ry="16" fill="#5a4010"/>
-                <path d="M70 98c6-10 14-14 20-14s14 4 20 14c-4 18-10 28-20 34-10-6-16-16-20-34z" fill="#5a4010"/>
-                <path d="M58 108c10-4 22-6 32-6s22 2 32 6c-8 8-18 12-32 12s-24-4-32-12z" fill="#4a340c"/>
+              <circle cx="110" cy="110" r="106" fill="url(#rim1)"/>
+              <g stroke="#2a1804" stroke-width="1.25" opacity="0.55">
+                <line x1="110" y1="6" x2="110" y2="16"/><line x1="130" y1="8.2" x2="128" y2="17.8"/>
+                <line x1="149" y1="14.5" x2="145" y2="23.5"/><line x1="165" y1="25" x2="159.5" y2="32.8"/>
+                <line x1="178" y1="39" x2="171.5" y2="45"/><line x1="187" y1="55.5" x2="179.5" y2="59.5"/>
+                <line x1="192" y1="74" x2="184" y2="75.5"/><line x1="192.5" y1="93" x2="184.5" y2="92"/>
+                <line x1="188" y1="111.5" x2="180.5" y2="108.5"/><line x1="179" y1="128.5" x2="172.5" y2="123.5"/>
+                <line x1="165.5" y1="143" x2="160.5" y2="136.5"/><line x1="148.5" y1="154" x2="145" y2="146.5"/>
+                <line x1="129" y1="160.5" x2="127.5" y2="152.5"/><line x1="110" y1="163" x2="110" y2="154.5"/>
+                <line x1="91" y1="160.5" x2="92.5" y2="152.5"/><line x1="71.5" y1="154" x2="75" y2="146.5"/>
+                <line x1="54.5" y1="143" x2="59.5" y2="136.5"/><line x1="41" y1="128.5" x2="47.5" y2="123.5"/>
+                <line x1="32" y1="111.5" x2="39.5" y2="108.5"/><line x1="27.5" y1="93" x2="35.5" y2="92"/>
+                <line x1="28" y1="74" x2="36" y2="75.5"/><line x1="33" y1="55.5" x2="40.5" y2="59.5"/>
+                <line x1="42" y1="39" x2="48.5" y2="45"/><line x1="55" y1="25" x2="60.5" y2="32.8"/>
+                <line x1="71" y1="14.5" x2="75" y2="23.5"/><line x1="90" y1="8.2" x2="92" y2="17.8"/>
               </g>
-              <text x="90" y="52" text-anchor="middle" font-family="Satoshi, sans-serif" font-size="9" letter-spacing="3" fill="#5a4010">ONE OUNCE</text>
-              <text x="90" y="128" text-anchor="middle" font-family="Zodiak, Georgia, serif" font-size="28" font-weight="700" fill="#3a2808">1 OZ</text>
-              <text x="90" y="146" text-anchor="middle" font-family="Satoshi, sans-serif" font-size="9" letter-spacing="2.2" fill="#6a5018">.9999 FINE GOLD</text>
+              <circle cx="110" cy="110" r="94" fill="url(#face1)"/>
+              <circle cx="110" cy="110" r="89" fill="none" stroke="rgba(50,32,6,0.4)" stroke-width="1.4"/>
+              <circle cx="110" cy="110" r="83" fill="none" stroke="rgba(255,230,160,0.3)" stroke-width="0.8"/>
+              <text x="110" y="32" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="8" letter-spacing="2.4" fill="#3a2808" font-weight="700">SUID-AFRIKA · SOUTH AFRICA</text>
+              <text x="110" y="198" text-anchor="middle" font-family="Satoshi,sans-serif" font-size="7" letter-spacing="1.6" fill="#5a4010" font-weight="700">FYNGOUD 1 OZ FINE GOLD · 2026</text>
+              <!-- Springbok -->
+              <g fill="url(#springbok)" opacity="0.9" transform="translate(110 118)">
+                <!-- body -->
+                <ellipse cx="2" cy="4" rx="28" ry="16"/>
+                <!-- chest / neck -->
+                <path d="M-18-2c-6-8-4-18 4-24 6-4 14-4 18 2 2 4 0 10-4 14-6 4-12 6-18 8z"/>
+                <!-- head -->
+                <ellipse cx="-8" cy="-28" rx="9" ry="7" transform="rotate(-18 -8 -28)"/>
+                <!-- snout -->
+                <path d="M-16-30c-6-1-10 2-10 5 2 2 6 3 10 2 2-2 2-5 0-7z"/>
+                <!-- ear -->
+                <path d="M-2-34l6-8 4 2-4 8z"/>
+                <!-- horns (curved) -->
+                <path d="M-6-34c2-10 0-18-4-24 6 4 10 12 10 22" fill="none" stroke="#2a1804" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M0-33c4-10 4-18 2-24 4 6 6 14 4 24" fill="none" stroke="#2a1804" stroke-width="2.2" stroke-linecap="round"/>
+                <!-- legs -->
+                <path d="M-16 16l-4 22h4l2-22z"/><path d="M-6 18l-1 20h3.5l0.5-20z"/>
+                <path d="M10 16l2 22h4l-2-22z"/><path d="M18 14l4 20h3.5l-3-20z"/>
+                <!-- tail -->
+                <path d="M28 0c8-2 12 4 10 10-4-2-8-4-10-10z"/>
+                <!-- eye -->
+                <circle cx="-10" cy="-28" r="1.3" fill="#f0d078" opacity="0.5"/>
+              </g>
+              <!-- veldt grass suggestion -->
+              <g stroke="#5a4010" stroke-width="1.2" opacity="0.35" stroke-linecap="round" fill="none">
+                <path d="M48 148c6-8 4-4 2 2"/><path d="M56 150c4-10 6-6 2 2"/>
+                <path d="M160 148c-6-8-4-4-2 2"/><path d="M152 150c-4-10-6-6-2 2"/>
+              </g>
+              <text x="110" y="158" text-anchor="middle" font-family="Zodiak,Georgia,serif" font-size="13" font-weight="700" fill="#3a2808" opacity="0.55" letter-spacing="3">KRUGERRAND</text>
             </svg>
           </div>
           <div class="plinth" aria-hidden="true"></div>
           <div class="tag">
             <div>
-              <span class="denom">Sovereign</span>
-              <span class="fine">1.00 troy oz</span>
+              <span class="denom">Krugerrand</span>
+              <span class="fine">1 oz · South Africa</span>
             </div>
             <div class="price-pill"><span data-price>——</span><small>ask</small></div>
           </div>
