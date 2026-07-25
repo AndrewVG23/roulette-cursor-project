@@ -131,6 +131,14 @@
     }
     .overlay-card p { margin: 0 0 var(--space-4); color: var(--color-text-muted); font-size: var(--text-sm); line-height: 1.5; }
     .overlay-card .keys { color: var(--color-text); }
+    .overlay-card .overlay-price {
+      margin: 0 0 var(--space-4);
+      font-family: var(--font-display);
+      font-size: clamp(1.75rem, 5vw, 2.25rem);
+      font-weight: 700;
+      color: var(--color-primary);
+      letter-spacing: -0.02em;
+    }
 
     .btn {
       display: inline-flex; align-items: center; justify-content: center;
@@ -169,32 +177,6 @@
       pointer-events: none;
     }
     .controls .control-row { pointer-events: auto; justify-content: flex-start; }
-    .pump-panel {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-      padding: 8px 10px;
-      border-radius: var(--radius-md);
-      background: rgba(10, 18, 14, 0.88);
-      border: 1px solid rgba(238,194,97,.28);
-      pointer-events: auto;
-      max-width: min(320px, calc(100vw - 20px));
-    }
-    .pump-panel[hidden] { display: none; }
-    .pump-panel .pump-title {
-      margin: 0;
-      font-size: 0.65rem;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--color-text-faint);
-    }
-    .pump-panel .pump-price {
-      margin: 0;
-      font-size: var(--text-xs);
-      color: var(--color-text-muted);
-      line-height: 1.4;
-    }
-    .pump-panel .control-row { justify-content: flex-start; }
 
     .help-btn {
       position: absolute;
@@ -284,12 +266,17 @@
             hut is boarded up — but there's loose paper all over the lot, and word is six
             full gas cans are stashed around the station.
           </p>
+          <p class="overlay-price" id="overlayPrice" hidden></p>
           <p class="keys" id="overlayKeys">
             <b>W / S</b> run forward &amp; back &nbsp;·&nbsp; <b>← →</b> turn &nbsp;·&nbsp; <b>Space</b> jump<br>
             <b>Scroll</b> zoom &nbsp;·&nbsp; <b>P</b> pause
           </p>
-          <div class="control-row">
+          <div class="control-row" id="overlayStartRow">
             <button class="btn primary" id="startBtn" type="button">Start scrounging</button>
+          </div>
+          <div class="control-row" id="overlayFillRow" hidden>
+            <button class="btn primary" id="overlayCashBtn" type="button">Cash</button>
+            <button class="btn" id="overlayCreditBtn" type="button">Credit</button>
           </div>
         </div>
       </div>
@@ -301,7 +288,7 @@
         <p><b>Space</b> jumps — land and jump again right away while running to chain a double, then a triple jump.</p>
         <p><b>Scroll</b> zooms the chase camera in and out.</p>
         <p>Green bills are worth <b>$1</b>, red-tinted ones <b>$2</b>. One Krugerrand might be hiding up high. Gas cans pay <b>$25</b> each. Find all 8 red bills and a bonus can appears over the pumps.</p>
-      <p>Scrounged bills are <b>paper cash</b>; the Krugerrand lands in your <b>gold</b> stack. Every visit compounds gas, gold, and prices. If you're in the hole on credit, debt picks up <b>12% interest</b>.</p>
+      <p>Scrounged bills are <b>paper cash</b>; the Krugerrand lands in your <b>gold</b> stack. Every visit compounds gas, gold, and prices. If you're in the hole on credit, debt picks up <b>6% interest</b>.</p>
       </div>
 
       <div class="touch-ui">
@@ -310,14 +297,6 @@
       </div>
 
       <div class="controls" aria-label="Game controls">
-        <div class="pump-panel" id="pumpPanel" hidden>
-          <p class="pump-title">Night drive tank</p>
-          <p class="pump-price" id="pumpPrice"></p>
-          <div class="control-row">
-            <button class="btn primary" id="fillCashBtn" type="button">Fill 20 gal · Cash</button>
-            <button class="btn" id="fillCreditBtn" type="button">Fill 20 gal · Credit</button>
-          </div>
-        </div>
         <div class="control-row">
           <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
           <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
@@ -341,14 +320,15 @@
 
     // Every trip to the station compounds the whole economy — gas, gold spot,
     // and every inflated price tick up together, harder each visit.
-    const visitReport = Wallet.recordGasVisit();
+    Wallet.recordGasVisit();
 
     // ---------------------------------------------------------------- pumps (night drive refill)
-    const pumpPanel = document.getElementById('pumpPanel');
-    const pumpPrice = document.getElementById('pumpPrice');
-    const fillCashBtn = document.getElementById('fillCashBtn');
-    const fillCreditBtn = document.getElementById('fillCreditBtn');
     const leaveBtn = document.getElementById('leaveBtn');
+    const overlayPrice = document.getElementById('overlayPrice');
+    const overlayFillRow = document.getElementById('overlayFillRow');
+    const overlayStartRow = document.getElementById('overlayStartRow');
+    const overlayCashBtn = document.getElementById('overlayCashBtn');
+    const overlayCreditBtn = document.getElementById('overlayCreditBtn');
 
     function hasDriveCheckpoint() {
       try {
@@ -391,53 +371,49 @@
     }
 
     function updatePumpUI() {
-      if (!hasDriveCheckpoint()) {
-        pumpPanel.hidden = true;
-        leaveBtn.textContent = 'Leave';
-        return;
-      }
-      pumpPanel.hidden = false;
+      leaveBtn.textContent = hasDriveCheckpoint() ? 'Back to drive' : 'Leave';
+    }
+
+    function setupDriveFillOverlay() {
+      if (!hasDriveCheckpoint()) return false;
+
+      overlayTitle.hidden = true;
+      overlayText.hidden = true;
+      overlayKeys.hidden = true;
+      overlayStartRow.hidden = true;
+      overlayPrice.hidden = false;
+      overlayFillRow.hidden = false;
+      overlayPrice.textContent = `${Wallet.formatGas(Wallet.gasPrice())}/gal`;
+
       const tank = readCheckpointFuel();
-      const gal = Wallet.gasFillGallons();
-      const pump = Wallet.formatGas(Wallet.gasPrice());
-      const cashCost = Wallet.gasFillCost('cash');
-      const creditCost = Wallet.gasFillCost('credit');
-      const inTank = tank ? Math.ceil(tank.fuel) : '?';
-      pumpPrice.innerHTML =
-        `Regular <b>${pump}</b>/gal · <b>${gal} gal</b> fill · ` +
-        `Cash <b>${Wallet.format(cashCost)}</b> (10% off) · Credit <b>${Wallet.format(creditCost)}</b><br>` +
-        `Tank now: <b>${inTank}/${Wallet.GAS_TANK_GAL} gal</b>`;
-      fillCashBtn.textContent = `Fill ${gal} gal · Cash ${Wallet.format(cashCost)}`;
-      fillCreditBtn.textContent = `Fill ${gal} gal · Credit ${Wallet.format(creditCost)}`;
       const full = tank && tank.fuel >= Wallet.GAS_TANK_GAL - 0.05;
-      fillCashBtn.disabled = full;
-      fillCreditBtn.disabled = full;
-      leaveBtn.textContent = 'Back to drive';
+      overlayCashBtn.disabled = full;
+      overlayCreditBtn.disabled = full;
+      return true;
     }
 
     function fillTank(method) {
-      if (!hasDriveCheckpoint()) return;
+      if (!hasDriveCheckpoint()) return false;
       const tank = readCheckpointFuel();
       if (tank && tank.fuel >= Wallet.GAS_TANK_GAL - 0.05) {
-        showToast('Tank full<small>Already topped off</small>', 1800);
-        return;
+        return false;
       }
       const res = Wallet.buyGasFill(method);
       if (!res.ok) {
         showToast(`Pump declined<small>${res.reason || 'Not enough funds'}</small>`, 2400);
-        return;
+        return false;
       }
       writeCheckpointFuel(Wallet.GAS_TANK_GAL);
-      showToast(
-        `Tank full<small>${Wallet.gasFillGallons()} gal · −${Wallet.format(res.cost)} ${method === 'cash' ? 'cash' : 'credit'}</small>`,
-        2600
-      );
-      updatePumpUI();
+      window.location.href = 'frogger.html?resumeDrive=1';
+      return true;
     }
 
-    fillCashBtn?.addEventListener('click', () => fillTank('cash'));
-    fillCreditBtn?.addEventListener('click', () => fillTank('credit'));
-    Wallet.subscribe(() => updatePumpUI());
+    overlayCashBtn?.addEventListener('click', () => fillTank('cash'));
+    overlayCreditBtn?.addEventListener('click', () => fillTank('credit'));
+    Wallet.subscribe(() => {
+      updatePumpUI();
+      if (hasDriveCheckpoint()) setupDriveFillOverlay();
+    });
     updatePumpUI();
 
     // ---------------------------------------------------------------- setup
@@ -1181,15 +1157,9 @@
     const overlayKeys = document.getElementById('overlayKeys');
     const startBtn = document.getElementById('startBtn');
 
-    overlayText.innerHTML +=
-      ` <br><br>The sign just ticked over: regular is <b>${Wallet.formatGas(visitReport.gasPrice)}</b>/gal` +
-      ` (prices +${visitReport.ratePct.toFixed(0)}% this visit, visit #${visitReport.visits}).` +
-      ` Gold spot rides the pump — now <b>${Wallet.format(Math.round(visitReport.goldSpot))}</b>/oz.` +
-      (visitReport.creditInterestApplied
-        ? ` Credit debt compounded <b>+${visitReport.creditInterestPct.toFixed(0)}%</b>` +
-          ` (${Wallet.format(visitReport.creditBefore)} → ${Wallet.format(visitReport.creditAfter)}).`
-        : '') +
-      ` Scrounge green bills for paper cash — keep an eye out for a Krugerrand.`;
+    if (setupDriveFillOverlay()) {
+      overlay.hidden = false;
+    }
 
     let toastTimer = 0;
     function showToast(html, ms = 2200) {
@@ -1483,6 +1453,12 @@
       state.running = false;
       Wallet.addCash(40);
       sfx.win();
+      overlayTitle.hidden = false;
+      overlayText.hidden = false;
+      overlayKeys.hidden = false;
+      overlayStartRow.hidden = false;
+      overlayPrice.hidden = true;
+      overlayFillRow.hidden = true;
       overlayTitle.textContent = 'TANK FULL';
       overlayText.innerHTML =
         `Six cans of gas and every bill in the lot. The engine turns over on the first try.<br><br>` +
@@ -1515,6 +1491,12 @@
       state.paused = !state.paused;
       if (state.paused) {
         state.running = false;
+        overlayTitle.hidden = false;
+        overlayText.hidden = false;
+        overlayKeys.hidden = false;
+        overlayStartRow.hidden = false;
+        overlayPrice.hidden = true;
+        overlayFillRow.hidden = true;
         overlayTitle.textContent = 'Paused';
         overlayText.textContent = 'The lot will wait.';
         overlayKeys.innerHTML = '';
