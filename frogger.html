@@ -332,21 +332,34 @@
     .map-dest {
       position: absolute;
       pointer-events: auto;
-      width: 30px;
-      height: 30px;
-      padding: 5px;
-      border-radius: 6px;
-      border: 1.5px solid var(--dest-color, #e8a040);
-      background: rgba(12, 14, 18, 0.88);
+      min-width: 72px;
+      padding: 8px 10px 7px;
+      border-radius: 8px;
+      border: 2px solid var(--dest-color, #e8a040);
+      background: rgba(12, 14, 18, 0.92);
       color: var(--dest-color, #e8a040);
       transform: translate(-50%, -50%);
       display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+    }
+    .map-dest-icon {
+      display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     }
-    .map-dest svg { width: 16px; height: 16px; display: block; }
-    .map-dest:hover { filter: brightness(1.15); }
+    .map-dest-icon svg { width: 26px; height: 26px; display: block; }
+    .map-dest-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .map-dest:hover { filter: brightness(1.15); transform: translate(-50%, -50%) scale(1.04); }
     .map-dest:disabled { opacity: 0.35; pointer-events: none; }
     .lives-pips {
       display: flex;
@@ -1186,30 +1199,45 @@
   const panelInner = document.querySelector('.panel-inner');
   const mapNav = document.getElementById('mapNav');
 
-  const MAP_LAYOUT = { mapW: 132, mapH: 132, pad: 10, innerX: 8, innerY: 20 };
+  const MAP_LAYOUT = { mapW: 258, mapH: 278, pad: 0, innerX: 14, innerY: 30, titleH: 32 };
+
+  function getMapRect() {
+    const { mapW, mapH } = MAP_LAYOUT;
+    return { mx: 0, my: H - mapH, mapW, mapH };
+  }
   const MAP_DEST_ICONS = {
     casino: {
-      label: 'Casino',
+      label: 'Casino tables',
+      shortLabel: 'Casino',
       color: '#7dce7a',
-      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2l7 10H5L12 2zm0 22l-7-10h14l-7 10z"/></svg>'
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="16" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="16" r="1.3" fill="currentColor"/><circle cx="16" cy="16" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/></svg>'
     },
     grill: {
-      label: 'Grill',
+      label: 'Night shift grill',
+      shortLabel: 'Burgers',
       color: '#e8a040',
-      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="3" rx="1" fill="currentColor"/><rect x="4" y="10" width="16" height="4" rx="1" fill="currentColor"/><rect x="4" y="16" width="16" height="3" rx="1" fill="currentColor"/></svg>'
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8h15a3.2 3.2 0 00-5.2-1.6H9.7A3.2 3.2 0 004.5 8z" fill="currentColor"/><rect x="4.5" y="10" width="15" height="1.8" rx="0.9" fill="currentColor" opacity="0.75"/><ellipse cx="12" cy="13.2" rx="7.2" ry="2.4" fill="currentColor"/><path d="M4.5 15.8h15a3.2 3.2 0 01-5.2 1.6H9.7A3.2 3.2 0 014.5 15.8z" fill="currentColor"/></svg>'
     },
     hospital: {
-      label: 'Hospital',
+      label: 'Emergency room',
+      shortLabel: 'ER',
       color: '#e85c5c',
-      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 4h4v6h6v4h-6v6h-4v-6H4v-4h6V4z"/></svg>'
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 8.5h3v2.8h2.8v3h-2.8v2.8h-3v-2.8H7.7v-3h2.8V8.5z" fill="currentColor"/></svg>'
     },
     liquor: {
-      label: 'Liquor',
+      label: 'Liquor store',
+      shortLabel: 'Liquor',
       color: '#6eb5ff',
-      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 2h6v3l-2 3v11a2 2 0 01-4 0V8L9 5V2z"/></svg>'
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3h7v2.3L13 8.2v10.3a3.2 3.2 0 01-6.4 0V8.2L8.5 5.3V3z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M16.2 7.2h2.1a1.8 1.8 0 010 3.6h-2.1" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9.2" y="10.2" width="5.6" height="4.2" rx="0.8" fill="currentColor" opacity="0.85"/></svg>'
     }
   };
   let mapNavBuilt = false;
+  const MAP_DEST_NUDGE = {
+    casino: [0, -16],
+    grill: [0, 16],
+    hospital: [-14, 0],
+    liquor: [14, 0]
+  };
 
   function setHelpOpen(open) {
     helpPanel.hidden = !open;
@@ -1367,11 +1395,10 @@
   }
 
   function mapGeoToCanvas(n, e, route) {
-    const { mapW, mapH, pad, innerX, innerY } = MAP_LAYOUT;
-    const mx = pad;
-    const my = H - mapH - pad - 8;
-    const innerW = mapW - 16;
-    const innerH = mapH - 28;
+    const { innerX, innerY, titleH } = MAP_LAYOUT;
+    const { mx, my, mapW, mapH } = getMapRect();
+    const innerW = mapW - innerX * 2;
+    const innerH = mapH - titleH - 8;
     const b = route.geoBounds;
     const nSpan = b.nMax - b.nMin;
     const eSpan = b.eMax - b.eMin;
@@ -1393,7 +1420,7 @@
       btn.dataset.exitId = ex.id;
       btn.setAttribute('aria-label', meta.label);
       btn.style.setProperty('--dest-color', meta.color);
-      btn.innerHTML = meta.svg;
+      btn.innerHTML = `<span class="map-dest-icon">${meta.svg}</span><span class="map-dest-label">${meta.shortLabel || meta.label}</span>`;
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         goToMapDestination(ex.id);
@@ -1415,8 +1442,9 @@
         continue;
       }
       const pt = mapGeoToCanvas(ex.n, ex.e, d.route);
-      btn.style.left = `${(pt.x / W) * 100}%`;
-      btn.style.top = `${(pt.y / H) * 100}%`;
+      const nudge = MAP_DEST_NUDGE[ex.id] || [0, 0];
+      btn.style.left = `${((pt.x + nudge[0]) / W) * 100}%`;
+      btn.style.top = `${((pt.y + nudge[1]) / H) * 100}%`;
       btn.hidden = taken.has(ex.id);
       btn.disabled = taken.has(ex.id);
     }
@@ -7604,11 +7632,10 @@
     const route = d.route;
     if (!route || !route.samples) return;
 
-    const mapW = 132, mapH = 132;
-    const pad = 10;
-    const mx = pad, my = H - mapH - pad - 8;
-    const innerX = 8, innerY = 20;
-    const innerW = mapW - 16, innerH = mapH - 28;
+    const { innerX, innerY, titleH } = MAP_LAYOUT;
+    const { mx, my, mapW, mapH } = getMapRect();
+    const innerW = mapW - innerX * 2;
+    const innerH = mapH - titleH - 8;
     const b = route.geoBounds;
     const nSpan = b.nMax - b.nMin;
     const eSpan = b.eMax - b.eMin;
@@ -7623,7 +7650,7 @@
     ctx.save();
     ctx.fillStyle = 'rgba(12,14,18,0.9)';
     ctx.strokeStyle = 'rgba(208,162,58,0.35)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.fillRect(mx, my, mapW, mapH);
     ctx.strokeRect(mx + 0.5, my + 0.5, mapW - 1, mapH - 1);
 
@@ -7632,15 +7659,15 @@
     ctx.fillStyle = 'rgba(45,85,120,0.55)';
     ctx.fillRect(lakeX, my + innerY, mx + innerX + innerW - lakeX, innerH);
     ctx.fillStyle = 'rgba(90,140,180,0.35)';
-    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.font = '700 10px "General Sans", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('LAKE', lakeX + (mx + innerX + innerW - lakeX) * 0.5, my + innerY + innerH * 0.55);
 
     // Street grid
     ctx.strokeStyle = 'rgba(120,125,135,0.28)';
-    ctx.lineWidth = 0.8;
+    ctx.lineWidth = 1;
     ctx.fillStyle = 'rgba(160,165,175,0.45)';
-    ctx.font = '600 6px "General Sans", sans-serif';
+    ctx.font = '600 9px "General Sans", sans-serif';
     for (const st of route.streets || []) {
       if (st.kind === 'ns') {
         const p0 = geoToMap(b.nMin, st.e);
@@ -7690,7 +7717,7 @@
     // Complete loop route
     const wps = route.waypoints;
     ctx.strokeStyle = 'rgba(196,160,53,0.8)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.lineJoin = 'round';
     ctx.beginPath();
     for (let i = 0; i < wps.length; i++) {
@@ -7705,7 +7732,7 @@
     const geo = interpRouteGeo(wps, routeZ, true);
     if (routeZ > 0) {
       ctx.strokeStyle = 'rgba(230,220,190,0.65)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       for (let i = 0; i < wps.length; i++) {
         if (wps[i].z > routeZ) break;
@@ -7723,7 +7750,7 @@
       const pt = geoToMap(ix.n, ix.e);
       ctx.strokeStyle = 'rgba(235,230,215,0.35)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(pt.px - 3, pt.py - 3, 6, 6);
+      ctx.strokeRect(pt.px - 4, pt.py - 4, 8, 8);
     }
 
     // Traffic signals on minimap
@@ -7732,53 +7759,53 @@
       const pt = geoToMap(sig.n, sig.e);
       const ph = signalPhase(sig, sigTime);
       ctx.fillStyle = ph === 'red' ? '#e74c3c' : ph === 'yellow' ? '#f1c40f' : '#2ecc71';
-      ctx.fillRect(pt.px - 2, pt.py - 2, 4, 4);
+      ctx.fillRect(pt.px - 3, pt.py - 3, 6, 6);
     }
 
     // Start
     const startPt = geoToMap(wps[0].n, wps[0].e);
     ctx.fillStyle = '#5a9e68';
     ctx.beginPath();
-    ctx.arc(startPt.px, startPt.py, 3, 0, Math.PI * 2);
+    ctx.arc(startPt.px, startPt.py, 4, 0, Math.PI * 2);
     ctx.fill();
 
     // Player
     const playerPt = geoToMap(geo.n, geo.e + d.playerX * 0.45);
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.beginPath();
-    ctx.arc(playerPt.px, playerPt.py, 7, 0, Math.PI * 2);
+    ctx.arc(playerPt.px, playerPt.py, 9, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#f0ece0';
     ctx.beginPath();
-    ctx.arc(playerPt.px, playerPt.py, 3.5, 0, Math.PI * 2);
+    ctx.arc(playerPt.px, playerPt.py, 4.5, 0, Math.PI * 2);
     ctx.fill();
 
     // Title + area label
     ctx.fillStyle = 'rgba(208,162,58,0.9)';
-    ctx.font = '600 9px "General Sans", sans-serif';
+    ctx.font = '700 13px "General Sans", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(route.name, mx + 8, my + 12);
+    ctx.fillText(route.name, mx + 10, my + 18);
 
     const pos = sampleRouteAt(route, d.z, d);
     if (pos.label) {
       ctx.fillStyle = 'rgba(232,220,192,0.7)';
-      ctx.font = '600 8px "General Sans", sans-serif';
+      ctx.font = '600 11px "General Sans", sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText(pos.label, mx + mapW - 8, my + 12);
+      ctx.fillText(pos.label, mx + mapW - 10, my + 18);
     } else if (d.atSignal && d.atSignal.dist > 0 && d.atSignal.dist < 60) {
       const ph = d.atSignal.phase.toUpperCase();
       ctx.fillStyle = d.atSignal.phase === 'red' ? '#e74c3c'
         : d.atSignal.phase === 'yellow' ? '#f1c40f' : '#2ecc71';
-      ctx.font = '600 8px "General Sans", sans-serif';
+      ctx.font = '600 11px "General Sans", sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText(ph, mx + mapW - 8, my + 12);
+      ctx.fillText(ph, mx + mapW - 10, my + 18);
     }
 
     // North arrow
     ctx.strokeStyle = 'rgba(208,162,58,0.5)';
     ctx.fillStyle = 'rgba(208,162,58,0.65)';
-    ctx.lineWidth = 1;
-    const ax = mx + mapW - 14, ay = my + innerY + 6;
+    ctx.lineWidth = 1.2;
+    const ax = mx + mapW - 18, ay = my + innerY + 10;
     ctx.beginPath();
     ctx.moveTo(ax, ay + 10);
     ctx.lineTo(ax, ay);
@@ -7786,7 +7813,7 @@
     ctx.moveTo(ax, ay);
     ctx.lineTo(ax + 3, ay + 4);
     ctx.stroke();
-    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.font = '700 8px "General Sans", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('N', ax, ay - 2);
 
@@ -7860,8 +7887,8 @@
         ctx.stroke();
         if (major && v % labelStep === 0) {
           ctx.fillStyle = inRed ? '#e04038' : BMW_ORANGE;
-          ctx.font = `${v >= 100 ? 7 : 8}px "General Sans", sans-serif`;
-          ctx.fillText(String(v), cx + Math.cos(ang) * (r - 19), cy + Math.sin(ang) * (r - 19));
+          ctx.font = `${v >= 100 ? 11 : 13}px "General Sans", sans-serif`;
+          ctx.fillText(String(v), cx + Math.cos(ang) * (r - 24), cy + Math.sin(ang) * (r - 24));
         }
       }
     }
@@ -7892,31 +7919,32 @@
       ctx.restore();
     }
 
-    // Cluster housing — matte black pod like an E46/E90 binnacle
-    const podL = 132;
-    const podR = W - 6;
-    const podT = H - 98;
-    const podB = H - 4;
+    // Cluster housing — tucked into the bottom-right corner
+    const scx = W - 34;
+    const scy = H - 16;
+    const sr = 50;
+    const fcx = W - 102;
+    const fcy = H - 16;
+    const fr = 28;
+    const podL = W - 136;
+    const podR = W;
+    const podT = H - 84;
+    const podB = H;
     ctx.fillStyle = 'rgba(4,4,6,0.92)';
     ctx.beginPath();
-    ctx.moveTo(podL, podT + 8);
-    ctx.lineTo(podR - 10, podT);
-    ctx.lineTo(podR, podB - 6);
-    ctx.quadraticCurveTo(podR, podB, podR - 8, podB);
-    ctx.lineTo(podL + 6, podB);
-    ctx.quadraticCurveTo(podL, podB, podL, podB - 6);
+    ctx.moveTo(podL, podT + 6);
+    ctx.lineTo(podR, podT);
+    ctx.lineTo(podR, podB);
+    ctx.lineTo(podL, podB);
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = 'rgba(120,120,128,0.35)';
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.03)';
-    ctx.fillRect(podL + 8, podT + 10, podR - podL - 16, 2);
+    ctx.fillRect(podL + 4, podT + 4, podR - podL - 8, 2);
 
     // --- Fuel gauge (BMW left inset dial) ---
-    const fcx = 188;
-    const fcy = H - 26;
-    const fr = 32;
     const fArc0 = Math.PI * 0.82;
     const fArc1 = Math.PI * 2.0;
     drawBezel(fcx, fcy, fr);
@@ -7934,14 +7962,14 @@
       ctx.stroke();
     }
     ctx.fillStyle = BMW_ORANGE;
-    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.font = '700 9px "General Sans", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('E', fcx + Math.cos(fArc0 + 0.08) * (fr - 22), fcy + Math.sin(fArc0 + 0.08) * (fr - 22));
-    ctx.fillText('F', fcx + Math.cos(fArc1 - 0.08) * (fr - 22), fcy + Math.sin(fArc1 - 0.08) * (fr - 22));
+    ctx.fillText('E', fcx + Math.cos(fArc0 + 0.08) * (fr - 24), fcy + Math.sin(fArc0 + 0.08) * (fr - 24));
+    ctx.fillText('F', fcx + Math.cos(fArc1 - 0.08) * (fr - 24), fcy + Math.sin(fArc1 - 0.08) * (fr - 24));
     ctx.fillStyle = BMW_TICK;
-    ctx.font = '600 6px "General Sans", sans-serif';
-    ctx.fillText('1/1', fcx, fcy + 8);
+    ctx.font = '600 8px "General Sans", sans-serif';
+    ctx.fillText('1/1', fcx, fcy + 7);
     const fuelAng = fArc0 + (fArc1 - fArc0) * fuelPct;
     ctx.globalAlpha = pulse;
     drawNeedle(fcx, fcy, fr, fuelAng, fuelPct <= 0.12 ? '#e04038' : BMW_ORANGE);
@@ -7954,9 +7982,6 @@
     }
 
     // --- Speedometer (BMW main right dial) ---
-    const scx = W - 58;
-    const scy = H - 26;
-    const sr = 54;
     const sArc0 = Math.PI * 0.72;
     const sArc1 = Math.PI * 2.28;
     drawBezel(scx, scy, sr);
@@ -7965,30 +7990,30 @@
     const needleAng = sArc0 + (sArc1 - sArc0) * speedPct;
     drawNeedle(scx, scy, sr, needleAng, speedPct > 0.88 ? '#e04038' : BMW_ORANGE);
     ctx.fillStyle = BMW_ORANGE;
-    ctx.font = '600 7px "General Sans", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('mph', scx, scy + 16);
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.font = '600 6px "General Sans", sans-serif';
-    ctx.fillText('OBD', scx - 18, scy + 22);
-
-    // Trip-style digital readout strip (2005 BMW optional line display)
-    const tripW = 54;
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(scx - tripW / 2, scy - 4, tripW, 11);
-    ctx.strokeStyle = 'rgba(242,140,24,0.25)';
-    ctx.strokeRect(scx - tripW / 2 + 0.5, scy - 3.5, tripW - 1, 10);
-    ctx.fillStyle = BMW_ORANGE;
     ctx.font = '700 9px "General Sans", sans-serif';
     ctx.textAlign = 'center';
+    ctx.fillText('mph', scx, scy + 18);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.fillText('OBD', scx - 20, scy + 24);
+
+    // Trip-style digital readout strip (2005 BMW optional line display)
+    const tripW = 62;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(scx - tripW / 2, scy - 5, tripW, 14);
+    ctx.strokeStyle = 'rgba(242,140,24,0.25)';
+    ctx.strokeRect(scx - tripW / 2 + 0.5, scy - 4.5, tripW - 1, 13);
+    ctx.fillStyle = BMW_ORANGE;
+    ctx.font = '700 15px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(Math.round(speed)), scx, scy + 1);
+    ctx.fillText(String(Math.round(speed)), scx, scy + 2);
 
     if (fuelPct <= 0.001) {
       ctx.fillStyle = `rgba(224,64,56,${0.55 + Math.sin(performance.now() * 0.014) * 0.25})`;
       ctx.font = '700 8px "General Sans", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('FUEL RESERVE', fcx, fcy + fr + 14);
+      ctx.fillText('FUEL RESERVE', fcx, fcy + fr + 12);
     }
   }
 
