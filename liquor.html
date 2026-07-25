@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="wallet.css">
   <script src="wallet.js"></script>
   <script src="orientation.js"></script>
+  <script src="music.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -542,6 +543,12 @@
     }
   }
   function startMusic() {
+    // Shared playlist owns the soundtrack when present.
+    if (typeof BGM !== 'undefined') {
+      music.on = false;
+      BGM.play();
+      return;
+    }
     const ac = audio();
     if (!ac) return;
     music.on = true;
@@ -2041,9 +2048,11 @@
   canvas.addEventListener('pointerdown', () => pressStart());
 
   const muteBtn = document.getElementById('muteBtn');
+  if (typeof BGM !== 'undefined') muted = BGM.isMuted();
   function toggleMute() {
     muted = !muted;
     localStorage.setItem('liquorMuted', muted ? '1' : '0');
+    if (typeof BGM !== 'undefined') BGM.setMuted(muted);
     muteBtn.textContent = muted ? 'Muted' : 'Sound';
     if (!muted && G.mode === 'play') { audio(); startMusic(); }
   }
