@@ -325,41 +325,52 @@
     .panel-inner.drive-phase .controls { display: none; }
     .map-nav {
       position: absolute;
-      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: stretch;
+      gap: 3px;
       pointer-events: none;
       z-index: 4;
+      box-sizing: border-box;
     }
     .map-dest {
-      position: absolute;
+      position: relative;
       pointer-events: auto;
-      min-width: 56px;
-      padding: 5px 7px 4px;
-      border-radius: 7px;
+      flex: 0 0 auto;
+      min-width: 48px;
+      padding: 3px 5px 2px;
+      border-radius: 6px;
       border: 1.5px solid var(--dest-color, #e8a040);
       background: rgba(12, 14, 18, 0.92);
       color: var(--dest-color, #e8a040);
-      transform: translate(-50%, -50%);
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      gap: 2px;
+      gap: 4px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
     }
     .map-dest-icon {
       display: flex;
       align-items: center;
       justify-content: center;
+      flex: 0 0 auto;
     }
-    .map-dest-icon svg { width: 18px; height: 18px; display: block; }
+    .map-dest-icon svg { width: 14px; height: 14px; display: block; }
     .map-dest-label {
-      font-size: 8px;
+      font-size: 7px;
       font-weight: 800;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       text-transform: uppercase;
       line-height: 1;
       white-space: nowrap;
     }
-    .map-dest:hover { filter: brightness(1.15); transform: translate(-50%, -50%) scale(1.04); }
+    .map-dest:hover { filter: brightness(1.15); transform: scale(1.03); }
+    .map-dest.active {
+      background: color-mix(in srgb, var(--dest-color, #e8a040) 22%, rgba(12, 14, 18, 0.95));
+      box-shadow: 0 0 0 1.5px var(--dest-color, #e8a040), 0 2px 8px rgba(0, 0, 0, 0.45);
+    }
     .map-dest:disabled { opacity: 0.35; pointer-events: none; }
     .lives-pips {
       display: flex;
@@ -1274,15 +1285,6 @@
     }
   };
   let mapNavBuilt = false;
-  const MAP_DEST_NUDGE = {
-    casino: [0, -11],
-    grill: [0, 11],
-    hospital: [-10, 0],
-    liquor: [10, 0],
-    gas: [0, 12],
-    coins: [12, -10],
-    bank: [-8, 10]
-  };
 
   function setHelpOpen(open) {
     helpPanel.hidden = !open;
@@ -1463,7 +1465,7 @@
       btn.type = 'button';
       btn.className = 'map-dest';
       btn.dataset.exitId = ex.id;
-      btn.setAttribute('aria-label', meta.label);
+      btn.setAttribute('aria-label', `Navigate to ${meta.label}`);
       btn.style.setProperty('--dest-color', meta.color);
       btn.innerHTML = `<span class="map-dest-icon">${meta.svg}</span><span class="map-dest-label">${meta.shortLabel || meta.label}</span>`;
       btn.addEventListener('click', (e) => {
@@ -1479,6 +1481,12 @@
     if (!mapNav || !d || !d.route) return;
     ensureMapNav(d.route);
     mapNav.hidden = false;
+    const { mx, my, mapW, mapH } = getMapRect();
+    const gap = 6;
+    mapNav.style.left = `${((mx + mapW + gap) / W) * 100}%`;
+    mapNav.style.top = 'auto';
+    mapNav.style.bottom = `${((H - my - mapH) / H) * 100}%`;
+    mapNav.style.height = 'auto';
     const taken = new Set((d.exits || []).filter(e => e.taken).map(e => e.id));
     for (const btn of mapNav.querySelectorAll('.map-dest')) {
       const ex = (d.route.exits || []).find(e => e.id === btn.dataset.exitId);
@@ -1486,12 +1494,9 @@
         btn.hidden = true;
         continue;
       }
-      const pt = mapGeoToCanvas(ex.n, ex.e, d.route);
-      const nudge = MAP_DEST_NUDGE[ex.id] || [0, 0];
-      btn.style.left = `${((pt.x + nudge[0]) / W) * 100}%`;
-      btn.style.top = `${((pt.y + nudge[1]) / H) * 100}%`;
       btn.hidden = taken.has(ex.id);
       btn.disabled = taken.has(ex.id);
+      btn.classList.toggle('active', d.navTarget === ex.id);
     }
   }
 
@@ -1499,23 +1504,46 @@
     if (mapNav) mapNav.hidden = true;
   }
 
-  function goToMapDestination(exitId) {
-    if (state.phase !== 'drive' || state.mode !== 'drive' || !state.drive) return;
-    const route = state.drive.route;
-    const def = (route.exits || []).find(e => e.id === exitId);
-    if (!def) return;
-    const live = (state.drive.exits || []).find(e => e.id === exitId && !e.taken);
-    const ex = live || {
+  function getNavExit(d, exitId) {
+    if (!d || !exitId) return null;
+    const live = (d.exits || []).find(e => e.id === exitId && !e.taken);
+    if (live) return live;
+    const def = (d.route?.exits || []).find(e => e.id === exitId);
+    if (!def) return null;
+    return {
       ...def,
       taken: false,
       startZ: def.z - 90,
       endZ: def.z + 70
     };
-    if (exitId === 'hospital') takeHospitalExit(ex);
-    else if (exitId === 'gas') takeGasExit(ex);
-    else if (exitId === 'coins') takeCoinsExit(ex);
-    else if (exitId === 'bank') takeBankExit(ex);
-    else takeExit(ex);
+  }
+
+  function goToMapDestination(exitId) {
+    if (state.phase !== 'drive' || state.mode !== 'drive' || !state.drive) return;
+    const d = state.drive;
+    const ex = getNavExit(d, exitId);
+    if (!ex || ex.taken) return;
+    if (d.navTarget === exitId) {
+      d.navTarget = null;
+      beep(220, 0.05);
+      updateHUD();
+      return;
+    }
+    d.navTarget = exitId;
+    beep(523, 0.06);
+    beep(784, 0.1);
+    updateHUD();
+  }
+
+  function arriveAtDestination(exit) {
+    if (!exit || exit.taken || state.mode !== 'drive' || !state.drive) return;
+    const d = state.drive;
+    d.navTarget = null;
+    if (exit.id === 'hospital') takeHospitalExit(exit);
+    else if (exit.id === 'gas') takeGasExit(exit);
+    else if (exit.id === 'coins') takeCoinsExit(exit);
+    else if (exit.id === 'bank') takeBankExit(exit);
+    else takeExit(exit);
   }
 
   function setPhaseUI() {
@@ -1524,7 +1552,7 @@
       brandSub.textContent = 'Gold Coast · stop at red · steer to turn';
       if (meterStat) meterStat.hidden = true;
       if (livesStat) livesStat.hidden = true;
-      hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · tap map icons to go · R replay';
+      hintText.textContent = 'Stop at red · tap a destination to navigate · arrive to finish · R replay';
       dpad.classList.add('drive-mode');
       panelInner?.classList.add('drive-phase');
     } else if (isEnter()) {
@@ -1866,6 +1894,7 @@
       fuel: Wallet.GAS_TANK_GAL,
       maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
+      navTarget: null,
       chaser: null,
       chaserSpawnT: 4,
       replayClock: 0
@@ -2070,6 +2099,7 @@
       fuel: d.fuel,
       maxFuel: d.maxFuel,
       approachingExit: d.approachingExit ? { ...d.approachingExit } : null,
+      navTarget: d.navTarget || null,
       atSignal: d.atSignal ? { ...d.atSignal } : null,
       signalFlash: d.signalFlash,
       turnFlash: d.turnFlash,
@@ -2766,6 +2796,7 @@
       fuel: Wallet.GAS_TANK_GAL,
       maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
+      navTarget: null,
       chaser: null,
       chaserSpawnT: 4,
       replayClock: 0,
@@ -4113,15 +4144,51 @@
     d.camBack = (d.camBack || 112) + (camBackTarget - (d.camBack || 112)) * Math.min(1, 3.8 * dt);
 
     maintainEnvAroundPlayer(d);
-    d.exits = d.exits.filter(e => routeInWindow(e.z, d.z, 200, 400, d.route.length));
+    d.exits = d.exits.filter(e =>
+      (d.navTarget && e.id === d.navTarget) ||
+      routeInWindow(e.z, d.z, 200, 400, d.route.length)
+    );
+    // Keep the active nav destination available even if it was culled earlier
+    if (d.navTarget && !(d.exits || []).some(e => e.id === d.navTarget)) {
+      const def = (d.route.exits || []).find(e => e.id === d.navTarget);
+      if (def) {
+        d.exits.push({
+          z: def.z,
+          side: def.side,
+          id: def.id,
+          name: def.name,
+          mapLabel: def.mapLabel,
+          href: def.href,
+          blurb: def.blurb,
+          taken: false,
+          startZ: def.z - 90,
+          endZ: def.z + 70,
+          n: def.n,
+          e: def.e
+        });
+      }
+    }
 
-    // Take EXIT · GRILL / CASINO — steer onto the ramp in the exit window
+    // Navigate to selected destination — arrive in its exit window to finish the drive
     d.approachingExit = null;
+    const pathLen = d.route.length;
+    const routeZ = wrapRouteZ(d.z, pathLen);
+    if (d.navTarget) {
+      const navEx = getNavExit(d, d.navTarget);
+      if (navEx && !navEx.taken) {
+        const signed = routeSignedDist(d.z, navEx.z, pathLen);
+        if (signed < 160 && signed > -40) d.approachingExit = navEx;
+        if (signed <= 30 && signed >= -55) {
+          arriveAtDestination(navEx);
+          return;
+        }
+      }
+    }
+    // Opportunistic ramp take for non-nav exits
     for (const ex of d.exits) {
-      if (ex.taken) continue;
-      const routeZ = wrapRouteZ(d.z, d.route.length);
+      if (ex.taken || (d.navTarget && ex.id === d.navTarget)) continue;
       if (routeZ >= ex.startZ && routeZ <= ex.endZ) {
-        d.approachingExit = ex;
+        if (!d.approachingExit) d.approachingExit = ex;
         const onRamp = ex.side > 0
           ? d.playerX > DW.ROAD * 0.55
           : d.playerX < -DW.ROAD * 0.55;
@@ -7894,6 +7961,34 @@
       ctx.fillRect(pt.px - 2, pt.py - 2, 4, 4);
     }
 
+    // Active navigation route (player → selected destination along the loop)
+    if (d.navTarget) {
+      const navEx = (route.exits || []).find(e => e.id === d.navTarget);
+      const navMeta = MAP_DEST_ICONS[d.navTarget];
+      if (navEx && navMeta) {
+        const pathLen = route.length;
+        const fromZ = wrapRouteZ(d.z, pathLen);
+        const toZ = wrapRouteZ(navEx.z, pathLen);
+        const ahead = routeAheadDist(fromZ, toZ, pathLen);
+        ctx.strokeStyle = navMeta.color;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([4, 3]);
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        let started = false;
+        const steps = Math.max(8, Math.ceil(ahead / 28));
+        for (let i = 0; i <= steps; i++) {
+          const z = wrapRouteZ(fromZ + (ahead * i) / steps, pathLen);
+          const g = interpRouteGeo(wps, z, true);
+          const pt = geoToMap(g.n, g.e);
+          if (!started) { ctx.moveTo(pt.px, pt.py); started = true; }
+          else ctx.lineTo(pt.px, pt.py);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
     // Destination exits on minimap
     for (const ex of route.exits || []) {
       const live = (d.exits || []).find(e => e.id === ex.id);
@@ -7901,17 +7996,21 @@
       const meta = MAP_DEST_ICONS[ex.id];
       if (!meta) continue;
       const pt = geoToMap(ex.n, ex.e);
+      const isNav = d.navTarget === ex.id;
+      const r = isNav ? 6 : 3.5;
+      if (isNav) {
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.beginPath();
+        ctx.arc(pt.px, pt.py, r + 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.fillStyle = meta.color;
-      ctx.strokeStyle = 'rgba(12,14,18,0.95)';
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = isNav ? 'rgba(245,237,216,0.95)' : 'rgba(12,14,18,0.95)';
+      ctx.lineWidth = isNav ? 2 : 1.5;
       ctx.beginPath();
-      ctx.arc(pt.px, pt.py, 4.5, 0, Math.PI * 2);
+      ctx.arc(pt.px, pt.py, r, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = meta.color;
-      ctx.font = '700 7px "General Sans", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(meta.shortLabel || meta.label, pt.px, pt.py - 8);
     }
 
     // Start
@@ -8453,10 +8552,18 @@
     ctx.fillStyle = 'rgba(20,22,28,0.8)';
     ctx.fillRect(0, 0, W, 36);
     const upcoming = nextRoadExit(d);
+    const navEx = d.navTarget ? getNavExit(d, d.navTarget) : null;
+    const navMeta = d.navTarget ? MAP_DEST_ICONS[d.navTarget] : null;
     ctx.fillStyle = d.approachingExit ? '#7dce7a' : '#e8dcc0';
     ctx.font = '700 12px "General Sans", sans-serif';
     ctx.textAlign = 'left';
-    if (d.approachingExit) {
+    if (d.approachingExit && d.navTarget && d.approachingExit.id === d.navTarget) {
+      ctx.fillText(`ARRIVING → ${d.approachingExit.name}`, 10, 22);
+    } else if (navEx && navMeta) {
+      const mi = (routeAheadDist(wrapRouteZ(d.z, d.route.length), navEx.z, d.route.length) / (DW.MPH_Z * 55)).toFixed(1);
+      ctx.fillStyle = navMeta.color;
+      ctx.fillText(`NAV → ${navMeta.shortLabel || navEx.name}  ${mi} mi`, 10, 22);
+    } else if (d.approachingExit) {
       ctx.fillText(`TAKE EXIT → ${d.approachingExit.name}`, 10, 22);
     } else if (d.awaitTurn && d.atSignal && d.atSignal.phase === 'green' && !d.mustStop) {
       ctx.fillStyle = '#7dce7a';
