@@ -499,12 +499,17 @@
     { id: 'bank', name: 'BANK', href: 'bank.html', blurb: 'Lake Shore Trust — slam cash at the window.' }
   ];
 
+  // Chicago grid → drive Z: 800 N addresses and ~16 E blocks per mile
+  const DRIVE_MPH_Z = 11;
+  const ROUTE_Z_PER_MILE = DRIVE_MPH_Z * 55;
+  const NAV_MAX_MILES = 1;
+
   // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
   // n = north address, e = east blocks from Michigan Ave
   const NIGHT_DRIVE_MAP = {
     name: 'Gold Coast',
-    zPerNorth: 9,
-    zPerEastBlock: 640,
+    zPerNorth: ROUTE_Z_PER_MILE / 800,
+    zPerEastBlock: ROUTE_Z_PER_MILE / 16 / 0.85,
     xPerBlock: 0.74,
     geoBounds: { nMin: 560, nMax: 1680, eMin: -2.5, eMax: 3.0 },
     lakeEastOf: 2.55,
@@ -585,13 +590,13 @@
       { n: 1600, e: 2.55, label: 'North Ave Beach', kind: 'beach', side: 1 }
     ],
     exits: [
+      { n: 628, e: 2.08, side: -1, id: 'gas', name: 'GAS', mapLabel: 'Gas', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' },
+      { n: 820, e: 2.22, side: -1, id: 'liquor', name: 'LIQUOR', mapLabel: 'Liquor', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' },
       { n: 900, e: 2.30, side: -1, id: 'casino', name: 'CASINO', mapLabel: 'Casino', href: 'index.html', blurb: 'The casino — back to the tables.' },
-      { n: 1000, e: -2.10, side: -1, id: 'hospital', name: 'ER', mapLabel: 'Hospital', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
-      { n: 1200, e: 0.25, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' },
-      { n: 820, e: -2.10, side: -1, id: 'liquor', name: 'LIQUOR', mapLabel: 'Liquor', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' },
-      { n: 620, e: -2.10, side: -1, id: 'gas', name: 'GAS', mapLabel: 'Gas', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' },
-      { n: 1120, e: -0.85, side: -1, id: 'coins', name: 'COINS', mapLabel: 'Coins', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' },
-      { n: 1000, e: 0.25, side: -1, id: 'bank', name: 'BANK', mapLabel: 'Bank', href: 'bank.html', blurb: 'Lake Shore Trust — slam cash at the window.' }
+      { n: 1000, e: 2.20, side: -1, id: 'hospital', name: 'ER', mapLabel: 'Hospital', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
+      { n: 940, e: 2.32, side: -1, id: 'bank', name: 'BANK', mapLabel: 'Bank', href: 'bank.html', blurb: 'Lake Shore Trust — slam cash at the window.' },
+      { n: 1060, e: 2.38, side: -1, id: 'coins', name: 'COINS', mapLabel: 'Coins', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' },
+      { n: 1140, e: 2.48, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' }
     ]
   };
 
@@ -1083,6 +1088,12 @@
     return ((toRouteZ - fromRouteZ) % len + len) % len;
   }
 
+  function routeMilesAhead(d, targetRouteZ) {
+    const len = d.route.length;
+    const from = wrapRouteZ(d.z, len);
+    return routeAheadDist(from, targetRouteZ, len) / ROUTE_Z_PER_MILE;
+  }
+
   // Signed forward distance from player to a route-fixed Z (negative = behind on loop)
   function routeSignedDist(playerAbsZ, targetRouteZ, len) {
     const p = wrapRouteZ(playerAbsZ, len);
@@ -1494,8 +1505,8 @@
         btn.hidden = true;
         continue;
       }
-      btn.hidden = taken.has(ex.id);
-      btn.disabled = taken.has(ex.id);
+      btn.hidden = taken.has(ex.id) || routeMilesAhead(d, ex.z) > NAV_MAX_MILES;
+      btn.disabled = taken.has(ex.id) || routeMilesAhead(d, ex.z) > NAV_MAX_MILES;
       btn.classList.toggle('active', d.navTarget === ex.id);
     }
   }
@@ -1523,6 +1534,7 @@
     const d = state.drive;
     const ex = getNavExit(d, exitId);
     if (!ex || ex.taken) return;
+    if (routeMilesAhead(d, ex.z) > NAV_MAX_MILES) return;
     if (d.navTarget === exitId) {
       d.navTarget = null;
       beep(220, 0.05);
@@ -1819,7 +1831,7 @@
     WALK: 1.62,      // sidewalk outer
     BUILD: 1.78,     // building face on lot line
     LANE: 0.42,      // lane center offsets
-    MPH_Z: 11,       // world-Z units per mph per second
+    MPH_Z: DRIVE_MPH_Z,       // world-Z units per mph per second
     CAR_LEN: 28,     // collision length in Z
     CAR_HALF_W: 0.2,
     FACADE_MIN_Z: 98,   // skip facades closer than this (they fill the windshield)
@@ -8581,7 +8593,7 @@
     if (d.approachingExit && d.navTarget && d.approachingExit.id === d.navTarget) {
       ctx.fillText(`ARRIVING → ${d.approachingExit.name}`, 10, 22);
     } else if (navEx && navMeta) {
-      const mi = (routeAheadDist(wrapRouteZ(d.z, d.route.length), navEx.z, d.route.length) / (DW.MPH_Z * 55)).toFixed(1);
+      const mi = routeMilesAhead(d, navEx.z).toFixed(1);
       ctx.fillStyle = navMeta.color;
       ctx.fillText(`NAV → ${navMeta.shortLabel || navEx.name}  ${mi} mi`, 10, 22);
     } else if (d.approachingExit) {
@@ -8600,9 +8612,9 @@
       ctx.fillText(`APPROACHING TURN — ${d.awaitTurn.toUpperCase()}`, 10, 22);
     } else if (d.atSignal && d.atSignal.dist > 0 && d.atSignal.dist < 55) {
       ctx.fillStyle = d.atSignal.phase === 'green' ? '#7dce7a' : '#e8dcc0';
-      ctx.fillText(`SIGNAL ${d.atSignal.phase.toUpperCase()}  ${Math.round(d.atSignal.dist / (DW.MPH_Z * 40) * 10) / 10} mi`, 10, 22);
+      ctx.fillText(`SIGNAL ${d.atSignal.phase.toUpperCase()}  ${Math.round(d.atSignal.dist / ROUTE_Z_PER_MILE * 10) / 10} mi`, 10, 22);
     } else if (upcoming) {
-      const mi = ((upcoming.z - d.z) / (DW.MPH_Z * 55)).toFixed(1);
+      const mi = (routeAheadDist(wrapRouteZ(d.z, d.route.length), upcoming.z, d.route.length) / ROUTE_Z_PER_MILE).toFixed(1);
       ctx.fillText(`NEXT EXIT  ${upcoming.name}  ${mi} mi`, 10, 22);
     } else {
       ctx.fillStyle = '#e8dcc0';

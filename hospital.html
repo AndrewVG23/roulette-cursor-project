@@ -207,7 +207,7 @@
     <div class="help-panel" id="helpPanel" hidden>
       <div><strong>A / D</strong> — slide your fingertip left and right</div>
       <div><strong>W</strong> — flick up (only from the sheets)</div>
-      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. Every swallow bills your <strong>phone</strong> (base <strong>$100</strong>, rides inflation) — except the red pill (1 in 4), which is a <strong>$1</strong> copay and gets you discharged. Tap <strong>Reincarnate</strong> to queue a purple pill next: swallow it for −$10,000 phone debt, no cash, no gold. No cash desk; debt is allowed.</div>
+      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. Every swallow bills your <strong>phone</strong> (base <strong>$100</strong>, rides inflation) — except the red pill (1 in 4), which is a <strong>$1</strong> copay and gets you discharged. Tap <strong>Reincarnate</strong> to queue a purple pill next: swallow it for −$10,000 phone debt, no cash, no gold. Tap <strong>Time Travel</strong> to queue a gold pill: swallow it to rewind the calendar to <strong>Jan 2022</strong> and reset prices — wallet unchanged. No cash desk; debt is allowed.</div>
     </div>
 
     <div class="controls">
@@ -216,6 +216,7 @@
           <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
           <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
           <button class="btn subtle" id="reincarnateBtn" type="button">Reincarnate</button>
+          <button class="btn subtle" id="timeTravelBtn" type="button">Time Travel</button>
           <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
         </div>
         <div class="dpad" aria-label="Move and jump">
@@ -340,6 +341,7 @@
   const helpBtn = document.getElementById('helpBtn');
   const helpPanel = document.getElementById('helpPanel');
   const reincarnateBtn = document.getElementById('reincarnateBtn');
+  const timeTravelBtn = document.getElementById('timeTravelBtn');
   let canvasDpr = 1;
   let admit = null;
 
@@ -368,12 +370,25 @@
     };
   }
 
+  function clearQueuedPillButtons() {
+    reincarnateBtn.disabled = false;
+    reincarnateBtn.textContent = 'Reincarnate';
+    timeTravelBtn.disabled = false;
+    timeTravelBtn.textContent = 'Time Travel';
+  }
+
+  function lockQueuedPillButtons(activeBtn) {
+    reincarnateBtn.disabled = true;
+    timeTravelBtn.disabled = true;
+    if (activeBtn === 'reincarnate') reincarnateBtn.textContent = 'Queued';
+    if (activeBtn === 'timetravel') timeTravelBtn.textContent = 'Queued';
+  }
+
   function nextPillKind() {
     if (state.queuedPill) {
       const kind = state.queuedPill;
       state.queuedPill = null;
-      reincarnateBtn.disabled = false;
-      reincarnateBtn.textContent = 'Reincarnate';
+      clearQueuedPillButtons();
       state.pillSerial += 1;
       return kind;
     }
@@ -717,6 +732,18 @@
       beep(784, 0.12);
       reincarnateDischarge();
       return;
+    } else if (pillKind === 'timetravel') {
+      Wallet.resetTimeline();
+      healPatient();
+      state.floatText.push({
+        x: W * 0.28, y: FLOOR_Y - 120,
+        text: Wallet.formatGameDate().toUpperCase(), life: 1.6, color: '#f0d060'
+      });
+      beep(659, 0.06);
+      beep(784, 0.08);
+      beep(988, 0.12, 'triangle', 0.045);
+      timeTravelDischarge();
+      return;
     } else {
       // Full bill, inflated, straight to the phone — debt if it has to be.
       const bill = Math.round(100 * Wallet.priceMult());
@@ -782,6 +809,25 @@
     beep(523, 0.08);
     beep(659, 0.1);
     beep(784, 0.14);
+  }
+
+  function timeTravelDischarge() {
+    state.mode = 'win';
+    const fromDrive = admit && admit.from === 'drive';
+    const dateLine = Wallet.formatGameDate();
+    showOverlay(
+      'Time Travel',
+      fromDrive
+        ? `The gold pill hits. Calendar rewinds to ${dateLine} — gas and prices reset. Patched up — back on the road.`
+        : admit
+          ? `The gold pill hits. Calendar rewinds to ${dateLine} — gas and prices reset. ${admit.who} is still out there — back to the grill.`
+          : `The gold pill hits. Calendar rewinds to ${dateLine}. Gas, gold spot, and every inflated price roll back. Wallet untouched.`,
+      fromDrive ? 'Back on the Road' : 'Back to Grill'
+    );
+    pauseBtn.disabled = true;
+    beep(659, 0.06);
+    beep(784, 0.08);
+    beep(988, 0.14, 'triangle', 0.045);
   }
 
   function resetPositions() {
@@ -2271,6 +2317,7 @@
     const rad = ball.r * 0.62;
     const isHeal = ball.kind === 'heal';
     const isReincarnate = ball.kind === 'reincarnate';
+    const isTimeTravel = ball.kind === 'timetravel';
 
     ctx.save();
     ctx.translate(bx, by);
@@ -2280,6 +2327,20 @@
       drawCapsulePill(len, rad, '#e84048', '#c82030', '#802028', false);
     } else if (isReincarnate) {
       drawCapsulePill(len, rad, '#a868f0', '#8040d8', '#502090', false);
+    } else if (isTimeTravel) {
+      drawCapsulePill(len, rad, '#fff0a0', '#e8c040', '#9a7010', false);
+      ctx.strokeStyle = 'rgba(255,255,255,.92)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-len / 2 + rad * 0.8, -rad * 0.15);
+      ctx.lineTo(len / 2 - rad * 1.4, -rad * 0.55);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,248,210,.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-len / 2 + rad * 1.2, rad * 0.35);
+      ctx.lineTo(len / 2 - rad * 2.2, -rad * 0.05);
+      ctx.stroke();
     } else {
       drawCapsulePill(len, rad, '#f8f8f4', '#dce8f0', '#98a8b4', true);
     }
@@ -2421,13 +2482,25 @@
     ensureAudio();
     if (state.queuedPill || (state.mode !== 'play' && state.mode !== 'title')) return;
     state.queuedPill = 'reincarnate';
-    reincarnateBtn.disabled = true;
-    reincarnateBtn.textContent = 'Queued';
+    lockQueuedPillButtons('reincarnate');
     if (state.mode === 'play') {
       state.floatText.push({ x: W / 2, y: FLOOR_Y - 90, text: 'PURPLE PILL NEXT', life: 1.6, color: '#b48cff' });
     }
     beep(440, 0.06);
     beep(554, 0.08, 'triangle', 0.035);
+  });
+
+  timeTravelBtn.addEventListener('click', () => {
+    ensureAudio();
+    if (state.queuedPill || (state.mode !== 'play' && state.mode !== 'title')) return;
+    state.queuedPill = 'timetravel';
+    lockQueuedPillButtons('timetravel');
+    if (state.mode === 'play') {
+      state.floatText.push({ x: W / 2, y: FLOOR_Y - 90, text: 'GOLD PILL NEXT', life: 1.6, color: '#f0d060' });
+    }
+    beep(659, 0.06);
+    beep(784, 0.08, 'triangle', 0.04);
+    beep(988, 0.1, 'sine', 0.03);
   });
 
   pauseBtn.addEventListener('click', togglePause);
@@ -2491,13 +2564,14 @@
   const billNow = Math.round(100 * Wallet.priceMult());
   const copayNow = Math.max(1, Math.round(1 * Wallet.priceMult()));
   const debtReset = Wallet.format(Wallet.DEFAULT_DIGITAL);
+  const rewindDate = 'Jan 2022';
   showOverlay(
     'County General',
     fromDrive
-      ? `Pulled off for ER. Trash what you can — every swallow hits your phone (${Wallet.format(billNow)}). Swallow the red pill (1 in 4) for a ${Wallet.format(copayNow)} copay and you're discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold).`
+      ? `Pulled off for ER. Trash what you can — every swallow hits your phone (${Wallet.format(billNow)}). Swallow the red pill (1 in 4) for a ${Wallet.format(copayNow)} copay and you're discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices).`
       : admit
-        ? `${introWho} sent you here. Trash pills when you can. Swallowing bills the phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold).`
-        : `Medication time. Trash pills when you can. Every swallow bills your phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold).`,
+        ? `${introWho} sent you here. Trash pills when you can. Swallowing bills the phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices).`
+        : `Medication time. Trash pills when you can. Every swallow bills your phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices).`,
     'Kick Off'
   );
   requestAnimationFrame(frame);

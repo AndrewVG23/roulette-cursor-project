@@ -8,7 +8,7 @@
   //   gold    — ounces. Bought at 5% over spot, sold at 5% under, for cash.
   // One shared price index drives gas price, gold spot, and every inflated
   // price. Each gas-station visit compounds the index by 4%, advances the
-  // calendar one month from a January 2022 start, and applies debt interest.
+  // calendar three months from a January 2022 start, and applies debt interest.
   const STATE_KEY = 'walletV3';
   const LEGACY_PURSE_KEY = 'casinoPurse';
   const LEGACY_STATE_KEYS = ['walletV2'];
@@ -28,6 +28,7 @@
   const VISIT_RATE_STEP = 0;
   const VISIT_RATE_CAP = 0.04;
   const CREDIT_INTEREST_RATE = 0.06; // credit balance compounds +6% every gas visit
+  const VISIT_MONTHS_ADVANCE = 3;
   const GAME_START_YEAR = 2022;
   const GAME_START_MONTH = 0; // January
 
@@ -208,7 +209,7 @@
   function visits() { return state.visits; }
 
   function gameDate() {
-    const totalMonths = GAME_START_MONTH + state.visits;
+    const totalMonths = GAME_START_MONTH + state.visits * VISIT_MONTHS_ADVANCE;
     return {
       year: GAME_START_YEAR + Math.floor(totalMonths / 12),
       month: totalMonths % 12
@@ -274,6 +275,13 @@
     state.digital = DEFAULT_DIGITAL;
     state.cash = 0;
     state.gold = 0;
+    persist();
+    return getState();
+  }
+
+  function resetTimeline() {
+    state.visits = 0;
+    state.index = 1;
     persist();
     return getState();
   }
@@ -614,7 +622,7 @@
     gameDate, formatGameDate, GAME_START_YEAR,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing
-    snapshot, restore, getState, reincarnate,
+    snapshot, restore, getState, reincarnate, resetTimeline,
     migrateTips, mountHud, updateDisplay, togglePanel,
     getInsets, canvasInset, subscribe
   };
