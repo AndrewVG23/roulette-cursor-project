@@ -332,29 +332,29 @@
     .map-dest {
       position: absolute;
       pointer-events: auto;
-      min-width: 72px;
-      padding: 8px 10px 7px;
-      border-radius: 8px;
-      border: 2px solid var(--dest-color, #e8a040);
+      min-width: 56px;
+      padding: 5px 7px 4px;
+      border-radius: 7px;
+      border: 1.5px solid var(--dest-color, #e8a040);
       background: rgba(12, 14, 18, 0.92);
       color: var(--dest-color, #e8a040);
       transform: translate(-50%, -50%);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+      gap: 2px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     }
     .map-dest-icon {
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .map-dest-icon svg { width: 26px; height: 26px; display: block; }
+    .map-dest-icon svg { width: 18px; height: 18px; display: block; }
     .map-dest-label {
-      font-size: 10px;
+      font-size: 8px;
       font-weight: 800;
-      letter-spacing: 0.07em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
       line-height: 1;
       white-space: nowrap;
@@ -404,7 +404,7 @@
             <p id="brandSub"></p>
           </div>
           <div class="stats" aria-live="polite">
-            <div class="stat">
+            <div class="stat" id="meterStat">
               <span class="label" id="meterLabel">Level</span>
               <span class="value" id="levelVal">1</span>
             </div>
@@ -1187,6 +1187,7 @@
   const levelVal = document.getElementById('levelVal');
   const livesVal = document.getElementById('livesVal');
   const livesStat = document.getElementById('livesStat');
+  const meterStat = document.getElementById('meterStat');
   const livesPips = document.getElementById('livesPips');
   const brandTitle = document.getElementById('brandTitle');
   const brandSub = document.getElementById('brandSub');
@@ -1199,11 +1200,11 @@
   const panelInner = document.querySelector('.panel-inner');
   const mapNav = document.getElementById('mapNav');
 
-  const MAP_LAYOUT = { mapW: 258, mapH: 278, pad: 0, innerX: 14, innerY: 30, titleH: 32 };
+  const MAP_LAYOUT = { mapW: 158, mapH: 158, pad: 10, innerX: 10, innerY: 22, titleH: 24 };
 
   function getMapRect() {
-    const { mapW, mapH } = MAP_LAYOUT;
-    return { mx: 0, my: H - mapH, mapW, mapH };
+    const { mapW, mapH, pad } = MAP_LAYOUT;
+    return { mx: pad, my: H - mapH - pad - 8, mapW, mapH };
   }
   const MAP_DEST_ICONS = {
     casino: {
@@ -1233,10 +1234,10 @@
   };
   let mapNavBuilt = false;
   const MAP_DEST_NUDGE = {
-    casino: [0, -16],
-    grill: [0, 16],
-    hospital: [-14, 0],
-    liquor: [14, 0]
+    casino: [0, -11],
+    grill: [0, 11],
+    hospital: [-10, 0],
+    liquor: [10, 0]
   };
 
   function setHelpOpen(open) {
@@ -1474,12 +1475,13 @@
     if (state.phase === 'drive') {
       brandTitle.textContent = 'Night Drive';
       brandSub.textContent = 'Gold Coast · stop at red · steer to turn';
-      meterLabel.textContent = 'Route';
+      if (meterStat) meterStat.hidden = true;
       if (livesStat) livesStat.hidden = true;
       hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · tap map icons to go · R replay';
       dpad.classList.add('drive-mode');
       panelInner?.classList.add('drive-phase');
     } else if (isEnter()) {
+      if (meterStat) meterStat.hidden = false;
       if (livesStat) livesStat.hidden = false;
       const dest = state.entryDest;
       brandTitle.textContent = dest ? `Enter ${dest.name}` : 'Enter';
@@ -1491,6 +1493,7 @@
       panelInner?.classList.remove('drive-phase');
       hideMapNav();
     } else if (isGrill()) {
+      if (meterStat) meterStat.hidden = false;
       if (livesStat) livesStat.hidden = false;
       brandTitle.textContent = 'Leave the Grill';
       brandSub.textContent = 'Bad block · four lanes · get to your car';
@@ -1501,6 +1504,7 @@
       panelInner?.classList.remove('drive-phase');
       hideMapNav();
     } else {
+      if (meterStat) meterStat.hidden = false;
       if (livesStat) livesStat.hidden = false;
       brandTitle.textContent = 'Return to Your Car';
       brandSub.textContent = 'Cross the city · get to the garage';
@@ -1970,11 +1974,7 @@
   function updateHUD() {
     Wallet.updateDisplay();
     if (state.phase === 'drive' && state.drive) {
-      const d = state.drive;
-      const pathLen = d.route ? d.route.length : 1;
-      const pct = Math.min(99, Math.round((wrapRouteZ(d.z, pathLen) / pathLen) * 100));
-      levelVal.textContent = `${pct}%`;
-      syncMapNav(d);
+      syncMapNav(state.drive);
     } else {
       livesVal.textContent = String(state.lives);
       levelVal.textContent = String(state.level);
@@ -7650,7 +7650,7 @@
     ctx.save();
     ctx.fillStyle = 'rgba(12,14,18,0.9)';
     ctx.strokeStyle = 'rgba(208,162,58,0.35)';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1;
     ctx.fillRect(mx, my, mapW, mapH);
     ctx.strokeRect(mx + 0.5, my + 0.5, mapW - 1, mapH - 1);
 
@@ -7659,7 +7659,7 @@
     ctx.fillStyle = 'rgba(45,85,120,0.55)';
     ctx.fillRect(lakeX, my + innerY, mx + innerX + innerW - lakeX, innerH);
     ctx.fillStyle = 'rgba(90,140,180,0.35)';
-    ctx.font = '700 10px "General Sans", sans-serif';
+    ctx.font = '700 8px "General Sans", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('LAKE', lakeX + (mx + innerX + innerW - lakeX) * 0.5, my + innerY + innerH * 0.55);
 
@@ -7667,7 +7667,7 @@
     ctx.strokeStyle = 'rgba(120,125,135,0.28)';
     ctx.lineWidth = 1;
     ctx.fillStyle = 'rgba(160,165,175,0.45)';
-    ctx.font = '600 9px "General Sans", sans-serif';
+    ctx.font = '600 7px "General Sans", sans-serif';
     for (const st of route.streets || []) {
       if (st.kind === 'ns') {
         const p0 = geoToMap(b.nMin, st.e);
@@ -7717,7 +7717,7 @@
     // Complete loop route
     const wps = route.waypoints;
     ctx.strokeStyle = 'rgba(196,160,53,0.8)';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     ctx.beginPath();
     for (let i = 0; i < wps.length; i++) {
@@ -7732,7 +7732,7 @@
     const geo = interpRouteGeo(wps, routeZ, true);
     if (routeZ > 0) {
       ctx.strokeStyle = 'rgba(230,220,190,0.65)';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2;
       ctx.beginPath();
       for (let i = 0; i < wps.length; i++) {
         if (wps[i].z > routeZ) break;
@@ -7750,7 +7750,7 @@
       const pt = geoToMap(ix.n, ix.e);
       ctx.strokeStyle = 'rgba(235,230,215,0.35)';
       ctx.lineWidth = 1;
-      ctx.strokeRect(pt.px - 4, pt.py - 4, 8, 8);
+      ctx.strokeRect(pt.px - 3, pt.py - 3, 6, 6);
     }
 
     // Traffic signals on minimap
@@ -7759,53 +7759,53 @@
       const pt = geoToMap(sig.n, sig.e);
       const ph = signalPhase(sig, sigTime);
       ctx.fillStyle = ph === 'red' ? '#e74c3c' : ph === 'yellow' ? '#f1c40f' : '#2ecc71';
-      ctx.fillRect(pt.px - 3, pt.py - 3, 6, 6);
+      ctx.fillRect(pt.px - 2, pt.py - 2, 4, 4);
     }
 
     // Start
     const startPt = geoToMap(wps[0].n, wps[0].e);
     ctx.fillStyle = '#5a9e68';
     ctx.beginPath();
-    ctx.arc(startPt.px, startPt.py, 4, 0, Math.PI * 2);
+    ctx.arc(startPt.px, startPt.py, 3, 0, Math.PI * 2);
     ctx.fill();
 
     // Player
     const playerPt = geoToMap(geo.n, geo.e + d.playerX * 0.45);
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.beginPath();
-    ctx.arc(playerPt.px, playerPt.py, 9, 0, Math.PI * 2);
+    ctx.arc(playerPt.px, playerPt.py, 7, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#f0ece0';
     ctx.beginPath();
-    ctx.arc(playerPt.px, playerPt.py, 4.5, 0, Math.PI * 2);
+    ctx.arc(playerPt.px, playerPt.py, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
     // Title + area label
     ctx.fillStyle = 'rgba(208,162,58,0.9)';
-    ctx.font = '700 13px "General Sans", sans-serif';
+    ctx.font = '700 10px "General Sans", sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(route.name, mx + 10, my + 18);
+    ctx.fillText(route.name, mx + 8, my + 14);
 
     const pos = sampleRouteAt(route, d.z, d);
     if (pos.label) {
       ctx.fillStyle = 'rgba(232,220,192,0.7)';
-      ctx.font = '600 11px "General Sans", sans-serif';
+      ctx.font = '600 8px "General Sans", sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText(pos.label, mx + mapW - 10, my + 18);
+      ctx.fillText(pos.label, mx + mapW - 8, my + 14);
     } else if (d.atSignal && d.atSignal.dist > 0 && d.atSignal.dist < 60) {
       const ph = d.atSignal.phase.toUpperCase();
       ctx.fillStyle = d.atSignal.phase === 'red' ? '#e74c3c'
         : d.atSignal.phase === 'yellow' ? '#f1c40f' : '#2ecc71';
-      ctx.font = '600 11px "General Sans", sans-serif';
+      ctx.font = '600 8px "General Sans", sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText(ph, mx + mapW - 10, my + 18);
+      ctx.fillText(ph, mx + mapW - 8, my + 14);
     }
 
     // North arrow
     ctx.strokeStyle = 'rgba(208,162,58,0.5)';
     ctx.fillStyle = 'rgba(208,162,58,0.65)';
-    ctx.lineWidth = 1.2;
-    const ax = mx + mapW - 18, ay = my + innerY + 10;
+    ctx.lineWidth = 1;
+    const ax = mx + mapW - 14, ay = my + innerY + 6;
     ctx.beginPath();
     ctx.moveTo(ax, ay + 10);
     ctx.lineTo(ax, ay);
@@ -8324,12 +8324,8 @@
     } else if (upcoming) {
       const mi = ((upcoming.z - d.z) / (DW.MPH_Z * 55)).toFixed(1);
       ctx.fillText(`NEXT EXIT  ${upcoming.name}  ${mi} mi`, 10, 22);
-    } else if (d.route) {
-      const pathLen = d.route.length;
-      const pct = Math.min(99, Math.round((wrapRouteZ(d.z, pathLen) / pathLen) * 100));
-      ctx.fillStyle = '#e8dcc0';
-      ctx.fillText(`${pct}%`, 10, 22);
     } else {
+      ctx.fillStyle = '#e8dcc0';
       ctx.fillText('OPEN ROAD', 10, 22);
     }
 
