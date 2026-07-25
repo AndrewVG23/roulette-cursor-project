@@ -98,17 +98,21 @@
       left: 0; right: 0; bottom: 0;
       z-index: 3;
       display: grid;
+      justify-content: center;
+      align-items: stretch;
       gap: var(--space-2);
       padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
       background: linear-gradient(0deg, rgba(8,20,28,.94), rgba(8,20,28,.55) 55%, transparent);
       border-top: 3px solid rgba(42,159,214,.35);
+      pointer-events: none;
     }
     .control-row {
       display: flex;
-      flex-wrap: wrap;
-      gap: var(--space-2);
+      flex-wrap: nowrap;
+      gap: 10px;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
+      pointer-events: auto;
     }
     .btn {
       min-height: 48px;
@@ -131,62 +135,77 @@
     .btn.subtle {
       background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02)), linear-gradient(180deg, #1a3848, #102028);
     }
-    .dpad {
-      display: grid;
-      grid-template-columns: 52px 52px 52px;
-      grid-template-rows: 52px 52px;
-      gap: 6px;
-      margin-left: auto;
-    }
-    .btn.dir {
+    .btn.pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px 0 10px;
       min-height: 52px;
+      flex: 1 1 0;
+      max-width: 200px;
+    }
+    .btn.pill-btn.is-queued {
+      opacity: 0.72;
+      border-color: rgba(240, 210, 120, 0.45);
+    }
+    .btn.pill-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+    .pill-demo {
+      width: 34px;
+      height: 18px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.45),
+        inset 0 -2px 4px rgba(0,0,0,.28),
+        0 2px 0 rgba(0,0,0,.25);
+      position: relative;
+    }
+    .pill-demo::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 2px;
+      bottom: 2px;
+      width: 1.5px;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,.35);
+      border-radius: 1px;
+    }
+    .pill-demo.purple {
+      background: linear-gradient(180deg, #c090ff, #8040d8 55%, #502090);
+    }
+    .pill-demo.gold {
+      background: linear-gradient(180deg, #fff0a0, #e8c040 55%, #9a7010);
+    }
+    .pill-label {
+      font-size: 0.78rem;
+      letter-spacing: .03em;
+      line-height: 1.15;
+      text-align: left;
+    }
+    .btn.door-btn {
+      width: 52px;
       min-width: 52px;
+      min-height: 52px;
       padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
       border-radius: 14px;
-      font-size: 1.1rem;
-      line-height: 1;
     }
-    .btn.dir.up { grid-column: 2; }
-    .btn.dir.left { grid-column: 1; grid-row: 2; }
-    .btn.dir.right { grid-column: 3; grid-row: 2; }
-    .btn.dir:active, .btn.dir.pressed {
-      transform: translateY(2px);
-      box-shadow: inset 0 2px 4px rgba(0,0,0,.35);
-      background: linear-gradient(180deg, #48b8e8, #1878a8);
+    .btn.door-btn svg {
+      width: 26px;
+      height: 26px;
+      display: block;
     }
-    .help-btn {
-      position: absolute;
-      left: max(10px, env(safe-area-inset-left, 0px));
-      bottom: max(10px, env(safe-area-inset-bottom, 0px));
-      z-index: 6;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      font-family: var(--font-display);
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #eef8ff;
-      background: linear-gradient(180deg, #244858, #142830);
-      border: 2px solid rgba(184,212,232,.28);
+    @media (max-width: 420px) {
+      .pill-label { font-size: 0.68rem; }
+      .btn.pill-btn { padding: 0 10px 0 8px; gap: 8px; }
     }
-    .help-panel {
-      position: absolute;
-      left: max(10px, env(safe-area-inset-left, 0px));
-      bottom: calc(58px + env(safe-area-inset-bottom, 0px));
-      z-index: 6;
-      width: min(320px, calc(100vw - 20px));
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, rgba(16,36,48,.97), rgba(8,18,24,.98));
-      border: 2px solid rgba(184,212,232,.22);
-      display: grid;
-      gap: 8px;
-      color: var(--color-text-muted);
-      font-size: var(--text-xs);
-      line-height: 1.45;
-    }
-    .help-panel[hidden] { display: none; }
-    .help-panel strong { color: #eef8ff; }
   </style>
 </head>
 <body>
@@ -204,27 +223,23 @@
       </div>
     </div>
 
-    <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false">?</button>
-    <div class="help-panel" id="helpPanel" hidden>
-      <div><strong>A / D</strong> — slide your fingertip left and right</div>
-      <div><strong>W</strong> — flick up (only from the sheets)</div>
-      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. Every swallow bills your <strong>phone</strong> (base <strong>$100</strong>, rides inflation) — except the red pill (1 in 4), which is a <strong>$1</strong> copay and gets you discharged. Tap <strong>Reincarnate</strong> to queue a purple pill next: swallow it for −$10,000 phone debt, no cash, no gold. Tap <strong>Time Travel</strong> to queue a gold pill: swallow it to rewind the calendar to <strong>Jan 2022</strong>, reset prices, set phone debt to −$10,000, clear cash, and keep your gold. No cash desk; debt is allowed.</div>
-    </div>
-
     <div class="controls">
       <div class="control-row">
-        <div>
-          <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
-          <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
-          <button class="btn subtle" id="reincarnateBtn" type="button">Reincarnate</button>
-          <button class="btn subtle" id="timeTravelBtn" type="button">Time Travel</button>
-          <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
-        </div>
-        <div class="dpad" aria-label="Move and jump">
-          <button class="btn dir up" type="button" data-dir="up" aria-label="Jump">▲</button>
-          <button class="btn dir left" type="button" data-dir="left" aria-label="Move left">◀</button>
-          <button class="btn dir right" type="button" data-dir="right" aria-label="Move right">▶</button>
-        </div>
+        <button class="btn subtle pill-btn" id="reincarnateBtn" type="button" aria-label="Queue purple reincarnate pill">
+          <span class="pill-demo purple" aria-hidden="true"></span>
+          <span class="pill-label">Reincarnate</span>
+        </button>
+        <button class="btn subtle pill-btn" id="timeTravelBtn" type="button" aria-label="Queue gold time-travel pill">
+          <span class="pill-demo gold" aria-hidden="true"></span>
+          <span class="pill-label">Time Travel</span>
+        </button>
+        <button class="btn subtle door-btn" id="leaveBtn" type="button" aria-label="Leave hospital" title="Leave">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none">
+            <path d="M4 3.5h9.5A1.5 1.5 0 0 1 15 5v14a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 19V5A1.5 1.5 0 0 1 4 3.5Z" stroke="#eef8ff" stroke-width="1.7"/>
+            <path d="M15 7.5h5.2A1.3 1.3 0 0 1 21.5 8.8v6.4a1.3 1.3 0 0 1-1.3 1.3H15" stroke="#eef8ff" stroke-width="1.7" stroke-linecap="round"/>
+            <circle cx="12.2" cy="12" r="1.05" fill="#eef8ff"/>
+          </svg>
+        </button>
       </div>
     </div>
   </div>
@@ -338,14 +353,34 @@
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
   const startBtn = document.getElementById('startBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const muteBtn = document.getElementById('muteBtn');
-  const helpBtn = document.getElementById('helpBtn');
-  const helpPanel = document.getElementById('helpPanel');
   const reincarnateBtn = document.getElementById('reincarnateBtn');
   const timeTravelBtn = document.getElementById('timeTravelBtn');
+  const leaveBtn = document.getElementById('leaveBtn');
   let canvasDpr = 1;
   let admit = null;
+
+  const drag = {
+    active: false,
+    pointerId: null,
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    lastT: 0
+  };
+
+  function gameCoordsFromEvent(ev) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: ((ev.clientX - r.left) / Math.max(1, r.width)) * W,
+      y: ((ev.clientY - r.top) / Math.max(1, r.height)) * H
+    };
+  }
+
+  function setPillBtnLabel(btn, text) {
+    const label = btn.querySelector('.pill-label');
+    if (label) label.textContent = text;
+  }
 
   try {
     const raw = sessionStorage.getItem('hospital-admit');
@@ -374,16 +409,20 @@
 
   function clearQueuedPillButtons() {
     reincarnateBtn.disabled = false;
-    reincarnateBtn.textContent = 'Reincarnate';
     timeTravelBtn.disabled = false;
-    timeTravelBtn.textContent = 'Time Travel';
+    reincarnateBtn.classList.remove('is-queued');
+    timeTravelBtn.classList.remove('is-queued');
+    setPillBtnLabel(reincarnateBtn, 'Reincarnate');
+    setPillBtnLabel(timeTravelBtn, 'Time Travel');
   }
 
   function lockQueuedPillButtons(activeBtn) {
     reincarnateBtn.disabled = true;
     timeTravelBtn.disabled = true;
-    if (activeBtn === 'reincarnate') reincarnateBtn.textContent = 'Queued';
-    if (activeBtn === 'timetravel') timeTravelBtn.textContent = 'Queued';
+    reincarnateBtn.classList.toggle('is-queued', activeBtn === 'reincarnate');
+    timeTravelBtn.classList.toggle('is-queued', activeBtn === 'timetravel');
+    if (activeBtn === 'reincarnate') setPillBtnLabel(reincarnateBtn, 'Queued');
+    if (activeBtn === 'timetravel') setPillBtnLabel(timeTravelBtn, 'Queued');
   }
 
   function nextPillKind() {
@@ -471,7 +510,42 @@
     return FLOOR_Y + slime.y;
   }
 
+  function slimeBounds(slime) {
+    return {
+      minX: GOAL_W + slime.r + 4,
+      maxX: W - TRASH_OPEN_W - slime.r - 4,
+      minY: -150
+    };
+  }
+
+  function updateYouFromDrag(slime, dt) {
+    const { minX, maxX, minY } = slimeBounds(slime);
+    const prevX = slime.x;
+    const prevY = slime.y;
+    const targetX = Math.max(minX, Math.min(maxX, drag.x));
+    // Screen Y maps onto bed height — drag above the sheets lifts the fingertip
+    const targetY = Math.max(minY, Math.min(0, drag.y - FLOOR_Y + 8));
+    slime.x = targetX;
+    slime.y = targetY;
+    slime.vx = Math.max(-SLIME_MAX_VX * 2.2, Math.min(SLIME_MAX_VX * 2.2, drag.vx));
+    slime.vy = Math.max(-980, Math.min(980, drag.vy));
+    slime.grounded = slime.y >= -2;
+    if (slime.grounded) {
+      slime.y = 0;
+      if (slime.vy > 0) slime.vy = 0;
+    }
+    const spd = Math.hypot(slime.x - prevX, slime.y - prevY) / Math.max(dt, 1e-3);
+    if (spd > 420) slime.stretch = Math.min(0.4, spd / 2400);
+    if (slime.squash > 0) slime.squash = Math.max(0, slime.squash - dt * 3.5);
+    if (slime.stretch > 0) slime.stretch = Math.max(0, slime.stretch - dt * 2.8);
+  }
+
   function updateSlime(slime, dt, input) {
+    if (slime.side === 'you' && drag.active) {
+      updateYouFromDrag(slime, dt);
+      return;
+    }
+
     const left = input.left;
     const right = input.right;
     const jump = input.up;
@@ -505,8 +579,7 @@
     }
 
     slime.x += slime.vx * dt;
-    const minX = GOAL_W + slime.r + 4;
-    const maxX = W - TRASH_OPEN_W - slime.r - 4;
+    const { minX, maxX } = slimeBounds(slime);
     if (slime.x < minX) { slime.x = minX; slime.vx *= -0.25; }
     if (slime.x > maxX) { slime.x = maxX; slime.vx *= -0.25; }
 
@@ -826,7 +899,8 @@
           : 'The red pill heals you. The doctor signs your discharge papers.',
       fromDrive ? 'Back on the Road' : (fromCross ? 'Back to the Street' : 'Back to Grill')
     );
-    pauseBtn.disabled = true;
+    drag.active = false;
+    drag.pointerId = null;
     beep(523, 0.08);
     beep(659, 0.1);
     beep(784, 0.14);
@@ -848,7 +922,8 @@
           : `Fresh start. ${resetLine} The doctor signs your discharge papers.`,
       fromDrive ? 'Back on the Road' : (fromCross ? 'Back to the Street' : 'Back to Grill')
     );
-    pauseBtn.disabled = true;
+    drag.active = false;
+    drag.pointerId = null;
     beep(523, 0.08);
     beep(659, 0.1);
     beep(784, 0.14);
@@ -871,7 +946,8 @@
           : `The gold pill hits. Calendar rewinds to ${dateLine}. Prices reset. ${walletLine}`,
       fromDrive ? 'Back on the Road' : (fromCross ? 'Back to the Street' : 'Back to Grill')
     );
-    pauseBtn.disabled = true;
+    drag.active = false;
+    drag.pointerId = null;
     beep(659, 0.06);
     beep(784, 0.08);
     beep(988, 0.14, 'triangle', 0.045);
@@ -892,8 +968,8 @@
     state.kickoffTimer = 0.9;
     state.mode = 'play';
     overlay.hidden = true;
-    pauseBtn.disabled = false;
-    pauseBtn.textContent = 'Pause';
+    drag.active = false;
+    drag.pointerId = null;
     beep(330, 0.08);
     beep(440, 0.1);
   }
@@ -918,6 +994,8 @@
 
     if (state.kickoffTimer > 0) {
       state.kickoffTimer -= dt;
+      // Still let the fingertip track a drag during the whistle
+      if (drag.active) updateSlime(state.you, dt, state.keys);
       return;
     }
 
@@ -2468,45 +2546,52 @@
   function togglePause() {
     if (state.mode === 'play') {
       state.mode = 'pause';
-      pauseBtn.textContent = 'Resume';
+      drag.active = false;
+      drag.pointerId = null;
       beep(320, 0.06);
     } else if (state.mode === 'pause') {
       state.mode = 'play';
-      pauseBtn.textContent = 'Pause';
       beep(480, 0.06);
     }
   }
 
-  function toggleHelp() {
-    const open = helpPanel.hidden;
-    helpPanel.hidden = !open;
-    helpBtn.setAttribute('aria-expanded', String(open));
+  function endDrag(ev) {
+    if (!drag.active) return;
+    if (ev && drag.pointerId != null && ev.pointerId !== drag.pointerId) return;
+    drag.active = false;
+    drag.pointerId = null;
   }
 
-  function setKey(dir, down) {
-    if (dir === 'left') state.keys.left = down;
-    if (dir === 'right') state.keys.right = down;
-    if (dir === 'up') state.keys.up = down;
-  }
-
-  document.querySelectorAll('[data-dir]').forEach(btn => {
-    const dir = btn.dataset.dir;
-    const press = (e) => {
-      e.preventDefault();
-      ensureAudio();
-      setKey(dir, true);
-      btn.classList.add('pressed');
-    };
-    const release = (e) => {
-      e.preventDefault();
-      setKey(dir, false);
-      btn.classList.remove('pressed');
-    };
-    btn.addEventListener('pointerdown', press);
-    btn.addEventListener('pointerup', release);
-    btn.addEventListener('pointerleave', release);
-    btn.addEventListener('pointercancel', release);
+  canvas.addEventListener('pointerdown', (ev) => {
+    if (state.mode !== 'play' || !overlay.hidden) return;
+    if (ev.button != null && ev.button !== 0) return;
+    ensureAudio();
+    try { canvas.setPointerCapture(ev.pointerId); } catch (_) {}
+    const g = gameCoordsFromEvent(ev);
+    drag.active = true;
+    drag.pointerId = ev.pointerId;
+    drag.x = g.x;
+    drag.y = g.y;
+    drag.vx = 0;
+    drag.vy = 0;
+    drag.lastT = performance.now();
+    ev.preventDefault();
   });
+  canvas.addEventListener('pointermove', (ev) => {
+    if (!drag.active || ev.pointerId !== drag.pointerId) return;
+    const g = gameCoordsFromEvent(ev);
+    const now = performance.now();
+    const dt = Math.max(0.008, (now - drag.lastT) / 1000);
+    drag.vx = (g.x - drag.x) / dt;
+    drag.vy = (g.y - drag.y) / dt;
+    drag.x = g.x;
+    drag.y = g.y;
+    drag.lastT = now;
+    ev.preventDefault();
+  });
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('lostpointercapture', endDrag);
 
   startBtn.addEventListener('click', () => {
     ensureAudio();
@@ -2542,22 +2627,13 @@
     beep(988, 0.1, 'sine', 0.03);
   });
 
-  pauseBtn.addEventListener('click', togglePause);
-  muteBtn.addEventListener('click', () => {
-    state.muted = !state.muted;
-    muteBtn.setAttribute('aria-pressed', String(state.muted));
-    muteBtn.textContent = state.muted ? 'Muted' : 'Sound';
+  leaveBtn.addEventListener('click', () => {
+    ensureAudio();
+    leaveHospital();
   });
-  helpBtn.addEventListener('click', toggleHelp);
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
-      e.preventDefault();
-      toggleHelp();
-      return;
-    }
     if (e.key === 'Escape') {
-      if (!helpPanel.hidden) { helpPanel.hidden = true; return; }
       if (state.mode === 'play' || state.mode === 'pause') togglePause();
       return;
     }
@@ -2568,6 +2644,7 @@
       }
       return;
     }
+    if (drag.active) return;
     if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
       e.preventDefault();
       state.keys.left = true;
@@ -2605,15 +2682,16 @@
   const copayNow = Math.max(1, Math.round(1 * Wallet.priceMult()));
   const debtReset = Wallet.format(Wallet.DEFAULT_DIGITAL);
   const rewindDate = 'Jan 2022';
+  const howTo = 'Drag your finger to move the fingertip. Trash pills right; the doctor aims for your mouth on the left.';
   showOverlay(
     'County General',
     fromDrive
-      ? `Pulled off for ER. Trash what you can — every swallow hits your phone (${Wallet.format(billNow)}). Swallow the red pill (1 in 4) for a ${Wallet.format(copayNow)} copay and you're discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices, ${debtReset} debt, no cash, keep gold).`
+      ? `Pulled off for ER. ${howTo} Every swallow hits your phone (${Wallet.format(billNow)}). Red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and discharges you. Purple Reincarnate = ${debtReset} debt, no cash/gold. Gold Time Travel = rewind to ${rewindDate}, reset prices, ${debtReset} debt, keep gold.`
       : fromCross
-        ? `Ambulance drop-off. Trash what you can — every swallow hits your phone (${Wallet.format(billNow)}). Swallow the red pill (1 in 4) for a ${Wallet.format(copayNow)} copay and you're discharged back to the street. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices, ${debtReset} debt, no cash, keep gold).`
+        ? `Ambulance drop-off. ${howTo} Every swallow hits your phone (${Wallet.format(billNow)}). Red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and sends you back to the street. Purple Reincarnate = ${debtReset} debt, no cash/gold. Gold Time Travel = rewind to ${rewindDate}, reset prices, ${debtReset} debt, keep gold.`
       : admit
-        ? `${introWho} sent you here. Trash pills when you can. Swallowing bills the phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices, ${debtReset} debt, no cash, keep gold).`
-        : `Medication time. Trash pills when you can. Every swallow bills your phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices, ${debtReset} debt, no cash, keep gold).`,
+        ? `${introWho} sent you here. ${howTo} Swallowing bills the phone (${Wallet.format(billNow)}) — red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and discharges you. Purple Reincarnate = ${debtReset} debt, no cash/gold. Gold Time Travel = rewind to ${rewindDate}, reset prices, ${debtReset} debt, keep gold.`
+        : `Medication time. ${howTo} Every swallow bills your phone (${Wallet.format(billNow)}) — red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and discharges you. Purple Reincarnate = ${debtReset} debt, no cash/gold. Gold Time Travel = rewind to ${rewindDate}, reset prices, ${debtReset} debt, keep gold.`,
     'Kick Off'
   );
   requestAnimationFrame(frame);

@@ -6,6 +6,27 @@
   --purse-hud-width: 128px;
   --purse-hud-height: 56px;
   --purse-hud-clearance-right: calc(var(--purse-hud-width) + var(--purse-hud-right) + var(--purse-hud-gap));
+  --game-logo-top: max(8px, env(safe-area-inset-top, 0px));
+  --game-logo-left: max(10px, env(safe-area-inset-left, 0px));
+  --game-logo-height: clamp(34px, 5.2vw, 44px);
+  --game-logo-clearance-left: calc(var(--game-logo-left) + (var(--game-logo-height) * 5.25) + 12px);
+}
+
+/* Game logo — fixed top-left on every screen */
+.game-logo {
+  position: fixed;
+  top: var(--game-logo-top);
+  left: var(--game-logo-left);
+  z-index: 10001;
+  height: var(--game-logo-height);
+  width: auto;
+  max-width: min(46vw, 240px);
+  object-fit: contain;
+  object-position: left center;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
 }
 
 .purse-hud-cluster {
@@ -403,13 +424,21 @@
 
 .purse-hud-panel-section:first-of-type { margin-top: 2px; }
 
-/* Keep game UI out from under the fixed HUD */
+/* Keep game UI out from under the fixed HUD / logo */
 body.has-purse-hud .topbar {
   padding-right: var(--purse-hud-clearance-right);
 }
 
+body.has-game-logo .topbar {
+  padding-left: var(--game-logo-clearance-left);
+}
+
 body.has-purse-hud > .app > .controls {
   padding-right: calc(var(--space-3, 0.75rem) + var(--purse-hud-clearance-right) - var(--purse-hud-right));
+}
+
+body.has-game-logo > .app > .controls {
+  padding-left: calc(var(--space-3, 0.75rem) + var(--game-logo-clearance-left) - var(--game-logo-left));
 }
 
 .purse-stack-amount.purse-stack-amount--hidden,

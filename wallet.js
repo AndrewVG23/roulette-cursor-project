@@ -337,6 +337,22 @@
     return root?.dataset?.purseHud === 'off' || body?.dataset?.purseHud === 'off';
   }
 
+  function mountLogo() {
+    if (document.getElementById('gameLogo')) {
+      document.body.classList.add('has-game-logo');
+      return;
+    }
+    const img = document.createElement('img');
+    img.className = 'game-logo';
+    img.id = 'gameLogo';
+    img.src = 'assets/cash-4-copper-logo.png';
+    img.alt = 'Cash 4 Copper';
+    img.draggable = false;
+    img.setAttribute('aria-hidden', 'false');
+    document.body.appendChild(img);
+    document.body.classList.add('has-game-logo');
+  }
+
   function syncHudMetrics() {
     const cluster = document.getElementById('purseHudCluster');
     const hud = document.getElementById('purseHud');
@@ -543,6 +559,7 @@
   }
 
   function mountHud() {
+    mountLogo();
     if (hudDisabled()) return;
     if (document.getElementById('purseHud')) {
       document.body.classList.add('has-purse-hud');
@@ -683,7 +700,7 @@
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing
     snapshot, restore, getState, reincarnate, resetTimeline,
-    migrateTips, mountHud, updateDisplay, togglePanel, toggleHudExpanded,
+    migrateTips, mountHud, mountLogo, updateDisplay, togglePanel, toggleHudExpanded,
     getInsets, canvasInset, subscribe
   };
 })(window);
