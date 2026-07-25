@@ -207,7 +207,7 @@
     <div class="help-panel" id="helpPanel" hidden>
       <div><strong>A / D</strong> — slide your fingertip left and right</div>
       <div><strong>W</strong> — flick up (only from the sheets)</div>
-      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. Every swallow costs <strong>$100</strong> — except the red pill (1 in 4), which costs <strong>$1</strong> and gets you discharged.</div>
+      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. Every swallow bills your <strong>phone</strong> (base <strong>$100</strong>, rides inflation) — except the red pill (1 in 4), which is a <strong>$1</strong> copay and gets you discharged. No cash desk; debt is allowed.</div>
     </div>
 
     <div class="controls">
@@ -2431,13 +2431,15 @@
 
   const introWho = admit ? admit.who : 'The grill';
   const fromDrive = admit && admit.from === 'drive';
+  const billNow = Math.round(100 * Wallet.priceMult());
+  const copayNow = Math.max(1, Math.round(1 * Wallet.priceMult()));
   showOverlay(
     'County General',
     fromDrive
-      ? 'Pulled off for ER. Trash what you can — every swallow costs $100. Swallow the red pill (1 in 4) for $1 and you\'re discharged.'
+      ? `Pulled off for ER. Trash what you can — every swallow hits your phone (${Wallet.format(billNow)}). Swallow the red pill (1 in 4) for a ${Wallet.format(copayNow)} copay and you're discharged.`
       : admit
-        ? `${introWho} sent you here. Trash pills when you can. Swallowing costs $100 — the red pill (1 in 4) costs $1 and gets you discharged.`
-        : 'Medication time. Trash pills when you can. Every swallow costs $100 — the red pill (1 in 4) costs $1 and gets you discharged.',
+        ? `${introWho} sent you here. Trash pills when you can. Swallowing bills the phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged.`
+        : `Medication time. Trash pills when you can. Every swallow bills your phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged.`,
     'Kick Off'
   );
   requestAnimationFrame(frame);
