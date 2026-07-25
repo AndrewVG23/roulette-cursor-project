@@ -1138,13 +1138,15 @@
         seedCityBlocks(d, from, Math.min(len, from + 900));
         if ((d.nextBuildZ || 0) >= len) d.routeEnvSeeded = true;
       }
-      // Streaming mode only — cull far content we haven't finished seeding yet
-      const keepBehind = 140;
-      const keepAhead = 1750;
-      d.buildings = d.buildings.filter(b => routeInWindow(b.z, d.z, keepBehind, keepAhead, len));
-      d.props = d.props.filter(p => routeInWindow(p.z, d.z, 100, keepAhead, len));
     }
     // Full loop pre-seeded: keep all facades — drawBuilding culls by distance at render time
+  }
+
+  function seedFullRouteEnvironment(d, route) {
+    seedChicagoLandmarks(d);
+    seedCityBlocks(d, 0, route.length + 56);
+    d.routeEnvSeeded = true;
+    seedMapExits(d, route);
   }
 
   function seedMapExits(d, route) {
@@ -1851,10 +1853,7 @@
     state.replay.exportWaiter = null;
     state.replay.exportReject = null;
     state.replay.mp4Encoder = null;
-    seedChicagoLandmarks(state.drive);
-    seedCityBlocks(state.drive, 0, route.length + 56);
-    state.drive.routeEnvSeeded = true;
-    seedMapExits(state.drive, route);
+    seedFullRouteEnvironment(state.drive, route);
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
     setPhaseUI();
     overlay.hidden = true;
@@ -2724,11 +2723,7 @@
     };
     replayApplyDrive(state.drive, data.drive);
     normalizeDriveFuel(state.drive);
-    seedChicagoLandmarks(state.drive);
-    const resumeZ = state.drive.z || 0;
-    seedCityBlocks(state.drive, Math.max(0, resumeZ - 240), Math.min(route.length, resumeZ + 1400));
-    state.drive.routeEnvSeeded = true;
-    seedMapExits(state.drive, route);
+    seedFullRouteEnvironment(state.drive, route);
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
 
     overlay.hidden = true;
