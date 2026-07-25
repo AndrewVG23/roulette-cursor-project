@@ -256,8 +256,8 @@
             full gas cans are stashed around the station.
           </p>
           <p class="keys" id="overlayKeys">
-            <b>WASD</b> run &nbsp;·&nbsp; <b>Space</b> jump (chain jumps for height)<br>
-            <b>Drag</b> / <b>Q E</b> camera &nbsp;·&nbsp; <b>Scroll</b> zoom &nbsp;·&nbsp; <b>P</b> pause
+            <b>W / S</b> run forward &amp; back &nbsp;·&nbsp; <b>← →</b> turn &nbsp;·&nbsp; <b>Space</b> jump<br>
+            <b>Scroll</b> zoom &nbsp;·&nbsp; <b>P</b> pause
           </p>
           <div class="control-row">
             <button class="btn primary" id="startBtn" type="button">Start scrounging</button>
@@ -268,8 +268,9 @@
       <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel">?</button>
       <div class="help-panel" id="helpPanel" hidden role="dialog" aria-label="Controls">
         <h3>How to get up there</h3>
-        <p><b>WASD / arrows</b> run. <b>Space</b> jumps — land and jump again right away while running to chain a double, then a triple jump.</p>
-        <p><b>Drag the screen</b> or use <b>Q / E</b> to swing the camera. <b>Scroll</b> zooms.</p>
+        <p><b>W / S</b> or <b>↑ ↓</b> run forward and back. <b>← →</b> (or <b>A / D</b>) turn. The camera stays behind you.</p>
+        <p><b>Space</b> jumps — land and jump again right away while running to chain a double, then a triple jump.</p>
+        <p><b>Scroll</b> zooms the chase camera in and out.</p>
         <p>Quarters are worth $1, red coins $2. Gas cans pay <b>$25</b> each. Find all 8 red coins and a bonus can appears over the pumps.</p>
       </div>
 
@@ -978,22 +979,8 @@
       if (e.code === 'Space') jumpHeld = false;
     });
 
-    // camera orbit
-    const cam = { yaw: 0, pitch: 0.34, dist: 9.5 };
-    let dragging = false, lastX = 0, lastY = 0, dragId = null;
-    canvas.addEventListener('pointerdown', (e) => {
-      // left 40% of a coarse-pointer screen belongs to the joystick overlay, which sits above canvas
-      dragging = true; dragId = e.pointerId; lastX = e.clientX; lastY = e.clientY;
-      canvas.setPointerCapture(e.pointerId);
-    });
-    canvas.addEventListener('pointermove', (e) => {
-      if (!dragging || e.pointerId !== dragId) return;
-      cam.yaw -= (e.clientX - lastX) * 0.0052;
-      cam.pitch = Math.min(1.05, Math.max(-0.05, cam.pitch + (e.clientY - lastY) * 0.004));
-      lastX = e.clientX; lastY = e.clientY;
-    });
-    canvas.addEventListener('pointerup', (e) => { if (e.pointerId === dragId) { dragging = false; dragId = null; } });
-    canvas.addEventListener('pointercancel', () => { dragging = false; dragId = null; });
+    // chase camera — stays behind the player's facing
+    const cam = { pitch: 0.32, dist: 9.5 };
     canvas.addEventListener('wheel', (e) => {
       cam.dist = Math.min(15, Math.max(5, cam.dist + e.deltaY * 0.01));
       e.preventDefault();
@@ -1029,6 +1016,7 @@
     const ACCEL_G = 60;
     const ACCEL_A = 26;
     const JUMP_V = [9.8, 11.4, 13.4];
+    const TURN_RATE = 2.75;
 
     function playerBounds() {
       return {
@@ -1055,22 +1043,26 @@
     }
 
     function physicsStep(dt) {
-      // input direction (camera relative)
-      let ix = 0, iz = 0;
-      if (keys.KeyW || keys.ArrowUp) iz += 1;
-      if (keys.KeyS || keys.ArrowDown) iz -= 1;
-      if (keys.KeyA) ix -= 1;
-      if (keys.KeyD) ix += 1;
-      if (joy.active) { ix += joy.x; iz -= joy.y; }
-      const ilen = Math.hypot(ix, iz);
-      if (ilen > 1) { ix /= ilen; iz /= ilen; }
+      let throttle = 0;
+      let turn = 0;
+      if (keys.KeyW || keys.ArrowUp) throttle += 1;
+      if (keys.KeyS || keys.ArrowDown) throttle -= 1;
+      if (keys.ArrowLeft || keys.KeyA) turn -= 1;
+      if (keys.ArrowRight || keys.KeyD) turn += 1;
+      if (joy.active) {
+        throttle += -joy.y;
+        turn += joy.x;
+      }
+      throttle = Math.max(-1, Math.min(1, throttle));
+      turn = Math.max(-1, Math.min(1, turn));
 
-      const sinY = Math.sin(cam.yaw), cosY = Math.cos(cam.yaw);
-      const fwd = { x: -sinY, z: -cosY };
-      const right = { x: cosY, z: -sinY };
-      const wishX = fwd.x * iz + right.x * ix;
-      const wishZ = fwd.z * iz + right.z * ix;
-      const moving = ilen > 0.05;
+      if (Math.abs(turn) > 0.05) {
+        player.facing += turn * TURN_RATE * dt;
+      }
+
+      const wishX = Math.sin(player.facing) * throttle;
+      const wishZ = Math.cos(player.facing) * throttle;
+      const moving = Math.abs(throttle) > 0.05;
 
       const accel = player.onGround ? ACCEL_G : ACCEL_A;
       if (moving) {
@@ -1142,14 +1134,6 @@
           player.vel.y = 0;
           player.onGround = true;
         }
-      }
-
-      if (moving) {
-        const target = Math.atan2(player.vel.x, player.vel.z);
-        let d = target - player.facing;
-        while (d > Math.PI) d -= Math.PI * 2;
-        while (d < -Math.PI) d += Math.PI * 2;
-        player.facing += d * Math.min(1, 14 * dt);
       }
 
       if (player.pos.y < -6) { player.pos.set(0, 0.2, 20); player.vel.set(0, 0, 0); }
@@ -1258,14 +1242,13 @@
     // ---------------------------------------------------------------- camera follow
     const camTarget = new THREE.Vector3();
     function updateCamera(dt) {
-      if (keys.KeyQ) cam.yaw += 2.2 * dt;
-      if (keys.KeyE) cam.yaw -= 2.2 * dt;
       camTarget.set(player.pos.x, player.pos.y + 1.5, player.pos.z);
+      const behind = player.facing + Math.PI;
       const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
       const desired = new THREE.Vector3(
-        camTarget.x + Math.sin(cam.yaw) * cp * cam.dist,
+        camTarget.x + Math.sin(behind) * cp * cam.dist,
         camTarget.y + sp * cam.dist,
-        camTarget.z + Math.cos(cam.yaw) * cp * cam.dist
+        camTarget.z + Math.cos(behind) * cp * cam.dist
       );
       if (desired.y < 0.5) desired.y = 0.5;
       camera.position.lerp(desired, 1 - Math.exp(-12 * dt));
@@ -1316,7 +1299,7 @@
 
     const isTouch = window.matchMedia('(pointer: coarse)').matches;
     if (isTouch) {
-      overlayKeys.innerHTML = '<b>Left stick</b> run &nbsp;·&nbsp; <b>A</b> jump (chain jumps for height)<br><b>Drag</b> the screen to swing the camera';
+      overlayKeys.innerHTML = '<b>Left stick</b> forward / turn &nbsp;·&nbsp; <b>A</b> jump (chain jumps for height)';
     }
 
     // ---------------------------------------------------------------- loop
@@ -1369,7 +1352,6 @@
 
     resize();
     updateCamera(1);
-    camera.position.set(player.pos.x, 4, player.pos.z + 9.5);
     frame();
   </script>
 </body>
