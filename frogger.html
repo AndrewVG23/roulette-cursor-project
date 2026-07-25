@@ -272,26 +272,59 @@
       border-color: rgba(255,210,200,.35);
     }
     .panel-inner.drive-phase .help-btn {
+      left: max(12px, env(safe-area-inset-left, 0px));
+      bottom: max(14px, env(safe-area-inset-bottom, 0px));
       width: auto;
       height: auto;
       min-width: 0;
       min-height: 0;
-      padding: 2px;
+      padding: 0;
       border-radius: 0;
       background: transparent;
       border: none;
       box-shadow: none;
+      transform-origin: center center;
+      animation: phoneCornerSpin 7.5s linear infinite;
     }
     .panel-inner.drive-phase .help-btn:hover,
-    .panel-inner.drive-phase .help-btn:active,
+    .panel-inner.drive-phase .help-btn:active {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      animation-play-state: paused;
+      transform: scale(1.08);
+    }
     .panel-inner.drive-phase .help-btn[aria-expanded="true"] {
       background: transparent;
       border: none;
       box-shadow: none;
-      transform: scale(1.06);
+      animation: phoneCornerSpinOpen 5.5s linear infinite;
     }
     .panel-inner.drive-phase .help-btn-icon {
-      width: 18px;
+      width: 46px;
+      height: auto;
+      filter:
+        drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55))
+        drop-shadow(0 0 10px rgba(110, 180, 255, 0.18));
+    }
+    .panel-inner.drive-phase .help-btn[aria-expanded="true"] .help-btn-icon {
+      filter:
+        drop-shadow(0 5px 14px rgba(0, 0, 0, 0.6))
+        drop-shadow(0 0 14px rgba(110, 180, 255, 0.32));
+    }
+    @keyframes phoneCornerSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes phoneCornerSpinOpen {
+      from { transform: rotate(0deg) scale(1.05); }
+      to { transform: rotate(-360deg) scale(1.05); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .panel-inner.drive-phase .help-btn,
+      .panel-inner.drive-phase .help-btn[aria-expanded="true"] {
+        animation: none;
+      }
     }
     .help-btn-icon {
       width: 15px;
@@ -441,6 +474,7 @@
       }
       .help-btn { width: 40px; height: 40px; font-size: 1.1rem; }
       .panel-inner.drive-phase .help-btn { width: auto; height: auto; }
+      .panel-inner.drive-phase .help-btn-icon { width: 40px; }
       .help-panel { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
     }
   </style>
@@ -483,11 +517,43 @@
         </div>
 
         <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel">
-          <svg class="help-btn-icon" viewBox="0 0 24 40" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="3" y="1" width="18" height="38" rx="4.5" fill="#1c1c20" stroke="#f7ead0" stroke-width="1.25"/>
-            <rect x="5" y="4" width="14" height="30" rx="2" fill="#0d1512"/>
-            <rect x="9" y="5.5" width="6" height="2.2" rx="1.1" fill="#2e2e34"/>
-            <rect x="10" y="34.5" width="4" height="1.2" rx="0.6" fill="#8a8a92" opacity="0.75"/>
+          <svg class="help-btn-icon" viewBox="0 0 40 82" aria-hidden="true" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="iphoneFrame" x1="4" y1="2" x2="36" y2="80" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#6a6f78"/>
+                <stop offset="38%" stop-color="#2c3038"/>
+                <stop offset="72%" stop-color="#111318"/>
+                <stop offset="100%" stop-color="#3a404a"/>
+              </linearGradient>
+              <linearGradient id="iphoneScreen" x1="20" y1="6" x2="20" y2="76" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#1a2740"/>
+                <stop offset="55%" stop-color="#0b1018"/>
+                <stop offset="100%" stop-color="#121820"/>
+              </linearGradient>
+              <linearGradient id="iphoneGloss" x1="8" y1="8" x2="28" y2="34" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+                <stop offset="55%" stop-color="#ffffff" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- titanium chassis -->
+            <rect x="3.5" y="2" width="33" height="78" rx="9.5" fill="url(#iphoneFrame)" stroke="#c8ced8" stroke-width="0.9"/>
+            <!-- side buttons -->
+            <rect x="1.8" y="22" width="1.7" height="7" rx="0.7" fill="#8a919c"/>
+            <rect x="1.8" y="32" width="1.7" height="12" rx="0.7" fill="#8a919c"/>
+            <rect x="36.5" y="28" width="1.7" height="14" rx="0.7" fill="#8a919c"/>
+            <!-- inset display -->
+            <rect x="5.4" y="4.4" width="29.2" height="73.2" rx="7.6" fill="url(#iphoneScreen)"/>
+            <rect x="5.4" y="4.4" width="29.2" height="73.2" rx="7.6" fill="url(#iphoneGloss)"/>
+            <!-- Dynamic Island -->
+            <rect x="13.2" y="7.2" width="13.6" height="4.2" rx="2.1" fill="#050608"/>
+            <circle cx="23.8" cy="9.3" r="1.05" fill="#1a2436"/>
+            <circle cx="23.8" cy="9.3" r="0.45" fill="#4a7cff" opacity="0.85"/>
+            <!-- status / map glow -->
+            <circle cx="20" cy="34" r="8.5" fill="#2f7bff" opacity="0.16"/>
+            <path d="M20 24.5c4.2 0 7.6 3.3 7.6 7.4 0 5.2-6.2 11.4-7.2 12.3-.2.2-.5.2-.7 0-1-1-7.3-7.1-7.3-12.3 0-4.1 3.4-7.4 7.6-7.4z" fill="#5aa0ff" opacity="0.55"/>
+            <circle cx="20" cy="31.6" r="2.1" fill="#e8f1ff" opacity="0.9"/>
+            <!-- home indicator -->
+            <rect x="14.5" y="72.6" width="11" height="1.8" rx="0.9" fill="#d7dde8" opacity="0.72"/>
           </svg>
         </button>
         <div class="help-panel" id="helpPanel" hidden role="dialog" aria-label="Controls">
@@ -2177,6 +2243,19 @@
         if (zi % 3 === 0) d.props.push({ z: routeZ + 28, side: Math.sin(routeZ) > 0 ? -1 : 1, kind: 'dumpster' });
         if (zi % 4 === 0) d.props.push({ z: routeZ + 40, side: Math.cos(routeZ) > 0 ? 1 : -1, kind: 'hydrant' });
         if (zi % 5 === 0) d.props.push({ z: routeZ + 16, side: -1, kind: 'bus_shelter' });
+        // Occasional debt-economy billboard — sparse, inland only
+        if (zi % 17 === 7) {
+          const bbSide = Math.sin(routeZ * 0.07) > 0 ? 1 : -1;
+          if (!landmarkClearance(d, routeZ + 24, bbSide, 'building')) {
+            d.props.push({
+              z: routeZ + 24,
+              side: bbSide,
+              kind: 'billboard',
+              line1: 'SELL YOUR GOLD!',
+              line2: 'BUY DEBT'
+            });
+          }
+        }
       }
     }
     d.nextBuildZ = Math.min(toZ, len);
@@ -7880,6 +7959,58 @@
       ctx.beginPath();
       ctx.ellipse(p.x, p.y, 14 * p.scale, 6 * p.scale, 0, 0, Math.PI * 2);
       ctx.fill();
+      return;
+    }
+    if (pr.kind === 'billboard') {
+      // Elevated face on the sidewalk shoulder — in front of facades, readable from the road
+      const bx = pr.side * (DW.WALK + 0.2);
+      const base = projectWorld(bx, 0, pr.z, d);
+      if (base.relZ < 90 || base.relZ > 1300) return;
+      const nearFade = facadeProximityFade(base, d, { minZ: 90, fadeZ: 260 });
+      if (nearFade <= 0) return;
+      const rail = projectWorld(bx, 42, pr.z, d);
+      const top = projectWorld(bx, 78, pr.z, d);
+      const s = base.scale;
+      const faceW = 88 * s;
+      const faceH = Math.max(10, rail.y - top.y);
+      const fx = top.x - faceW * 0.5;
+      const fy = top.y;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, (1300 - base.relZ) / 280)) * nearFade;
+      // Twin posts
+      ctx.strokeStyle = '#3a3a40';
+      ctx.lineWidth = Math.max(1.5, 3.5 * s);
+      ctx.beginPath();
+      ctx.moveTo(base.x - 10 * s, base.y);
+      ctx.lineTo(rail.x - 10 * s, rail.y);
+      ctx.moveTo(base.x + 10 * s, base.y);
+      ctx.lineTo(rail.x + 10 * s, rail.y);
+      ctx.stroke();
+      // Frame + face
+      ctx.fillStyle = '#1a1a1e';
+      ctx.fillRect(fx - 3 * s, fy - 3 * s, faceW + 6 * s, faceH + 6 * s);
+      ctx.fillStyle = '#101b16';
+      ctx.fillRect(fx, fy, faceW, faceH);
+      ctx.fillStyle = '#0d1512';
+      ctx.fillRect(fx + 3 * s, fy + 3 * s, faceW - 6 * s, faceH - 6 * s);
+      // Copy
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#d0a23a';
+      ctx.font = `700 ${Math.max(8, 13 * s)}px "Zodiak", Georgia, serif`;
+      ctx.fillText(pr.line1 || 'SELL YOUR GOLD!', top.x, fy + faceH * 0.38);
+      ctx.fillStyle = '#bdb39b';
+      ctx.font = `600 ${Math.max(7, 11 * s)}px "General Sans", system-ui, sans-serif`;
+      ctx.fillText(pr.line2 || 'BUY DEBT', top.x, fy + faceH * 0.68);
+      // Peeling corner
+      ctx.fillStyle = '#1c2a22';
+      ctx.beginPath();
+      ctx.moveTo(fx + faceW, fy + faceH);
+      ctx.lineTo(fx + faceW - 12 * s, fy + faceH);
+      ctx.lineTo(fx + faceW, fy + faceH - 12 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
       return;
     }
     // Furniture lives on the concrete sidewalk strip
