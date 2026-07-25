@@ -1248,6 +1248,12 @@
       shortLabel: 'Coins',
       color: '#f0d078',
       svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="5.2" fill="currentColor" opacity="0.9"/><text x="12" y="14.2" text-anchor="middle" font-size="6.5" font-weight="800" fill="#2a1a08">Au</text></svg>'
+    },
+    bank: {
+      label: 'Lake Shore Trust',
+      shortLabel: 'Bank',
+      color: '#e8c878',
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5L12 5l8 5.5v1.8H4V10.5z" fill="currentColor"/><rect x="5.5" y="13" width="2.8" height="6.5" fill="currentColor"/><rect x="10.6" y="13" width="2.8" height="6.5" fill="currentColor"/><rect x="15.7" y="13" width="2.8" height="6.5" fill="currentColor"/><rect x="4" y="19.5" width="16" height="1.8" rx="0.4" fill="currentColor"/></svg>'
     }
   };
   let mapNavBuilt = false;
@@ -1257,7 +1263,8 @@
     hospital: [-10, 0],
     liquor: [10, 0],
     gas: [0, 12],
-    coins: [12, -10]
+    coins: [12, -10],
+    bank: [-8, 10]
   };
 
   function setHelpOpen(open) {
@@ -1490,6 +1497,7 @@
     if (exitId === 'hospital') takeHospitalExit(ex);
     else if (exitId === 'gas') takeGasExit(ex);
     else if (exitId === 'coins') takeCoinsExit(ex);
+    else if (exitId === 'bank') takeBankExit(ex);
     else takeExit(ex);
   }
 
@@ -7871,6 +7879,26 @@
       const ph = signalPhase(sig, sigTime);
       ctx.fillStyle = ph === 'red' ? '#e74c3c' : ph === 'yellow' ? '#f1c40f' : '#2ecc71';
       ctx.fillRect(pt.px - 2, pt.py - 2, 4, 4);
+    }
+
+    // Destination exits on minimap
+    for (const ex of route.exits || []) {
+      const live = (d.exits || []).find(e => e.id === ex.id);
+      if (live?.taken) continue;
+      const meta = MAP_DEST_ICONS[ex.id];
+      if (!meta) continue;
+      const pt = geoToMap(ex.n, ex.e);
+      ctx.fillStyle = meta.color;
+      ctx.strokeStyle = 'rgba(12,14,18,0.95)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(pt.px, pt.py, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = meta.color;
+      ctx.font = '700 7px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(meta.shortLabel || meta.label, pt.px, pt.py - 8);
     }
 
     // Start
