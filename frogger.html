@@ -3302,6 +3302,13 @@
     }
   }
 
+  // Cop bounties start at these values and scale with gold spot (gas index).
+  const COP_BOUNTY_CHASER = 150;
+  const COP_BOUNTY_POLICE = 50;
+  const COP_BOUNTY_PILEUP = 100;
+  const COP_BOUNTY_COP_PILEUP = 500;
+  function copBounty(base) { return Wallet.goldScaled(base); }
+
   // --- Chase cop: hunts you from behind, lunges to ram — dodge it and smash him back ---
   function spawnChaseCop(d) {
     const stats = CAR_KIND_STATS.police;
@@ -3396,13 +3403,13 @@
     if (!d.traffic.includes(cop)) d.traffic.push(cop);
     d.chaser = null;
     d.chaserSpawnT = 4 + Math.random() * 3;
-    const bounty = copPileup ? 500 : 100;
+    const bounty = copPileup ? copBounty(COP_BOUNTY_COP_PILEUP) : copBounty(COP_BOUNTY_PILEUP);
     Wallet.addCash(bounty);
     d.slowMo = Math.max(d.slowMo || 0, copPileup ? 0.65 : 0.5);
     d.zoomPunch = copPileup ? 1.5 : 1.2;
     d.camShake = Math.max(d.camShake, copPileup ? 9 : 6);
     const hitP = projectWorld((cop.x + other.x) * 0.5, 0, (cop.z + other.z) * 0.5, d);
-    spawnFloat(`+$${bounty}`, hitP.x, hitP.y - 40 * hitP.scale, '#7dce7a', {
+    spawnFloat(`+${Wallet.format(bounty)}`, hitP.x, hitP.y - 40 * hitP.scale, '#7dce7a', {
       life: 1.2,
       size: copPileup ? 19 : 16,
       vy: -46
@@ -3532,7 +3539,7 @@
     const targetBob = Math.sin(cop.wheelSpin * 2.1) * (cop.speed / 720) * 2.4;
     cop.bob += (targetBob - cop.bob) * Math.min(1, 10 * dt);
 
-    // A lunging cop that clips traffic wrecks both — $500 if it's another cop
+    // A lunging cop that clips traffic wrecks both — double bounty if it's another cop
     if (cop.ai === 'ram' || cop.ai === 'exposed') {
       for (const car of d.traffic) {
         if (car.smashed) continue;
@@ -3661,12 +3668,15 @@
     const isCop = !!(other && other.kind === 'police');
     const isChaser = !!(other && other.chaser);
     let cashTag = '';
+    let copPay = 0;
     if (isChaser) {
-      Wallet.addCash(150);
-      cashTag = '+$150';
+      copPay = copBounty(COP_BOUNTY_CHASER);
+      Wallet.addCash(copPay);
+      cashTag = `+${Wallet.format(copPay)}`;
     } else if (isCop) {
-      Wallet.addCash(50);
-      cashTag = '+$50';
+      copPay = copBounty(COP_BOUNTY_POLICE);
+      Wallet.addCash(copPay);
+      cashTag = `+${Wallet.format(copPay)}`;
     } else {
       const fine = hard ? 80 + Math.floor(Math.random() * 120) : 10;
       Wallet.take(fine);
@@ -4174,7 +4184,8 @@
         triggerDriveBump(hit.impactX, car);
       } else {
         triggerDriveCrash(
-          car.kind === 'police' ? 'NYPD launched. $50 bounty.'
+          car.kind === 'police'
+            ? `NYPD launched. ${Wallet.format(copBounty(COP_BOUNTY_POLICE))} bounty.`
             : car.kind === 'bus' ? 'Clipped an MTA bus.'
             : car.kind === 'taxi' ? 'Launched a yellow cab.'
             : car.model === 'Lamborghini Countach' ? 'Sent a Countach flying!'

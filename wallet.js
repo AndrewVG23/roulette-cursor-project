@@ -203,6 +203,9 @@
   function priceMult() { return state.index; }             // general inflated prices
   function tipMult() { return state.index; }               // tips ride full inflation
   function wageMult() { return 1 + (state.index - 1) / 2; } // wages lag at half inflation
+  function goldScaled(base) {
+    return Math.max(1, Math.round(Number(base) * state.index));
+  }
   function visits() { return state.visits; }
   function nextVisitRate() {
     return Math.min(VISIT_RATE_BASE + VISIT_RATE_STEP * (state.visits + 1), VISIT_RATE_CAP);
@@ -620,7 +623,7 @@
     gold, goldSpot, goldBuyCost, goldCreditCost, goldSellValue, buyGold, sellGold, netWorth,
     // economy
     index, gasPrice, gasFillGallons, gasFillCost, buyGasFill,
-    priceMult, tipMult, wageMult,
+    priceMult, tipMult, wageMult, goldScaled,
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing

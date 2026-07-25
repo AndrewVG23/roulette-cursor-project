@@ -10,6 +10,7 @@
     "dev": "python3 -m http.server 8000",
     "serve": "npx serve .",
     "deploy": "wrangler pages deploy . --project-name=cashforcopper --branch=main --commit-dirty=true",
-    "deploy:vercel": "vercel --prod"
+    "deploy:vercel": "vercel --prod",
+    "setup:dns": "bash scripts/setup-dns.sh"
   }
 }
