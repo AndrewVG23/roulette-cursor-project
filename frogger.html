@@ -499,17 +499,18 @@
     { id: 'bank', name: 'BANK', href: 'bank.html', blurb: 'Lake Shore Trust — slam cash at the window.' }
   ];
 
-  // Chicago grid → drive Z: 800 N addresses and ~16 E blocks per mile
   const DRIVE_MPH_Z = 11;
   const ROUTE_Z_PER_MILE = DRIVE_MPH_Z * 55;
-  const NAV_MAX_MILES = 1;
+  // Map-nav trips compress long stretches so any pick arrives quickly
+  const NAV_ETA_MIN_SEC = 5;
+  const NAV_ETA_MAX_SEC = 18;
 
   // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
   // n = north address, e = east blocks from Michigan Ave
   const NIGHT_DRIVE_MAP = {
     name: 'Gold Coast',
-    zPerNorth: ROUTE_Z_PER_MILE / 800,
-    zPerEastBlock: ROUTE_Z_PER_MILE / 16 / 0.85,
+    zPerNorth: 9,
+    zPerEastBlock: 640,
     xPerBlock: 0.74,
     geoBounds: { nMin: 560, nMax: 1680, eMin: -2.5, eMax: 3.0 },
     lakeEastOf: 2.55,
@@ -590,13 +591,13 @@
       { n: 1600, e: 2.55, label: 'North Ave Beach', kind: 'beach', side: 1 }
     ],
     exits: [
-      { n: 628, e: 2.08, side: -1, id: 'gas', name: 'GAS', mapLabel: 'Gas', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' },
-      { n: 820, e: 2.22, side: -1, id: 'liquor', name: 'LIQUOR', mapLabel: 'Liquor', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' },
       { n: 900, e: 2.30, side: -1, id: 'casino', name: 'CASINO', mapLabel: 'Casino', href: 'index.html', blurb: 'The casino — back to the tables.' },
-      { n: 1000, e: 2.20, side: -1, id: 'hospital', name: 'ER', mapLabel: 'Hospital', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
-      { n: 940, e: 2.32, side: -1, id: 'bank', name: 'BANK', mapLabel: 'Bank', href: 'bank.html', blurb: 'Lake Shore Trust — slam cash at the window.' },
-      { n: 1060, e: 2.38, side: -1, id: 'coins', name: 'COINS', mapLabel: 'Coins', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' },
-      { n: 1140, e: 2.48, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' }
+      { n: 1000, e: -2.10, side: -1, id: 'hospital', name: 'ER', mapLabel: 'Hospital', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
+      { n: 1200, e: 0.25, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' },
+      { n: 820, e: -2.10, side: -1, id: 'liquor', name: 'LIQUOR', mapLabel: 'Liquor', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' },
+      { n: 620, e: -2.10, side: -1, id: 'gas', name: 'GAS', mapLabel: 'Gas', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' },
+      { n: 1120, e: -0.85, side: -1, id: 'coins', name: 'COINS', mapLabel: 'Coins', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' },
+      { n: 1000, e: 0.25, side: -1, id: 'bank', name: 'BANK', mapLabel: 'Bank', href: 'bank.html', blurb: 'Lake Shore Trust — slam cash at the window.' }
     ]
   };
 
@@ -1505,8 +1506,8 @@
         btn.hidden = true;
         continue;
       }
-      btn.hidden = taken.has(ex.id) || routeMilesAhead(d, ex.z) > NAV_MAX_MILES;
-      btn.disabled = taken.has(ex.id) || routeMilesAhead(d, ex.z) > NAV_MAX_MILES;
+      btn.hidden = taken.has(ex.id);
+      btn.disabled = taken.has(ex.id);
       btn.classList.toggle('active', d.navTarget === ex.id);
     }
   }
@@ -1529,19 +1530,37 @@
     };
   }
 
+  function clearNavTrip(d) {
+    if (!d) return;
+    d.navTarget = null;
+    d.navEtaSec = 0;
+    d.navTripT = 0;
+  }
+
+  function beginNavTrip(d, exitId) {
+    const ex = getNavExit(d, exitId);
+    if (!ex || !d.route) return false;
+    const pathLen = d.route.length;
+    const ahead = Math.max(1, routeAheadDist(wrapRouteZ(d.z, pathLen), ex.z, pathLen));
+    const naturalSec = ahead / (60 * DW.MPH_Z);
+    d.navTarget = exitId;
+    d.navTripT = 0;
+    d.navEtaSec = Math.min(NAV_ETA_MAX_SEC, Math.max(NAV_ETA_MIN_SEC, naturalSec));
+    return true;
+  }
+
   function goToMapDestination(exitId) {
     if (state.phase !== 'drive' || state.mode !== 'drive' || !state.drive) return;
     const d = state.drive;
     const ex = getNavExit(d, exitId);
     if (!ex || ex.taken) return;
-    if (routeMilesAhead(d, ex.z) > NAV_MAX_MILES) return;
     if (d.navTarget === exitId) {
-      d.navTarget = null;
+      clearNavTrip(d);
       beep(220, 0.05);
       updateHUD();
       return;
     }
-    d.navTarget = exitId;
+    if (!beginNavTrip(d, exitId)) return;
     beep(523, 0.06);
     beep(784, 0.1);
     updateHUD();
@@ -1550,7 +1569,7 @@
   function arriveAtDestination(exit) {
     if (!exit || exit.taken || state.mode !== 'drive' || !state.drive) return;
     const d = state.drive;
-    d.navTarget = null;
+    clearNavTrip(d);
     if (exit.id === 'hospital') takeHospitalExit(exit);
     else if (exit.id === 'gas') takeGasExit(exit);
     else if (exit.id === 'coins') takeCoinsExit(exit);
@@ -1564,7 +1583,7 @@
       brandSub.textContent = 'Gold Coast · stop at red · steer to turn';
       if (meterStat) meterStat.hidden = true;
       if (livesStat) livesStat.hidden = true;
-      hintText.textContent = 'Stop at red · tap a destination to navigate · arrive to finish · R replay';
+      hintText.textContent = 'Tap a destination to route there (~15s) · stop at red when cruising · R replay';
       dpad.classList.add('drive-mode');
       panelInner?.classList.add('drive-phase');
     } else if (isEnter()) {
@@ -1907,6 +1926,8 @@
       maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
       navTarget: null,
+      navEtaSec: 0,
+      navTripT: 0,
       skipExitId: null,
       chaser: null,
       chaserSpawnT: 4,
@@ -2578,7 +2599,7 @@
 
   function saveDriveCheckpoint(d, resumeExitId) {
     if (!d) return;
-    d.navTarget = null;
+    clearNavTrip(d);
     d.approachingExit = null;
     d.skipExitId = resumeExitId || null;
     try {
@@ -2599,7 +2620,7 @@
     const def = (d.route.exits || []).find(e => e.id === resumeExitId);
     const live = (d.exits || []).find(e => e.id === resumeExitId);
     if (live) live.taken = false;
-    d.navTarget = null;
+    clearNavTrip(d);
     d.approachingExit = null;
     d.skipExitId = resumeExitId;
     d.playerX = 0;
@@ -2818,6 +2839,8 @@
       maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
       navTarget: null,
+      navEtaSec: 0,
+      navTripT: 0,
       skipExitId: null,
       chaser: null,
       chaserSpawnT: 4,
@@ -3959,16 +3982,26 @@
     const fuelUse = (tankGal / Wallet.GAS_EMPTY_SEC) * dt;
     d.fuel = Math.max(0, (d.fuel ?? tankGal) - fuelUse);
 
+    const navigating = !!(d.navTarget && d.navTarget !== d.skipExitId);
+    if (navigating) d.navTripT = (d.navTripT || 0) + dt;
+
     // Engine force falls off toward top speed; aero drag + rolling resistance
-    let engine = gas * 48 * (1 - speedNorm * 0.82);
-    if (outOfGas) engine *= 0.06;
-    const brakes = brake * 70;
+    let engine = ((gas || navigating) ? 1 : 0) * 48 * (1 - speedNorm * 0.82);
+    if (outOfGas && !navigating) engine *= 0.06;
+    const brakes = navigating ? 0 : brake * 70;
     const drag = 0.018 * d.speed * d.speed * 0.01 + 6.5 + (d.surface === 'curb' ? 14 : 0);
     d.accel = engine - brakes - drag * 0.15;
-    d.speed = Math.max(0, Math.min(d.maxSpeed, d.speed + d.accel * dt));
-    if (outOfGas) d.speed = Math.min(d.speed, 18);
+    const speedCap = navigating ? 180 : d.maxSpeed;
+    d.speed = Math.max(0, Math.min(speedCap, d.speed + d.accel * dt));
+    if (outOfGas && !navigating) d.speed = Math.min(d.speed, 18);
     // Idle creep so you don't stall dead in traffic unless hard-braking
     if (!brake && !outOfGas && d.speed < 12) d.speed += 18 * dt;
+    if (navigating) {
+      d.speed = Math.max(d.speed, 48);
+      // Stay centered while the route compresses
+      d.playerX += (0 - d.playerX) * Math.min(1, 3.5 * dt);
+      d.velX *= Math.exp(-4 * dt);
+    }
 
     // Surface under the tires
     const ax = Math.abs(d.playerX);
@@ -4050,12 +4083,12 @@
       if (dist < -12 || dist > 70) continue;
       const phase = signalPhase(sig, signalTime);
       d.atSignal = { ...sig, phase, dist };
-      if (dist > 0 && dist < 52) {
+      if (!navigating && dist > 0 && dist < 52) {
         if (phase === 'red') d.mustStop = true;
         else if (phase === 'yellow' && dist < 38) d.mustStop = true;
       }
       // Ran the red on gas — flat $100 fine once per signal
-      if (phase === 'red' && dist <= 0 && dist > -8 && d.speed > 6 && gas && d.signalFineCd <= 0) {
+      if (!navigating && phase === 'red' && dist <= 0 && dist > -8 && d.speed > 6 && gas && d.signalFineCd <= 0) {
         Wallet.take(SIGNAL_FINE);
         d.signalFineCd = 3;
         d.signalFlash = 0.75;
@@ -4095,7 +4128,13 @@
         : steerRight && d.playerX > 0.12;
 
       if (atLine && !leg.done) {
-        if (!green && !gas) {
+        if (navigating) {
+          leg.done = true;
+          d.legIndex += 1;
+          d.awaitTurn = null;
+          d.turnFlash = 0.4;
+          d.yawVel += leg.turn === 'left' ? -0.28 : 0.28;
+        } else if (!green && !gas) {
           d.speed = Math.min(d.speed, Math.max(0, distIx * 0.35));
         } else if (turned && d.speed > 2) {
           leg.done = true;
@@ -4130,15 +4169,34 @@
       }
     }
 
-    // Integrate world position from MPH
+    // Integrate world position from MPH (nav compresses long trips into ~5–18s)
     const pathLen = d.route ? d.route.length : d.goal;
     const prevRouteZ = wrapRouteZ(d.z, pathLen);
-    d.z += d.speed * DW.MPH_Z * dt;
+    const navExMove = navigating ? getNavExit(d, d.navTarget) : null;
+    if (navigating && navExMove && !navExMove.taken) {
+      const ahead = routeAheadDist(wrapRouteZ(d.z, pathLen), navExMove.z, pathLen);
+      if (ahead > 45) {
+        const remainT = Math.max(0.45, (d.navEtaSec || NAV_ETA_MAX_SEC) - (d.navTripT || 0));
+        const zStep = (ahead / remainT) * dt;
+        d.z += zStep;
+        d.speed = Math.min(180, Math.max(d.speed, zStep / Math.max(dt, 1e-4) / DW.MPH_Z));
+      } else {
+        d.z += d.speed * DW.MPH_Z * dt;
+      }
+      // Keep legs in sync while warping past corners
+      for (const l of d.legs || []) {
+        if (!l.done && routeSignedDist(d.z, l.z1, pathLen) < -8) l.done = true;
+      }
+      d.legIndex = (d.legs || []).findIndex(l => !l.done);
+      if (d.legIndex < 0) d.legIndex = (d.legs || []).length;
+    } else {
+      d.z += d.speed * DW.MPH_Z * dt;
+    }
     const newRouteZ = wrapRouteZ(d.z, pathLen);
 
-    // Hold at intersection until turn is committed on green (unless running the light on gas)
+    // Hold at intersection until turn is committed on green (unless navigating / running the light)
     const legAfter = currentDriveLeg(d);
-    if (legAfter && legAfter.turn && legAfter.turn !== 'straight' && !legAfter.done) {
+    if (!navigating && legAfter && legAfter.turn && legAfter.turn !== 'straight' && !legAfter.done) {
       const green = d.atSignal && d.atSignal.phase === 'green' && !d.mustStop;
       const runLight = gas && d.atSignal
         && (d.atSignal.phase === 'red' || d.atSignal.phase === 'yellow')
@@ -8593,9 +8651,9 @@
     if (d.approachingExit && d.navTarget && d.approachingExit.id === d.navTarget) {
       ctx.fillText(`ARRIVING → ${d.approachingExit.name}`, 10, 22);
     } else if (navEx && navMeta) {
-      const mi = routeMilesAhead(d, navEx.z).toFixed(1);
+      const eta = Math.max(0, Math.ceil((d.navEtaSec || 0) - (d.navTripT || 0)));
       ctx.fillStyle = navMeta.color;
-      ctx.fillText(`NAV → ${navMeta.shortLabel || navEx.name}  ${mi} mi`, 10, 22);
+      ctx.fillText(`NAV → ${navMeta.shortLabel || navEx.name}  ${eta}s`, 10, 22);
     } else if (d.approachingExit) {
       ctx.fillText(`TAKE EXIT → ${d.approachingExit.name}`, 10, 22);
     } else if (d.awaitTurn && d.atSignal && d.atSignal.phase === 'green' && !d.mustStop) {

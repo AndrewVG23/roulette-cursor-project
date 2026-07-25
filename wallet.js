@@ -8,7 +8,7 @@
   //   gold    — ounces. Bought at 5% over spot, sold at 5% under, for cash.
   // One shared price index drives gas price, gold spot, and every inflated
   // price. Each gas-station visit compounds the index by 4%, advances the
-  // calendar three months from a January 2022 start, and applies debt interest.
+  // calendar nine weeks from a January 2022 start, and applies debt interest.
   const STATE_KEY = 'walletV3';
   const LEGACY_PURSE_KEY = 'casinoPurse';
   const LEGACY_STATE_KEYS = ['walletV2'];
@@ -28,9 +28,12 @@
   const VISIT_RATE_STEP = 0;
   const VISIT_RATE_CAP = 0.04;
   const CREDIT_INTEREST_RATE = 0.06; // credit balance compounds +6% every gas visit
-  const VISIT_MONTHS_ADVANCE = 3;
+  const VISIT_WEEKS_ADVANCE = 9;
   const GAME_START_YEAR = 2022;
   const GAME_START_MONTH = 0; // January
+  const GAME_START_DAY = 1;
+  const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+  const GAME_START_MS = Date.UTC(GAME_START_YEAR, GAME_START_MONTH, GAME_START_DAY);
 
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -209,10 +212,12 @@
   function visits() { return state.visits; }
 
   function gameDate() {
-    const totalMonths = GAME_START_MONTH + state.visits * VISIT_MONTHS_ADVANCE;
+    const ms = GAME_START_MS + state.visits * VISIT_WEEKS_ADVANCE * MS_PER_WEEK;
+    const d = new Date(ms);
     return {
-      year: GAME_START_YEAR + Math.floor(totalMonths / 12),
-      month: totalMonths % 12
+      year: d.getUTCFullYear(),
+      month: d.getUTCMonth(),
+      day: d.getUTCDate()
     };
   }
 
