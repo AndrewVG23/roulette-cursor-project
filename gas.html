@@ -1149,10 +1149,10 @@
       if (e.code === 'Space') jumpHeld = false;
     });
 
-    // chase camera — yaw tracks facing tightly; position doesn't orbit-lag
-    const cam = { pitch: 0.32, dist: 9.5, yaw: player.facing, lookY: player.pos.y + 1.5 };
+    // chase camera — yaw lags facing a bit; wider default framing
+    const cam = { pitch: 0.30, dist: 12.5, yaw: player.facing, lookY: player.pos.y + 1.5 };
     canvas.addEventListener('wheel', (e) => {
-      cam.dist = Math.min(15, Math.max(5, cam.dist + e.deltaY * 0.01));
+      cam.dist = Math.min(18, Math.max(6, cam.dist + e.deltaY * 0.01));
       e.preventDefault();
     }, { passive: false });
 
@@ -1482,13 +1482,13 @@
       return d;
     }
     function updateCamera(dt) {
-      // Track facing with a short spring — no world-space orbit lag after turns.
+      // Yaw trails facing with real inertia — character turns first, lens catches up.
       const yawErr = shortestAngleDelta(cam.yaw, player.facing);
-      const yawFollow = Math.abs(yawErr) > 0.9 ? 22 : 14;
+      const yawFollow = Math.abs(yawErr) > 0.9 ? 7 : 4.2;
       cam.yaw += yawErr * (1 - Math.exp(-yawFollow * dt));
 
       const lookYWant = player.pos.y + 1.45;
-      cam.lookY += (lookYWant - cam.lookY) * (1 - Math.exp(-10 * dt));
+      cam.lookY += (lookYWant - cam.lookY) * (1 - Math.exp(-7 * dt));
       camTarget.set(player.pos.x, cam.lookY, player.pos.z);
 
       const behind = cam.yaw + Math.PI;
@@ -1498,7 +1498,7 @@
       const wantZ = camTarget.z + Math.cos(behind) * cp * cam.dist;
 
       // Soft stick to the orbit point so jumps don't whip the lens.
-      const posFollow = 1 - Math.exp(-18 * dt);
+      const posFollow = 1 - Math.exp(-11 * dt);
       camera.position.x += (wantX - camera.position.x) * posFollow;
       camera.position.y += (wantY - camera.position.y) * posFollow;
       camera.position.z += (wantZ - camera.position.z) * posFollow;

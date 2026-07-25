@@ -466,11 +466,27 @@
   </script>
   <script>
 (() => {
-  const COLS = 12;
+  // The board is a fixed number of rows tall and tracks the window aspect
+  // sideways, so tiles stay 40px everywhere and a wide screen just sees more
+  // street. COLS 12 is the reference layout every column constant derives from.
   const ROWS = 14;
   const TILE = 40;
-  const W = COLS * TILE;
+  const MIN_COLS = 10; // narrow enough for a phone, wide enough for five bays
+  const MAX_COLS = 26;
+  let COLS = 12;
+  let W = COLS * TILE;
   const H = ROWS * TILE;
+
+  function aspectCols() {
+    const vw = window.innerWidth || W;
+    const vh = window.innerHeight || H;
+    return Math.max(MIN_COLS, Math.min(MAX_COLS, Math.round(ROWS * (vw / vh))));
+  }
+
+  // Board centre, in column units — the frog and every door line up on it.
+  function centerCol() {
+    return (COLS - 1) / 2;
+  }
 
   const DESTINATIONS = [
     { id: 'casino', name: 'CASINO', href: 'index.html', blurb: 'Back to the tables.' },
@@ -1350,9 +1366,21 @@
   const RESUME_DRIVE = params.get('resumeDrive') === '1';
   const SCENARIO = ENTER_ID ? 'enter' : (params.get('from') === 'grill' ? 'grill' : 'midtown');
 
-  // Your car sits in one bay; other bays are pillars / strangers' cars
-  const CAR_COL = 5;
-  const PARK_SLOTS = [1, 3, 5, 7, 9];
+  // Your car sits in one bay; other bays are pillars / strangers' cars.
+  // Bays, doors and the parked car all hang off board centre so they stay
+  // reachable however wide the window makes the street.
+  let CAR_COL = 5;
+  let PARK_SLOTS = [1, 3, 5, 7, 9];
+
+  function relayoutColumns() {
+    const mid = Math.floor(centerCol());
+    PARK_SLOTS = [-4, -2, 0, 2, 4].map((d) => mid + d);
+    CAR_COL = mid;
+    GRILL.CAR_COL = mid;
+    ENTRY.DOOR_COL = mid;
+  }
+
+  relayoutColumns(); // at COLS 12 this reproduces [1,3,5,7,9] / col 5 exactly
 
   const JANKY_KINDS = ['beater', 'hooptie', 'van', 'lowrider', 'junker', 'rice'];
 
@@ -1364,7 +1392,7 @@
     high: Number(localStorage.getItem(SCENARIO === 'grill' ? 'grillLeaveHigh' : 'returnToCarHigh') || 0),
     level: 1,
     lives: 3,
-    frog: { col: 5.5, row: ENTER_ID ? ENTRY.START : (SCENARIO === 'grill' ? GRILL.START : ROW.START), onFerry: null },
+    frog: { col: centerCol(), row: ENTER_ID ? ENTRY.START : (SCENARIO === 'grill' ? GRILL.START : ROW.START), onFerry: null },
     lanes: [],
     time: 45,
     maxTime: 45,
@@ -1731,7 +1759,7 @@
   }
 
   function resetFrog() {
-    state.frog = { col: 5.5, row: startRow(), onFerry: null };
+    state.frog = { col: centerCol(), row: startRow(), onFerry: null };
     state.time = state.maxTime;
     state.hopCooldown = 0;
     state.hopQueued = null;
@@ -8962,6 +8990,18 @@
   function fitCanvas() {
     canvas.style.width = '100%';
     canvas.style.height = '100%';
+    // Widen or narrow the board so its shape matches the window; object-fit
+    // then has almost nothing left to stretch.
+    const next = aspectCols();
+    if (next !== COLS || canvas.width !== W || canvas.height !== H) {
+      COLS = next;
+      W = COLS * TILE;
+      canvas.width = W;
+      canvas.height = H;
+      relayoutColumns();
+      const f = state.frog;
+      if (f) f.col = Math.max(0, Math.min(COLS - 1, f.col));
+    }
   }
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
