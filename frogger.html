@@ -441,17 +441,6 @@
           </div>
         </div>
 
-        <div class="controls" aria-label="Game controls">
-          <div class="control-row">
-            <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
-            <button class="btn subtle" id="replayBtn" type="button" hidden>Replay</button>
-            <button class="btn subtle" id="shareReplayBtn" type="button" hidden>Share</button>
-            <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
-            <a class="btn subtle" href="frogger.html?enter=grill">Grill</a>
-            <a class="btn subtle" href="frogger.html?enter=casino">Tables</a>
-            <a class="btn subtle" href="gas.html">Gas</a>
-          </div>
-        </div>
       </div>
     </main>
   </div>
@@ -1190,6 +1179,12 @@
   const replayBtn = document.getElementById('replayBtn');
   const shareReplayBtn = document.getElementById('shareReplayBtn');
   const muteBtn = document.getElementById('muteBtn');
+
+  function syncPauseBtn(disabled, text) {
+    if (!pauseBtn) return;
+    if (disabled != null) pauseBtn.disabled = disabled;
+    if (text != null) pauseBtn.textContent = text;
+  }
   const levelVal = document.getElementById('levelVal');
   const livesVal = document.getElementById('livesVal');
   const livesStat = document.getElementById('livesStat');
@@ -1689,8 +1684,7 @@
     setPhaseUI();
     updateHUD();
     overlay.hidden = true;
-    pauseBtn.disabled = false;
-    pauseBtn.textContent = 'Pause';
+    syncPauseBtn(false, 'Pause');
     beep(440, 0.06);
     beep(554, 0.08);
   }
@@ -1704,8 +1698,7 @@
     state.mode = 'play';
     startCrossingLevel(1);
     overlay.hidden = true;
-    pauseBtn.disabled = false;
-    pauseBtn.textContent = 'Pause';
+    syncPauseBtn(false, 'Pause');
     beep(440, 0.08);
     beep(660, 0.1);
   }
@@ -1865,8 +1858,7 @@
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
     setPhaseUI();
     overlay.hidden = true;
-    pauseBtn.disabled = false;
-    pauseBtn.textContent = 'Pause';
+    syncPauseBtn(false, 'Pause');
     updateHUD();
     updateReplayButton();
     updateShareReplayButton();
@@ -2447,7 +2439,7 @@
         `${reason} Purse ${Wallet.format(Wallet.read())}. Best run ${Wallet.format(state.high)}.`,
         'Try Again'
       );
-      pauseBtn.disabled = true;
+      syncPauseBtn(true);
       return;
     }
 
@@ -2721,8 +2713,7 @@
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
 
     overlay.hidden = true;
-    pauseBtn.disabled = false;
-    pauseBtn.textContent = 'Pause';
+    syncPauseBtn(false, 'Pause');
     setPhaseUI();
     updateHUD();
     updateReplayButton();
@@ -8607,19 +8598,19 @@
     if (state.mode === 'play' || state.mode === 'drive') {
       state._resumeMode = state.mode;
       state.mode = 'pause';
-      pauseBtn.textContent = 'Resume';
+      syncPauseBtn(false, 'Resume');
       beep(320, 0.06);
     } else if (state.mode === 'pause') {
       state.mode = state._resumeMode || (state.phase === 'drive' ? 'drive' : 'play');
-      pauseBtn.textContent = 'Pause';
+      syncPauseBtn(false, 'Pause');
       beep(480, 0.06);
     }
   }
 
-  pauseBtn.addEventListener('click', togglePause);
-  replayBtn.addEventListener('click', startInstantReplay);
-  shareReplayBtn.addEventListener('click', () => shareDriveReplay(shareReplayBtn));
-  muteBtn.addEventListener('click', () => {
+  pauseBtn?.addEventListener('click', togglePause);
+  replayBtn?.addEventListener('click', startInstantReplay);
+  shareReplayBtn?.addEventListener('click', () => shareDriveReplay(shareReplayBtn));
+  muteBtn?.addEventListener('click', () => {
     state.muted = !state.muted;
     muteBtn.setAttribute('aria-pressed', String(state.muted));
     muteBtn.textContent = state.muted ? 'Muted' : 'Sound';
@@ -8650,8 +8641,7 @@
       state.mode = 'play';
       startCrossingLevel(state.level);
       overlay.hidden = true;
-      pauseBtn.disabled = false;
-      pauseBtn.textContent = 'Pause';
+      syncPauseBtn(false, 'Pause');
       return;
     }
     if (state.mode === 'gameover' && isEnter() && state.entryDest) {

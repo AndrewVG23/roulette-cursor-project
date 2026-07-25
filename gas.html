@@ -239,8 +239,8 @@
 
       <div class="topbar">
         <div class="stats" aria-label="Progress">
-          <div class="stat"><span class="label">Change</span><span class="value" id="coinStat">0/0</span></div>
-          <div class="stat red"><span class="label">Red</span><span class="value" id="redStat">0/8</span></div>
+          <div class="stat"><span class="label">Bills</span><span class="value" id="coinStat">0/0</span></div>
+          <div class="stat red"><span class="label">Red $2</span><span class="value" id="redStat">0/8</span></div>
           <div class="stat"><span class="label">Gas Cans</span><span class="value" id="canStat">0/6</span></div>
         </div>
       </div>
@@ -252,7 +252,7 @@
           <h2 id="overlayTitle">Quik-Fill 64</h2>
           <p id="overlayText">
             You coasted into the dead QUIK-FILL on fumes. The pumps are taped off and the
-            hut is boarded up — but there's loose change all over the lot, and word is six
+            hut is boarded up — but there's loose paper all over the lot, and word is six
             full gas cans are stashed around the station.
           </p>
           <p class="keys" id="overlayKeys">
@@ -271,8 +271,8 @@
         <p><b>W / S</b> or <b>↑ ↓</b> run forward and back. <b>← →</b> (or <b>A / D</b>) turn. The camera stays behind you.</p>
         <p><b>Space</b> jumps — land and jump again right away while running to chain a double, then a triple jump.</p>
         <p><b>Scroll</b> zooms the chase camera in and out.</p>
-        <p>Quarters are worth $1, red coins $2. Gas cans pay <b>$25</b> each. Find all 8 red coins and a bonus can appears over the pumps.</p>
-      <p>Everything found on the lot is <b>paper cash</b>. Every visit here compounds gas, gold, and every other price — a little harder each time.</p>
+        <p>Green bills are worth <b>$1</b>, red-tinted ones <b>$2</b>. One Krugerrand might be hiding up high. Gas cans pay <b>$25</b> each. Find all 8 red bills and a bonus can appears over the pumps.</p>
+      <p>Scrounged bills are <b>paper cash</b>; the Krugerrand lands in your <b>gold</b> stack. Every visit here compounds gas, gold, and every other price — a little harder each time.</p>
       </div>
 
       <div class="touch-ui">
@@ -359,6 +359,7 @@
       land() { beep(120, 0.08, 'sine', 0.035, -40); },
       coin() { beep(1180, 0.07, 'square', 0.038); setTimeout(() => beep(1568, 0.12, 'square', 0.038), 60); },
       red() { beep(880, 0.07, 'square', 0.04); setTimeout(() => beep(1174, 0.07, 'square', 0.04), 60); setTimeout(() => beep(1760, 0.14, 'square', 0.04), 120); },
+      gold() { beep(660, 0.08, 'triangle', 0.05); setTimeout(() => beep(988, 0.1, 'triangle', 0.05), 70); setTimeout(() => beep(1318, 0.16, 'triangle', 0.05), 140); },
       can() {
         [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.22, 'triangle', 0.06), i * 110));
       },
@@ -856,49 +857,143 @@
     scene.add(blobShadow);
 
     // ---------------------------------------------------------------- collectibles
-    const coinGroup = new THREE.Group();
-    scene.add(coinGroup);
-    const coins = [];
-    const coinGeo = new THREE.CylinderGeometry(0.32, 0.32, 0.07, 18);
-    const coinMat = new THREE.MeshStandardMaterial({ color: 0xe8c05a, roughness: 0.3, metalness: 0.75, emissive: 0x4a3608, emissiveIntensity: 0.5 });
-    const redMat = new THREE.MeshStandardMaterial({ color: 0xd23c3c, roughness: 0.3, metalness: 0.7, emissive: 0x520c0c, emissiveIntensity: 0.7 });
+    const pickupGroup = new THREE.Group();
+    scene.add(pickupGroup);
+    const pickups = [];
+    const KRUGER_OZ = 0.1;
 
-    function coin(x, y, z, red = false) {
-      const m = new THREE.Mesh(coinGeo, red ? redMat : coinMat);
-      m.rotation.x = Math.PI / 2;
-      m.position.set(x, y + 0.55, z);
-      m.castShadow = true;
-      coinGroup.add(m);
-      coins.push({ mesh: m, red, taken: false, baseY: y + 0.55 });
+    function billTexture(red = false) {
+      return canvasTexture(256, 112, (g, w, h) => {
+        const green = red ? '#3a9a58' : '#2d8a4e';
+        const dark = red ? '#1f6a38' : '#1a5c32';
+        const light = red ? '#6fd48a' : '#5ecf82';
+        g.fillStyle = green;
+        g.fillRect(0, 0, w, h);
+        g.strokeStyle = dark;
+        g.lineWidth = 5;
+        g.strokeRect(6, 6, w - 12, h - 12);
+        g.strokeStyle = light;
+        g.lineWidth = 2;
+        g.strokeRect(14, 14, w - 28, h - 28);
+        // corner curls
+        g.fillStyle = 'rgba(255,255,255,0.12)';
+        g.beginPath();
+        g.arc(w - 22, 22, 16, 0, Math.PI * 2);
+        g.fill();
+        // portrait medallion
+        g.fillStyle = light;
+        g.beginPath();
+        g.arc(w * 0.52, h * 0.5, 26, 0, Math.PI * 2);
+        g.fill();
+        g.strokeStyle = dark;
+        g.lineWidth = 3;
+        g.stroke();
+        // denomination
+        g.font = '700 54px "General Sans", serif';
+        g.fillStyle = dark;
+        g.textAlign = 'left';
+        g.textBaseline = 'middle';
+        g.fillText(red ? '$2' : '$1', 20, h * 0.52);
+        g.font = '700 22px "General Sans", sans-serif';
+        g.textAlign = 'right';
+        g.fillText(red ? 'TWO' : 'ONE', w - 18, h - 22);
+        if (red) {
+          g.fillStyle = 'rgba(200, 40, 40, 0.55)';
+          g.fillRect(w - 46, 12, 30, h - 24);
+          g.fillStyle = '#fff';
+          g.font = '700 16px "General Sans", sans-serif';
+          g.textAlign = 'center';
+          g.fillText('RED', w - 31, h * 0.5);
+        }
+        // fun scrollwork
+        g.strokeStyle = 'rgba(15,60,34,0.35)';
+        g.lineWidth = 2;
+        for (let i = 0; i < 5; i++) {
+          g.beginPath();
+          g.moveTo(70 + i * 18, 18);
+          g.quadraticCurveTo(90 + i * 16, h * 0.5, 72 + i * 18, h - 18);
+          g.stroke();
+        }
+      });
     }
+
+    const billMat = new THREE.MeshStandardMaterial({
+      map: billTexture(false),
+      roughness: 0.55,
+      metalness: 0.05,
+      side: THREE.DoubleSide,
+      emissive: 0x0a2818,
+      emissiveIntensity: 0.35
+    });
+    const redBillMat = new THREE.MeshStandardMaterial({
+      map: billTexture(true),
+      roughness: 0.55,
+      metalness: 0.05,
+      side: THREE.DoubleSide,
+      emissive: 0x281008,
+      emissiveIntensity: 0.45
+    });
+    const billGeo = new THREE.PlaneGeometry(0.78, 0.34);
+
+    const krugerTex = new THREE.TextureLoader().load('assets/krugerrand.png');
+    krugerTex.colorSpace = THREE.SRGBColorSpace;
+    krugerTex.anisotropy = 4;
+    const krugerGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.06, 24);
+    const krugerMat = new THREE.MeshStandardMaterial({
+      map: krugerTex,
+      roughness: 0.22,
+      metalness: 0.88,
+      emissive: 0x3a2808,
+      emissiveIntensity: 0.45
+    });
+
+    function spawnPickup(x, y, z, kind) {
+      let mesh;
+      if (kind === 'krugerrand') {
+        mesh = new THREE.Mesh(krugerGeo, krugerMat);
+        mesh.rotation.x = Math.PI / 2;
+      } else {
+        mesh = new THREE.Mesh(billGeo, kind === 'red' ? redBillMat : billMat);
+        mesh.rotation.x = -Math.PI * 0.42;
+        mesh.rotation.y = Math.random() * Math.PI * 2;
+      }
+      mesh.position.set(x, y + 0.55, z);
+      mesh.castShadow = true;
+      pickupGroup.add(mesh);
+      pickups.push({ mesh, kind, taken: false, baseY: y + 0.55, phase: Math.random() * Math.PI * 2 });
+    }
+
+    function bill(x, y, z, red = false) { spawnPickup(x, y, z, red ? 'red' : 'bill'); }
+    function krugerrand(x, y, z) { spawnPickup(x, y, z, 'krugerrand'); }
 
     // ground rings and trails
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
-      coin(Math.cos(a) * 4.4, 0, 16 + Math.sin(a) * 4.4);
+      bill(Math.cos(a) * 4.4, 0, 16 + Math.sin(a) * 4.4);
     }
-    for (const cx of [-12, -4]) for (const off of [-2.6, 0, 2.6]) coin(cx + off, 0.28, -5.6);
-    coin(-13, 6.1, -9.5); coin(-8, 6.1, -7); coin(-3, 6.1, -9.5);        // canopy roof
-    coin(4, 4.18, -21.5); coin(8, 4.18, -19); coin(11, 4.18, -21.5);     // store roof
-    coin(10.6, 1.86, 8.5); coin(9.2, 1.86, 7.3);                          // car roof
-    coin(19.5, 1.9, -18); coin(18, 3.6, -16.5); coin(16.5, 5.3, -18);     // sign spiral trail
-    coin(18, 7.0, -19.5); coin(19.5, 8.7, -18);
-    coin(-15.5, 1.1, 10); coin(-18.5, 2.0, 11.5); coin(-21.5, 2.9, 9.5);  // tire steps
-    coin(-24, 0, -2); coin(-24, 0, 3); coin(-24, 0, 8);                   // west fence line
-    coin(15, 1.25, -4); coin(24, 0, -12); coin(0, 0, 0);
+    for (const cx of [-12, -4]) for (const off of [-2.6, 0, 2.6]) bill(cx + off, 0.28, -5.6);
+    bill(-13, 6.1, -9.5); bill(-8, 6.1, -7); bill(-3, 6.1, -9.5);        // canopy roof
+    bill(4, 4.18, -21.5); bill(8, 4.18, -19); bill(11, 4.18, -21.5);     // store roof
+    bill(10.6, 1.86, 8.5); bill(9.2, 1.86, 7.3);                          // car roof
+    bill(19.5, 1.9, -18); bill(18, 3.6, -16.5); bill(16.5, 5.3, -18);     // sign spiral trail
+    bill(18, 7.0, -19.5);
+    krugerrand(19.5, 8.7, -18);                                           // lone Krugerrand on the sign
+    bill(-15.5, 1.1, 10); bill(-18.5, 2.0, 11.5); bill(-21.5, 2.9, 9.5);  // tire steps
+    bill(-24, 0, -2); bill(-24, 0, 3); bill(-24, 0, 8);                   // west fence line
+    bill(15, 1.25, -4); bill(24, 0, -12); bill(0, 0, 0);
 
-    // red coins (8)
-    coin(-8, 6.1, -10.8, true);            // canopy roof back edge
-    coin(2.2, 5.38, -18.2, true);          // on the AC unit
-    coin(-22.2, 7.0, -14.8, true);         // billboard catwalk end
-    coin(18, 10.4, -16.5, true);           // top spiral ledge
-    coin(-2.6, 1.5, -18.2, true);          // on the dumpster
-    coin(10, 1.86, 8, true);               // car roof
-    coin(-19.5, tallStackH, 6.5, true);    // tallest tire stack
-    coin(26.5, 0, 26.5, true);             // far corner of the lot
+    // red $2 bills (8)
+    bill(-8, 6.1, -10.8, true);            // canopy roof back edge
+    bill(2.2, 5.38, -18.2, true);          // on the AC unit
+    bill(-22.2, 7.0, -14.8, true);         // billboard catwalk end
+    bill(18, 10.4, -16.5, true);           // top spiral ledge
+    bill(-2.6, 1.5, -18.2, true);          // on the dumpster
+    bill(10, 1.86, 8, true);               // car roof
+    bill(-19.5, tallStackH, 6.5, true);    // tallest tire stack
+    bill(26.5, 0, 26.5, true);             // far corner of the lot
 
-    const totalCoins = coins.filter(c => !c.red).length;
-    const totalRed = coins.filter(c => c.red).length;
+    const totalCoins = pickups.filter(c => c.kind === 'bill').length;
+    const totalRed = pickups.filter(c => c.kind === 'red').length;
 
     // gas cans (stars)
     const cans = [];
@@ -926,7 +1021,7 @@
     gasCan(-22.2, 7.0, -9.4, 'BILLBOARD CATWALK');
     gasCan(-2.6, 0, -20.6, 'BEHIND THE DUMPSTER');
     gasCan(-19.5, tallStackH, 6.5 - 0.0, 'KING OF THE TIRES');
-    gasCan(-8, 2.6, -8, 'RED COIN BONUS', true);
+    gasCan(-8, 2.6, -8, 'RED BILL BONUS', true);
     // nudge: tire-stack can sits above its red coin
     cans[4].mesh.position.y = tallStackH + 1.5;
     cans[4].glow.position.y = tallStackH + 2.2;
@@ -956,7 +1051,7 @@
       ` <br><br>The sign just ticked over: regular is <b>${Wallet.formatGas(visitReport.gasPrice)}</b>/gal` +
       ` (prices +${visitReport.ratePct.toFixed(0)}% this visit, visit #${visitReport.visits}).` +
       ` Gold spot rides the pump — now <b>${Wallet.format(Math.round(visitReport.goldSpot))}</b>/oz.` +
-      ` Anything you scrounge here is paper cash.`;
+      ` Scrounge green bills for paper cash — keep an eye out for a Krugerrand.`;
 
     let toastTimer = 0;
     function showToast(html, ms = 2200) {
@@ -1190,13 +1285,22 @@
     // ---------------------------------------------------------------- pickups
     function collectPickups() {
       const px = player.pos.x, py = player.pos.y, pz = player.pos.z;
-      for (const c of coins) {
+      for (const c of pickups) {
         if (c.taken) continue;
         const m = c.mesh.position;
         if (Math.hypot(m.x - px, m.z - pz) < 0.95 && Math.abs(m.y - (py + 0.7)) < 1.25) {
           c.taken = true;
           c.mesh.visible = false;
-          if (c.red) {
+          if (c.kind === 'krugerrand') {
+            const snap = Wallet.snapshot();
+            Wallet.restore({
+              d: snap.d,
+              c: snap.c,
+              g: Math.round((snap.g + KRUGER_OZ) * 100) / 100
+            });
+            sfx.gold();
+            showToast(`KRUGERRAND<small>+${Wallet.formatGold(KRUGER_OZ)}</small>`, 2200);
+          } else if (c.kind === 'red') {
             state.red++;
             Wallet.addCash(2);
             sfx.red();
@@ -1209,7 +1313,7 @@
                 sfx.can();
               }
             } else {
-              showToast(`RED COIN ${state.red}/${totalRed}<small>+$2</small>`, 1200);
+              showToast(`RED $2 ${state.red}/${totalRed}<small>+$2 cash</small>`, 1200);
             }
           } else {
             state.coins++;
@@ -1243,7 +1347,7 @@
       sfx.win();
       overlayTitle.textContent = 'TANK FULL';
       overlayText.innerHTML =
-        `Six cans of gas and every quarter in the lot. The engine turns over on the first try.<br><br>` +
+        `Six cans of gas and every bill in the lot. The engine turns over on the first try.<br><br>` +
         `Cash: <b style="color:var(--color-primary)">${Wallet.format(Wallet.cash())}</b> (+$40 ignition bonus, paper in hand)`;
       overlayKeys.innerHTML = '';
       startBtn.textContent = 'Run it back';
@@ -1346,10 +1450,17 @@
       blobShadow.scale.set(s, s, 1);
 
       const t = performance.now() / 1000;
-      for (const c of coins) {
+      for (const c of pickups) {
         if (c.taken) continue;
-        c.mesh.rotation.z = t * 2.4;
-        c.mesh.position.y = c.baseY + Math.sin(t * 2 + c.baseY) * 0.06;
+        const bob = Math.sin(t * 2 + c.baseY) * 0.06;
+        c.mesh.position.y = c.baseY + bob;
+        if (c.kind === 'krugerrand') {
+          c.mesh.rotation.z = t * 2.4;
+        } else {
+          c.mesh.rotation.y += 0.012;
+          c.mesh.rotation.z = Math.sin(t * 1.8 + c.phase) * 0.22;
+          c.mesh.rotation.x = -Math.PI * 0.42 + Math.sin(t * 2.3 + c.phase) * 0.12;
+        }
       }
       for (const k of cans) {
         if (k.taken || !k.mesh.visible) continue;
