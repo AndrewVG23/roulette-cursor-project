@@ -2166,6 +2166,78 @@
       accent: 0
     }
   ];
+  const BILLBOARD_TEX_W = 960;
+  const BILLBOARD_TEX_H = 540;
+  const billboardTexCache = new Map();
+
+  function getBillboardTexture(ad) {
+    const lines = ad.lines || ['Sell your gold', 'for a great price.'];
+    const accent = ad.accent || 0;
+    const key = `${accent}|${lines.join('\n')}`;
+    let tex = billboardTexCache.get(key);
+    if (tex) return tex;
+    const c = document.createElement('canvas');
+    c.width = BILLBOARD_TEX_W;
+    c.height = BILLBOARD_TEX_H;
+    const g = c.getContext('2d');
+    g.fillStyle = '#101b16';
+    g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#0d1512';
+    g.fillRect(18, 18, c.width - 36, c.height - 36);
+    g.strokeStyle = 'rgba(208,162,58,0.28)';
+    g.lineWidth = 4;
+    g.strokeRect(28, 28, c.width - 56, c.height - 56);
+    const n = lines.length;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      const y = c.height * (0.2 + t * 0.6);
+      const head = i === accent;
+      g.fillStyle = head ? '#d0a23a' : '#bdb39b';
+      const size = head
+        ? (n > 2 ? 58 : 72)
+        : (n > 2 ? 40 : 48);
+      g.font = head
+        ? `700 ${size}px "Zodiak", Georgia, serif`
+        : `600 ${size}px "General Sans", system-ui, sans-serif`;
+      g.fillText(lines[i], c.width * 0.5, y, c.width - 80);
+    }
+    // Peeling corner baked into the face
+    g.fillStyle = '#1c2a22';
+    g.beginPath();
+    g.moveTo(c.width - 18, c.height - 18);
+    g.lineTo(c.width - 18 - 70, c.height - 18);
+    g.lineTo(c.width - 18, c.height - 18 - 70);
+    g.closePath();
+    g.fill();
+    billboardTexCache.set(key, c);
+    return c;
+  }
+
+  /** Approximate perspective draw of a texture onto a projected quad (tl,tr,br,bl). */
+  function drawTexturedQuad(tex, tl, tr, br, bl, slices = 18) {
+    const iw = tex.width;
+    const ih = tex.height;
+    for (let i = 0; i < slices; i++) {
+      const u0 = i / slices;
+      const u1 = (i + 1) / slices;
+      const x0 = tl.x + (tr.x - tl.x) * u0;
+      const x1 = tl.x + (tr.x - tl.x) * u1;
+      const topY0 = tl.y + (tr.y - tl.y) * u0;
+      const topY1 = tl.y + (tr.y - tl.y) * u1;
+      const botY0 = bl.y + (br.y - bl.y) * u0;
+      const botY1 = bl.y + (br.y - bl.y) * u1;
+      const yTop = (topY0 + topY1) * 0.5;
+      const yBot = (botY0 + botY1) * 0.5;
+      const dw = x1 - x0;
+      const dh = yBot - yTop;
+      if (Math.abs(dw) < 0.4 || Math.abs(dh) < 0.4) continue;
+      const sx = Math.floor(u0 * iw);
+      const sw = Math.max(1, Math.ceil((u1 - u0) * iw) + 1);
+      ctx.drawImage(tex, sx, 0, sw, ih, x0, yTop, dw, dh);
+    }
+  }
 
   function beginDrive() {
     const route = compileNightDriveRoute(NIGHT_DRIVE_MAP);
@@ -2379,11 +2451,11 @@
         if (zi % 3 === 0) d.props.push({ z: routeZ + 28, side: Math.sin(routeZ) > 0 ? -1 : 1, kind: 'dumpster' });
         if (zi % 4 === 0) d.props.push({ z: routeZ + 40, side: Math.cos(routeZ) > 0 ? 1 : -1, kind: 'hydrant' });
         if (zi % 5 === 0) d.props.push({ z: routeZ + 16, side: -1, kind: 'bus_shelter' });
-        // Occasional debt-economy billboards — sparse, inland only
-        if (zi % 17 === 7) {
+        // Occasional debt-economy billboards — rarer, inland only
+        if (zi % 37 === 19) {
           const bbSide = Math.sin(routeZ * 0.07) > 0 ? 1 : -1;
           if (!landmarkClearance(d, routeZ + 24, bbSide, 'building')) {
-            const ad = BILLBOARD_ADS[((zi / 17) | 0) % BILLBOARD_ADS.length];
+            const ad = BILLBOARD_ADS[((zi / 37) | 0) % BILLBOARD_ADS.length];
             d.props.push({
               z: routeZ + 24,
               side: bbSide,
@@ -8168,63 +8240,70 @@
       return;
     }
     if (pr.kind === 'billboard') {
-      // Elevated face on the sidewalk shoulder — in front of facades, readable from the road
-      const bx = pr.side * (DW.WALK + 0.2);
-      const base = projectWorld(bx, 0, pr.z, d);
-      if (base.relZ < 90 || base.relZ > 1300) return;
-      const nearFade = facadeProximityFade(base, d, { minZ: 90, fadeZ: 260 });
+      // Large world-fixed face in the Y–Z plane (faces the road). Copy is baked
+      // into a texture so lettering stays painted on the board as you drive past.
+      const bx = pr.side * (DW.WALK + 0.35);
+      const z0 = pr.z;
+      const halfW = 26;       // world half-width along the road
+      const yBot = 34;
+      const yTop = 98;
+      const base = projectWorld(bx, 0, z0, d);
+      if (base.relZ < 100 || base.relZ > 1600) return;
+      const nearFade = facadeProximityFade(base, d, { minZ: 100, fadeZ: 280 });
       if (nearFade <= 0) return;
-      const rail = projectWorld(bx, 42, pr.z, d);
-      const top = projectWorld(bx, 78, pr.z, d);
+
+      // Order along the road so the near edge is always "left" in texture space
+      // when facing the board from the asphalt.
+      const zA = z0 - halfW;
+      const zB = z0 + halfW;
+      const bl = projectWorld(bx, yBot, zA, d);
+      const br = projectWorld(bx, yBot, zB, d);
+      const tl = projectWorld(bx, yTop, zA, d);
+      const tr = projectWorld(bx, yTop, zB, d);
+      // From the road, +side boards read mirrored — flip U by swapping ends.
+      let TL = tl, TR = tr, BR = br, BL = bl;
+      if (pr.side > 0) {
+        TL = tr; TR = tl; BR = bl; BL = br;
+      }
+      const faceSpan = Math.hypot(TR.x - TL.x, TR.y - TL.y);
+      if (faceSpan < 6) return; // edge-on / too small
+
+      const postL = projectWorld(bx, 0, z0 - halfW * 0.72, d);
+      const postR = projectWorld(bx, 0, z0 + halfW * 0.72, d);
+      const railL = projectWorld(bx, yBot, z0 - halfW * 0.72, d);
+      const railR = projectWorld(bx, yBot, z0 + halfW * 0.72, d);
       const s = base.scale;
-      const faceW = 88 * s;
-      const faceH = Math.max(10, rail.y - top.y);
-      const fx = top.x - faceW * 0.5;
-      const fy = top.y;
+      const tex = getBillboardTexture(pr);
+
       ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1, (1300 - base.relZ) / 280)) * nearFade;
+      ctx.globalAlpha = Math.max(0, Math.min(1, (1600 - base.relZ) / 320)) * nearFade;
       // Twin posts
       ctx.strokeStyle = '#3a3a40';
-      ctx.lineWidth = Math.max(1.5, 3.5 * s);
+      ctx.lineWidth = Math.max(2, 4.5 * s);
       ctx.beginPath();
-      ctx.moveTo(base.x - 10 * s, base.y);
-      ctx.lineTo(rail.x - 10 * s, rail.y);
-      ctx.moveTo(base.x + 10 * s, base.y);
-      ctx.lineTo(rail.x + 10 * s, rail.y);
+      ctx.moveTo(postL.x, postL.y);
+      ctx.lineTo(railL.x, railL.y);
+      ctx.moveTo(postR.x, postR.y);
+      ctx.lineTo(railR.x, railR.y);
       ctx.stroke();
-      // Frame + face
+      // Dark frame (slightly larger than the face)
+      const grow = 1.04;
+      const midX = (TL.x + TR.x + BR.x + BL.x) * 0.25;
+      const midY = (TL.y + TR.y + BR.y + BL.y) * 0.25;
+      const frame = (p) => ({
+        x: midX + (p.x - midX) * grow,
+        y: midY + (p.y - midY) * grow
+      });
+      const fTL = frame(TL), fTR = frame(TR), fBR = frame(BR), fBL = frame(BL);
       ctx.fillStyle = '#1a1a1e';
-      ctx.fillRect(fx - 3 * s, fy - 3 * s, faceW + 6 * s, faceH + 6 * s);
-      ctx.fillStyle = '#101b16';
-      ctx.fillRect(fx, fy, faceW, faceH);
-      ctx.fillStyle = '#0d1512';
-      ctx.fillRect(fx + 3 * s, fy + 3 * s, faceW - 6 * s, faceH - 6 * s);
-      // Copy — stacked lines, first line gold, rest muted
-      const lines = pr.lines || ['Sell your gold', 'for a great price.'];
-      const n = lines.length;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      for (let i = 0; i < n; i++) {
-        const t = (i + 0.5) / n;
-        const y = fy + faceH * (0.18 + t * 0.64);
-        const head = i === (pr.accent || 0);
-        ctx.fillStyle = head ? '#d0a23a' : '#bdb39b';
-        const size = head
-          ? Math.max(7, (n > 2 ? 10 : 13) * s)
-          : Math.max(6, (n > 2 ? 8 : 11) * s);
-        ctx.font = head
-          ? `700 ${size}px "Zodiak", Georgia, serif`
-          : `600 ${size}px "General Sans", system-ui, sans-serif`;
-        ctx.fillText(lines[i], top.x, y);
-      }
-      // Peeling corner
-      ctx.fillStyle = '#1c2a22';
       ctx.beginPath();
-      ctx.moveTo(fx + faceW, fy + faceH);
-      ctx.lineTo(fx + faceW - 12 * s, fy + faceH);
-      ctx.lineTo(fx + faceW, fy + faceH - 12 * s);
+      ctx.moveTo(fTL.x, fTL.y);
+      ctx.lineTo(fTR.x, fTR.y);
+      ctx.lineTo(fBR.x, fBR.y);
+      ctx.lineTo(fBL.x, fBL.y);
       ctx.closePath();
       ctx.fill();
+      drawTexturedQuad(tex, TL, TR, BR, BL, 22);
       ctx.restore();
       return;
     }

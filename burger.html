@@ -2773,17 +2773,23 @@
 
   function drawTicket(ticket) {
     const stack = ticket.recipe.stack;
-    const rowH = 40;
-    const headerH = 66;
-    const tw = Math.min(400, W - 48);
-    const th = headerH + stack.length * rowH + 14;
-    const x = (W - tw) / 2 - 20;
-    const y = 10;
-    const sway = Math.sin(ticket.age * 1.6) * 1.5;
+    const hudR = hudReserveRight();
+    const usable = Math.max(280, W - hudR - 16);
+    // Spread across the kitchen width so phone layouts aren't a tall skinny slip
+    const tw = Math.min(usable - 8, Math.max(320, usable - 12));
+    const n = Math.max(1, stack.length);
+    const padX = 14;
+    const gap = 8;
+    const cellW = (tw - padX * 2 - 8 - gap * (n - 1)) / n;
+    const cellH = 72;
+    const headerH = 52;
+    const th = headerH + cellH + 16;
+    const x = 8;
+    const y = 8;
+    const sway = Math.sin(ticket.age * 1.6) * 1.2;
     const burger = state.burgers.find(bb => bb.ticketId === ticket.id);
     const have = burger ? burger.stack : [];
     const price = Wallet.format(burgerPrice());
-    const cx = x + tw / 2;
 
     const usedHave = {};
     const rows = stack.map((ingId) => {
@@ -2792,14 +2798,14 @@
       const checked = used < haveCount;
       let gross = false;
       if (checked) {
-        let n = 0;
+        let nHave = 0;
         for (const l of have) {
           if (layerId(l) !== ingId) continue;
-          if (n === used) {
+          if (nHave === used) {
             gross = !!(typeof l === 'object' && l.gross);
             break;
           }
-          n++;
+          nHave++;
         }
         usedHave[ingId] = used + 1;
       }
@@ -2809,76 +2815,101 @@
     ctx.save();
     ctx.translate(0, sway);
 
+    const menuTop = y + 10;
+    const pinX = x + tw * 0.5;
     ctx.fillStyle = '#c8102e';
     ctx.beginPath();
-    ctx.arc(cx, y + 6, 5, 0, Math.PI * 2);
+    ctx.arc(pinX, y + 4, 5, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = '#fff8f0';
-    roundRect(x, y + 12, tw, th, 10);
+    roundRect(x, menuTop, tw, th, 10);
     ctx.fill();
     ctx.strokeStyle = '#c8102e';
     ctx.lineWidth = 2.5;
-    roundRect(x, y + 12, tw, th, 10);
+    roundRect(x, menuTop, tw, th, 10);
     ctx.stroke();
     ctx.fillStyle = ticket.color;
-    ctx.fillRect(x, y + 12, 8, th);
+    ctx.fillRect(x, menuTop, 7, th);
 
-    // Menu header — price is the hero, name sits under it
-    const menuTop = y + 12;
     ctx.fillStyle = '#c8102e';
-    ctx.fillRect(x + 8, menuTop, tw - 8, 4);
+    ctx.fillRect(x + 7, menuTop, tw - 7, 4);
 
-    ctx.textAlign = 'center';
+    // Header — price left, name right (reads wide, not stacked)
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#c8102e';
-    ctx.font = '800 34px Fredoka, Nunito, sans-serif';
-    ctx.fillText(price, cx, menuTop + 38);
+    ctx.font = '800 28px Fredoka, Nunito, sans-serif';
+    ctx.fillText(price, x + 18, menuTop + 34);
 
+    ctx.textAlign = 'right';
     ctx.fillStyle = '#2a1410';
-    ctx.font = '700 17px Fredoka, Nunito, sans-serif';
-    ctx.fillText(ticket.recipe.name, cx, menuTop + 58);
+    ctx.font = '700 16px Fredoka, Nunito, sans-serif';
+    ctx.fillText(ticket.recipe.name, x + tw - 14, menuTop + 32);
     ctx.textAlign = 'left';
 
+    // Ingredients in a horizontal strip
+    const stripY = menuTop + headerH;
     rows.forEach((row, i) => {
-      const ry = menuTop + headerH + i * rowH;
+      const cellX = x + padX + 4 + i * (cellW + gap);
       const ing = ING_BY_ID[row.ingId];
+      const nextUp = !row.checked && rows.findIndex((r) => !r.checked) === i;
 
+      ctx.fillStyle = row.gross
+        ? 'rgba(100,140,40,0.16)'
+        : row.checked
+          ? 'rgba(47,143,78,0.12)'
+          : nextUp
+            ? 'rgba(200,16,46,0.1)'
+            : 'rgba(200,16,46,0.05)';
+      roundRect(cellX, stripY, cellW, cellH, 10);
+      ctx.fill();
+      ctx.strokeStyle = row.gross ? '#6a8a30' : row.checked ? '#2f8f4e' : nextUp ? '#c8102e' : '#d8b8a8';
+      ctx.lineWidth = nextUp ? 2.5 : 1.75;
+      roundRect(cellX, stripY, cellW, cellH, 10);
+      ctx.stroke();
+
+      // Checkbox
+      const box = 16;
+      const bx = cellX + 8;
+      const by = stripY + 8;
       ctx.strokeStyle = row.gross ? '#6a8a30' : row.checked ? '#2f8f4e' : '#c8a898';
-      ctx.lineWidth = 2.5;
-      roundRect(x + 18, ry + 6, 22, 22, 7);
+      ctx.lineWidth = 2;
+      roundRect(bx, by, box, box, 5);
       ctx.stroke();
       if (row.checked) {
         ctx.fillStyle = row.gross ? '#6a8a30' : '#2f8f4e';
-        roundRect(x + 21, ry + 9, 16, 16, 5);
+        roundRect(bx + 2, by + 2, box - 4, box - 4, 4);
         ctx.fill();
         ctx.strokeStyle = '#fff8f0';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(x + 24, ry + 17);
-        ctx.lineTo(x + 28, ry + 21);
-        ctx.lineTo(x + 35, ry + 12);
+        ctx.moveTo(bx + 4, by + 8);
+        ctx.lineTo(bx + 7, by + 11);
+        ctx.lineTo(bx + 12, by + 4);
         ctx.stroke();
       }
 
-      const iconCx = x + 70;
-      const iconCy = ry + 17;
-      ctx.fillStyle = row.gross ? 'rgba(100,140,40,0.15)' : 'rgba(200,16,46,0.06)';
-      roundRect(iconCx - 26, iconCy - 13, 52, 26, 8);
-      ctx.fill();
+      const iconCx = cellX + cellW / 2;
+      const iconCy = stripY + 34;
       ctx.globalAlpha = row.checked && !row.gross ? 0.4 : 1;
-      drawIngredientLayer(row.ingId, iconCx, iconCy, 0.82, { gross: row.gross });
+      drawIngredientLayer(row.ingId, iconCx, iconCy, Math.min(0.9, cellW / 70), { gross: row.gross });
       ctx.globalAlpha = 1;
 
+      ctx.textAlign = 'center';
       ctx.fillStyle = row.gross ? '#4a6020' : row.checked ? '#6a8a6a' : '#2a1410';
-      ctx.font = '800 15px Fredoka, Nunito, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText(ing.name, x + 106, ry + 14);
-      ctx.fillStyle = row.gross ? '#6a8030' : '#c8102e';
-      ctx.font = '800 12px Nunito, sans-serif';
-      ctx.fillText(
-        row.gross ? 'EWW — TOSS IT' : 'NEXT',
-        x + 106, ry + 30
-      );
+      ctx.font = '800 12px Fredoka, Nunito, sans-serif';
+      const label = cellW < 72 ? ing.name.slice(0, 4) : ing.name;
+      ctx.fillText(label, iconCx, stripY + cellH - 10);
+
+      if (row.gross) {
+        ctx.fillStyle = '#6a8030';
+        ctx.font = '800 9px Nunito, sans-serif';
+        ctx.fillText('EWW', iconCx, stripY + 18);
+      } else if (nextUp) {
+        ctx.fillStyle = '#c8102e';
+        ctx.font = '800 9px Nunito, sans-serif';
+        ctx.fillText('NEXT', iconCx, stripY + 18);
+      }
     });
 
     ctx.restore();
