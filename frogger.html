@@ -1895,6 +1895,7 @@
       maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
       navTarget: null,
+      skipExitId: null,
       chaser: null,
       chaserSpawnT: 4,
       replayClock: 0
@@ -2100,6 +2101,7 @@
       maxFuel: d.maxFuel,
       approachingExit: d.approachingExit ? { ...d.approachingExit } : null,
       navTarget: d.navTarget || null,
+      skipExitId: d.skipExitId || null,
       atSignal: d.atSignal ? { ...d.atSignal } : null,
       signalFlash: d.signalFlash,
       turnFlash: d.turnFlash,
@@ -2562,12 +2564,48 @@
     window.location.href = dest.href;
   }
 
+  function saveDriveCheckpoint(d, resumeExitId) {
+    if (!d) return;
+    d.navTarget = null;
+    d.approachingExit = null;
+    d.skipExitId = resumeExitId || null;
+    try {
+      sessionStorage.setItem('drive-checkpoint', JSON.stringify({
+        drive: replaySnapDrive(d),
+        lives: state.lives,
+        level: state.level,
+        score: state.score,
+        resumeExitId: resumeExitId || null
+      }));
+    } catch (_) { /* ignore quota errors */ }
+  }
+
+  // After leaving a roadside stop, spawn past its exit window so resume doesn't re-enter.
+  function clearResumeExitTrap(d, resumeExitId) {
+    if (!d || !resumeExitId || !d.route) return;
+    const pathLen = d.route.length;
+    const def = (d.route.exits || []).find(e => e.id === resumeExitId);
+    const live = (d.exits || []).find(e => e.id === resumeExitId);
+    if (live) live.taken = false;
+    d.navTarget = null;
+    d.approachingExit = null;
+    d.skipExitId = resumeExitId;
+    d.playerX = 0;
+    d.velX = 0;
+    d.steer = 0;
+    if (!def) return;
+    const signed = routeSignedDist(d.z, def.z, pathLen);
+    if (signed > -100 && signed < 140) {
+      const past = wrapRouteZ(def.z + 110, pathLen);
+      d.z += routeAheadDist(wrapRouteZ(d.z, pathLen), past, pathLen);
+    }
+  }
+
   function takeHospitalExit(exit) {
     if (!exit || exit.taken || state.mode !== 'drive' || !state.drive) return;
     exit.taken = true;
     const d = state.drive;
     d.speed = Math.max(10, d.speed * 0.55);
-    d.approachingExit = exit;
     try {
       sessionStorage.setItem('hospital-admit', JSON.stringify({
         from: 'drive',
@@ -2575,12 +2613,7 @@
         maxHp: d.maxHp,
         who: 'The highway'
       }));
-      sessionStorage.setItem('drive-checkpoint', JSON.stringify({
-        drive: replaySnapDrive(d),
-        lives: state.lives,
-        level: state.level,
-        score: state.score
-      }));
+      saveDriveCheckpoint(d, exit.id);
     } catch (_) { /* ignore quota errors */ }
     beep(392, 0.08);
     beep(523, 0.1);
@@ -2592,15 +2625,7 @@
     exit.taken = true;
     const d = state.drive;
     d.speed = Math.max(10, d.speed * 0.55);
-    d.approachingExit = exit;
-    try {
-      sessionStorage.setItem('drive-checkpoint', JSON.stringify({
-        drive: replaySnapDrive(d),
-        lives: state.lives,
-        level: state.level,
-        score: state.score
-      }));
-    } catch (_) { /* ignore quota errors */ }
+    saveDriveCheckpoint(d, exit.id);
     beep(440, 0.08);
     beep(554, 0.1);
     window.location.href = 'gas.html';
@@ -2611,15 +2636,7 @@
     exit.taken = true;
     const d = state.drive;
     d.speed = Math.max(10, d.speed * 0.55);
-    d.approachingExit = exit;
-    try {
-      sessionStorage.setItem('drive-checkpoint', JSON.stringify({
-        drive: replaySnapDrive(d),
-        lives: state.lives,
-        level: state.level,
-        score: state.score
-      }));
-    } catch (_) { /* ignore quota errors */ }
+    saveDriveCheckpoint(d, exit.id);
     beep(523, 0.07);
     beep(784, 0.12);
     window.location.href = 'coins.html';
@@ -2630,15 +2647,7 @@
     exit.taken = true;
     const d = state.drive;
     d.speed = Math.max(10, d.speed * 0.55);
-    d.approachingExit = exit;
-    try {
-      sessionStorage.setItem('drive-checkpoint', JSON.stringify({
-        drive: replaySnapDrive(d),
-        lives: state.lives,
-        level: state.level,
-        score: state.score
-      }));
-    } catch (_) { /* ignore quota errors */ }
+    saveDriveCheckpoint(d, exit.id);
     beep(392, 0.07);
     beep(523, 0.1);
     window.location.href = 'bank.html';
@@ -2797,6 +2806,7 @@
       maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
       navTarget: null,
+      skipExitId: null,
       chaser: null,
       chaserSpawnT: 4,
       replayClock: 0,
@@ -2806,6 +2816,11 @@
     replayApplyDrive(state.drive, data.drive);
     normalizeDriveFuel(state.drive);
     seedFullRouteEnvironment(state.drive, route);
+    const leftExit = data.resumeExitId
+      || data.drive?.skipExitId
+      || data.drive?.approachingExit?.id
+      || null;
+    clearResumeExitTrap(state.drive, leftExit);
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
 
     overlay.hidden = true;
@@ -4172,7 +4187,14 @@
     // Navigate to selected destination — arrive in its exit window to finish the drive
     d.approachingExit = null;
     const routeZ = wrapRouteZ(d.z, pathLen);
-    if (d.navTarget) {
+    // Clear skip once we're well past the stop we just resumed from
+    if (d.skipExitId) {
+      const skipDef = (d.route.exits || []).find(e => e.id === d.skipExitId);
+      if (!skipDef || routeSignedDist(d.z, skipDef.z, pathLen) < -80) {
+        d.skipExitId = null;
+      }
+    }
+    if (d.navTarget && d.navTarget !== d.skipExitId) {
       const navEx = getNavExit(d, d.navTarget);
       if (navEx && !navEx.taken) {
         const signed = routeSignedDist(d.z, navEx.z, pathLen);
@@ -4185,7 +4207,7 @@
     }
     // Opportunistic ramp take for non-nav exits
     for (const ex of d.exits) {
-      if (ex.taken || (d.navTarget && ex.id === d.navTarget)) continue;
+      if (ex.taken || ex.id === d.skipExitId || (d.navTarget && ex.id === d.navTarget)) continue;
       if (routeZ >= ex.startZ && routeZ <= ex.endZ) {
         if (!d.approachingExit) d.approachingExit = ex;
         const onRamp = ex.side > 0
