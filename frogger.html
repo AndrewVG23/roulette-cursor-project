@@ -3250,13 +3250,15 @@
 
   function resumeSavedDrive() {
     let data;
+    let fromResumeKey = false;
     try {
       let raw = sessionStorage.getItem('drive-resume');
       if (raw) {
+        fromResumeKey = true;
         sessionStorage.removeItem('drive-resume');
       } else {
         raw = sessionStorage.getItem('drive-checkpoint');
-        if (raw) sessionStorage.removeItem('drive-checkpoint');
+        // Keep drive-checkpoint so refresh / Leave still resumes the road.
       }
       if (!raw) return false;
       data = JSON.parse(raw);
@@ -3360,6 +3362,12 @@
       || null;
     clearResumeExitTrap(state.drive, leftExit);
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
+
+    // Persist the post-resume position so a refresh doesn't dump into the sidewalk game.
+    saveDriveCheckpoint(state.drive, leftExit);
+    if (fromResumeKey) {
+      try { sessionStorage.removeItem('drive-resume'); } catch (_) { /* ignore */ }
+    }
 
     overlay.hidden = true;
     syncPauseBtn(false, 'Pause');
@@ -9600,8 +9608,12 @@
       if (state.phase === 'drive' && state.mode === 'drive') flashNowPlaying(title);
     });
   }
-  if (RESUME_DRIVE && resumeSavedDrive()) {
-    // resumed night drive after gas, hospital, etc.
+  if (RESUME_DRIVE) {
+    if (!resumeSavedDrive()) {
+      // No checkpoint (cold link / cleared storage) → start the night drive,
+      // not the sidewalk "Return to Your Car" crossing.
+      beginDrive();
+    }
   } else if (RESUME_CROSS && resumeSavedCross()) {
     // back from the ER after getting squished crossing the street
   } else if (ENTER_ID && ESTABLISHMENTS[ENTER_ID]) {
