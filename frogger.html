@@ -1202,8 +1202,7 @@
   const hintText = document.getElementById('hintText');
   const dpad = document.getElementById('dpad');
 
-  // Drive fines and bounties — scale with phone debt (6% deeper each gas visit,
-  // plus any new charges). Once you're out of debt, costs ride inflation index.
+  // Drive fines and bounties — most scale with debt/inflation; red light stays flat.
   const SIGNAL_FINE = 100;
   const COP_HIT_FINE = 50;
   const CHASER_BUMP_FINE = 10;
@@ -1214,10 +1213,6 @@
   const COP_BOUNTY_COP_PILEUP = 500;
   function driveCost(base) { return Wallet.debtScaled(base); }
   function copBounty(base) { return driveCost(base); }
-  function refreshDriveHint() {
-    if (state.phase !== 'drive') return;
-    hintText.textContent = `Stop at red · hold gas to blow the light (−${Wallet.format(driveCost(SIGNAL_FINE))}) · tap map icons to go · R replay`;
-  }
 
   const helpBtn = document.getElementById('helpBtn');
   const helpPanel = document.getElementById('helpPanel');
@@ -1525,7 +1520,7 @@
       brandSub.textContent = 'Gold Coast · stop at red · steer to turn';
       if (meterStat) meterStat.hidden = true;
       if (livesStat) livesStat.hidden = true;
-      refreshDriveHint();
+      hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · tap map icons to go · R replay';
       dpad.classList.add('drive-mode');
       panelInner?.classList.add('drive-phase');
     } else if (isEnter()) {
@@ -2017,7 +2012,6 @@
     Wallet.updateDisplay();
     if (state.phase === 'drive' && state.drive) {
       syncMapNav(state.drive);
-      refreshDriveHint();
     } else {
       livesVal.textContent = String(state.lives);
       levelVal.textContent = String(state.level);
@@ -3998,16 +3992,15 @@
         if (phase === 'red') d.mustStop = true;
         else if (phase === 'yellow' && dist < 38) d.mustStop = true;
       }
-      // Ran the red on gas — inflated fine once per signal
+      // Ran the red on gas — flat $100 fine once per signal
       if (phase === 'red' && dist <= 0 && dist > -8 && d.speed > 6 && gas && d.signalFineCd <= 0) {
-        const signalFine = driveCost(SIGNAL_FINE);
-        Wallet.take(signalFine);
+        Wallet.take(SIGNAL_FINE);
         d.signalFineCd = 3;
         d.signalFlash = 0.75;
         d.flashingSignalZ = sig.z;
         d.camShake = Math.max(d.camShake, 10);
         state.flash = Math.max(state.flash, 0.4);
-        spawnFloat(`−${Wallet.format(signalFine)}  RED LIGHT`, W / 2, H * 0.38, '#ff6b6b');
+        spawnFloat('−$100  RED LIGHT', W / 2, H * 0.38, '#ff6b6b');
         beep(120, 0.14, 'sawtooth', 0.07);
         beep(80, 0.2, 'square', 0.05);
         updateHUD();
@@ -8171,15 +8164,6 @@
       ctx.textAlign = 'center';
       ctx.fillText('FUEL RESERVE', fcx, fcy + fr + 12);
     }
-
-    // Fine schedule — rises with phone debt
-    const fineMult = Wallet.debtCostMult();
-    const redFine = driveCost(SIGNAL_FINE);
-    ctx.fillStyle = 'rgba(232,220,192,0.88)';
-    ctx.font = '600 10px "General Sans", sans-serif';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(`Fines ${fineMult.toFixed(2)}× · Red ${Wallet.format(redFine)}`, W - 10, H - 10);
   }
 
   function drawChaserCar(d) {
@@ -8476,7 +8460,7 @@
       ctx.fillText(d.awaitTurn === 'left' ? 'GREEN — STEER LEFT ←' : 'GREEN — STEER RIGHT →', 10, 22);
     } else if (d.mustStop && d.atSignal && state.keys.up) {
       ctx.fillStyle = '#ff8a7a';
-      ctx.fillText(`RED — GAS TO RUN IT (−${Wallet.format(driveCost(SIGNAL_FINE))})`, 10, 22);
+      ctx.fillText('RED — GAS TO RUN IT (−$100)', 10, 22);
     } else if (d.mustStop && d.atSignal) {
       ctx.fillStyle = d.atSignal.phase === 'red' ? '#e74c3c' : '#f1c40f';
       ctx.fillText(`${d.atSignal.phase.toUpperCase()} LIGHT — STOP`, 10, 22);
