@@ -2,11 +2,12 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Return to Your Car</title>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="wallet.css">
   <script src="wallet.js"></script>
+  <script src="orientation.js"></script>
   <style>
     :root, [data-theme="light"] {
       --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
@@ -1580,7 +1581,7 @@
   function setPhaseUI() {
     if (state.phase === 'drive') {
       brandTitle.textContent = 'Night Drive';
-      brandSub.textContent = 'Gold Coast · stop at red · steer to turn';
+      brandSub.textContent = 'Copper on copper pays out';
       if (meterStat) meterStat.hidden = true;
       if (livesStat) livesStat.hidden = true;
       hintText.textContent = 'Tap a destination to route there (~15s) · stop at red when cruising · R replay';
@@ -1947,8 +1948,9 @@
     seedFullRouteEnvironment(state.drive, route);
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
     setPhaseUI();
-    overlay.hidden = true;
-    syncPauseBtn(false, 'Pause');
+    state.mode = 'title';
+    showOverlay('Copper on copper pays out', 'Gold Coast · stop at red · steer to turn', 'Drive');
+    syncPauseBtn(true);
     updateHUD();
     updateReplayButton();
     updateShareReplayButton();
@@ -8927,6 +8929,13 @@
 
   startBtn.addEventListener('click', () => {
     ensureAudio();
+    if (state.phase === 'drive' && state.mode === 'title') {
+      state.mode = 'drive';
+      overlay.hidden = true;
+      syncPauseBtn(false, 'Pause');
+      beep(523, 0.08);
+      return;
+    }
     if (state.mode === 'win') {
       beginDrive();
       return;

@@ -190,22 +190,30 @@
     persist();
     return state.fuel;
   }
+  function addFuel(gallons) {
+    return setFuel(state.fuel + (Number(gallons) || 0));
+  }
   function gasPrice() { return GAS_BASE * state.index; }
-  function gasFillGallons() { return GAS_TANK_GAL; }
+  function gasFillGallons() {
+    return Math.max(0, Math.round((GAS_TANK_GAL - state.fuel) * 100) / 100);
+  }
   function gasFillCost(method) {
-    const pump = gasPrice() * GAS_TANK_GAL;
+    const gal = gasFillGallons();
+    const pump = gasPrice() * gal;
     if (method === 'cash') return Math.ceil(pump * (1 - GAS_CASH_DISCOUNT));
     return Math.ceil(pump);
   }
   function buyGasFill(method) {
+    const gallons = gasFillGallons();
+    if (gallons <= 0.05) return { ok: false, cost: 0, gallons: 0, reason: 'Tank full' };
     const cost = gasFillCost(method);
     if (method === 'cash') {
-      if (!spendCash(cost)) return { ok: false, cost, reason: 'Not enough cash' };
+      if (!spendCash(cost)) return { ok: false, cost, gallons, reason: 'Not enough cash' };
     } else {
       takeDigital(cost);
     }
     setFuel(GAS_TANK_GAL);
-    return { ok: true, cost, gallons: GAS_TANK_GAL };
+    return { ok: true, cost, gallons };
   }
   function priceMult() { return state.index; }             // general inflated prices
   function tipMult() { return state.index; }               // tips ride full inflation
@@ -639,7 +647,7 @@
     // gold
     gold, goldSpot, goldBuyCost, goldCreditCost, goldSellValue, buyGold, sellGold, netWorth,
     // economy
-    index, gasPrice, fuel, setFuel, gasFillGallons, gasFillCost, buyGasFill,
+    index, gasPrice, fuel, setFuel, addFuel, gasFillGallons, gasFillCost, buyGasFill,
     priceMult, tipMult, wageMult, goldScaled, debtCostMult, debtScaled, debtPriceMult, debtPriceScaled,
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
     gameDate, formatGameDate, GAME_START_YEAR,

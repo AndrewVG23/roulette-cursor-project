@@ -2,11 +2,12 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Quik-Fill 64</title>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="wallet.css">
   <script src="wallet.js"></script>
+  <script src="orientation.js"></script>
   <style>
     :root, [data-theme="light"] {
       --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
@@ -252,7 +253,8 @@
         <div class="stats" aria-label="Progress">
           <div class="stat"><span class="label">Bills</span><span class="value" id="coinStat">0/0</span></div>
           <div class="stat red"><span class="label">Red $2</span><span class="value" id="redStat">0/8</span></div>
-          <div class="stat"><span class="label">Gas Cans</span><span class="value" id="canStat">0/6</span></div>
+          <div class="stat"><span class="label">Cans</span><span class="value" id="canStat">0/6</span></div>
+          <div class="stat"><span class="label">Tank</span><span class="value" id="fuelStat">0/20</span></div>
         </div>
       </div>
 
@@ -262,21 +264,16 @@
         <div class="overlay-card">
           <h2 id="overlayTitle">Quik-Fill 64</h2>
           <p id="overlayText">
-            You coasted into the dead QUIK-FILL on fumes. The pumps are taped off and the
-            hut is boarded up — but there's loose paper all over the lot, and word is six
-            full gas cans are stashed around the station.
+            You coasted into QUIK-FILL on fumes. One island takes <b>cash</b>, the other
+            takes <b>credit</b> — run up to a pump to fill. Loose cans around the lot each
+            pour <b>one gallon</b> into the tank. Paper on the ground still spends.
           </p>
-          <p class="overlay-price" id="overlayPrice" hidden></p>
           <p class="keys" id="overlayKeys">
             <b>W / S</b> run forward &amp; back &nbsp;·&nbsp; <b>← →</b> turn &nbsp;·&nbsp; <b>Space</b> jump<br>
             <b>Scroll</b> zoom &nbsp;·&nbsp; <b>P</b> pause
           </p>
           <div class="control-row" id="overlayStartRow">
             <button class="btn primary" id="startBtn" type="button">Start scrounging</button>
-          </div>
-          <div class="control-row" id="overlayFillRow" hidden>
-            <button class="btn primary" id="overlayCashBtn" type="button">Cash</button>
-            <button class="btn" id="overlayCreditBtn" type="button">Credit</button>
           </div>
         </div>
       </div>
@@ -287,8 +284,8 @@
         <p><b>W / S</b> or <b>↑ ↓</b> run forward and back. <b>← →</b> (or <b>A / D</b>) turn. The camera stays behind you.</p>
         <p><b>Space</b> jumps — land and jump again right away while running to chain a double, then a triple jump.</p>
         <p><b>Scroll</b> zooms the chase camera in and out.</p>
-        <p>Green bills are worth <b>$1</b>, red-tinted ones <b>$2</b>. One Krugerrand might be hiding up high. Gas cans pay <b>$25</b> each. Find all 8 red bills and a bonus can appears over the pumps.</p>
-      <p>Scrounged bills are <b>paper cash</b>; the Krugerrand lands in your <b>gold</b> stack. Every visit compounds gas, gold, and prices. If you're in the hole on credit, debt picks up <b>6% interest</b>.</p>
+        <p>Run to the <b>cash</b> pump or the <b>credit</b> pump to top off. Each loose gas can adds <b>1 gallon</b>. Green bills are <b>$1</b>, red-tinted ones <b>$2</b>. One Krugerrand might be hiding up high. Find all 8 red bills and a bonus can appears over the pumps.</p>
+        <p>Scrounged bills are <b>paper cash</b>; the Krugerrand lands in your <b>gold</b> stack. Every visit compounds gas, gold, and prices. If you're in the hole on credit, debt picks up <b>6% interest</b>.</p>
       </div>
 
       <div class="touch-ui">
@@ -322,13 +319,8 @@
     // and every inflated price tick up together, harder each visit.
     Wallet.recordGasVisit();
 
-    // ---------------------------------------------------------------- pumps (night drive refill)
+    // ---------------------------------------------------------------- fuel / night-drive sync
     const leaveBtn = document.getElementById('leaveBtn');
-    const overlayPrice = document.getElementById('overlayPrice');
-    const overlayFillRow = document.getElementById('overlayFillRow');
-    const overlayStartRow = document.getElementById('overlayStartRow');
-    const overlayCashBtn = document.getElementById('overlayCashBtn');
-    const overlayCreditBtn = document.getElementById('overlayCreditBtn');
 
     function hasDriveCheckpoint() {
       try {
@@ -341,71 +333,23 @@
       }
     }
 
-    function readCheckpointFuel() {
-      return { fuel: Wallet.fuel(), max: Wallet.GAS_TANK_GAL };
-    }
-
-    function writeCheckpointFuel(gallons) {
-      Wallet.setFuel(gallons);
+    function syncCheckpointFuel() {
       try {
         const raw = sessionStorage.getItem('drive-checkpoint');
-        if (!raw) return true;
+        if (!raw) return;
         const data = JSON.parse(raw);
-        if (!data?.drive) return true;
+        if (!data?.drive) return;
         data.drive.maxFuel = Wallet.GAS_TANK_GAL;
         data.drive.fuel = Wallet.fuel();
         sessionStorage.setItem('drive-checkpoint', JSON.stringify(data));
-        return true;
-      } catch (_) {
-        return false;
-      }
+      } catch (_) { /* ignore */ }
     }
 
-    function updatePumpUI() {
+    function updateLeaveBtn() {
       leaveBtn.textContent = hasDriveCheckpoint() ? 'Back to drive' : 'Leave';
     }
-
-    function setupDriveFillOverlay() {
-      if (!hasDriveCheckpoint()) return false;
-
-      overlayTitle.hidden = true;
-      overlayText.hidden = true;
-      overlayKeys.hidden = true;
-      overlayStartRow.hidden = true;
-      overlayPrice.hidden = false;
-      overlayFillRow.hidden = false;
-      overlayPrice.textContent = `${Wallet.formatGas(Wallet.gasPrice())}/gal`;
-
-      const tank = readCheckpointFuel();
-      const full = tank && tank.fuel >= Wallet.GAS_TANK_GAL - 0.05;
-      overlayCashBtn.disabled = full;
-      overlayCreditBtn.disabled = full;
-      return true;
-    }
-
-    function fillTank(method) {
-      if (!hasDriveCheckpoint()) return false;
-      const tank = readCheckpointFuel();
-      if (tank && tank.fuel >= Wallet.GAS_TANK_GAL - 0.05) {
-        return false;
-      }
-      const res = Wallet.buyGasFill(method);
-      if (!res.ok) {
-        showToast(`Pump declined<small>${res.reason || 'Not enough funds'}</small>`, 2400);
-        return false;
-      }
-      writeCheckpointFuel(Wallet.GAS_TANK_GAL);
-      window.location.href = 'frogger.html?resumeDrive=1';
-      return true;
-    }
-
-    overlayCashBtn?.addEventListener('click', () => fillTank('cash'));
-    overlayCreditBtn?.addEventListener('click', () => fillTank('credit'));
-    Wallet.subscribe(() => {
-      updatePumpUI();
-      if (hasDriveCheckpoint()) setupDriveFillOverlay();
-    });
-    updatePumpUI();
+    Wallet.subscribe(updateLeaveBtn);
+    updateLeaveBtn();
 
     // ---------------------------------------------------------------- setup
     const canvas = document.getElementById('game');
@@ -733,26 +677,46 @@
       scene.add(canopyLight);
     }
 
-    // pump islands
-    function pumpIsland(cx, cz) {
+    // pump islands — west = cash, east = credit
+    const pumps = [];
+    function pumpLabelTex(label, accent) {
+      return canvasTexture(256, 96, (g, w, h) => {
+        g.fillStyle = '#1a1816';
+        g.fillRect(0, 0, w, h);
+        g.fillStyle = accent;
+        g.fillRect(0, 0, w, 10);
+        g.fillRect(0, h - 10, w, 10);
+        g.font = '700 42px "General Sans", sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillStyle = '#f0e6d0';
+        g.fillText(label, w / 2, h / 2 + 2);
+      });
+    }
+    function pumpIsland(cx, cz, method, label, accent) {
       solid(4.6, 0.28, 1.6, mats.curb, cx, 0, cz);
+      const faceMap = pumpLabelTex(label, accent);
+      const faceMat = new THREE.MeshStandardMaterial({
+        map: faceMap, roughness: 0.55, emissive: accent, emissiveIntensity: 0.22
+      });
       for (const off of [-1.1, 1.1]) {
-        const p = solid(0.95, 1.75, 0.65, mats.rust, cx + off, 0.28, cz);
-        // face plate
-        const face = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.55, 0.06), mats.rustDark);
+        solid(0.95, 1.75, 0.65, mats.rust, cx + off, 0.28, cz);
+        const face = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.48, 0.06), faceMat);
         face.position.set(cx + off, 1.55, cz + 0.36);
         scene.add(face);
-        // out-of-order tape
-        const tape = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.09, 0.02),
-          new THREE.MeshStandardMaterial({ color: 0xf0c400, roughness: 0.6 }));
-        tape.position.set(cx + off, 1.15, cz + 0.37);
-        tape.rotation.z = 0.5;
-        scene.add(tape);
-        void p;
+        const glow = new THREE.PointLight(accent, 4, 6, 2);
+        glow.position.set(cx + off, 1.7, cz + 0.5);
+        scene.add(glow);
       }
+      pumps.push({
+        x: cx, z: cz, method, label,
+        r: 2.4,
+        cooldown: 0,
+        near: false
+      });
     }
-    pumpIsland(-12, -8);
-    pumpIsland(-4, -8);
+    pumpIsland(-12, -8, 'cash', 'CASH', 0x3d9e5a);
+    pumpIsland(-4, -8, 'credit', 'CREDIT', 0xc0392b);
 
     // convenience store: spans x[0,12], z[-23.5,-16.5], roof at y=4
     {
@@ -1141,16 +1105,14 @@
     const coinStat = document.getElementById('coinStat');
     const redStat = document.getElementById('redStat');
     const canStat = document.getElementById('canStat');
+    const fuelStat = document.getElementById('fuelStat');
     const toast = document.getElementById('toast');
     const overlay = document.getElementById('overlay');
     const overlayTitle = document.getElementById('overlayTitle');
     const overlayText = document.getElementById('overlayText');
     const overlayKeys = document.getElementById('overlayKeys');
+    const overlayStartRow = document.getElementById('overlayStartRow');
     const startBtn = document.getElementById('startBtn');
-
-    if (setupDriveFillOverlay()) {
-      overlay.hidden = false;
-    }
 
     let toastTimer = 0;
     function showToast(html, ms = 2200) {
@@ -1163,8 +1125,11 @@
       coinStat.textContent = `${state.coins}/${totalCoins}`;
       redStat.textContent = `${state.red}/${totalRed}`;
       canStat.textContent = `${state.cans}/${cans.length}`;
+      const gal = Wallet.fuel();
+      fuelStat.textContent = `${gal % 1 ? gal.toFixed(1) : gal}/${Wallet.GAS_TANK_GAL}`;
     }
     updateHud();
+    Wallet.subscribe(updateHud);
 
     // ---------------------------------------------------------------- input
     const keys = {};
@@ -1184,8 +1149,8 @@
       if (e.code === 'Space') jumpHeld = false;
     });
 
-    // chase camera — stays behind the player's facing
-    const cam = { pitch: 0.32, dist: 9.5 };
+    // chase camera — yaw tracks facing tightly; position doesn't orbit-lag
+    const cam = { pitch: 0.32, dist: 9.5, yaw: player.facing, lookY: player.pos.y + 1.5 };
     canvas.addEventListener('wheel', (e) => {
       cam.dist = Math.min(15, Math.max(5, cam.dist + e.deltaY * 0.01));
       e.preventDefault();
@@ -1430,12 +1395,62 @@
           k.mesh.visible = false;
           k.glow.intensity = 0;
           state.cans++;
-          Wallet.addCash(25);
+          const before = Wallet.fuel();
+          Wallet.addFuel(1);
+          syncCheckpointFuel();
+          const gained = Math.round((Wallet.fuel() - before) * 100) / 100;
           sfx.can();
-          showToast(`GAS CAN — ${k.label}<small>+$25 · ${state.cans}/${cans.length}</small>`, 2600);
+          if (gained > 0) {
+            showToast(`GAS CAN — ${k.label}<small>+${gained} gal · ${state.cans}/${cans.length}</small>`, 2600);
+          } else {
+            showToast(`GAS CAN — ${k.label}<small>tank already full · ${state.cans}/${cans.length}</small>`, 2600);
+          }
           updateHud();
           if (state.cans >= cans.length) win();
         }
+      }
+    }
+
+    function tryPump(p) {
+      const needed = Wallet.gasFillGallons();
+      if (needed <= 0.05) {
+        showToast('TANK FULL<small>already topped off</small>', 1800);
+        return false;
+      }
+      const priceLine = `${Wallet.formatGas(Wallet.gasPrice())}/gal · ${needed.toFixed(1)} gal`;
+      const res = Wallet.buyGasFill(p.method);
+      if (!res.ok) {
+        showToast(
+          `${p.label} DECLINED<small>${res.reason || 'Not enough funds'} · ${priceLine}</small>`,
+          2600
+        );
+        return false;
+      }
+      syncCheckpointFuel();
+      sfx.win();
+      updateHud();
+      const pay = p.method === 'cash' ? 'cash' : 'credit';
+      showToast(
+        `${p.label} PUMP<small>${Wallet.format(res.cost)} ${pay} · +${res.gallons.toFixed(1)} gal</small>`,
+        2800
+      );
+      if (hasDriveCheckpoint()) {
+        setTimeout(() => { window.location.href = 'frogger.html?resumeDrive=1'; }, 900);
+      }
+      return true;
+    }
+
+    function checkPumps(dt) {
+      const px = player.pos.x, pz = player.pos.z;
+      for (const p of pumps) {
+        if (p.cooldown > 0) p.cooldown -= dt;
+        const dist = Math.hypot(p.x - px, p.z - pz);
+        const inside = dist < p.r;
+        if (inside && !p.near && p.cooldown <= 0) {
+          tryPump(p);
+          p.cooldown = 1.4;
+        }
+        p.near = inside;
       }
     }
 
@@ -1448,12 +1463,11 @@
       overlayText.hidden = false;
       overlayKeys.hidden = false;
       overlayStartRow.hidden = false;
-      overlayPrice.hidden = true;
-      overlayFillRow.hidden = true;
-      overlayTitle.textContent = 'TANK FULL';
+      overlayTitle.textContent = 'CANS CLEARED';
       overlayText.innerHTML =
-        `Six cans of gas and every bill in the lot. The engine turns over on the first try.<br><br>` +
-        `Cash: <b style="color:var(--color-primary)">${Wallet.format(Wallet.cash())}</b> (+$40 ignition bonus, paper in hand)`;
+        `Every can on the lot is in the tank (<b>${Wallet.fuel()}/${Wallet.GAS_TANK_GAL}</b> gal). ` +
+        `Need a full fill? Hit the <b>cash</b> or <b>credit</b> pump.<br><br>` +
+        `Cash: <b style="color:var(--color-primary)">${Wallet.format(Wallet.cash())}</b> (+$40 scavenge bonus)`;
       overlayKeys.innerHTML = '';
       startBtn.textContent = 'Run it back';
       overlay.hidden = false;
@@ -1461,17 +1475,33 @@
 
     // ---------------------------------------------------------------- camera follow
     const camTarget = new THREE.Vector3();
+    function shortestAngleDelta(from, to) {
+      let d = (to - from) % (Math.PI * 2);
+      if (d > Math.PI) d -= Math.PI * 2;
+      if (d < -Math.PI) d += Math.PI * 2;
+      return d;
+    }
     function updateCamera(dt) {
-      camTarget.set(player.pos.x, player.pos.y + 1.5, player.pos.z);
-      const behind = player.facing + Math.PI;
+      // Track facing with a short spring — no world-space orbit lag after turns.
+      const yawErr = shortestAngleDelta(cam.yaw, player.facing);
+      const yawFollow = Math.abs(yawErr) > 0.9 ? 22 : 14;
+      cam.yaw += yawErr * (1 - Math.exp(-yawFollow * dt));
+
+      const lookYWant = player.pos.y + 1.45;
+      cam.lookY += (lookYWant - cam.lookY) * (1 - Math.exp(-10 * dt));
+      camTarget.set(player.pos.x, cam.lookY, player.pos.z);
+
+      const behind = cam.yaw + Math.PI;
       const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
-      const desired = new THREE.Vector3(
-        camTarget.x + Math.sin(behind) * cp * cam.dist,
-        camTarget.y + sp * cam.dist,
-        camTarget.z + Math.cos(behind) * cp * cam.dist
-      );
-      if (desired.y < 0.5) desired.y = 0.5;
-      camera.position.lerp(desired, 1 - Math.exp(-12 * dt));
+      const wantX = camTarget.x + Math.sin(behind) * cp * cam.dist;
+      const wantY = Math.max(0.5, camTarget.y + sp * cam.dist);
+      const wantZ = camTarget.z + Math.cos(behind) * cp * cam.dist;
+
+      // Soft stick to the orbit point so jumps don't whip the lens.
+      const posFollow = 1 - Math.exp(-18 * dt);
+      camera.position.x += (wantX - camera.position.x) * posFollow;
+      camera.position.y += (wantY - camera.position.y) * posFollow;
+      camera.position.z += (wantZ - camera.position.z) * posFollow;
       camera.lookAt(camTarget);
     }
 
@@ -1486,8 +1516,6 @@
         overlayText.hidden = false;
         overlayKeys.hidden = false;
         overlayStartRow.hidden = false;
-        overlayPrice.hidden = true;
-        overlayFillRow.hidden = true;
         overlayTitle.textContent = 'Paused';
         overlayText.textContent = 'The lot will wait.';
         overlayKeys.innerHTML = '';
@@ -1540,6 +1568,7 @@
         const dt = rawDt / steps;
         for (let i = 0; i < steps; i++) physicsStep(dt);
         collectPickups();
+        checkPumps(rawDt);
       }
 
       // visuals

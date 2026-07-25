@@ -2,11 +2,12 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Bottle Run — Corner Liquor</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="wallet.css">
   <script src="wallet.js"></script>
+  <script src="orientation.js"></script>
   <style>
     * { box-sizing: border-box; }
     html, body { height: 100%; }
@@ -130,6 +131,8 @@
 
   const H = 240, TILE = 16;
   let W = 256; // internal width tracks the window aspect (widescreen NES)
+  // Title screen names whichever controls you actually have to hand.
+  const TOUCH_CONTROLS = window.matchMedia('(pointer: coarse)').matches;
   const ROWS = 15;
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
@@ -1911,7 +1914,9 @@
     }
     ctx.fillStyle = '#8c8c94';
     ctx.font = '6px "Press Start 2P", monospace';
-    ctx.fillText('ARROWS/WASD MOVE  Z/SPACE JUMP  X RUN', W / 2, 216);
+    ctx.fillText(TOUCH_CONTROLS
+      ? 'TAP  ◀ ▶ MOVE   A JUMP   B RUN'
+      : 'ARROWS/WASD MOVE  Z/SPACE JUMP  X RUN', W / 2, 216);
     ctx.fillStyle = '#5a626e';
     ctx.fillText('ASHLAND AVE • CHICAGO IL', W / 2, 228);
     hudText('TOP ' + String(G.high).padStart(6, '0'), W / 2, 40, '#ffd23f', 'center');
