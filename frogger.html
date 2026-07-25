@@ -428,6 +428,51 @@
       width: 56px;
       height: calc(52px * 1024 / 540);
     }
+    /* Now-playing chip — sits just off the phone when the drive starts */
+    .now-playing {
+      position: absolute;
+      left: calc(max(12px, env(safe-area-inset-left, 0px)) + 64px);
+      bottom: max(28px, calc(env(safe-area-inset-bottom, 0px) + 22px));
+      z-index: 6;
+      display: none;
+      align-items: baseline;
+      gap: 7px;
+      max-width: min(46vw, 200px);
+      padding: 7px 11px 7px 10px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(18, 22, 28, 0.92), rgba(8, 10, 14, 0.94));
+      border: 1px solid rgba(238, 194, 97, 0.28);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      transform: translateX(-6px);
+      pointer-events: none;
+      transition: opacity 380ms ease, transform 380ms ease;
+    }
+    .panel-inner.drive-phase .now-playing {
+      display: inline-flex;
+    }
+    .now-playing.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .now-playing-label {
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(189, 179, 155, 0.85);
+      flex-shrink: 0;
+    }
+    .now-playing-title {
+      font-family: var(--font-display);
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #f0d078;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .panel-inner.drive-phase .help-btn,
     .panel-inner.drive-phase .help-btn:hover,
     .panel-inner.drive-phase .help-btn:active,
@@ -683,6 +728,10 @@
             </div>
           </div>
           <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel"></button>
+        </div>
+        <div class="now-playing" id="nowPlaying" aria-live="polite">
+          <span class="now-playing-label">Now</span>
+          <span class="now-playing-title" id="nowPlayingTitle">—</span>
         </div>
         <div class="help-panel" id="helpPanel" hidden role="dialog" aria-label="Controls">
           <p class="hint" id="hintText"></p>
@@ -1465,6 +1514,22 @@
   const replayBtn = document.getElementById('replayBtn');
   const shareReplayBtn = document.getElementById('shareReplayBtn');
   const muteBtn = document.getElementById('muteBtn');
+  const nowPlayingEl = document.getElementById('nowPlaying');
+  const nowPlayingTitle = document.getElementById('nowPlayingTitle');
+  let nowPlayingTimer = null;
+
+  function flashNowPlaying(title) {
+    if (!nowPlayingEl || !nowPlayingTitle) return;
+    if (state.phase !== 'drive') return;
+    const name = title || (typeof BGM !== 'undefined' ? BGM.currentTitle() : '');
+    if (!name) return;
+    nowPlayingTitle.textContent = name;
+    nowPlayingEl.classList.add('show');
+    clearTimeout(nowPlayingTimer);
+    nowPlayingTimer = setTimeout(() => {
+      nowPlayingEl.classList.remove('show');
+    }, 4200);
+  }
 
   function syncPauseBtn(disabled, text) {
     if (!pauseBtn) return;
@@ -3302,6 +3367,7 @@
     updateHUD();
     updateReplayButton();
     updateShareReplayButton();
+    flashNowPlaying();
     beep(440, 0.08);
     beep(554, 0.1);
     beep(659, 0.12);
@@ -9481,6 +9547,7 @@
       state.mode = 'drive';
       overlay.hidden = true;
       syncPauseBtn(false, 'Pause');
+      flashNowPlaying();
       beep(523, 0.08);
       return;
     }
@@ -9528,6 +9595,11 @@
 
   setPhaseUI();
   overlay.hidden = true;
+  if (typeof BGM !== 'undefined') {
+    BGM.onChange((title) => {
+      if (state.phase === 'drive' && state.mode === 'drive') flashNowPlaying(title);
+    });
+  }
   if (RESUME_DRIVE && resumeSavedDrive()) {
     // resumed night drive after gas, hospital, etc.
   } else if (RESUME_CROSS && resumeSavedCross()) {

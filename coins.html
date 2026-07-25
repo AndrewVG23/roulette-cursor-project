@@ -18,7 +18,7 @@
       --velvet-deep: #3a080e;
       --font-display: 'Zodiak', Georgia, serif;
       --font-ui: 'Satoshi', 'General Sans', system-ui, sans-serif;
-      --desk-tilt: 32deg;
+      --desk-tilt: 28deg;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -214,22 +214,22 @@
       display: grid;
       place-items: center;
       transform-style: preserve-3d;
-      /* Slight counter-tilt so faces stay readable while still lying on the cloth */
-      transform: translateZ(14px) rotateX(calc(var(--desk-tilt) * -0.35));
-      filter: drop-shadow(0 14px 12px rgba(0, 0, 0, 0.55));
+      /* Counter-tilt toward the camera so faces read as disks, not rims */
+      transform: translateZ(18px) rotateX(calc(var(--desk-tilt) * -0.72));
     }
 
     .coin-stage::after {
       content: '';
       position: absolute;
       left: 50%;
-      top: 52%;
-      width: 90%;
-      height: 55%;
-      transform: translateX(-50%) translateZ(-6px) rotateX(0deg);
+      top: 58%;
+      width: 88%;
+      height: 42%;
+      transform: translateX(-50%) translateZ(-10px);
       border-radius: 50%;
-      background: radial-gradient(ellipse, rgba(0, 0, 0, 0.55), transparent 68%);
+      background: radial-gradient(ellipse, rgba(0, 0, 0, 0.5), transparent 70%);
       pointer-events: none;
+      z-index: -1;
     }
 
     .coin {
@@ -244,6 +244,8 @@
       -webkit-transform-style: preserve-3d;
       cursor: pointer;
       transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+      /* Soft ground shadow without filter() — filter flattens preserve-3d */
+      box-shadow: 0 16px 18px rgba(0, 0, 0, 0.45);
     }
 
     .coin.size-tenth {
@@ -293,13 +295,14 @@
       pointer-events: none;
     }
 
-    /* Cylindrical rim — visible while the coin tumbles */
+    /* Rim strips = coin thickness only (not the full diameter — that hid the faces) */
     .coin-edge {
       position: absolute;
-      top: 0;
+      top: 50%;
       left: 50%;
       width: calc(3.14159 * var(--coin-d) / var(--edge-n) + 0.6px);
-      height: 100%;
+      height: var(--coin-depth);
+      margin-top: calc(var(--coin-depth) / -2);
       margin-left: calc(3.14159 * var(--coin-d) / var(--edge-n) / -2);
       background:
         linear-gradient(

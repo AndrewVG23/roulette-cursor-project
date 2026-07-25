@@ -5,7 +5,18 @@
     'assets/music-bulletz.mp3',
     'assets/music-rayo.mp3',
     'assets/music-neon.mp3',
-    'assets/music-underbound.mp3'
+    'assets/music-underbound.mp3',
+    'assets/music-citizen.mp3',
+    'assets/music-madness.mp3'
+  ];
+  const TITLES = [
+    'Umbra',
+    'Bulletz',
+    'Rayo',
+    'Neon',
+    'Underbound',
+    'Citizen',
+    'Madness'
   ];
   const MUTE_KEY = 'cfc-bgm-muted';
   const LAST_KEY = 'cfc-bgm-last';
@@ -15,7 +26,23 @@
   let idx = 0;
   let started = false;
   let muted = false;
+  const listeners = [];
   try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (_) { /* ignore */ }
+
+  function currentTitle() {
+    return TITLES[idx] || 'Night Drive';
+  }
+
+  function notify() {
+    const title = currentTitle();
+    for (const fn of listeners) {
+      try { fn(title, idx); } catch (_) { /* ignore */ }
+    }
+  }
+
+  function onChange(fn) {
+    if (typeof fn === 'function') listeners.push(fn);
+  }
 
   function pickRandom() {
     let last = -1;
@@ -48,6 +75,7 @@
     audio.addEventListener('ended', () => {
       idx = pickRandom();
       audio.src = TRACKS[idx];
+      notify();
       if (!muted) audio.play().catch(() => {});
     });
     return audio;
@@ -58,6 +86,7 @@
     const a = ensure();
     if (!a.src) a.src = TRACKS[idx];
     started = true;
+    notify();
     a.play().catch(() => {});
   }
 
@@ -67,6 +96,7 @@
     const a = ensure();
     a.src = TRACKS[idx];
     started = true;
+    notify();
     if (!muted) a.play().catch(() => {});
   }
 
@@ -102,5 +132,5 @@
     else if (!muted) audio.play().catch(() => {});
   });
 
-  window.BGM = { play, nextScene, setMuted, toggleMute, isMuted };
+  window.BGM = { play, nextScene, setMuted, toggleMute, isMuted, currentTitle, onChange };
 })();
