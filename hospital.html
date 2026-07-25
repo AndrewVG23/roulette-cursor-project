@@ -207,7 +207,7 @@
     <div class="help-panel" id="helpPanel" hidden>
       <div><strong>A / D</strong> — slide your fingertip left and right</div>
       <div><strong>W</strong> — flick up (only from the sheets)</div>
-      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. Every swallow bills your <strong>phone</strong> (base <strong>$100</strong>, rides inflation) — except the red pill (1 in 4), which is a <strong>$1</strong> copay and gets you discharged. No cash desk; debt is allowed.</div>
+      <div>You're the patient's fingertip. Flick the pill into the <strong>trash can</strong> on the right. The doctor wants to bounce it into <strong>your mouth</strong> on the left. Every swallow bills your <strong>phone</strong> (base <strong>$100</strong>, rides inflation) — except the red pill (1 in 4), which is a <strong>$1</strong> copay and gets you discharged. Tap <strong>Reincarnate</strong> to queue a purple pill next: swallow it for −$10,000 phone debt, no cash, no gold. No cash desk; debt is allowed.</div>
     </div>
 
     <div class="controls">
@@ -215,6 +215,7 @@
         <div>
           <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
           <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
+          <button class="btn subtle" id="reincarnateBtn" type="button">Reincarnate</button>
           <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
         </div>
         <div class="dpad" aria-label="Move and jump">
@@ -338,6 +339,7 @@
   const muteBtn = document.getElementById('muteBtn');
   const helpBtn = document.getElementById('helpBtn');
   const helpPanel = document.getElementById('helpPanel');
+  const reincarnateBtn = document.getElementById('reincarnateBtn');
   let canvasDpr = 1;
   let admit = null;
 
@@ -367,6 +369,14 @@
   }
 
   function nextPillKind() {
+    if (state.queuedPill) {
+      const kind = state.queuedPill;
+      state.queuedPill = null;
+      reincarnateBtn.disabled = false;
+      reincarnateBtn.textContent = 'Reincarnate';
+      state.pillSerial += 1;
+      return kind;
+    }
     state.pillSerial += 1;
     return state.pillSerial % 4 === 0 ? 'heal' : 'standard';
   }
@@ -400,6 +410,7 @@
     cpu: makeSlime('cpu'),
     ball: null,
     pillSerial: 0,
+    queuedPill: null,
     patientHp: patientStartHp,
     patientMaxHp,
     floatText: [],
@@ -682,7 +693,6 @@
       beep(554, 0.1);
       beep(659, 0.14);
     } else if (pillKind === 'heal') {
-      // Copay rides inflation. Billed to the phone — no cash desk here.
       const copay = Math.max(1, Math.round(1 * Wallet.priceMult()));
       Wallet.take(copay);
       healPatient();
@@ -694,6 +704,18 @@
       beep(659, 0.1);
       beep(784, 0.12);
       discharge();
+      return;
+    } else if (pillKind === 'reincarnate') {
+      Wallet.reincarnate();
+      healPatient();
+      state.floatText.push({
+        x: W * 0.28, y: FLOOR_Y - 120,
+        text: 'REINCARNATED', life: 1.6, color: '#b48cff'
+      });
+      beep(523, 0.08);
+      beep(659, 0.1);
+      beep(784, 0.12);
+      reincarnateDischarge();
       return;
     } else {
       // Full bill, inflated, straight to the phone — debt if it has to be.
@@ -735,6 +757,25 @@
         : admit
           ? `The red pill heals you. ${admit.who} is still out there — back to the grill.`
           : 'The red pill heals you. The doctor signs your discharge papers.',
+      fromDrive ? 'Back on the Road' : 'Back to Grill'
+    );
+    pauseBtn.disabled = true;
+    beep(523, 0.08);
+    beep(659, 0.1);
+    beep(784, 0.14);
+  }
+
+  function reincarnateDischarge() {
+    state.mode = 'win';
+    const fromDrive = admit && admit.from === 'drive';
+    const resetLine = `${Wallet.format(Wallet.digital())} on the phone — no cash, no gold.`;
+    showOverlay(
+      'Reincarnated',
+      fromDrive
+        ? `Fresh start. ${resetLine} Patched up — back on the road at full strength.`
+        : admit
+          ? `Fresh start. ${resetLine} ${admit.who} is still out there — back to the grill.`
+          : `Fresh start. ${resetLine} The doctor signs your discharge papers.`,
       fromDrive ? 'Back on the Road' : 'Back to Grill'
     );
     pauseBtn.disabled = true;
@@ -2229,6 +2270,7 @@
     const len = ball.r * 1.9;
     const rad = ball.r * 0.62;
     const isHeal = ball.kind === 'heal';
+    const isReincarnate = ball.kind === 'reincarnate';
 
     ctx.save();
     ctx.translate(bx, by);
@@ -2236,6 +2278,8 @@
 
     if (isHeal) {
       drawCapsulePill(len, rad, '#e84048', '#c82030', '#802028', false);
+    } else if (isReincarnate) {
+      drawCapsulePill(len, rad, '#a868f0', '#8040d8', '#502090', false);
     } else {
       drawCapsulePill(len, rad, '#f8f8f4', '#dce8f0', '#98a8b4', true);
     }
@@ -2373,6 +2417,19 @@
     startGame();
   });
 
+  reincarnateBtn.addEventListener('click', () => {
+    ensureAudio();
+    if (state.queuedPill || (state.mode !== 'play' && state.mode !== 'title')) return;
+    state.queuedPill = 'reincarnate';
+    reincarnateBtn.disabled = true;
+    reincarnateBtn.textContent = 'Queued';
+    if (state.mode === 'play') {
+      state.floatText.push({ x: W / 2, y: FLOOR_Y - 90, text: 'PURPLE PILL NEXT', life: 1.6, color: '#b48cff' });
+    }
+    beep(440, 0.06);
+    beep(554, 0.08, 'triangle', 0.035);
+  });
+
   pauseBtn.addEventListener('click', togglePause);
   muteBtn.addEventListener('click', () => {
     state.muted = !state.muted;
@@ -2433,13 +2490,14 @@
   const fromDrive = admit && admit.from === 'drive';
   const billNow = Math.round(100 * Wallet.priceMult());
   const copayNow = Math.max(1, Math.round(1 * Wallet.priceMult()));
+  const debtReset = Wallet.format(Wallet.DEFAULT_DIGITAL);
   showOverlay(
     'County General',
     fromDrive
-      ? `Pulled off for ER. Trash what you can — every swallow hits your phone (${Wallet.format(billNow)}). Swallow the red pill (1 in 4) for a ${Wallet.format(copayNow)} copay and you're discharged.`
+      ? `Pulled off for ER. Trash what you can — every swallow hits your phone (${Wallet.format(billNow)}). Swallow the red pill (1 in 4) for a ${Wallet.format(copayNow)} copay and you're discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold).`
       : admit
-        ? `${introWho} sent you here. Trash pills when you can. Swallowing bills the phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged.`
-        : `Medication time. Trash pills when you can. Every swallow bills your phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged.`,
+        ? `${introWho} sent you here. Trash pills when you can. Swallowing bills the phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold).`
+        : `Medication time. Trash pills when you can. Every swallow bills your phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold).`,
     'Kick Off'
   );
   requestAnimationFrame(frame);

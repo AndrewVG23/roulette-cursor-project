@@ -7,8 +7,8 @@
   //   cash    — physical paper dollars. Floor of $0. Liquor + casino money.
   //   gold    — ounces. Bought at 5% over spot, sold at 5% under, for cash.
   // One shared price index drives gas price, gold spot, and every inflated
-  // price. Each gas-station visit compounds the index at a rate that rises
-  // one point per visit. Debt on credit compounds at 7% interest each visit.
+  // price. Each gas-station visit compounds the index by 8%. Debt on credit
+  // compounds at 12% interest each visit.
   const STATE_KEY = 'walletV3';
   const LEGACY_PURSE_KEY = 'casinoPurse';
   const LEGACY_STATE_KEYS = ['walletV2'];
@@ -25,10 +25,10 @@
   const GOLD_FEE = 0.05;      // cash buy 5% over spot, sell 5% under
   const GOLD_CREDIT_FEE = 0.10; // credit ask is 10% over the cash ask
   const CASH_OUT_FEE = 0.10;  // phone → cash at casino/liquor: 10% haircut
-  const VISIT_RATE_BASE = 0.02;  // first visit: +3% (base + step)
-  const VISIT_RATE_STEP = 0.01;  // each visit inflates harder than the last
-  const VISIT_RATE_CAP = 0.25;
-  const CREDIT_INTEREST_RATE = 0.07; // credit balance compounds +7% every gas visit
+  const VISIT_RATE_BASE = 0.08;  // +8% inflation per gas visit
+  const VISIT_RATE_STEP = 0;
+  const VISIT_RATE_CAP = 0.08;
+  const CREDIT_INTEREST_RATE = 0.12; // credit balance compounds +12% every gas visit
   const CASH_OUT_AMOUNTS = [20, 50, 100];
 
   const fmt = new Intl.NumberFormat('en-US', {
@@ -252,6 +252,14 @@
     state.cash = Math.max(0, Math.round(Number(snap.c) || 0));
     state.gold = Math.max(0, Math.round((Number(snap.g) || 0) * 100) / 100);
     persist();
+  }
+
+  function reincarnate() {
+    state.digital = DEFAULT_DIGITAL;
+    state.cash = 0;
+    state.gold = 0;
+    persist();
+    return getState();
   }
 
   function migrateTips() {
@@ -598,6 +606,7 @@
     PURSE_KEY: LEGACY_PURSE_KEY,
     GRILL_TIPS_KEY,
     DEFAULT,
+    DEFAULT_DIGITAL,
     format: fmt.format,
     formatGas: gasFmt.format,
     formatGold,
@@ -615,7 +624,7 @@
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing
-    snapshot, restore, getState,
+    snapshot, restore, getState, reincarnate,
     migrateTips, mountHud, updateDisplay, togglePanel,
     getInsets, canvasInset, subscribe
   };
