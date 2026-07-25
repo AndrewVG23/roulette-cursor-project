@@ -133,8 +133,9 @@
     const n = Math.round(amount);
     if (n <= 0) return { ok: false, paid: 0, reason: 'Bad amount' };
     if (state.cash < n) return { ok: false, paid: 0, reason: 'Not enough cash' };
-    takeCash(n);
-    addDigital(n);
+    state.cash = Math.max(0, state.cash - n);
+    state.digital = Math.round(state.digital + n);
+    persist();
     return { ok: true, paid: n, digital: state.digital, cash: state.cash };
   }
 
@@ -216,6 +217,17 @@
   function wageMult() { return 1 + (state.index - 1) / 2; } // wages lag at half inflation
   function goldScaled(base) {
     return Math.max(1, Math.round(Number(base) * state.index));
+  }
+  // Drive fines stack inflation (gas visits) with debt depth — both tick on every fill-up.
+  function debtCostMult() {
+    const inflation = state.index;
+    if (state.digital < 0) {
+      return inflation * (Math.abs(state.digital) / Math.abs(DEFAULT_DIGITAL));
+    }
+    return inflation;
+  }
+  function debtScaled(base) {
+    return Math.max(1, Math.round(Number(base) * debtCostMult()));
   }
   function visits() { return state.visits; }
   function nextVisitRate() {
@@ -636,7 +648,7 @@
     gold, goldSpot, goldBuyCost, goldCreditCost, goldSellValue, buyGold, sellGold, netWorth,
     // economy
     index, gasPrice, gasFillGallons, gasFillCost, buyGasFill,
-    priceMult, tipMult, wageMult, goldScaled,
+    priceMult, tipMult, wageMult, goldScaled, debtCostMult, debtScaled,
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing
