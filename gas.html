@@ -275,15 +275,6 @@
     <main class="stage" id="stage">
       <canvas id="game" aria-label="Quik-Fill 64: run and jump around the gas station"></canvas>
 
-      <div class="topbar">
-        <div class="stats" aria-label="Progress">
-          <div class="stat"><span class="label">Bills</span><span class="value" id="coinStat">0/0</span></div>
-          <div class="stat red"><span class="label">Red $2</span><span class="value" id="redStat">0/8</span></div>
-          <div class="stat"><span class="label">Cans</span><span class="value" id="canStat">0/6</span></div>
-          <div class="stat"><span class="label">Tank</span><span class="value" id="fuelStat">0/20</span></div>
-        </div>
-      </div>
-
       <div class="toast" id="toast"></div>
 
       <div class="overlay" id="overlay">
@@ -297,16 +288,6 @@
         </div>
       </div>
 
-      <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel">?</button>
-      <div class="help-panel" id="helpPanel" hidden role="dialog" aria-label="Controls">
-        <h3>How to get up there</h3>
-        <p><b>W / S</b> or <b>↑ ↓</b> run forward and back. <b>← →</b> (or <b>A / D</b>) turn. The camera stays behind you.</p>
-        <p><b>Space</b> jumps — land and jump again right away while running to chain a double, then a triple jump.</p>
-        <p><b>Scroll</b> zooms the chase camera in and out.</p>
-        <p>Run to the <b>cash</b> pump or the <b>credit</b> pump to top off. Each loose gas can adds <b>1 gallon</b>. Green bills are <b>$1</b>, red-tinted ones <b>$2</b>. One Krugerrand might be hiding up high. Find all 8 red bills and a bonus can appears over the pumps.</p>
-        <p>Scrounged bills are <b>paper cash</b>; the Krugerrand lands in your <b>gold</b> stack. Every visit compounds gas, gold, and prices. If you're in the hole on credit, debt picks up <b>6% interest</b>.</p>
-      </div>
-
       <div class="touch-ui">
         <div class="joy" id="joy"><div class="nub" id="joyNub"></div></div>
         <button class="jump-btn" id="jumpBtn" type="button" aria-label="Jump">A</button>
@@ -314,10 +295,7 @@
 
       <div class="controls" aria-label="Game controls">
         <div class="control-row">
-          <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
-          <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
           <a class="btn subtle" id="leaveBtn" href="frogger.html?resumeDrive=1">Leave</a>
-          <a class="btn subtle" href="frogger.html?enter=casino">Tables</a>
         </div>
       </div>
     </main>
@@ -364,11 +342,7 @@
       } catch (_) { /* ignore */ }
     }
 
-    function updateLeaveBtn() {
-      leaveBtn.textContent = hasDriveCheckpoint() ? 'Back to drive' : 'Leave';
-    }
-    Wallet.subscribe(updateLeaveBtn);
-    updateLeaveBtn();
+    leaveBtn.textContent = 'Leave';
 
     // ---------------------------------------------------------------- setup
     const canvas = document.getElementById('game');
@@ -1121,10 +1095,6 @@
       cans: 0,
       time: 0
     };
-    const coinStat = document.getElementById('coinStat');
-    const redStat = document.getElementById('redStat');
-    const canStat = document.getElementById('canStat');
-    const fuelStat = document.getElementById('fuelStat');
     const toast = document.getElementById('toast');
     const overlay = document.getElementById('overlay');
     const overlayTitle = document.getElementById('overlayTitle');
@@ -1140,15 +1110,7 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => toast.classList.remove('show'), ms);
     }
-    function updateHud() {
-      coinStat.textContent = `${state.coins}/${totalCoins}`;
-      redStat.textContent = `${state.red}/${totalRed}`;
-      canStat.textContent = `${state.cans}/${cans.length}`;
-      const gal = Wallet.fuel();
-      fuelStat.textContent = `${gal % 1 ? gal.toFixed(1) : gal}/${Wallet.GAS_TANK_GAL}`;
-    }
-    updateHud();
-    Wallet.subscribe(updateHud);
+    // Progress (bills / red / cans / tank) stays in `state` for bonuses — no header UI.
 
     // ---------------------------------------------------------------- input
     const keys = {};
@@ -1169,7 +1131,7 @@
     });
 
     // chase camera — yaw lags facing a bit; wider default framing
-    const cam = { pitch: 0.30, dist: 12.5, yaw: player.facing, lookY: player.pos.y + 1.5 };
+    const cam = { pitch: 0.40, dist: 15, yaw: player.facing, lookY: player.pos.y + 1.5 };
     canvas.addEventListener('wheel', (e) => {
       cam.dist = Math.min(18, Math.max(6, cam.dist + e.deltaY * 0.01));
       e.preventDefault();
@@ -1403,7 +1365,6 @@
             Wallet.addCash(1);
             sfx.coin();
           }
-          updateHud();
         }
       }
       for (const k of cans) {
@@ -1424,7 +1385,6 @@
           } else {
             showToast(`GAS CAN — ${k.label}<small>tank already full · ${state.cans}/${cans.length}</small>`, 2600);
           }
-          updateHud();
           if (state.cans >= cans.length) win();
         }
       }
@@ -1447,7 +1407,6 @@
       }
       syncCheckpointFuel();
       sfx.win();
-      updateHud();
       const pay = p.method === 'cash' ? 'cash' : 'credit';
       showToast(
         `${p.label} PUMP<small>${Wallet.format(res.cost)} ${pay} · +${res.gallons.toFixed(1)} gal</small>`,
@@ -1545,23 +1504,6 @@
         state.running = true;
       }
     }
-    document.getElementById('pauseBtn').addEventListener('click', togglePause);
-
-    const muteBtn = document.getElementById('muteBtn');
-    muteBtn.addEventListener('click', () => {
-      muted = !muted;
-      muteBtn.setAttribute('aria-pressed', String(muted));
-      muteBtn.textContent = muted ? 'Muted' : 'Sound';
-    });
-
-    const helpBtn = document.getElementById('helpBtn');
-    const helpPanel = document.getElementById('helpPanel');
-    helpBtn.addEventListener('click', () => {
-      const open = helpPanel.hidden;
-      helpPanel.hidden = !open;
-      helpBtn.setAttribute('aria-expanded', String(open));
-    });
-
     startBtn.addEventListener('click', () => {
       ac();
       if (state.won) { location.reload(); return; }
