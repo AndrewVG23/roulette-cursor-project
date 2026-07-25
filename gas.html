@@ -279,7 +279,7 @@
 
       <div class="overlay" id="overlay">
         <div class="overlay-card">
-          <h2 id="overlayTitle">Quik-Fill 64</h2>
+          <h2 id="overlayTitle" hidden></h2>
           <p id="overlayText">Pump your own gas</p>
           <p class="keys" id="overlayKeys" hidden></p>
           <div class="control-row" id="overlayStartRow">
@@ -1460,13 +1460,18 @@
       return d;
     }
     function updateCamera(dt) {
-      // Yaw trails facing slowly — avatar turns first, lens swings around later.
+      // Avatar may whip around; the lens crawls to catch up (hard rate cap).
       const yawErr = shortestAngleDelta(cam.yaw, player.facing);
-      const yawFollow = Math.abs(yawErr) > 0.9 ? 2.1 : 1.15;
-      cam.yaw += yawErr * (1 - Math.exp(-yawFollow * dt));
+      const yawFollow = Math.abs(yawErr) > 1.2 ? 0.55 : 0.32;
+      let dyaw = yawErr * (1 - Math.exp(-yawFollow * dt));
+      const maxYawRate = 0.7; // rad/s ≈ 40°/s — screen never snaps with the body
+      const maxStep = maxYawRate * dt;
+      if (dyaw > maxStep) dyaw = maxStep;
+      if (dyaw < -maxStep) dyaw = -maxStep;
+      cam.yaw += dyaw;
 
       const lookYWant = player.pos.y + 1.45;
-      cam.lookY += (lookYWant - cam.lookY) * (1 - Math.exp(-7 * dt));
+      cam.lookY += (lookYWant - cam.lookY) * (1 - Math.exp(-5 * dt));
       camTarget.set(player.pos.x, cam.lookY, player.pos.z);
 
       const behind = cam.yaw + Math.PI;
@@ -1475,8 +1480,8 @@
       const wantY = Math.max(0.5, camTarget.y + sp * cam.dist);
       const wantZ = camTarget.z + Math.cos(behind) * cp * cam.dist;
 
-      // Soft stick to the orbit point so jumps don't whip the lens.
-      const posFollow = 1 - Math.exp(-11 * dt);
+      // Track the avatar's spot, but ease orbit drift so turns don't jerk the frame.
+      const posFollow = 1 - Math.exp(-6.5 * dt);
       camera.position.x += (wantX - camera.position.x) * posFollow;
       camera.position.y += (wantY - camera.position.y) * posFollow;
       camera.position.z += (wantZ - camera.position.z) * posFollow;
