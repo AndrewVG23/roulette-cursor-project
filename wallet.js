@@ -19,7 +19,8 @@
 
   const GAS_BASE = 3.89;      // $/gal at index 1.0
   const GOLD_BASE = 2000;     // $/oz at index 1.0 — roughly real spot
-  const GOLD_FEE = 0.05;      // buy 5% over spot, sell 5% under
+  const GOLD_FEE = 0.05;      // cash buy 5% over spot, sell 5% under
+  const GOLD_CREDIT_FEE = 0.10; // credit ask is 10% over the cash ask
   const CASH_OUT_FEE = 0.10;  // phone → cash at casino/liquor: 10% haircut
   const VISIT_RATE_BASE = 0.02;  // first visit: +3% (base + step)
   const VISIT_RATE_STEP = 0.01;  // each visit inflates harder than the last
@@ -151,14 +152,16 @@
   function setGold(oz) { state.gold = Math.max(0, Math.round(oz * 100) / 100); persist(); return state.gold; }
   function goldSpot() { return GOLD_BASE * state.index; }
   function goldBuyCost(oz) { return Math.ceil(goldSpot() * (1 + GOLD_FEE) * oz); }
+  function goldCreditCost(oz) { return Math.ceil(goldBuyCost(oz) * (1 + GOLD_CREDIT_FEE)); }
   function goldSellValue(oz) { return Math.floor(goldSpot() * (1 - GOLD_FEE) * oz); }
 
   function buyGold(oz, method) {
-    const cost = goldBuyCost(oz);
+    const onCredit = method === 'credit' || method === 'phone';
+    const cost = onCredit ? goldCreditCost(oz) : goldBuyCost(oz);
     if (method === 'cash') {
       if (!spendCash(cost)) return { ok: false, cost, reason: 'Not enough cash' };
     } else {
-      takeDigital(cost); // phone can run negative — that's the debt
+      takeDigital(cost); // credit / phone can run negative — that's the debt
     }
     setGold(state.gold + oz);
     return { ok: true, cost };
@@ -325,7 +328,8 @@
     }
     panel.querySelectorAll('[data-buy]').forEach((btn) => {
       const oz = Number(btn.dataset.buy);
-      const cost = goldBuyCost(oz);
+      const onCredit = btn.dataset.method === 'credit' || btn.dataset.method === 'phone';
+      const cost = onCredit ? goldCreditCost(oz) : goldBuyCost(oz);
       btn.querySelector('[data-role="price"]').textContent = fmt.format(cost);
       if (btn.dataset.method === 'cash') btn.disabled = state.cash < cost;
     });
@@ -390,7 +394,7 @@
       rows.push(
         `<div class="purse-hud-panel-row"><span class="purse-hud-panel-lbl">Buy ${oz} oz</span>` +
         `<button type="button" data-buy="${oz}" data-method="cash"><span data-role="price"></span> cash</button>` +
-        `<button type="button" data-buy="${oz}" data-method="phone"><span data-role="price"></span> phone</button></div>`
+        `<button type="button" data-buy="${oz}" data-method="credit"><span data-role="price"></span> credit</button></div>`
       );
     }
     for (const oz of BUY_SIZES) {
@@ -399,7 +403,7 @@
         `<button type="button" data-sell="${oz}"><span data-role="price"></span> → cash</button></div>`
       );
     }
-    rows.push('<div class="purse-hud-panel-note">Gold trades 5% off spot. Spot rides the gas price. Phone buys can go into debt.</div>');
+    rows.push('<div class="purse-hud-panel-note">Cash ask is +5% over spot. Credit is +10% over the cash ask and can go into debt.</div>');
     panel.innerHTML = rows.join('');
     panel.addEventListener('click', (ev) => {
       const btn = ev.target.closest('button');
@@ -529,7 +533,7 @@
     cash, setCash, addCash, takeCash, spendCash,
     cashOut, cashOutAll, cashOutPayout, cashDeskAllowed,
     // gold
-    gold, goldSpot, goldBuyCost, goldSellValue, buyGold, sellGold,
+    gold, goldSpot, goldBuyCost, goldCreditCost, goldSellValue, buyGold, sellGold,
     // economy
     index, gasPrice, priceMult, tipMult, wageMult,
     visits, nextVisitRate, recordGasVisit,
