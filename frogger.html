@@ -1202,14 +1202,14 @@
   const hintText = document.getElementById('hintText');
   const dpad = document.getElementById('dpad');
 
-  // Drive fines and payouts track shared inflation (price index); red light stays flat.
+  // Drive fines and payouts scale on discrete events only (shared inflation index).
+  // Red light stays flat; debt interest still ticks only on gas-station visits.
   const SIGNAL_FINE = 100;
   const COP_HIT_FINE = 50;
   const CHASER_BUMP_FINE = 10;
   const CRASH_FINE_SOFT = 10;
   const EXIT_BONUS_BASE = 180;
   const EXIT_BONUS_PER_LEVEL = 30;
-  const CRUISE_PAY_RATE = 0.2;
   const COP_BOUNTY_CHASER = 150;
   const COP_BOUNTY_POLICE = 50;
   const COP_BOUNTY_PILEUP = 100;
@@ -4247,10 +4247,6 @@
       if (state.mode !== 'drive') return;
     }
 
-    if (d.speed > 40) {
-      const cruisePay = Math.floor(d.speed * dt * CRUISE_PAY_RATE * Wallet.priceMult());
-      if (cruisePay > 0) Wallet.add(cruisePay);
-    }
     updateHUD();
 
     if (Math.floor(d.rpmPulse * 5) !== Math.floor((d.rpmPulse - dt) * 5) && d.speed > 20) {

@@ -215,17 +215,11 @@
   function priceMult() { return state.index; }             // general inflated prices
   function tipMult() { return state.index; }               // tips ride full inflation
   function wageMult() { return 1 + (state.index - 1) / 2; } // wages lag at half inflation
-  // Drive fines use the shared inflation index (same as hospital bills, gas, tips).
   function goldScaled(base) {
     return Math.max(1, Math.round(Number(base) * state.index));
   }
-  // Legacy alias — older drive code stacked debt depth on top of inflation; avoid for new prices.
-  function debtCostMult() {
-    return state.index;
-  }
-  function debtScaled(base) {
-    return goldScaled(base);
-  }
+  function debtCostMult() { return state.index; }
+  function debtScaled(base) { return goldScaled(base); }
   // Menu prices that compound at the credit-debt rate (6% per gas visit).
   function debtPriceMult() {
     return Math.round(Math.pow(1 + CREDIT_INTEREST_RATE, state.visits) * 10000) / 10000;
