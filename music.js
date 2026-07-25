@@ -19,7 +19,6 @@
     'Madness'
   ];
   const MUTE_KEY = 'cfc-bgm-muted';
-  const LAST_KEY = 'cfc-bgm-last';
   const VOL = 0.3;
 
   let audio = null;
@@ -45,25 +44,10 @@
   }
 
   function pickRandom() {
-    let last = -1;
-    try {
-      const raw = localStorage.getItem(LAST_KEY);
-      if (raw != null) last = parseInt(raw, 10);
-    } catch (_) { /* ignore */ }
-    if (!Number.isFinite(last)) last = -1;
-
-    let next;
-    if (TRACKS.length <= 1) {
-      next = 0;
-    } else {
-      next = Math.floor(Math.random() * TRACKS.length);
-      if (next === last) next = (next + 1) % TRACKS.length;
-    }
-    try { localStorage.setItem(LAST_KEY, String(next)); } catch (_) { /* ignore */ }
-    return next;
+    return Math.floor(Math.random() * TRACKS.length);
   }
 
-  // New page / scene → new random track (not the one that just finished).
+  // New page / scene → totally random track (repeats allowed).
   idx = pickRandom();
 
   function ensure() {
