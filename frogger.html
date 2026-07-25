@@ -1316,7 +1316,7 @@
     if (state.phase === 'drive') {
       brandTitle.textContent = 'Night Drive';
       brandSub.textContent = 'Gold Coast · stop at red · steer to turn';
-      meterLabel.textContent = 'Lap';
+      meterLabel.textContent = 'Route';
       if (livesStat) livesStat.hidden = true;
       hintText.textContent = 'Stop at red · hold gas to blow the light (−$100) · ER exit heals · R replay · Share last 5 sec';
       dpad.classList.add('drive-mode');
@@ -1597,7 +1597,6 @@
     state.drive = {
       z: 0,
       goal: route.length,
-      lap: 1,
       signals: route.signals,
       atSignal: null,
       signalFineCd: 0,
@@ -1809,7 +1808,7 @@
       const d = state.drive;
       const pathLen = d.route ? d.route.length : 1;
       const pct = Math.min(99, Math.round((wrapRouteZ(d.z, pathLen) / pathLen) * 100));
-      levelVal.textContent = `Lap ${d.lap || 1} · ${pct}%`;
+      levelVal.textContent = `${pct}%`;
     } else {
       livesVal.textContent = String(state.lives);
       levelVal.textContent = String(state.level);
@@ -1827,7 +1826,6 @@
   function replaySnapDrive(d) {
     return {
       z: d.z,
-      lap: d.lap,
       speed: d.speed,
       maxSpeed: d.maxSpeed,
       accel: d.accel,
@@ -2417,7 +2415,6 @@
     state.drive = {
       z: 0,
       goal: route.length,
-      lap: data.drive.lap || 1,
       signals: route.signals,
       atSignal: null,
       signalFineCd: 0,
@@ -3801,15 +3798,10 @@
       }
     }
 
-    // Lap complete — keep driving; route geometry wraps, world does not reset
+    // Route wraps — reset leg tracking; world does not reset
     if (newRouteZ < prevRouteZ && d.speed > 0.5) {
-      d.lap = (d.lap || 1) + 1;
       d.legIndex = 0;
       for (const l of d.legs) l.done = false;
-      d.invuln = Math.max(d.invuln, 0.6);
-      beep(523, 0.07);
-      beep(784, 0.12);
-      updateHUD();
     }
 
     d.wheelSpin += d.speed * dt * 0.35;
@@ -7692,126 +7684,200 @@
 
   function drawDriveGauges(d) {
     const fuelPct = Math.max(0, Math.min(1, (d.fuel ?? 0) / (d.maxFuel || 100)));
-    const speedPct = Math.max(0, Math.min(1, d.speed / Math.max(1, d.maxSpeed)));
+    const speed = Math.max(0, d.speed);
+    const dialMax = 160;
+    const speedPct = Math.max(0, Math.min(1, speed / dialMax));
     const lowFuel = fuelPct <= 0.2;
     const pulse = lowFuel ? 0.72 + Math.sin(performance.now() * 0.012) * 0.28 : 1;
+    const t = performance.now() * 0.001;
 
-    // --- Gas gauge (bottom center-left, clear of the map) ---
-    const gx = 168;
-    const gy = H - 58;
-    const gw = 16;
-    const gh = 46;
-    ctx.fillStyle = 'rgba(12,14,18,0.88)';
-    ctx.strokeStyle = 'rgba(208,162,58,0.35)';
-    ctx.lineWidth = 1;
-    ctx.fillRect(gx - 4, gy - 14, gw + 8, gh + 24);
-    ctx.strokeRect(gx - 3.5, gy - 13.5, gw + 7, gh + 23);
-    ctx.fillStyle = '#897f6d';
-    ctx.font = '600 8px "General Sans", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('GAS', gx + gw * 0.5, gy - 4);
-    ctx.fillStyle = '#2a2c30';
-    ctx.fillRect(gx, gy, gw, gh);
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.strokeRect(gx + 0.5, gy + 0.5, gw - 1, gh - 1);
-    const fuelColor = fuelPct <= 0.12 ? '#c0392b' : fuelPct <= 0.28 ? '#d4a017' : '#5a9e68';
-    ctx.fillStyle = fuelColor;
-    ctx.globalAlpha = pulse;
-    ctx.fillRect(gx + 2, gy + 2 + (gh - 4) * (1 - fuelPct), gw - 4, (gh - 4) * fuelPct);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = '#897f6d';
-    ctx.fillText('F', gx + gw * 0.5, gy - 8);
-    ctx.fillText('E', gx + gw * 0.5, gy + gh + 10);
-    ctx.fillStyle = '#e8dcc0';
-    ctx.font = '700 10px "General Sans", sans-serif';
-    ctx.fillText(`${Math.round(fuelPct * 100)}%`, gx + gw * 0.5, gy + gh * 0.55);
+    const BMW_ORANGE = '#f28c18';
+    const BMW_ORANGE_SOFT = 'rgba(242,140,24,0.55)';
+    const BMW_FACE = '#0a0a0c';
+    const BMW_TICK = 'rgba(255,255,255,0.72)';
 
-    // --- Speedometer (bottom right) ---
-    const cx = W - 68;
-    const cy = H - 16;
-    const r = 52;
-    const arcStart = Math.PI * 0.72;
-    const arcEnd = Math.PI * 2.28;
-    const arcSpan = arcEnd - arcStart;
-
-    ctx.fillStyle = 'rgba(12,14,18,0.88)';
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r + 8, arcStart, arcEnd, false);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(208,162,58,0.35)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r + 2, arcStart, arcEnd, false);
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(90,95,105,0.55)';
-    ctx.lineWidth = 1;
-    const dialMax = Math.max(40, Math.ceil(d.maxSpeed / 20) * 20);
-    for (let i = 0; i <= dialMax; i += 20) {
-      const t = i / dialMax;
-      const ang = arcStart + arcSpan * t;
-      const inner = r - (i % 40 === 0 ? 10 : 6);
+    function drawBezel(cx, cy, r) {
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(ang) * inner, cy + Math.sin(ang) * inner);
-      ctx.lineTo(cx + Math.cos(ang) * (r + 1), cy + Math.sin(ang) * (r + 1));
+      ctx.arc(cx, cy, r + 6, 0, Math.PI * 2);
+      const ring = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+      ring.addColorStop(0, '#9a9aa4');
+      ring.addColorStop(0.35, '#5a5a64');
+      ring.addColorStop(0.7, '#888890');
+      ring.addColorStop(1, '#3a3a42');
+      ctx.fillStyle = ring;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 1.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#141418';
+      ctx.fill();
+    }
+
+    function drawFace(cx, cy, r, arcStart, arcEnd) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.clip();
+      const face = ctx.createRadialGradient(cx, cy + r * 0.25, r * 0.05, cx, cy, r);
+      face.addColorStop(0, '#222228');
+      face.addColorStop(0.55, '#121216');
+      face.addColorStop(1, '#060608');
+      ctx.fillStyle = face;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - 3, arcStart, arcEnd, false);
       ctx.stroke();
-      if (i % 40 === 0) {
-        ctx.fillStyle = 'rgba(189,179,155,0.85)';
-        ctx.font = '600 8px "General Sans", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String(i), cx + Math.cos(ang) * (r - 18), cy + Math.sin(ang) * (r - 18));
+      ctx.restore();
+    }
+
+    function drawTicks(cx, cy, r, arcStart, arcEnd, max, majorStep, labelStep, redFrom) {
+      const span = arcEnd - arcStart;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (let v = 0; v <= max; v += majorStep / 2) {
+        const t = v / max;
+        const ang = arcStart + span * t;
+        const major = v % majorStep === 0;
+        const inner = r - (major ? 11 : 7);
+        const inRed = redFrom != null && v >= redFrom;
+        ctx.strokeStyle = inRed ? 'rgba(220,50,40,0.85)' : (major ? BMW_ORANGE : BMW_ORANGE_SOFT);
+        ctx.lineWidth = major ? 1.6 : 0.9;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(ang) * inner, cy + Math.sin(ang) * inner);
+        ctx.lineTo(cx + Math.cos(ang) * (r - 1), cy + Math.sin(ang) * (r - 1));
+        ctx.stroke();
+        if (major && v % labelStep === 0) {
+          ctx.fillStyle = inRed ? '#e04038' : BMW_ORANGE;
+          ctx.font = `${v >= 100 ? 7 : 8}px "General Sans", sans-serif`;
+          ctx.fillText(String(v), cx + Math.cos(ang) * (r - 19), cy + Math.sin(ang) * (r - 19));
+        }
       }
     }
 
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = 'rgba(42,44,48,0.95)';
-    ctx.beginPath();
-    ctx.arc(cx, cy, r - 4, arcStart, arcEnd, false);
-    ctx.stroke();
-    const hotAng = arcStart + arcSpan * speedPct;
-    const hotGrad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
-    hotGrad.addColorStop(0, '#d4a017');
-    hotGrad.addColorStop(0.65, speedPct > 0.85 ? '#e8722a' : '#d4a017');
-    hotGrad.addColorStop(1, speedPct > 0.85 ? '#c0392b' : '#d4a017');
-    ctx.strokeStyle = hotGrad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r - 4, arcStart, hotAng, false);
-    ctx.stroke();
+    function drawNeedle(cx, cy, r, ang, colorTip) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(ang);
+      ctx.fillStyle = 'rgba(235,235,240,0.95)';
+      ctx.beginPath();
+      ctx.moveTo(r - 10, 0);
+      ctx.lineTo(-8, -1.4);
+      ctx.lineTo(-8, 1.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = colorTip || BMW_ORANGE;
+      ctx.beginPath();
+      ctx.arc(r - 11, 0, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2a2a30';
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#6a6a72';
+      ctx.beginPath();
+      ctx.arc(0, 0, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
-    const needleAng = arcStart + arcSpan * speedPct;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(needleAng);
-    ctx.fillStyle = '#f5edd8';
+    // Cluster housing — matte black pod like an E46/E90 binnacle
+    const podL = 132;
+    const podR = W - 6;
+    const podT = H - 98;
+    const podB = H - 4;
+    ctx.fillStyle = 'rgba(4,4,6,0.92)';
     ctx.beginPath();
-    ctx.moveTo(r - 8, 0);
-    ctx.lineTo(-10, -2.5);
-    ctx.lineTo(-10, 2.5);
+    ctx.moveTo(podL, podT + 8);
+    ctx.lineTo(podR - 10, podT);
+    ctx.lineTo(podR, podB - 6);
+    ctx.quadraticCurveTo(podR, podB, podR - 8, podB);
+    ctx.lineTo(podL + 6, podB);
+    ctx.quadraticCurveTo(podL, podB, podL, podB - 6);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#d0a23a';
-    ctx.beginPath();
-    ctx.arc(0, 0, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    ctx.strokeStyle = 'rgba(120,120,128,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.03)';
+    ctx.fillRect(podL + 8, podT + 10, podR - podL - 16, 2);
 
-    ctx.fillStyle = '#e8dcc0';
-    ctx.font = '700 20px "General Sans", sans-serif';
+    // --- Fuel gauge (BMW left inset dial) ---
+    const fcx = 188;
+    const fcy = H - 26;
+    const fr = 32;
+    const fArc0 = Math.PI * 0.82;
+    const fArc1 = Math.PI * 2.0;
+    drawBezel(fcx, fcy, fr);
+    drawFace(fcx, fcy, fr, fArc0, fArc1);
+    const fSpan = fArc1 - fArc0;
+    for (let i = 0; i <= 8; i++) {
+      const ang = fArc0 + fSpan * (i / 8);
+      const major = i % 2 === 0;
+      ctx.strokeStyle = major ? BMW_ORANGE : BMW_ORANGE_SOFT;
+      ctx.lineWidth = major ? 1.4 : 0.8;
+      const inner = fr - (major ? 10 : 6);
+      ctx.beginPath();
+      ctx.moveTo(fcx + Math.cos(ang) * inner, fcy + Math.sin(ang) * inner);
+      ctx.lineTo(fcx + Math.cos(ang) * (fr - 1), fcy + Math.sin(ang) * (fr - 1));
+      ctx.stroke();
+    }
+    ctx.fillStyle = BMW_ORANGE;
+    ctx.font = '600 7px "General Sans", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(Math.round(d.speed)), cx, cy - 10);
-    ctx.fillStyle = '#897f6d';
-    ctx.font = '600 8px "General Sans", sans-serif';
-    ctx.fillText('MPH', cx, cy + 8);
+    ctx.fillText('E', fcx + Math.cos(fArc0 + 0.08) * (fr - 22), fcy + Math.sin(fArc0 + 0.08) * (fr - 22));
+    ctx.fillText('F', fcx + Math.cos(fArc1 - 0.08) * (fr - 22), fcy + Math.sin(fArc1 - 0.08) * (fr - 22));
+    ctx.fillStyle = BMW_TICK;
+    ctx.font = '600 6px "General Sans", sans-serif';
+    ctx.fillText('1/1', fcx, fcy + 8);
+    const fuelAng = fArc0 + (fArc1 - fArc0) * fuelPct;
+    ctx.globalAlpha = pulse;
+    drawNeedle(fcx, fcy, fr, fuelAng, fuelPct <= 0.12 ? '#e04038' : BMW_ORANGE);
+    ctx.globalAlpha = 1;
+    if (lowFuel) {
+      ctx.fillStyle = `rgba(242,140,24,${0.45 + Math.sin(t * 5) * 0.35})`;
+      ctx.beginPath();
+      ctx.arc(fcx, fcy - fr + 8, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // --- Speedometer (BMW main right dial) ---
+    const scx = W - 58;
+    const scy = H - 26;
+    const sr = 54;
+    const sArc0 = Math.PI * 0.72;
+    const sArc1 = Math.PI * 2.28;
+    drawBezel(scx, scy, sr);
+    drawFace(scx, scy, sr, sArc0, sArc1);
+    drawTicks(scx, scy, sr, sArc0, sArc1, dialMax, 20, 20, 120);
+    const needleAng = sArc0 + (sArc1 - sArc0) * speedPct;
+    drawNeedle(scx, scy, sr, needleAng, speedPct > 0.88 ? '#e04038' : BMW_ORANGE);
+    ctx.fillStyle = BMW_ORANGE;
+    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('mph', scx, scy + 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.font = '600 6px "General Sans", sans-serif';
+    ctx.fillText('OBD', scx - 18, scy + 22);
+
+    // Trip-style digital readout strip (2005 BMW optional line display)
+    const tripW = 54;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(scx - tripW / 2, scy - 4, tripW, 11);
+    ctx.strokeStyle = 'rgba(242,140,24,0.25)';
+    ctx.strokeRect(scx - tripW / 2 + 0.5, scy - 3.5, tripW - 1, 10);
+    ctx.fillStyle = BMW_ORANGE;
+    ctx.font = '700 9px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(Math.round(speed)), scx, scy + 1);
 
     if (fuelPct <= 0.001) {
-      ctx.fillStyle = `rgba(231,76,60,${0.55 + Math.sin(performance.now() * 0.014) * 0.25})`;
-      ctx.font = '700 9px "General Sans", sans-serif';
-      ctx.fillText('EMPTY', gx + gw * 0.5, gy + gh + 22);
+      ctx.fillStyle = `rgba(224,64,56,${0.55 + Math.sin(performance.now() * 0.014) * 0.25})`;
+      ctx.font = '700 8px "General Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('FUEL RESERVE', fcx, fcy + fr + 14);
     }
   }
 
@@ -8126,7 +8192,7 @@
       const pathLen = d.route.length;
       const pct = Math.min(99, Math.round((wrapRouteZ(d.z, pathLen) / pathLen) * 100));
       ctx.fillStyle = '#e8dcc0';
-      ctx.fillText(`LAP ${d.lap || 1}  ${pct}%`, 10, 22);
+      ctx.fillText(`${pct}%`, 10, 22);
     } else {
       ctx.fillText('OPEN ROAD', 10, 22);
     }
