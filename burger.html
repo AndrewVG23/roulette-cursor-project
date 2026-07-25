@@ -430,6 +430,14 @@
           </div>
           <div class="stats" aria-live="polite">
             <div class="stat">
+              <span class="label">Burger</span>
+              <span class="value" id="burgerPriceVal">$1</span>
+            </div>
+            <div class="stat">
+              <span class="label">Wage</span>
+              <span class="value" id="wageVal">$5</span>
+            </div>
+            <div class="stat">
               <span class="label">Shift</span>
               <span class="value" id="levelVal">1</span>
             </div>
@@ -459,7 +467,7 @@
           <div><strong>A / S / D / F</strong> — slam Patty, Cheese, Tomato, Bacon</div>
           <div><strong>X</strong> — toss a ruined or gross burger</div>
           <div>Match the ticket order, then the bun seals itself. Tap the ingredient buttons if you skip the keys.</div>
-          <div>Every burger handed off pays the wage (base <strong>$5</strong> — it only climbs at <em>half</em> of inflation). A clean good build adds a tip (base <strong>$15</strong> — tips ride full inflation).</div>
+          <div>Menu price starts at <strong>$1</strong> and tracks full inflation. Your wage starts at <strong>$5</strong> and only climbs at <em>half</em> that rate. A clean good build adds a tip (base <strong>$15</strong> — full inflation).</div>
           <div>Pay hits your <strong>phone</strong>. Nobody hands you paper here.</div>
         </div>
 
@@ -543,6 +551,8 @@
   const muteBtn = document.getElementById('muteBtn');
   const tossBtn = document.getElementById('tossBtn');
   const levelVal = document.getElementById('levelVal');
+  const burgerPriceVal = document.getElementById('burgerPriceVal');
+  const wageVal = document.getElementById('wageVal');
   const healthVal = document.getElementById('healthVal');
   const healthFill = document.getElementById('healthFill');
   const ingGrid = document.getElementById('ingGrid');
@@ -1469,10 +1479,11 @@
     return burger.done && !burger.ruined && !burger.tainted;
   }
 
-  // Every handed-off burger earns the wage; clean builds add a tip on top.
-  // Tips ride full inflation, the wage only keeps up with half of it.
+  // Menu price rides full inflation; wage only keeps up at half.
+  const BASE_BURGER_PRICE = 1;
   const BASE_WAGE_PER_BURGER = 5;
   const BASE_TIP = 15;
+  function burgerPrice() { return Math.max(1, Math.round(BASE_BURGER_PRICE * Wallet.priceMult())); }
   function burgerWage() { return Math.max(1, Math.round(BASE_WAGE_PER_BURGER * Wallet.wageMult())); }
   function burgerTip() { return Math.max(1, Math.round(BASE_TIP * Wallet.tipMult())); }
 
@@ -1659,6 +1670,8 @@
   function updateHUD() {
     Wallet.updateDisplay();
     levelVal.textContent = String(state.level);
+    burgerPriceVal.textContent = Wallet.format(burgerPrice());
+    wageVal.textContent = Wallet.format(burgerWage());
     healthVal.textContent = String(state.health);
     const pct = Math.max(0, Math.min(100, (state.health / MAX_HEALTH) * 100));
     healthFill.style.width = pct + '%';
@@ -3004,6 +3017,11 @@
     ctx.font = '700 20px Fredoka, Nunito, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(ticket.recipe.name, x + 20, y + 38);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#c8102e';
+    ctx.font = '800 16px Fredoka, Nunito, sans-serif';
+    ctx.fillText(Wallet.format(burgerPrice()), x + tw - 16, y + 38);
+    ctx.textAlign = 'left';
     ctx.fillStyle = '#8a6a60';
     ctx.font = '800 11px Nunito, sans-serif';
     ctx.fillText('ANY ORDER  ·  TOSS GROSS WITH X', x + 20, y + 54);
@@ -3397,6 +3415,7 @@
   fitCanvas();
 
   paintButtonIcons();
+  Wallet.subscribe(() => updateHUD());
   overlay.hidden = true;
   startGame();
   requestAnimationFrame(frame);

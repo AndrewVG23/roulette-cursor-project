@@ -3,9 +3,13 @@
   "private": true,
   "version": "1.0.0",
   "description": "Static Three.js + Chart.js roulette board app",
+  "devDependencies": {
+    "wrangler": "^4.114.0"
+  },
   "scripts": {
     "dev": "python3 -m http.server 8000",
     "serve": "npx serve .",
-    "deploy": "vercel --prod"
+    "deploy": "wrangler pages deploy . --project-name=cashforcopper --branch=main --commit-dirty=true",
+    "deploy:vercel": "vercel --prod"
   }
 }
