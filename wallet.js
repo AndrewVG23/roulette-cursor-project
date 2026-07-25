@@ -362,16 +362,29 @@
   function syncHudMetrics() {
     const cluster = document.getElementById('purseHudCluster');
     const hud = document.getElementById('purseHud');
-    const el = cluster || hud;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
+    if (!hud && !cluster) return;
     const root = document.documentElement;
     const styles = getComputedStyle(root);
     const rightInset = parseFloat(styles.getPropertyValue('--purse-hud-right')) || 10;
     const gap = parseFloat(styles.getPropertyValue('--purse-hud-gap')) || 10;
+
+    // Clearance must stay based on the collapsed purse so expand overlays instead of pushing UI.
+    const wasExpanded = !!(hud && hud.classList.contains('is-expanded'));
+    if (wasExpanded) hud.classList.remove('is-expanded');
+
+    const panelRect = hud ? hud.getBoundingClientRect() : null;
+    if (panelRect) {
+      root.style.setProperty('--purse-panel-width', `${Math.ceil(panelRect.width)}px`);
+      root.style.setProperty('--purse-panel-height', `${Math.ceil(panelRect.height)}px`);
+    }
+
+    const el = cluster || hud;
+    const rect = el.getBoundingClientRect();
     root.style.setProperty('--purse-hud-width', `${Math.ceil(rect.width)}px`);
     root.style.setProperty('--purse-hud-height', `${Math.ceil(rect.height)}px`);
     root.style.setProperty('--purse-hud-clearance-right', `${Math.ceil(rect.width + rightInset + gap)}px`);
+
+    if (wasExpanded) hud.classList.add('is-expanded');
   }
 
   function flashDelta(text, up) {

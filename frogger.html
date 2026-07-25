@@ -282,9 +282,11 @@
       border-color: rgba(255,210,200,.35);
     }
     .phone-scene {
+      --phone-w: 15px;
+      --phone-depth: 4px;
       position: relative;
-      width: 15px;
-      height: calc(15px * 1024 / 540);
+      width: var(--phone-w);
+      height: calc(var(--phone-w) * 1024 / 540);
       perspective: 220px;
       -webkit-perspective: 220px;
       pointer-events: none;
@@ -314,7 +316,7 @@
         0 1px 2px rgba(0, 0, 0, 0.35);
       display: grid;
       place-items: center;
-      transform: translateZ(1px);
+      transform: translateZ(calc(var(--phone-depth) / 2));
     }
     .phone-face--front-screen {
       width: 88%;
@@ -347,7 +349,7 @@
       background: rgba(255, 255, 255, 0.22);
     }
     .phone-face--back {
-      transform: rotateY(180deg) translateZ(1px);
+      transform: rotateY(180deg) translateZ(calc(var(--phone-depth) / 2));
       background: #e89abb;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     }
@@ -358,6 +360,66 @@
       object-fit: cover;
       object-position: center 40%;
       pointer-events: none;
+    }
+    /* Side rails — visible thickness when the phone turns edge-on */
+    .phone-edge {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: var(--phone-depth);
+      height: 100%;
+      margin-left: calc(var(--phone-depth) / -2);
+      border-radius: calc(var(--phone-depth) * 0.35);
+      background:
+        linear-gradient(90deg,
+          rgba(255, 230, 240, 0.55) 0%,
+          #e8a8c4 18%,
+          #d484a8 50%,
+          #c46a94 82%,
+          rgba(90, 40, 60, 0.35) 100%);
+      box-shadow: inset 0 0 0 0.5px rgba(255, 220, 235, 0.35);
+      transform-style: preserve-3d;
+      -webkit-transform-style: preserve-3d;
+    }
+    .phone-edge--left {
+      transform: rotateY(-90deg) translateZ(calc(var(--phone-w) / 2));
+    }
+    .phone-edge--right {
+      transform: rotateY(90deg) translateZ(calc(var(--phone-w) / 2));
+      background:
+        linear-gradient(90deg,
+          rgba(90, 40, 60, 0.3) 0%,
+          #c46a94 18%,
+          #d484a8 50%,
+          #e8a8c4 82%,
+          rgba(255, 230, 240, 0.5) 100%);
+    }
+    .phone-edge--left::before,
+    .phone-edge--left::after {
+      content: '';
+      position: absolute;
+      left: 12%;
+      right: 12%;
+      border-radius: 1px;
+      background: rgba(70, 30, 50, 0.45);
+    }
+    .phone-edge--left::before {
+      top: 22%;
+      height: 7%;
+    }
+    .phone-edge--left::after {
+      top: 32%;
+      height: 12%;
+    }
+    .phone-edge--right::before {
+      content: '';
+      position: absolute;
+      left: 12%;
+      right: 12%;
+      top: 28%;
+      height: 14%;
+      border-radius: 1px;
+      background: rgba(70, 30, 50, 0.4);
     }
     .panel-inner.drive-phase .phone-ctl {
       left: max(12px, env(safe-area-inset-left, 0px));
@@ -375,8 +437,10 @@
       border-radius: 0;
     }
     .panel-inner.drive-phase .phone-scene {
-      width: 52px;
-      height: calc(52px * 1024 / 540);
+      --phone-w: 52px;
+      --phone-depth: 8px;
+      width: var(--phone-w);
+      height: calc(var(--phone-w) * 1024 / 540);
       perspective: 320px;
       -webkit-perspective: 320px;
     }
@@ -385,20 +449,25 @@
     }
     .panel-inner.drive-phase .phone-3d {
       transform-origin: center center;
-      animation: phoneLongAxisSpin 9s linear infinite;
-    }
-    .panel-inner.drive-phase .phone-ctl:hover .phone-3d,
-    .panel-inner.drive-phase .phone-ctl:active .phone-3d {
-      animation-play-state: paused;
-      transform: rotateY(0deg) scale(1.08);
-    }
-    .panel-inner.drive-phase .phone-ctl:has(.help-btn[aria-expanded="true"]) .phone-3d {
-      animation-duration: 7s;
+      -webkit-animation: phoneLongAxisSpin 14s linear infinite;
+      animation: phoneLongAxisSpin 14s linear infinite;
+      will-change: transform;
     }
     .panel-inner.drive-phase .phone-ctl:has(.help-btn[aria-expanded="true"]) .phone-face {
       box-shadow:
         0 7px 16px rgba(0, 0, 0, 0.58),
         0 0 12px rgba(232, 154, 187, 0.35);
+    }
+    /* Pause only on real hover — sticky :hover on phones was freezing the spin. */
+    @media (hover: hover) and (pointer: fine) {
+      .panel-inner.drive-phase .phone-ctl:hover .phone-3d {
+        -webkit-animation-play-state: paused;
+        animation-play-state: paused;
+      }
+    }
+    @-webkit-keyframes phoneLongAxisSpin {
+      from { -webkit-transform: rotateY(0deg); transform: rotateY(0deg); }
+      to { -webkit-transform: rotateY(360deg); transform: rotateY(360deg); }
     }
     @keyframes phoneLongAxisSpin {
       from { transform: rotateY(0deg); }
@@ -406,6 +475,7 @@
     }
     @media (prefers-reduced-motion: reduce) {
       .panel-inner.drive-phase .phone-3d {
+        -webkit-animation: none;
         animation: none;
       }
     }
@@ -552,8 +622,10 @@
         height: calc(44px * 1024 / 540);
       }
       .panel-inner.drive-phase .phone-scene {
-        width: 44px;
-        height: calc(44px * 1024 / 540);
+        --phone-w: 44px;
+        --phone-depth: 7px;
+        width: var(--phone-w);
+        height: calc(var(--phone-w) * 1024 / 540);
       }
       .help-panel { bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
     }
@@ -605,6 +677,8 @@
               <div class="phone-face phone-face--back">
                 <img src="assets/iphone16-back.png" alt="" width="540" height="1024" draggable="false">
               </div>
+              <div class="phone-edge phone-edge--left"></div>
+              <div class="phone-edge phone-edge--right"></div>
             </div>
           </div>
           <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel"></button>
