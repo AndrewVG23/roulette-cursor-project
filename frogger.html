@@ -246,13 +246,22 @@
       color: #eafff0;
     }
     .controls .btn:disabled { opacity: 0.45; cursor: default; transform: none; }
-    .help-btn {
+    /* Phone lives OUTSIDE the <button> — buttons flatten preserve-3d in WebKit/Blink. */
+    .phone-ctl {
       position: absolute;
       left: max(10px, env(safe-area-inset-left, 0px));
       bottom: max(10px, env(safe-area-inset-bottom, 0px));
       z-index: 6;
       width: 44px;
       height: 44px;
+      display: grid;
+      place-items: center;
+    }
+    .phone-ctl > * { grid-area: 1 / 1; }
+    .help-btn {
+      position: relative;
+      width: 100%;
+      height: 100%;
       padding: 0;
       border-radius: 50%;
       font-family: var(--font-display);
@@ -266,38 +275,20 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      z-index: 1;
     }
     .help-btn[aria-expanded="true"] {
       background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
       border-color: rgba(255,210,200,.35);
     }
-    .panel-inner.drive-phase .help-btn {
-      left: max(12px, env(safe-area-inset-left, 0px));
-      bottom: max(14px, env(safe-area-inset-bottom, 0px));
-      width: auto;
-      height: auto;
-      min-width: 0;
-      min-height: 0;
-      padding: 0;
-      border-radius: 0;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      perspective: 280px;
-    }
-    .panel-inner.drive-phase .help-btn:hover,
-    .panel-inner.drive-phase .help-btn:active,
-    .panel-inner.drive-phase .help-btn[aria-expanded="true"] {
-      background: transparent;
-      border: none;
-      box-shadow: none;
-    }
-    .help-btn-icon {
+    .phone-scene {
+      position: relative;
       width: 15px;
       height: calc(15px * 1024 / 540);
-      display: block;
-      position: relative;
-      /* No CSS filter here — it flattens preserve-3d and hides both faces. */
+      perspective: 220px;
+      -webkit-perspective: 220px;
+      pointer-events: none;
+      z-index: 2; /* above the hit-target button so the icon stays visible */
     }
     .phone-3d {
       position: relative;
@@ -323,7 +314,7 @@
         0 1px 2px rgba(0, 0, 0, 0.35);
       display: grid;
       place-items: center;
-      transform: rotateY(0deg) translateZ(0.5px);
+      transform: translateZ(1px);
     }
     .phone-face--front-screen {
       width: 88%;
@@ -356,7 +347,7 @@
       background: rgba(255, 255, 255, 0.22);
     }
     .phone-face--back {
-      transform: rotateY(180deg) translateZ(0.5px);
+      transform: rotateY(180deg) translateZ(1px);
       background: #e89abb;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     }
@@ -365,12 +356,29 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      object-position: center;
+      object-position: center 40%;
       pointer-events: none;
     }
-    .panel-inner.drive-phase .help-btn-icon {
+    .panel-inner.drive-phase .phone-ctl {
+      left: max(12px, env(safe-area-inset-left, 0px));
+      bottom: max(14px, env(safe-area-inset-bottom, 0px));
+      width: 56px;
+      height: calc(52px * 1024 / 540);
+    }
+    .panel-inner.drive-phase .help-btn,
+    .panel-inner.drive-phase .help-btn:hover,
+    .panel-inner.drive-phase .help-btn:active,
+    .panel-inner.drive-phase .help-btn[aria-expanded="true"] {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+    }
+    .panel-inner.drive-phase .phone-scene {
       width: 52px;
       height: calc(52px * 1024 / 540);
+      perspective: 320px;
+      -webkit-perspective: 320px;
     }
     .panel-inner.drive-phase .phone-face {
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
@@ -379,15 +387,15 @@
       transform-origin: center center;
       animation: phoneLongAxisSpin 9s linear infinite;
     }
-    .panel-inner.drive-phase .help-btn:hover .phone-3d,
-    .panel-inner.drive-phase .help-btn:active .phone-3d {
+    .panel-inner.drive-phase .phone-ctl:hover .phone-3d,
+    .panel-inner.drive-phase .phone-ctl:active .phone-3d {
       animation-play-state: paused;
       transform: rotateY(0deg) scale(1.08);
     }
-    .panel-inner.drive-phase .help-btn[aria-expanded="true"] .phone-3d {
+    .panel-inner.drive-phase .phone-ctl:has(.help-btn[aria-expanded="true"]) .phone-3d {
       animation-duration: 7s;
     }
-    .panel-inner.drive-phase .help-btn[aria-expanded="true"] .phone-face {
+    .panel-inner.drive-phase .phone-ctl:has(.help-btn[aria-expanded="true"]) .phone-face {
       box-shadow:
         0 7px 16px rgba(0, 0, 0, 0.58),
         0 0 12px rgba(232, 154, 187, 0.35);
@@ -538,9 +546,12 @@
         grid-template-columns: repeat(3, 48px);
         grid-template-rows: repeat(2, 44px);
       }
-      .help-btn { width: 40px; height: 40px; font-size: 1.1rem; }
-      .panel-inner.drive-phase .help-btn { width: auto; height: auto; }
-      .panel-inner.drive-phase .help-btn-icon {
+      .phone-ctl { width: 40px; height: 40px; }
+      .panel-inner.drive-phase .phone-ctl {
+        width: 48px;
+        height: calc(44px * 1024 / 540);
+      }
+      .panel-inner.drive-phase .phone-scene {
         width: 44px;
         height: calc(44px * 1024 / 540);
       }
@@ -585,18 +596,19 @@
           </div>
         </div>
 
-        <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel">
-          <span class="help-btn-icon" aria-hidden="true">
-            <span class="phone-3d">
-              <span class="phone-face phone-face--front">
-                <span class="phone-face--front-screen"></span>
-              </span>
-              <span class="phone-face phone-face--back">
+        <div class="phone-ctl">
+          <div class="phone-scene" aria-hidden="true">
+            <div class="phone-3d">
+              <div class="phone-face phone-face--front">
+                <div class="phone-face--front-screen"></div>
+              </div>
+              <div class="phone-face phone-face--back">
                 <img src="assets/iphone16-back.png" alt="" width="540" height="1024" draggable="false">
-              </span>
-            </span>
-          </span>
-        </button>
+              </div>
+            </div>
+          </div>
+          <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel"></button>
+        </div>
         <div class="help-panel" id="helpPanel" hidden role="dialog" aria-label="Controls">
           <p class="hint" id="hintText"></p>
           <div class="dpad" id="dpad" aria-label="Direction pad">
