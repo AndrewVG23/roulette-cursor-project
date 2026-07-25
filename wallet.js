@@ -229,6 +229,13 @@
   function debtScaled(base) {
     return Math.max(1, Math.round(Number(base) * debtCostMult()));
   }
+  // Menu prices that compound at the credit-debt rate (6% per gas visit).
+  function debtPriceMult() {
+    return Math.round(Math.pow(1 + CREDIT_INTEREST_RATE, state.visits) * 10000) / 10000;
+  }
+  function debtPriceScaled(base) {
+    return Math.max(1, Math.round(Number(base) * debtPriceMult()));
+  }
   function visits() { return state.visits; }
   function nextVisitRate() {
     return Math.min(VISIT_RATE_BASE + VISIT_RATE_STEP * (state.visits + 1), VISIT_RATE_CAP);
@@ -648,7 +655,7 @@
     gold, goldSpot, goldBuyCost, goldCreditCost, goldSellValue, buyGold, sellGold, netWorth,
     // economy
     index, gasPrice, gasFillGallons, gasFillCost, buyGasFill,
-    priceMult, tipMult, wageMult, goldScaled, debtCostMult, debtScaled,
+    priceMult, tipMult, wageMult, goldScaled, debtCostMult, debtScaled, debtPriceMult, debtPriceScaled,
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing

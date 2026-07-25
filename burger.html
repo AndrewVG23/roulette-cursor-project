@@ -359,7 +359,7 @@
           <div><strong>A / S / D / F</strong> — slam Patty, Cheese, Tomato, Bacon</div>
           <div><strong>X</strong> — toss a ruined or gross burger</div>
           <div>Match the ticket order, then the bun seals itself. Tap the ingredient buttons if you skip the keys.</div>
-          <div>Menu price starts at <strong>$1</strong> and tracks full inflation. A clean good build adds a tip (base <strong>$15</strong> — full inflation).</div>
+          <div>Menu price starts at <strong>$5</strong> and compounds at the debt rate (6% per gas visit). A clean good build adds a tip (base <strong>$15</strong> — full inflation).</div>
           <div>Pay hits your <strong>phone</strong>. Nobody hands you paper here.</div>
         </div>
 
@@ -1366,10 +1366,10 @@
     return burger.done && !burger.ruined && !burger.tainted;
   }
 
-  // Menu price rides full inflation; wage is half the menu price.
-  const BASE_BURGER_PRICE = 1;
+  // Menu price compounds at the credit-debt rate; wage is half the menu price.
+  const BASE_BURGER_PRICE = 5;
   const BASE_TIP = 15;
-  function burgerPrice() { return Math.max(1, Math.round(BASE_BURGER_PRICE * Wallet.priceMult())); }
+  function burgerPrice() { return Wallet.debtPriceScaled(BASE_BURGER_PRICE); }
   function burgerWage() {
     const w = Math.round(burgerPrice() / 2);
     return w > 0 ? w : 1;
