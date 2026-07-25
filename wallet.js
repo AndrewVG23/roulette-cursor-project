@@ -7,8 +7,8 @@
   //   cash    — physical paper dollars. Floor of $0. Liquor + casino money.
   //   gold    — ounces. Bought at 5% over spot, sold at 5% under, for cash.
   // One shared price index drives gas price, gold spot, and every inflated
-  // price. Each gas-station visit compounds the index by 4%. Debt on credit
-  // compounds at 6% interest each visit.
+  // price. Each gas-station visit compounds the index by 4%, advances the
+  // calendar one month from a January 2022 start, and applies debt interest.
   const STATE_KEY = 'walletV3';
   const LEGACY_PURSE_KEY = 'casinoPurse';
   const LEGACY_STATE_KEYS = ['walletV2'];
@@ -28,6 +28,10 @@
   const VISIT_RATE_STEP = 0;
   const VISIT_RATE_CAP = 0.04;
   const CREDIT_INTEREST_RATE = 0.06; // credit balance compounds +6% every gas visit
+  const GAME_START_YEAR = 2022;
+  const GAME_START_MONTH = 0; // January
+
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const fmt = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -202,6 +206,20 @@
     return Math.max(1, Math.round(Number(base) * debtPriceMult()));
   }
   function visits() { return state.visits; }
+
+  function gameDate() {
+    const totalMonths = GAME_START_MONTH + state.visits;
+    return {
+      year: GAME_START_YEAR + Math.floor(totalMonths / 12),
+      month: totalMonths % 12
+    };
+  }
+
+  function formatGameDate() {
+    const { year, month } = gameDate();
+    return `${MONTH_NAMES[month]} ${year}`;
+  }
+
   function nextVisitRate() {
     return Math.min(VISIT_RATE_BASE + VISIT_RATE_STEP * (state.visits + 1), VISIT_RATE_CAP);
   }
@@ -281,9 +299,11 @@
   }
 
   function syncHudMetrics() {
+    const cluster = document.getElementById('purseHudCluster');
     const hud = document.getElementById('purseHud');
-    if (!hud) return;
-    const rect = hud.getBoundingClientRect();
+    const el = cluster || hud;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
     const root = document.documentElement;
     const styles = getComputedStyle(root);
     const rightInset = parseFloat(styles.getPropertyValue('--purse-hud-right')) || 10;
@@ -323,6 +343,8 @@
     const cEl = document.getElementById('purseHudCash');
     const gEl = document.getElementById('purseHudGold');
     const nwEl = document.getElementById('purseHudNetWorth');
+    const calEl = document.getElementById('gameCalendarDate');
+    if (calEl) calEl.textContent = formatGameDate();
     if (dEl) dEl.textContent = fmt.format(state.digital);
     if (cEl) cEl.textContent = fmt.format(state.cash);
     if (gEl) gEl.textContent = formatGold(state.gold);
@@ -384,6 +406,26 @@
     updatePanel();
   }
 
+  const CALENDAR_ICON = [
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">',
+    '<rect x="3" y="4.5" width="18" height="16.5" rx="2" stroke="currentColor" stroke-width="1.5"/>',
+    '<path d="M3 9.5h18" stroke="currentColor" stroke-width="1.5"/>',
+    '<path d="M8 2.5v3M16 2.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+    '</svg>'
+  ].join('');
+
+  function buildCalendar() {
+    const cal = document.createElement('div');
+    cal.className = 'game-calendar';
+    cal.id = 'gameCalendar';
+    cal.setAttribute('aria-label', 'Game calendar');
+    cal.innerHTML = [
+      `<span class="game-calendar-icon" aria-hidden="true">${CALENDAR_ICON}</span>`,
+      '<span class="game-calendar-date" id="gameCalendarDate"></span>'
+    ].join('');
+    return cal;
+  }
+
   function buildPanel() {
     const panel = document.createElement('div');
     panel.className = 'purse-hud-panel';
@@ -419,6 +461,21 @@
     return panel;
   }
 
+  function ensureCalendar() {
+    if (document.getElementById('gameCalendar')) return;
+    const hud = document.getElementById('purseHud');
+    if (!hud) return;
+    let cluster = document.getElementById('purseHudCluster');
+    if (!cluster) {
+      cluster = document.createElement('div');
+      cluster.className = 'purse-hud-cluster';
+      cluster.id = 'purseHudCluster';
+      hud.parentNode.insertBefore(cluster, hud);
+      cluster.appendChild(hud);
+    }
+    cluster.insertBefore(buildCalendar(), hud);
+  }
+
   function mountHud() {
     if (hudDisabled()) return;
     if (document.getElementById('purseHud')) {
@@ -433,10 +490,14 @@
         const delta = document.getElementById('purseHudDelta');
         hud.insertBefore(row, delta);
       }
+      ensureCalendar();
       updateDisplay();
       syncHudMetrics();
       return;
     }
+    const cluster = document.createElement('div');
+    cluster.className = 'purse-hud-cluster';
+    cluster.id = 'purseHudCluster';
     const wrap = document.createElement('div');
     wrap.className = 'purse-hud';
     wrap.id = 'purseHud';
@@ -475,14 +536,16 @@
       '<span class="purse-hud-delta" id="purseHudDelta" aria-hidden="true"></span>'
     ].join('');
     wrap.addEventListener('click', () => togglePanel());
-    document.body.appendChild(wrap);
+    cluster.appendChild(buildCalendar());
+    cluster.appendChild(wrap);
+    document.body.appendChild(cluster);
     document.body.appendChild(buildPanel());
     document.body.classList.add('has-purse-hud');
     updateDisplay();
     syncHudMetrics();
     if ('ResizeObserver' in global) {
       resizeObserver = new ResizeObserver(syncHudMetrics);
-      resizeObserver.observe(wrap);
+      resizeObserver.observe(cluster);
     } else {
       global.addEventListener('resize', syncHudMetrics);
     }
@@ -548,6 +611,7 @@
     index, gasPrice, gasFillGallons, gasFillCost, buyGasFill,
     priceMult, tipMult, wageMult, goldScaled, debtCostMult, debtScaled, debtPriceMult, debtPriceScaled,
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
+    gameDate, formatGameDate, GAME_START_YEAR,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing
     snapshot, restore, getState, reincarnate,
