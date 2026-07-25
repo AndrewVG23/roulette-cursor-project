@@ -234,6 +234,7 @@
   const H = 420;
   const FLOOR_Y = 348;
   const GOAL_W = 18;
+  const TRASH_OPEN_W = 26; // trash-can mouth is a bit wider than the left goal band
   const GOAL_H = 92;
   const GOAL_TOP = FLOOR_Y - GOAL_H;
   const MOUTH_MID_Y = 301;
@@ -504,7 +505,7 @@
 
     slime.x += slime.vx * dt;
     const minX = GOAL_W + slime.r + 4;
-    const maxX = W - GOAL_W - slime.r - 4;
+    const maxX = W - TRASH_OPEN_W - slime.r - 4;
     if (slime.x < minX) { slime.x = minX; slime.vx *= -0.25; }
     if (slime.x > maxX) { slime.x = maxX; slime.vx *= -0.25; }
 
@@ -650,12 +651,12 @@
       const by = FLOOR_Y + ball.y;
       const trashRimY = GOAL_TOP + 4;
       const aboveTrashRim = by + ball.r <= trashRimY;
-      const overTrashOpening = ball.x > W - GOAL_W - ball.r * 0.35;
+      const overTrashOpening = ball.x > W - TRASH_OPEN_W - ball.r * 0.35;
       if (overTrashOpening && ball.vy > 0
           && previousBy + ball.r < trashRimY && by + ball.r >= trashRimY) {
         ball.enteredTrash = true;
       }
-      const rightWall = aboveTrashRim ? W - ball.r : W - GOAL_W - ball.r;
+      const rightWall = aboveTrashRim ? W - ball.r : W - TRASH_OPEN_W - ball.r;
       if (ball.x < leftWall) {
         ball.x = leftWall;
         ball.vx = Math.abs(ball.vx) * BALL_WALL_BOUNCE;
@@ -1477,12 +1478,12 @@
   function drawTrashGoal() {
     // A normal-size trash can that reads as far away — same on-screen height
     // as the giant mouth, which is the perspective joke.
-    const left = W - GOAL_W;
+    const left = W - TRASH_OPEN_W;
 
     // Cast shadow on the floor
     ctx.fillStyle = 'rgba(0,0,0,.28)';
     ctx.beginPath();
-    ctx.ellipse(left + GOAL_W / 2 - 6, FLOOR_Y + 6, 24, 5, 0, 0, Math.PI * 2);
+    ctx.ellipse(left + TRASH_OPEN_W / 2 - 6, FLOOR_Y + 6, 28, 5, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Body, tapered slightly toward the base
@@ -1502,12 +1503,12 @@
     // Open rim (tilted ellipse so the opening faces the field)
     ctx.fillStyle = '#3a4650';
     ctx.beginPath();
-    ctx.ellipse(left + GOAL_W / 2 - 1, GOAL_TOP + 4, GOAL_W / 2 + 5, 5, -0.18, 0, Math.PI * 2);
+    ctx.ellipse(left + TRASH_OPEN_W / 2 - 1, GOAL_TOP + 4, TRASH_OPEN_W / 2 + 6, 6, -0.18, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#aab4c0';
     ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.ellipse(left + GOAL_W / 2 - 1, GOAL_TOP + 4, GOAL_W / 2 + 5, 5, -0.18, 0, Math.PI * 2);
+    ctx.ellipse(left + TRASH_OPEN_W / 2 - 1, GOAL_TOP + 4, TRASH_OPEN_W / 2 + 6, 6, -0.18, 0, Math.PI * 2);
     ctx.stroke();
 
     // Ribs
@@ -1526,7 +1527,7 @@
     ctx.translate(left + 4, GOAL_TOP - 4);
     ctx.rotate(-0.9);
     ctx.fillStyle = '#aab4c0';
-    ctx.fillRect(-2, -6, GOAL_W + 10, 7);
+    ctx.fillRect(-2, -6, TRASH_OPEN_W + 10, 7);
     ctx.restore();
 
     // Label
@@ -1534,7 +1535,7 @@
     ctx.font = '800 8px Nunito, sans-serif';
     ctx.textAlign = 'center';
     ctx.save();
-    ctx.translate(left + GOAL_W / 2 + 1, GOAL_TOP + GOAL_H / 2);
+    ctx.translate(left + TRASH_OPEN_W / 2 + 1, GOAL_TOP + GOAL_H / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.fillText('MEDS', 0, 3);
     ctx.restore();

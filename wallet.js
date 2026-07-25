@@ -56,6 +56,10 @@
   let deltaTimer = null;
   let resizeObserver = null;
 
+  function clampFuel(gallons) {
+    return Math.max(0, Math.min(GAS_TANK_GAL, Number(gallons) || 0));
+  }
+
   function loadState() {
     try {
       const raw = global.localStorage.getItem(STATE_KEY);
@@ -66,7 +70,8 @@
           cash: Math.max(0, Math.round(Number(s.cash) || 0)),
           gold: Math.max(0, Math.round((Number(s.gold) || 0) * 100) / 100),
           index: Math.max(1, Number(s.index) || 1),
-          visits: Math.max(0, Math.round(Number(s.visits) || 0))
+          visits: Math.max(0, Math.round(Number(s.visits) || 0)),
+          fuel: Math.round(clampFuel(s.fuel ?? GAS_TANK_GAL) * 100) / 100
         };
       }
     } catch (_) { /* fall through to migration */ }
@@ -89,7 +94,7 @@
       const legacy = Number(global.localStorage.getItem(LEGACY_PURSE_KEY));
       if (Number.isFinite(legacy) && legacy >= 0) cash = Math.round(legacy);
     }
-    return { digital: DEFAULT_DIGITAL, cash, gold: 0, index: 1, visits: 0 };
+    return { digital: DEFAULT_DIGITAL, cash, gold: 0, index: 1, visits: 0, fuel: GAS_TANK_GAL };
   }
 
   let state = loadState();
@@ -110,7 +115,8 @@
       cash: state.cash,
       gold: state.gold,
       index: state.index,
-      visits: state.visits
+      visits: state.visits,
+      fuel: state.fuel
     };
   }
 
@@ -178,6 +184,12 @@
 
   // ------------------------------------------------------------------ prices
   function index() { return state.index; }
+  function fuel() { return state.fuel; }
+  function setFuel(gallons) {
+    state.fuel = Math.round(clampFuel(gallons) * 100) / 100;
+    persist();
+    return state.fuel;
+  }
   function gasPrice() { return GAS_BASE * state.index; }
   function gasFillGallons() { return GAS_TANK_GAL; }
   function gasFillCost(method) {
@@ -192,6 +204,7 @@
     } else {
       takeDigital(cost);
     }
+    setFuel(GAS_TANK_GAL);
     return { ok: true, cost, gallons: GAS_TANK_GAL };
   }
   function priceMult() { return state.index; }             // general inflated prices
@@ -280,6 +293,7 @@
     state.digital = DEFAULT_DIGITAL;
     state.cash = 0;
     state.gold = 0;
+    state.fuel = GAS_TANK_GAL;
     persist();
     return getState();
   }
@@ -289,6 +303,7 @@
     state.index = 1;
     state.digital = DEFAULT_DIGITAL;
     state.cash = 0;
+    state.fuel = GAS_TANK_GAL;
     // gold is kept — bullion survives the rewind
     persist();
     return getState();
@@ -624,7 +639,7 @@
     // gold
     gold, goldSpot, goldBuyCost, goldCreditCost, goldSellValue, buyGold, sellGold, netWorth,
     // economy
-    index, gasPrice, gasFillGallons, gasFillCost, buyGasFill,
+    index, gasPrice, fuel, setFuel, gasFillGallons, gasFillCost, buyGasFill,
     priceMult, tipMult, wageMult, goldScaled, debtCostMult, debtScaled, debtPriceMult, debtPriceScaled,
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
     gameDate, formatGameDate, GAME_START_YEAR,

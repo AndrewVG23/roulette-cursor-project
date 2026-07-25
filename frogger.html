@@ -1922,7 +1922,7 @@
       rumble: 0,
       hp: 100,
       maxHp: 100,
-      fuel: Wallet.GAS_TANK_GAL,
+      fuel: Wallet.fuel(),
       maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
       navTarget: null,
@@ -2602,6 +2602,7 @@
     clearNavTrip(d);
     d.approachingExit = null;
     d.skipExitId = resumeExitId || null;
+    Wallet.setFuel(d.fuel);
     try {
       sessionStorage.setItem('drive-checkpoint', JSON.stringify({
         drive: replaySnapDrive(d),
@@ -2744,6 +2745,7 @@
       d.maxFuel = tank;
       d.fuel = Math.max(0, Math.min(tank, d.fuel ?? tank));
     }
+    Wallet.setFuel(d.fuel);
   }
 
   function resumeSavedDrive() {
@@ -2835,7 +2837,7 @@
       rumble: 0,
       hp: 100,
       maxHp: 100,
-      fuel: Wallet.GAS_TANK_GAL,
+      fuel: Wallet.fuel(),
       maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
       navTarget: null,
@@ -2850,6 +2852,7 @@
     };
     replayApplyDrive(state.drive, data.drive);
     normalizeDriveFuel(state.drive);
+    state.drive.fuel = Wallet.fuel();
     seedFullRouteEnvironment(state.drive, route);
     const leftExit = data.resumeExitId
       || data.drive?.skipExitId
@@ -3981,6 +3984,11 @@
     const tankGal = d.maxFuel || Wallet.GAS_TANK_GAL;
     const fuelUse = (tankGal / Wallet.GAS_EMPTY_SEC) * dt;
     d.fuel = Math.max(0, (d.fuel ?? tankGal) - fuelUse);
+    d._fuelSyncT = (d._fuelSyncT || 0) + dt;
+    if (d._fuelSyncT >= 1) {
+      d._fuelSyncT = 0;
+      Wallet.setFuel(d.fuel);
+    }
 
     const navigating = !!(d.navTarget && d.navTarget !== d.skipExitId);
     if (navigating) d.navTripT = (d.navTripT || 0) + dt;

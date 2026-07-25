@@ -342,27 +342,18 @@
     }
 
     function readCheckpointFuel() {
-      try {
-        const raw = sessionStorage.getItem('drive-checkpoint');
-        if (!raw) return null;
-        const data = JSON.parse(raw);
-        if (!data?.drive) return null;
-        const max = data.drive.maxFuel || Wallet.GAS_TANK_GAL;
-        const fuel = data.drive.fuel ?? max;
-        return { fuel, max: Wallet.GAS_TANK_GAL };
-      } catch (_) {
-        return null;
-      }
+      return { fuel: Wallet.fuel(), max: Wallet.GAS_TANK_GAL };
     }
 
     function writeCheckpointFuel(gallons) {
+      Wallet.setFuel(gallons);
       try {
         const raw = sessionStorage.getItem('drive-checkpoint');
-        if (!raw) return false;
+        if (!raw) return true;
         const data = JSON.parse(raw);
-        if (!data?.drive) return false;
+        if (!data?.drive) return true;
         data.drive.maxFuel = Wallet.GAS_TANK_GAL;
-        data.drive.fuel = Math.max(0, Math.min(Wallet.GAS_TANK_GAL, gallons));
+        data.drive.fuel = Wallet.fuel();
         sessionStorage.setItem('drive-checkpoint', JSON.stringify(data));
         return true;
       } catch (_) {
