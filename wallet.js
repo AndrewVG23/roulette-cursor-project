@@ -17,7 +17,7 @@
   const DEFAULT_DIGITAL = -10000; // start in the hole on the phone
   const DEFAULT = DEFAULT_CASH;   // legacy alias
 
-  const GAS_BASE = 3.89;      // $/gal at index 1.0
+  const GAS_BASE = 2.00;      // $/gal at index 1.0
   const GAS_TANK_GAL = 20;    // night-drive tank size
   const GAS_EMPTY_SEC = 45;   // full tank lasts this long at cruise
   const GAS_CASH_DISCOUNT = 0.10; // 10% off pump price when paying cash
@@ -125,6 +125,17 @@
     if (state.cash < cost) return false;
     setCash(state.cash - cost);
     return true;
+  }
+
+  // Paper cash → phone credit. Used at the bank teller window to chip away
+  // at debt (or park surplus on the phone). 1:1, no fee.
+  function payCashTowardCredit(amount) {
+    const n = Math.round(amount);
+    if (n <= 0) return { ok: false, paid: 0, reason: 'Bad amount' };
+    if (state.cash < n) return { ok: false, paid: 0, reason: 'Not enough cash' };
+    takeCash(n);
+    addDigital(n);
+    return { ok: true, paid: n, digital: state.digital, cash: state.cash };
   }
 
   // Phone → paper cash. Casino cage / liquor counter only (UI-gated).
@@ -507,6 +518,7 @@
       }
       updateDisplay();
       syncHudMetrics();
+      if (cashDeskAllowed()) mountCashDeskButton();
       return;
     }
     const wrap = document.createElement('div');
@@ -562,6 +574,7 @@
     } else {
       global.addEventListener('resize', syncHudMetrics);
     }
+    if (cashDeskAllowed()) mountCashDeskButton();
   }
 
   function getInsets() {
@@ -617,7 +630,7 @@
     read, set: write, add, take,
     digital, setDigital, addDigital, takeDigital,
     // paper cash
-    cash, setCash, addCash, takeCash, spendCash,
+    cash, setCash, addCash, takeCash, spendCash, payCashTowardCredit,
     cashOut, cashOutAll, cashOutPayout, cashDeskAllowed,
     // gold
     gold, goldSpot, goldBuyCost, goldCreditCost, goldSellValue, buyGold, sellGold, netWorth,

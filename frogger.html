@@ -472,7 +472,8 @@
     craps: { id: 'craps', name: 'CRAPS', href: 'craps.html', sign: 'CRAPS PIT', signBg: '#2f8f4e', signFg: '#f5edd8' },
     liquor: { id: 'liquor', name: 'LIQUOR', href: 'liquor.html', sign: 'LIQUOR • COLD BEER', signBg: '#16213e', signFg: '#ffd23f' },
     gas: { id: 'gas', name: 'GAS', href: 'gas.html', sign: 'QUIK-FILL 64', signBg: '#e85c2a', signFg: '#fff7ef' },
-    coins: { id: 'coins', name: 'COINS', href: 'coins.html', sign: 'LAKE SHORE COIN', signBg: '#c9a24a', signFg: '#1a1208' }
+    coins: { id: 'coins', name: 'COINS', href: 'coins.html', sign: 'LAKE SHORE COIN', signBg: '#c9a24a', signFg: '#1a1208' },
+    bank: { id: 'bank', name: 'BANK', href: 'bank.html', sign: 'LAKE SHORE TRUST', signBg: '#1e3a32', signFg: '#e8c878' }
   };
 
   // Highway exits you can take during the night drive
@@ -483,7 +484,8 @@
     { id: 'hospital', name: 'ER', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
     { id: 'liquor', name: 'LIQUOR', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' },
     { id: 'gas', name: 'GAS', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' },
-    { id: 'coins', name: 'COINS', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' }
+    { id: 'coins', name: 'COINS', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' },
+    { id: 'bank', name: 'BANK', href: 'bank.html', blurb: 'Lake Shore Trust — slam cash at the window.' }
   ];
 
   // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
@@ -577,7 +579,8 @@
       { n: 1200, e: 0.25, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' },
       { n: 820, e: -2.10, side: -1, id: 'liquor', name: 'LIQUOR', mapLabel: 'Liquor', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' },
       { n: 620, e: -2.10, side: -1, id: 'gas', name: 'GAS', mapLabel: 'Gas', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' },
-      { n: 1120, e: -0.85, side: -1, id: 'coins', name: 'COINS', mapLabel: 'Coins', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' }
+      { n: 1120, e: -0.85, side: -1, id: 'coins', name: 'COINS', mapLabel: 'Coins', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' },
+      { n: 1000, e: 0.25, side: -1, id: 'bank', name: 'BANK', mapLabel: 'Bank', href: 'bank.html', blurb: 'Lake Shore Trust — slam cash at the window.' }
     ]
   };
 
@@ -2567,6 +2570,25 @@
     window.location.href = 'coins.html';
   }
 
+  function takeBankExit(exit) {
+    if (!exit || exit.taken || state.mode !== 'drive' || !state.drive) return;
+    exit.taken = true;
+    const d = state.drive;
+    d.speed = Math.max(10, d.speed * 0.55);
+    d.approachingExit = exit;
+    try {
+      sessionStorage.setItem('drive-checkpoint', JSON.stringify({
+        drive: replaySnapDrive(d),
+        lives: state.lives,
+        level: state.level,
+        score: state.score
+      }));
+    } catch (_) { /* ignore quota errors */ }
+    beep(392, 0.07);
+    beep(523, 0.1);
+    window.location.href = 'bank.html';
+  }
+
   function takeExit(exit) {
     if (!exit || exit.taken || state.mode !== 'drive') return;
     if (exit.id === 'hospital') {
@@ -2579,6 +2601,10 @@
     }
     if (exit.id === 'coins') {
       takeCoinsExit(exit);
+      return;
+    }
+    if (exit.id === 'bank') {
+      takeBankExit(exit);
       return;
     }
     exit.taken = true;

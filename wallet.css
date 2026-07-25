@@ -282,8 +282,18 @@
   background: linear-gradient(165deg, rgba(44, 92, 70, 0.96), rgba(16, 36, 28, 0.98));
 }
 
-body.has-cash-desk .purse-hud-panel {
+/* Roulette floor: HUD off, panel under the cash desk trigger */
+body.has-cash-desk:not(.has-purse-hud) .purse-hud-panel {
   top: calc(var(--purse-hud-top) + 44px);
+}
+
+/* Craps / liquor: cash desk stacks under the purse HUD */
+body.has-purse-hud.has-cash-desk .purse-cash-desk-btn {
+  top: calc(var(--purse-hud-top) + var(--purse-hud-height) + var(--purse-hud-gap));
+}
+
+body.has-purse-hud.has-cash-desk .purse-hud-panel {
+  top: calc(var(--purse-hud-top) + var(--purse-hud-height) + var(--purse-hud-gap) + 44px);
 }
 
 /* Keep game UI out from under the fixed HUD */
