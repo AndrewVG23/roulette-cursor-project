@@ -939,9 +939,14 @@
     const timeBonus = Math.floor((G.timeAtFlag || 0) / 10);
     const pay = G.coins * 2 + 25 + timeBonus;
     G.banked += pay;
+    // Payday is direct deposit — it lands on the phone, never in hand.
     Wallet.add(pay);
     return pay;
   }
+
+  // Liquor is a cash business. The forty's sticker price rides inflation.
+  const FORTY_BASE_PRICE = 8;
+  function fortyPrice() { return Math.ceil(FORTY_BASE_PRICE * Wallet.priceMult()); }
 
   // ---------------------------------------------------------------- update
   function findFlag() {
@@ -1118,8 +1123,19 @@
       it.vy = Math.min(PHYS.fallCap, it.vy + PHYS.gravFall * dt);
       moveAndCollide(it, dt, { bounce: true });
       if (it.y > H + 40) it.dead = true;
+      if (it.denyT > 0) it.denyT -= dt;
       if (G.mode === 'play' && overlap(p, it)) {
+        // No paper, no forty — the counter doesn't take the phone.
+        const price = fortyPrice();
+        if (!Wallet.spendCash(price)) {
+          if (!(it.denyT > 0)) {
+            addFloat(it.x, it.y - 18, `CASH ONLY — $${price}`, '#ff6a5a');
+            it.denyT = 1.2;
+          }
+          continue;
+        }
         it.dead = true;
+        addFloat(it.x, it.y - 30, `-$${price} CASH`, '#8fd989');
         if (p.big) {
           addScore(1000, it.x, it.y - 8);
           G.coins += 3;

@@ -552,7 +552,7 @@
     let payoutChart;
 
     const state = {
-      purse: Wallet.read(),
+      purse: Wallet.cash(),
       chip: 1,
       point: null,
       rolling: false,
@@ -2935,7 +2935,7 @@
     }
 
     function updateUI() {
-      state.purse = Wallet.read();
+      state.purse = Wallet.cash();
       Wallet.updateDisplay();
       const comeOut = state.point == null;
       els.phaseLabel.textContent = comeOut ? 'Come-out' : `Point ${state.point}`;
@@ -2974,7 +2974,7 @@
         else if (key === 'pass' || key === 'dontPass') showToast('Line bet is locked for this point');
         return;
       }
-      if (Wallet.read() < state.chip) {
+      if (Wallet.cash() < state.chip) {
         showToast('Not enough in your purse', 'lose');
         return;
       }
@@ -2984,8 +2984,8 @@
           showToast(`Odds maxed at ${purseFmt.format(maxPassOdds())}`);
           return;
         }
-        const add = Math.min(state.chip, room, Wallet.read());
-        Wallet.take(add);
+        const add = Math.min(state.chip, room, Wallet.cash());
+        Wallet.takeCash(add);
         state.bets.passOdds += add;
         renderChips(key);
         updateUI();
@@ -3001,7 +3001,7 @@
           return;
         }
       }
-      Wallet.take(state.chip);
+      Wallet.takeCash(state.chip);
       state.bets[key] += state.chip;
       renderChips(key);
       updateUI();
@@ -3022,7 +3022,7 @@
         refund += state.bets[key];
         state.bets[key] = 0;
       }
-      Wallet.add(refund);
+      Wallet.addCash(refund);
       if (refund > 0) showToast(`Cleared ${purseFmt.format(refund)}`);
       else showToast(state.point ? 'Line bets stay until the point resolves' : 'Nothing to clear');
       renderChips();
@@ -3037,7 +3037,7 @@
         if (total === target) {
           const win = amt * HORN_PAY[key];
           net += win;
-          Wallet.add(amt + win);
+          Wallet.addCash(amt + win);
           flashTarget(key, 'win');
         } else {
           net -= amt;
@@ -3055,7 +3055,7 @@
         if (FIELD_WIN.has(total)) {
           const win = FIELD_DOUBLE.has(total) ? amt * 2 : amt;
           net += win;
-          Wallet.add(amt + win);
+          Wallet.addCash(amt + win);
           flashTarget('field', 'win');
         } else {
           net -= amt;
@@ -3068,7 +3068,7 @@
         if (total === 7) {
           const win = amt * 4;
           net += win;
-          Wallet.add(amt + win);
+          Wallet.addCash(amt + win);
           flashTarget('any7', 'win');
         } else {
           net -= amt;
@@ -3081,7 +3081,7 @@
         if (total === 2 || total === 3 || total === 12) {
           const win = amt * 7;
           net += win;
-          Wallet.add(amt + win);
+          Wallet.addCash(amt + win);
           flashTarget('anyCraps', 'win');
         } else {
           net -= amt;
@@ -3102,7 +3102,7 @@
           if (isHard(d1, d2, total)) {
             const win = hardPayout(num, amt);
             net += win;
-            Wallet.add(amt + win);
+            Wallet.addCash(amt + win);
             flashTarget(key, 'win');
           } else {
             net -= amt;
@@ -3128,7 +3128,7 @@
         } else if (total === n) {
           const win = placePayout(n, amt);
           net += win;
-          Wallet.add(win);
+          Wallet.addCash(win);
           flashTarget(key, 'win');
         }
       }
@@ -3141,7 +3141,7 @@
           state.bets[key] = 0;
         } else if (total === num) {
           net += amt;
-          Wallet.add(amt);
+          Wallet.addCash(amt);
           flashTarget(key, 'win');
         }
       }
@@ -3159,7 +3159,7 @@
             flashTarget(`place${n}`, 'lose');
           } else if (total === n) {
             net += amt;
-            Wallet.add(amt + amt);
+            Wallet.addCash(amt + amt);
             state.comePoints[n] = 0;
             flashTarget(`place${n}`, 'win');
           }
@@ -3168,7 +3168,7 @@
           const amt = state.dontComePoints[n];
           if (total === 7) {
             net += amt;
-            Wallet.add(amt + amt);
+            Wallet.addCash(amt + amt);
             state.dontComePoints[n] = 0;
             flashTarget(`place${n}`, 'win');
           } else if (total === n) {
@@ -3196,7 +3196,7 @@
           if (state.bets.pass > 0) {
             const amt = state.bets.pass;
             net += amt;
-            Wallet.add(amt + amt);
+            Wallet.addCash(amt + amt);
             flashTarget('pass', 'win');
             state.bets.pass = 0;
           }
@@ -3214,7 +3214,7 @@
           if (state.bets.dontPass > 0) {
             const amt = state.bets.dontPass;
             net += amt;
-            Wallet.add(amt + amt);
+            Wallet.addCash(amt + amt);
             flashTarget('dontPass', 'win');
             state.bets.dontPass = 0;
           }
@@ -3225,7 +3225,7 @@
             state.bets.pass = 0;
           }
           if (state.bets.dontPass > 0) {
-            Wallet.add(state.bets.dontPass);
+            Wallet.addCash(state.bets.dontPass);
             state.bets.dontPass = 0;
             note = "Don't Pass pushes on 12";
           }
@@ -3240,7 +3240,7 @@
           const amt = state.bets.come;
           if (total === 7 || total === 11) {
             net += amt;
-            Wallet.add(amt + amt);
+            Wallet.addCash(amt + amt);
             flashTarget('come', 'win');
             state.bets.come = 0;
           } else if (total === 2 || total === 3 || total === 12) {
@@ -3261,11 +3261,11 @@
             state.bets.dontCome = 0;
           } else if (total === 2 || total === 3) {
             net += amt;
-            Wallet.add(amt + amt);
+            Wallet.addCash(amt + amt);
             flashTarget('dontCome', 'win');
             state.bets.dontCome = 0;
           } else if (total === 12) {
-            Wallet.add(amt);
+            Wallet.addCash(amt);
             state.bets.dontCome = 0;
           } else if (PLACE_NUMS.includes(total)) {
             state.dontComePoints[total] += amt;
@@ -3287,7 +3287,7 @@
           if (state.bets.dontPass > 0) {
             const amt = state.bets.dontPass;
             net += amt;
-            Wallet.add(amt + amt);
+            Wallet.addCash(amt + amt);
             flashTarget('dontPass', 'win');
             state.bets.dontPass = 0;
           }
@@ -3296,7 +3296,7 @@
           if (state.bets.pass > 0) {
             const amt = state.bets.pass;
             net += amt;
-            Wallet.add(amt + amt);
+            Wallet.addCash(amt + amt);
             flashTarget('pass', 'win');
             state.bets.pass = 0;
           }
@@ -3304,7 +3304,7 @@
             const amt = state.bets.passOdds;
             const win = oddsPayout(state.point, amt);
             net += win;
-            Wallet.add(amt + win);
+            Wallet.addCash(amt + win);
             flashTarget('passOdds', 'win');
             state.bets.passOdds = 0;
           }
@@ -3322,9 +3322,9 @@
       else if (note) showToast(note);
       else showToast('No decision');
 
-      if (Wallet.read() <= 0 && totalAtRisk() <= 0) {
-        Wallet.set(100);
-        showToast('House floated you another $100', 'win');
+      if (Wallet.cash() <= 0 && totalAtRisk() <= 0) {
+        Wallet.setCash(100);
+        showToast('House floated you $100 in paper', 'win');
       }
       renderChips();
       updateUI();

@@ -272,6 +272,7 @@
         <p><b>Space</b> jumps — land and jump again right away while running to chain a double, then a triple jump.</p>
         <p><b>Scroll</b> zooms the chase camera in and out.</p>
         <p>Quarters are worth $1, red coins $2. Gas cans pay <b>$25</b> each. Find all 8 red coins and a bonus can appears over the pumps.</p>
+      <p>Everything found on the lot is <b>paper cash</b>. Every visit here compounds gas, gold, and every other price — a little harder each time.</p>
       </div>
 
       <div class="touch-ui">
@@ -300,6 +301,10 @@
   </script>
   <script type="module">
     import * as THREE from 'three';
+
+    // Every trip to the station compounds the whole economy — gas, gold spot,
+    // and every inflated price tick up together, harder each visit.
+    const visitReport = Wallet.recordGasVisit();
 
     // ---------------------------------------------------------------- setup
     const canvas = document.getElementById('game');
@@ -440,8 +445,8 @@
       g.fillStyle = '#101014'; g.fillRect(16, 250, w - 32, 360);
       g.font = '700 74px "General Sans", sans-serif';
       g.fillStyle = '#c0392b';
-      g.fillText('REG  $?.??', w / 2, 340);
-      g.fillText('PLUS $?.??', w / 2, 440);
+      g.fillText(`REG  ${Wallet.formatGas(Wallet.gasPrice())}`, w / 2, 340);
+      g.fillText(`PLUS ${Wallet.formatGas(Wallet.gasPrice() + 0.4)}`, w / 2, 440);
       g.font = '700 58px "General Sans", sans-serif';
       g.fillStyle = '#f0c400';
       g.fillText('NO GAS', w / 2, 552);
@@ -947,6 +952,12 @@
     const overlayKeys = document.getElementById('overlayKeys');
     const startBtn = document.getElementById('startBtn');
 
+    overlayText.innerHTML +=
+      ` <br><br>The sign just ticked over: regular is <b>${Wallet.formatGas(visitReport.gasPrice)}</b>/gal` +
+      ` (prices +${visitReport.ratePct.toFixed(0)}% this visit, visit #${visitReport.visits}).` +
+      ` Gold spot rides the pump — now <b>${Wallet.format(Math.round(visitReport.goldSpot))}</b>/oz.` +
+      ` Anything you scrounge here is paper cash.`;
+
     let toastTimer = 0;
     function showToast(html, ms = 2200) {
       toast.innerHTML = html;
@@ -1187,7 +1198,7 @@
           c.mesh.visible = false;
           if (c.red) {
             state.red++;
-            Wallet.add(2);
+            Wallet.addCash(2);
             sfx.red();
             if (state.red >= totalRed) {
               const bonus = cans.find(k => k.hidden);
@@ -1202,7 +1213,7 @@
             }
           } else {
             state.coins++;
-            Wallet.add(1);
+            Wallet.addCash(1);
             sfx.coin();
           }
           updateHud();
@@ -1216,7 +1227,7 @@
           k.mesh.visible = false;
           k.glow.intensity = 0;
           state.cans++;
-          Wallet.add(25);
+          Wallet.addCash(25);
           sfx.can();
           showToast(`GAS CAN — ${k.label}<small>+$25 · ${state.cans}/${cans.length}</small>`, 2600);
           updateHud();
@@ -1228,12 +1239,12 @@
     function win() {
       state.won = true;
       state.running = false;
-      Wallet.add(40);
+      Wallet.addCash(40);
       sfx.win();
       overlayTitle.textContent = 'TANK FULL';
       overlayText.innerHTML =
         `Six cans of gas and every quarter in the lot. The engine turns over on the first try.<br><br>` +
-        `Purse: <b style="color:var(--color-primary)">${Wallet.format(Wallet.read())}</b> (+$40 ignition bonus)`;
+        `Cash: <b style="color:var(--color-primary)">${Wallet.format(Wallet.cash())}</b> (+$40 ignition bonus, paper in hand)`;
       overlayKeys.innerHTML = '';
       startBtn.textContent = 'Run it back';
       overlay.hidden = false;

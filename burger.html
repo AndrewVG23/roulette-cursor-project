@@ -459,7 +459,8 @@
           <div><strong>A / S / D / F</strong> — slam Patty, Cheese, Tomato, Bacon</div>
           <div><strong>X</strong> — toss a ruined or gross burger</div>
           <div>Match the ticket order, then the bun seals itself. Tap the ingredient buttons if you skip the keys.</div>
-          <div>Every burger handed off pays at least <strong>$1</strong> (rejected or gross). A clean good build pays <strong>$20</strong>.</div>
+          <div>Every burger handed off pays the wage (base <strong>$5</strong> — it only climbs at <em>half</em> of inflation). A clean good build adds a tip (base <strong>$15</strong> — tips ride full inflation).</div>
+          <div>Pay hits your <strong>phone</strong>. Nobody hands you paper here.</div>
         </div>
 
         <div class="controls" aria-label="Game controls">
@@ -1468,6 +1469,13 @@
     return burger.done && !burger.ruined && !burger.tainted;
   }
 
+  // Every handed-off burger earns the wage; clean builds add a tip on top.
+  // Tips ride full inflation, the wage only keeps up with half of it.
+  const BASE_WAGE_PER_BURGER = 5;
+  const BASE_TIP = 15;
+  function burgerWage() { return Math.max(1, Math.round(BASE_WAGE_PER_BURGER * Wallet.wageMult())); }
+  function burgerTip() { return Math.max(1, Math.round(BASE_TIP * Wallet.tipMult())); }
+
   function deliverToCustomer(burger) {
     if (burger.delivered) return;
     burger.delivered = true;
@@ -1479,8 +1487,10 @@
     const served = burger.done && !burger.ruined;
 
     if (good) {
-      // Clean build — $20 tips bank for the casino purse
-      bankTip(20);
+      // Clean build — wage plus tip, straight to the phone
+      const wage = burgerWage();
+      const tip = burgerTip();
+      bankTip(wage + tip);
       state.served += 1;
       state.combo += 1;
       c.held = heldIds;
@@ -1488,7 +1498,7 @@
       setCustomerMood('happy');
       state.floatText.push({
         x: CUSTOMER_SPOT_X - 10, y: CUSTOMER_Y - 100,
-        text: '+$20', life: 1.15, color: '#d0a23a'
+        text: `+$${wage} WAGE +$${tip} TIP`, life: 1.15, color: '#d0a23a'
       });
       state.floatText.push({
         x: CUSTOMER_SPOT_X - 10, y: CUSTOMER_Y - 122,
@@ -1506,8 +1516,9 @@
       updateHUD();
       if (state.tickets.length < MAX_TICKETS) addTicket();
     } else if (served) {
-      // Served, but gross — $1 and an angry customer
-      bankTip(1);
+      // Served, but gross — wage only, no tip, and an angry customer
+      const wage = burgerWage();
+      bankTip(wage);
       state.served += 1;
       state.combo = 0;
       c.held = heldIds;
@@ -1517,7 +1528,7 @@
       state.flash = Math.max(state.flash, 0.2);
       state.floatText.push({
         x: CUSTOMER_SPOT_X - 10, y: CUSTOMER_Y - 100,
-        text: '+$1', life: 1.05, color: '#8fd989'
+        text: `+$${wage} WAGE · NO TIP`, life: 1.05, color: '#8fd989'
       });
       state.floatText.push({
         x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 118,
@@ -1531,8 +1542,9 @@
       updateHUD();
       if (state.tickets.length < MAX_TICKETS) addTicket();
     } else {
-      // Rejected — wrong or ruined — still pays $1
-      bankTip(1);
+      // Rejected — wrong or ruined — still pays the per-burger wage
+      const wage = burgerWage();
+      bankTip(wage);
       c.held = heldIds.length ? heldIds : ['patty'];
       c.heldScale = 1;
       setCustomerMood('pissed');
@@ -1541,7 +1553,7 @@
       state.flash = Math.max(state.flash, 0.2);
       state.floatText.push({
         x: CUSTOMER_SPOT_X - 10, y: CUSTOMER_Y - 100,
-        text: '+$1', life: 1.05, color: '#8fd989'
+        text: `+$${wage} WAGE · NO TIP`, life: 1.05, color: '#8fd989'
       });
       state.floatText.push({
         x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 118,

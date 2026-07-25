@@ -682,11 +682,13 @@
       beep(554, 0.1);
       beep(659, 0.14);
     } else if (pillKind === 'heal') {
-      Wallet.take(1);
+      // Copay rides inflation. Billed to the phone — no cash desk here.
+      const copay = Math.max(1, Math.round(1 * Wallet.priceMult()));
+      Wallet.take(copay);
       healPatient();
       state.floatText.push({
         x: W * 0.28, y: FLOOR_Y - 120,
-        text: '−$1', life: 1.6, color: '#6ee0a8'
+        text: `−$${copay}`, life: 1.6, color: '#6ee0a8'
       });
       beep(523, 0.08);
       beep(659, 0.1);
@@ -694,10 +696,12 @@
       discharge();
       return;
     } else {
-      Wallet.take(100);
+      // Full bill, inflated, straight to the phone — debt if it has to be.
+      const bill = Math.round(100 * Wallet.priceMult());
+      Wallet.take(bill);
       state.floatText.push({
         x: W * 0.28, y: FLOOR_Y - 120,
-        text: '−$100', life: 1.4, color: '#ff6b6b'
+        text: `−$${bill}`, life: 1.4, color: '#ff6b6b'
       });
       beep(110, 0.12, 'sawtooth', 0.04);
       beep(180, 0.08);

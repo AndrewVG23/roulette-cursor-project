@@ -1005,10 +1005,10 @@
     let lastSpinNet = 0;
     let dealerStackCount = 0;
     let startingPurse = 100;
-    let purse = Wallet.read();
+    let purse = Wallet.cash();
     let purseBeforeSpin = purse;
-    Wallet.subscribe((value) => {
-      purse = value;
+    Wallet.subscribe((w) => {
+      purse = w.cash;
       updatePurseDisplay();
     });
     let lastReplayCycle = null;
@@ -3555,7 +3555,7 @@
     }
 
     function resetPurse() {
-      startingPurse = Wallet.read();
+      startingPurse = Wallet.cash();
       purse = startingPurse;
       updatePurseDisplay();
     }
@@ -4253,7 +4253,7 @@
       clearSettlementVisuals();
       placements.clear();
       history.length = 0;
-      Wallet.set(cycle.b);
+      Wallet.setCash(cycle.b);
       clampSelectedChipDenom();
       renderChips();
       updateMetrics();
@@ -4489,7 +4489,7 @@
         return;
       }
       hidePayoutOverlay();
-      Wallet.add(computeAdvanceTotal());
+      Wallet.addCash(computeAdvanceTotal());
       clampSelectedChipDenom();
       placements.clear();
       history.length = 0;
@@ -5016,7 +5016,7 @@
       if (purse < amount) return;
       // Start the shareable clip when the first bet lands so placement is in the video.
       ensureLiveReplayCapture();
-      Wallet.take(amount);
+      Wallet.takeCash(amount);
       placements.set(key, (placements.get(key) || 0) + amount);
       if (track) history.push({ key, amount });
       clampSelectedChipDenom();
@@ -5031,7 +5031,7 @@
       const next = current - last.amount;
       if (next <= 0) placements.delete(last.key);
       else placements.set(last.key, next);
-      Wallet.add(last.amount);
+      Wallet.addCash(last.amount);
       clampSelectedChipDenom();
       renderChips();
       scheduleUpdateMetrics();
@@ -5040,11 +5040,11 @@
       if (settling || replayMode) return;
       if (awaitingAdvance) {
         hidePayoutOverlay();
-        Wallet.add(computeAdvanceTotal());
+        Wallet.addCash(computeAdvanceTotal());
       } else {
         let refund = 0;
         placements.forEach((stake) => { refund += stake; });
-        Wallet.add(refund);
+        Wallet.addCash(refund);
         // Mid-round clear discards an in-progress placement recording.
         abortLiveReplayCapture();
         lastReplayVideo = null;
