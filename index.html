@@ -1097,9 +1097,16 @@
       maxPitch: THREE.MathUtils.degToRad(18),
       minFov: 20,
       maxFov: 46,
+      mobileMinFov: 26,
+      mobileMaxFov: 64,
       damp: 0.16,
       panYaw: 0.0012,
       panPitch: 0.00085
+    };
+    // Portrait phones crop a narrow vertical FOV hard — pull back + widen the lens.
+    const MOBILE_CAMERA = {
+      fovBoost: 18,
+      pullback: 1.42
     };
     const cameraRig = {
       position: new THREE.Vector3(),
@@ -1116,6 +1123,9 @@
       { id: 'player', label: 'Player', position: new THREE.Vector3(0, 740, 1145), lookAt: new THREE.Vector3(0, 28, -80), fov: 28 },
       { id: 'side', label: 'Side', position: new THREE.Vector3(-990, 665, 75), lookAt: new THREE.Vector3(0, 28, -80), fov: 28 }
     ];
+    const _resolvedViewPos = new THREE.Vector3();
+    const _resolvedViewLook = new THREE.Vector3();
+    let lastMobileCamera = null;
 
     const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 4 });
     const moneyFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
@@ -2759,25 +2769,52 @@
       return target.multiplyScalar(dist).add(position);
     }
 
+    function isMobileViewport() {
+      return window.matchMedia('(max-width: 900px)').matches;
+    }
+
+    function fovLimits() {
+      if (isMobileViewport()) {
+        return { min: CAMERA_LIMITS.mobileMinFov, max: CAMERA_LIMITS.mobileMaxFov };
+      }
+      return { min: CAMERA_LIMITS.minFov, max: CAMERA_LIMITS.maxFov };
+    }
+
+    function resolveViewCamera(view) {
+      _resolvedViewLook.copy(view.lookAt);
+      _resolvedViewPos.copy(view.position);
+      let fov = view.fov;
+      if (isMobileViewport()) {
+        fov = Math.min(
+          CAMERA_LIMITS.mobileMaxFov,
+          view.mobileFov != null ? view.mobileFov : view.fov + MOBILE_CAMERA.fovBoost
+        );
+        _resolvedViewPos.sub(_resolvedViewLook).multiplyScalar(MOBILE_CAMERA.pullback).add(_resolvedViewLook);
+      }
+      return { position: _resolvedViewPos, lookAt: _resolvedViewLook, fov };
+    }
+
     function snapToView(view) {
       if (!view || !camera) return;
-      cameraRig.position.copy(view.position);
-      cameraRig.baseLookAt.copy(view.lookAt);
+      const resolved = resolveViewCamera(view);
+      cameraRig.position.copy(resolved.position);
+      cameraRig.baseLookAt.copy(resolved.lookAt);
       cameraRig.yaw = 0;
       cameraRig.pitch = 0;
       cameraRig.targetYaw = 0;
       cameraRig.targetPitch = 0;
-      cameraRig.fov = view.fov;
-      cameraRig.targetFov = view.fov;
+      cameraRig.fov = resolved.fov;
+      cameraRig.targetFov = resolved.fov;
       applyCameraRig(true);
     }
 
     function applyCameraRig(force = false) {
       if (!camera) return;
       const k = force ? 1 : CAMERA_LIMITS.damp;
+      const limits = fovLimits();
       cameraRig.targetYaw = THREE.MathUtils.clamp(cameraRig.targetYaw, CAMERA_LIMITS.minYaw, CAMERA_LIMITS.maxYaw);
       cameraRig.targetPitch = THREE.MathUtils.clamp(cameraRig.targetPitch, CAMERA_LIMITS.minPitch, CAMERA_LIMITS.maxPitch);
-      cameraRig.targetFov = THREE.MathUtils.clamp(cameraRig.targetFov, CAMERA_LIMITS.minFov, CAMERA_LIMITS.maxFov);
+      cameraRig.targetFov = THREE.MathUtils.clamp(cameraRig.targetFov, limits.min, limits.max);
       cameraRig.yaw = lerpAngle(cameraRig.yaw, cameraRig.targetYaw, k);
       cameraRig.pitch += (cameraRig.targetPitch - cameraRig.pitch) * k;
       cameraRig.fov += (cameraRig.targetFov - cameraRig.fov) * k;
@@ -2827,6 +2864,7 @@
     function applyCameraView(viewId, animate = true) {
       const view = cameraViews.find((v) => v.id === viewId);
       if (!view || !camera) return;
+      const resolved = resolveViewCamera(view);
       activeViewId = viewId;
       viewButtonsDirty = true;
       syncViewButtons(true);
@@ -2840,15 +2878,15 @@
         duration: 780,
         view,
         fromPos: cameraRig.position.clone(),
-        toPos: view.position.clone(),
+        toPos: resolved.position.clone(),
         fromLook: cameraRig.baseLookAt.clone(),
-        toLook: view.lookAt.clone(),
+        toLook: resolved.lookAt.clone(),
         fromYaw: cameraRig.targetYaw,
         toYaw: 0,
         fromPitch: cameraRig.targetPitch,
         toPitch: 0,
         fromFov: cameraRig.targetFov,
-        toFov: view.fov
+        toFov: resolved.fov
       };
     }
 
@@ -2865,10 +2903,6 @@
         snapToView(viewTween.view);
         viewTween = null;
       }
-    }
-
-    function isMobileViewport() {
-      return window.matchMedia('(max-width: 900px)').matches;
     }
 
     function getDefaultCameraView() {
@@ -2972,10 +3006,11 @@
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
       if (pinchZoom.startDist <= 0) return false;
       const ratio = dist / pinchZoom.startDist;
+      const limits = fovLimits();
       cameraRig.targetFov = THREE.MathUtils.clamp(
         pinchZoom.startFov / ratio,
-        CAMERA_LIMITS.minFov,
-        CAMERA_LIMITS.maxFov
+        limits.min,
+        limits.max
       );
       return true;
     }
@@ -3038,10 +3073,11 @@
     function applyWheelZoom() {
       if (!pendingWheelDelta) return;
       const factor = Math.pow(1.0018, pendingWheelDelta);
+      const limits = fovLimits();
       cameraRig.targetFov = THREE.MathUtils.clamp(
         cameraRig.targetFov * factor,
-        CAMERA_LIMITS.minFov,
-        CAMERA_LIMITS.maxFov
+        limits.min,
+        limits.max
       );
       pendingWheelDelta = 0;
     }
@@ -3051,16 +3087,28 @@
       const width = Math.max(1, Math.round(board3dEl.clientWidth));
       const height = Math.max(1, Math.round(board3dEl.clientHeight));
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      if (width === lastViewportW && height === lastViewportH && dpr === lastViewportDpr) return;
+      const mobile = isMobileViewport();
+      const mobileChanged = lastMobileCamera !== null && lastMobileCamera !== mobile;
+      if (
+        width === lastViewportW &&
+        height === lastViewportH &&
+        dpr === lastViewportDpr &&
+        !mobileChanged
+      ) return;
       lastViewportW = width;
       lastViewportH = height;
       lastViewportDpr = dpr;
+      lastMobileCamera = mobile;
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       if (renderer.getPixelRatio() !== dpr) renderer.setPixelRatio(dpr);
       renderer.setSize(width, height, false);
       if (!cameraReady && width > 10 && height > 10) {
         cameraReady = true;
+      }
+      // Re-fit preset framing when crossing the mobile breakpoint.
+      if (mobileChanged && activeViewId) {
+        applyCameraView(activeViewId, false);
       }
     }
 
