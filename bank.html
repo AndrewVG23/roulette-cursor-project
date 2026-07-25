@@ -432,6 +432,13 @@
       box-shadow: inset 0 20px 40px rgba(0,0,0,0.12);
       overflow: hidden;
       transform-origin: 50% 0%;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .counter-top:focus-visible {
+      outline: 2px solid rgba(196, 163, 90, 0.7);
+      outline-offset: -4px;
     }
     .counter-top::before {
       content: '';
@@ -616,6 +623,7 @@
       letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--muted);
+      pointer-events: none;
       backdrop-filter: blur(8px);
       pointer-events: none;
     }
@@ -682,6 +690,16 @@
       .counter-front { height: 64px; }
     }
 
+    /* Phones / touch: no Space key — tap the marble */
+    @media (hover: none), (pointer: coarse) {
+      .prompt kbd { display: none; }
+      .counter-front { height: 48px; }
+      .prompt .hint {
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .bill.is-flying { animation-duration: 1ms; }
       .fluorescent, .teller-head { animation: none; }
@@ -733,11 +751,18 @@
 
     <section class="counter" aria-label="Marble counter">
       <div class="counter-lip" aria-hidden="true"></div>
-      <div class="counter-top" id="counterTop">
+      <div
+        class="counter-top"
+        id="counterTop"
+        role="button"
+        tabindex="0"
+        aria-label="Slam a hundred on the counter"
+        title="Tap the counter to slam a hundred"
+      >
         <div class="debt-board">
           <div class="label">Credit balance</div>
           <div class="amt is-debt" id="debtAmt">−$10,000</div>
-          <div class="sub" id="debtSub">Spacebar pays $100</div>
+          <div class="sub" id="debtSub">Tap the counter — $100</div>
         </div>
         <div class="stack" id="stack" aria-hidden="true"></div>
         <div class="paid-chip">Slammed today<b id="paidAmt">$0</b></div>
@@ -760,12 +785,14 @@
   const scene = document.getElementById('scene');
   const stack = document.getElementById('stack');
   const teller = document.getElementById('teller');
+  const counterTop = document.getElementById('counterTop');
   const slamBtn = document.getElementById('slamBtn');
   const debtAmt = document.getElementById('debtAmt');
   const debtSub = document.getElementById('debtSub');
   const cashAmt = document.getElementById('cashAmt');
   const paidAmt = document.getElementById('paidAmt');
   const toastEl = document.getElementById('toast');
+  const isTouchUi = window.matchMedia('(hover: none), (pointer: coarse)').matches;
 
   let sessionPaid = 0;
   let toastTimer = null;
@@ -854,12 +881,17 @@
         ? 'No cash — come back with paper'
         : `Need ${money(BILL)} to slam a bill`;
       slamBtn.disabled = true;
+      counterTop.setAttribute('aria-disabled', 'true');
     } else if (!inDebt) {
       debtSub.textContent = 'Account clear — still accepting deposits';
       slamBtn.disabled = false;
+      counterTop.setAttribute('aria-disabled', 'false');
     } else {
-      debtSub.textContent = `Spacebar pays ${money(BILL)}`;
+      debtSub.textContent = isTouchUi
+        ? `Tap the counter — ${money(BILL)}`
+        : `Spacebar or tap — ${money(BILL)}`;
       slamBtn.disabled = false;
+      counterTop.setAttribute('aria-disabled', 'false');
     }
   }
 
@@ -978,8 +1010,10 @@
 
   window.addEventListener('keydown', (ev) => {
     if (ev.code === 'Space' || ev.key === ' ') {
-      const tag = (ev.target && ev.target.tagName) || '';
+      const t = ev.target;
+      const tag = (t && t.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'A') return;
+      if (t === counterTop || t === slamBtn) return;
       ev.preventDefault();
       slam();
     }
@@ -990,6 +1024,18 @@
     slam();
   });
   slamBtn.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      slam();
+    }
+  });
+
+  counterTop.addEventListener('pointerdown', (ev) => {
+    if (ev.button != null && ev.button !== 0) return;
+    ev.preventDefault();
+    slam();
+  });
+  counterTop.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' || ev.key === ' ') {
       ev.preventDefault();
       slam();

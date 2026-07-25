@@ -776,17 +776,55 @@
     location.href = 'frogger.html?resumeDrive=1';
   }
 
+  function returnToCross() {
+    try {
+      const cpRaw = sessionStorage.getItem('cross-checkpoint');
+      sessionStorage.removeItem('cross-checkpoint');
+      if (cpRaw) {
+        const cp = JSON.parse(cpRaw);
+        sessionStorage.setItem('cross-resume', JSON.stringify({
+          level: cp.level ?? 1,
+          score: cp.score ?? 0
+        }));
+        const base = cp.returnTo || 'frogger.html';
+        const join = base.includes('?') ? '&' : '?';
+        location.href = `${base}${join}resumeCross=1`;
+        return;
+      }
+    } catch (_) { /* ignore */ }
+    location.href = 'frogger.html?resumeCross=1';
+  }
+
+  function leaveHospital() {
+    if (admit && admit.from === 'drive') {
+      returnToDrive(true);
+      return;
+    }
+    if (admit && admit.from === 'cross') {
+      returnToCross();
+      return;
+    }
+    try {
+      sessionStorage.setItem('passed-entry-grill', '1');
+      sessionStorage.setItem('grill-resume', JSON.stringify({ health: state.patientHp }));
+    } catch (e) {}
+    location.href = 'burger.html';
+  }
+
   function discharge() {
     state.mode = 'win';
     const fromDrive = admit && admit.from === 'drive';
+    const fromCross = admit && admit.from === 'cross';
     showOverlay(
       'Discharged',
       fromDrive
         ? 'The red pill hits. You\'re patched up — back on the road at full strength.'
+        : fromCross
+          ? `The red pill heals you. ${admit.who} is still out there — back to the street.`
         : admit
           ? `The red pill heals you. ${admit.who} is still out there — back to the grill.`
           : 'The red pill heals you. The doctor signs your discharge papers.',
-      fromDrive ? 'Back on the Road' : 'Back to Grill'
+      fromDrive ? 'Back on the Road' : (fromCross ? 'Back to the Street' : 'Back to Grill')
     );
     pauseBtn.disabled = true;
     beep(523, 0.08);
@@ -797,15 +835,18 @@
   function reincarnateDischarge() {
     state.mode = 'win';
     const fromDrive = admit && admit.from === 'drive';
+    const fromCross = admit && admit.from === 'cross';
     const resetLine = `${Wallet.format(Wallet.digital())} on the phone — no cash, no gold.`;
     showOverlay(
       'Reincarnated',
       fromDrive
         ? `Fresh start. ${resetLine} Patched up — back on the road at full strength.`
+        : fromCross
+          ? `Fresh start. ${resetLine} ${admit.who} is still out there — back to the street.`
         : admit
           ? `Fresh start. ${resetLine} ${admit.who} is still out there — back to the grill.`
           : `Fresh start. ${resetLine} The doctor signs your discharge papers.`,
-      fromDrive ? 'Back on the Road' : 'Back to Grill'
+      fromDrive ? 'Back on the Road' : (fromCross ? 'Back to the Street' : 'Back to Grill')
     );
     pauseBtn.disabled = true;
     beep(523, 0.08);
@@ -816,16 +857,19 @@
   function timeTravelDischarge() {
     state.mode = 'win';
     const fromDrive = admit && admit.from === 'drive';
+    const fromCross = admit && admit.from === 'cross';
     const dateLine = Wallet.formatGameDate();
     const walletLine = `${Wallet.format(Wallet.digital())} on the phone, no cash — gold kept (${Wallet.formatGold(Wallet.gold())}).`;
     showOverlay(
       'Time Travel',
       fromDrive
         ? `The gold pill hits. Calendar rewinds to ${dateLine}. ${walletLine} Patched up — back on the road.`
+        : fromCross
+          ? `The gold pill hits. Calendar rewinds to ${dateLine}. ${walletLine} ${admit.who} is still out there — back to the street.`
         : admit
           ? `The gold pill hits. Calendar rewinds to ${dateLine}. ${walletLine} ${admit.who} is still out there — back to the grill.`
           : `The gold pill hits. Calendar rewinds to ${dateLine}. Prices reset. ${walletLine}`,
-      fromDrive ? 'Back on the Road' : 'Back to Grill'
+      fromDrive ? 'Back on the Road' : (fromCross ? 'Back to the Street' : 'Back to Grill')
     );
     pauseBtn.disabled = true;
     beep(659, 0.06);
@@ -2467,15 +2511,7 @@
   startBtn.addEventListener('click', () => {
     ensureAudio();
     if (state.mode === 'win') {
-      if (admit && admit.from === 'drive') {
-        returnToDrive(true);
-        return;
-      }
-      try {
-        sessionStorage.setItem('passed-entry-grill', '1');
-        sessionStorage.setItem('grill-resume', JSON.stringify({ health: state.patientHp }));
-      } catch (e) {}
-      location.href = 'burger.html';
+      leaveHospital();
       return;
     }
     startGame();
@@ -2564,6 +2600,7 @@
 
   const introWho = admit ? admit.who : 'The grill';
   const fromDrive = admit && admit.from === 'drive';
+  const fromCross = admit && admit.from === 'cross';
   const billNow = Math.round(100 * Wallet.priceMult());
   const copayNow = Math.max(1, Math.round(1 * Wallet.priceMult()));
   const debtReset = Wallet.format(Wallet.DEFAULT_DIGITAL);
@@ -2572,6 +2609,8 @@
     'County General',
     fromDrive
       ? `Pulled off for ER. Trash what you can — every swallow hits your phone (${Wallet.format(billNow)}). Swallow the red pill (1 in 4) for a ${Wallet.format(copayNow)} copay and you're discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices, ${debtReset} debt, no cash, keep gold).`
+      : fromCross
+        ? `Ambulance drop-off. Trash what you can — every swallow hits your phone (${Wallet.format(billNow)}). Swallow the red pill (1 in 4) for a ${Wallet.format(copayNow)} copay and you're discharged back to the street. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices, ${debtReset} debt, no cash, keep gold).`
       : admit
         ? `${introWho} sent you here. Trash pills when you can. Swallowing bills the phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices, ${debtReset} debt, no cash, keep gold).`
         : `Medication time. Trash pills when you can. Every swallow bills your phone (${Wallet.format(billNow)}) — the red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and gets you discharged. Reincarnate queues a purple pill (${debtReset} debt, no cash, no gold). Time Travel queues a gold pill (rewind to ${rewindDate}, reset prices, ${debtReset} debt, no cash, keep gold).`,

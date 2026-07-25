@@ -103,7 +103,7 @@
     .topbar .stats { pointer-events: auto; }
     .brand { display: none; }
     .stats {
-      display: flex;
+      display: none;
       gap: var(--space-2);
       flex-wrap: wrap;
       justify-content: flex-end;
@@ -283,46 +283,44 @@
       background: transparent;
       border: none;
       box-shadow: none;
-      transform-origin: center center;
-      animation: phoneCornerSpin 7.5s linear infinite;
+      perspective: 220px;
+      transform-style: preserve-3d;
     }
     .panel-inner.drive-phase .help-btn:hover,
-    .panel-inner.drive-phase .help-btn:active {
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      animation-play-state: paused;
-      transform: scale(1.08);
-    }
+    .panel-inner.drive-phase .help-btn:active,
     .panel-inner.drive-phase .help-btn[aria-expanded="true"] {
       background: transparent;
       border: none;
       box-shadow: none;
-      animation: phoneCornerSpinOpen 5.5s linear infinite;
     }
     .panel-inner.drive-phase .help-btn-icon {
       width: 46px;
       height: auto;
+      display: block;
+      transform-origin: center center;
+      transform-style: preserve-3d;
+      animation: phoneLongAxisSpin 9s linear infinite;
       filter:
         drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55))
         drop-shadow(0 0 10px rgba(110, 180, 255, 0.18));
     }
+    .panel-inner.drive-phase .help-btn:hover .help-btn-icon,
+    .panel-inner.drive-phase .help-btn:active .help-btn-icon {
+      animation-play-state: paused;
+      transform: rotateY(0deg) scale(1.08);
+    }
     .panel-inner.drive-phase .help-btn[aria-expanded="true"] .help-btn-icon {
+      animation-duration: 7s;
       filter:
         drop-shadow(0 5px 14px rgba(0, 0, 0, 0.6))
         drop-shadow(0 0 14px rgba(110, 180, 255, 0.32));
     }
-    @keyframes phoneCornerSpin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    @keyframes phoneCornerSpinOpen {
-      from { transform: rotate(0deg) scale(1.05); }
-      to { transform: rotate(-360deg) scale(1.05); }
+    @keyframes phoneLongAxisSpin {
+      from { transform: rotateY(0deg); }
+      to { transform: rotateY(360deg); }
     }
     @media (prefers-reduced-motion: reduce) {
-      .panel-inner.drive-phase .help-btn,
-      .panel-inner.drive-phase .help-btn[aria-expanded="true"] {
+      .panel-inner.drive-phase .help-btn-icon {
         animation: none;
       }
     }
@@ -1496,6 +1494,7 @@
   const ENTER_PARAM = params.get('enter');
   const ENTER_ID = ENTER_IDS.includes(ENTER_PARAM) ? ENTER_PARAM : null;
   const RESUME_DRIVE = params.get('resumeDrive') === '1';
+  const RESUME_CROSS = params.get('resumeCross') === '1';
   const SCENARIO = ENTER_ID ? 'enter' : (params.get('from') === 'grill' ? 'grill' : 'midtown');
 
   // Your car sits in one bay; other bays are pillars / strangers' cars.
@@ -1760,8 +1759,8 @@
       panelInner?.classList.add('drive-phase');
       setHelpOpen(false);
     } else if (isEnter()) {
-      if (meterStat) meterStat.hidden = false;
-      if (livesStat) livesStat.hidden = false;
+      if (meterStat) meterStat.hidden = true;
+      if (livesStat) livesStat.hidden = true;
       const dest = state.entryDest;
       brandTitle.textContent = dest ? `Enter ${dest.name}` : 'Enter';
       brandSub.textContent = 'Cross the street · reach the door';
@@ -1772,8 +1771,8 @@
       panelInner?.classList.remove('drive-phase');
       hideMapNav();
     } else if (isGrill()) {
-      if (meterStat) meterStat.hidden = false;
-      if (livesStat) livesStat.hidden = false;
+      if (meterStat) meterStat.hidden = true;
+      if (livesStat) livesStat.hidden = true;
       brandTitle.textContent = 'Leave the Grill';
       brandSub.textContent = 'Bad block · four lanes · get to your car';
       meterLabel.textContent = 'Level';
@@ -1783,8 +1782,8 @@
       panelInner?.classList.remove('drive-phase');
       hideMapNav();
     } else {
-      if (meterStat) meterStat.hidden = false;
-      if (livesStat) livesStat.hidden = false;
+      if (meterStat) meterStat.hidden = true;
+      if (livesStat) livesStat.hidden = true;
       brandTitle.textContent = 'Return to Your Car';
       brandSub.textContent = 'Cross the city · get to the garage';
       meterLabel.textContent = 'Level';
@@ -2031,6 +2030,14 @@
     FACADE_MIN_SCALE: 0.055
   };
 
+  const BILLBOARD_ADS = [
+    { lines: ['Sell your gold', 'for a great price.'], accent: 0 },
+    {
+      lines: ['Cheap Credit Card Debt', 'is not a problem', 'for a citizen like you.'],
+      accent: 0
+    }
+  ];
+
   function beginDrive() {
     const route = compileNightDriveRoute(NIGHT_DRIVE_MAP);
     state.phase = 'drive';
@@ -2243,16 +2250,17 @@
         if (zi % 3 === 0) d.props.push({ z: routeZ + 28, side: Math.sin(routeZ) > 0 ? -1 : 1, kind: 'dumpster' });
         if (zi % 4 === 0) d.props.push({ z: routeZ + 40, side: Math.cos(routeZ) > 0 ? 1 : -1, kind: 'hydrant' });
         if (zi % 5 === 0) d.props.push({ z: routeZ + 16, side: -1, kind: 'bus_shelter' });
-        // Occasional debt-economy billboard — sparse, inland only
+        // Occasional debt-economy billboards — sparse, inland only
         if (zi % 17 === 7) {
           const bbSide = Math.sin(routeZ * 0.07) > 0 ? 1 : -1;
           if (!landmarkClearance(d, routeZ + 24, bbSide, 'building')) {
+            const ad = BILLBOARD_ADS[((zi / 17) | 0) % BILLBOARD_ADS.length];
             d.props.push({
               z: routeZ + 24,
               side: bbSide,
               kind: 'billboard',
-              line1: 'SELL YOUR GOLD!',
-              line2: 'BUY DEBT'
+              lines: ad.lines,
+              accent: ad.accent
             });
           }
         }
@@ -2266,15 +2274,6 @@
     Wallet.updateDisplay();
     if (state.phase === 'drive' && state.drive) {
       syncMapNav(state.drive);
-    } else {
-      livesVal.textContent = String(state.lives);
-      levelVal.textContent = String(state.level);
-      livesPips.innerHTML = '';
-      for (let i = 0; i < 3; i++) {
-        const s = document.createElement('span');
-        if (i < state.lives) s.classList.add('on');
-        livesPips.appendChild(s);
-      }
     }
     updateReplayButton();
     updateShareReplayButton();
@@ -2682,6 +2681,48 @@
     overlay.hidden = false;
   }
 
+  function crossHospitalWho() {
+    if (isEnter()) return state.entryDest?.name || 'The door';
+    if (isGrill()) return 'Your car';
+    return 'Your car';
+  }
+
+  function sendToHospital(reason) {
+    const who = crossHospitalWho();
+    try {
+      sessionStorage.setItem('hospital-admit', JSON.stringify({
+        from: 'cross',
+        who,
+        scenario: state.scenario,
+        level: state.level,
+        score: state.score,
+        enterId: state.entryDest?.id || null,
+        health: 0,
+        maxHealth: 100
+      }));
+      sessionStorage.setItem('cross-checkpoint', JSON.stringify({
+        returnTo: `${location.pathname}${location.search}`,
+        level: state.level,
+        score: state.score
+      }));
+    } catch (_) { /* ignore quota errors */ }
+    if (state.score > state.high) {
+      state.high = state.score;
+      localStorage.setItem(highKey(), String(state.high));
+    }
+    state.mode = 'gameover';
+    showOverlay(
+      'Heading to the ER',
+      `${reason} Three hits — ${who} will have to wait.`,
+      '…'
+    );
+    startBtn.disabled = true;
+    syncPauseBtn(true);
+    beep(90, 0.12, 'sawtooth', 0.06);
+    beep(60, 0.22, 'square', 0.05);
+    setTimeout(() => { window.location.href = 'hospital.html'; }, 1100);
+  }
+
   function loseLife(reason) {
     if (state.mode !== 'play' && state.mode !== 'drive') return;
     if (state.phase === 'cross' && state.invuln > 0) return;
@@ -2706,6 +2747,10 @@
     updateHUD();
 
     if (state.lives <= 0) {
+      if (state.phase === 'cross') {
+        sendToHospital(reason);
+        return;
+      }
       state.mode = 'gameover';
       if (state.score > state.high) {
         state.high = state.score;
@@ -3054,6 +3099,37 @@
     updateHUD();
     updateReplayButton();
     updateShareReplayButton();
+    beep(440, 0.08);
+    beep(554, 0.1);
+    beep(659, 0.12);
+    return true;
+  }
+
+  function resumeSavedCross() {
+    let data;
+    try {
+      const raw = sessionStorage.getItem('cross-resume');
+      if (!raw) return false;
+      sessionStorage.removeItem('cross-resume');
+      data = JSON.parse(raw);
+    } catch (_) {
+      return false;
+    }
+    if (!data) return false;
+
+    state.phase = 'cross';
+    state.mode = 'play';
+    state.level = data.level ?? 1;
+    state.score = data.score ?? 0;
+    state.lives = 3;
+    state.invuln = 0;
+    state.flash = 0;
+    state.particles = [];
+    startCrossingLevel(state.level);
+    overlay.hidden = true;
+    syncPauseBtn(false, 'Pause');
+    setPhaseUI();
+    updateHUD();
     beep(440, 0.08);
     beep(554, 0.1);
     beep(659, 0.12);
@@ -7993,15 +8069,24 @@
       ctx.fillRect(fx, fy, faceW, faceH);
       ctx.fillStyle = '#0d1512';
       ctx.fillRect(fx + 3 * s, fy + 3 * s, faceW - 6 * s, faceH - 6 * s);
-      // Copy
+      // Copy — stacked lines, first line gold, rest muted
+      const lines = pr.lines || ['Sell your gold', 'for a great price.'];
+      const n = lines.length;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#d0a23a';
-      ctx.font = `700 ${Math.max(8, 13 * s)}px "Zodiak", Georgia, serif`;
-      ctx.fillText(pr.line1 || 'SELL YOUR GOLD!', top.x, fy + faceH * 0.38);
-      ctx.fillStyle = '#bdb39b';
-      ctx.font = `600 ${Math.max(7, 11 * s)}px "General Sans", system-ui, sans-serif`;
-      ctx.fillText(pr.line2 || 'BUY DEBT', top.x, fy + faceH * 0.68);
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n;
+        const y = fy + faceH * (0.18 + t * 0.64);
+        const head = i === (pr.accent || 0);
+        ctx.fillStyle = head ? '#d0a23a' : '#bdb39b';
+        const size = head
+          ? Math.max(7, (n > 2 ? 10 : 13) * s)
+          : Math.max(6, (n > 2 ? 8 : 11) * s);
+        ctx.font = head
+          ? `700 ${size}px "Zodiak", Georgia, serif`
+          : `600 ${size}px "General Sans", system-ui, sans-serif`;
+        ctx.fillText(lines[i], top.x, y);
+      }
       // Peeling corner
       ctx.fillStyle = '#1c2a22';
       ctx.beginPath();
@@ -9228,6 +9313,8 @@
   overlay.hidden = true;
   if (RESUME_DRIVE && resumeSavedDrive()) {
     // resumed night drive after gas, hospital, etc.
+  } else if (RESUME_CROSS && resumeSavedCross()) {
+    // back from the ER after getting squished crossing the street
   } else if (ENTER_ID && ESTABLISHMENTS[ENTER_ID]) {
     startEntryCross(ESTABLISHMENTS[ENTER_ID]);
   } else {
