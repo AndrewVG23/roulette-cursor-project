@@ -503,7 +503,7 @@
   const ROUTE_Z_PER_MILE = DRIVE_MPH_Z * 55;
   // Map-nav trips compress long stretches so any pick arrives quickly
   const NAV_ETA_MIN_SEC = 5;
-  const NAV_ETA_MAX_SEC = 18;
+  const NAV_ETA_MAX_SEC = 10;
 
   // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
   // n = north address, e = east blocks from Michigan Ave
@@ -4169,7 +4169,7 @@
       }
     }
 
-    // Integrate world position from MPH (nav compresses long trips into ~5–18s)
+    // Integrate world position from MPH (nav compresses long trips into ~5–10s)
     const pathLen = d.route ? d.route.length : d.goal;
     const prevRouteZ = wrapRouteZ(d.z, pathLen);
     const navExMove = navigating ? getNavExit(d, d.navTarget) : null;
