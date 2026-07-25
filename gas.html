@@ -1047,11 +1047,11 @@
       let turn = 0;
       if (keys.KeyW || keys.ArrowUp) throttle += 1;
       if (keys.KeyS || keys.ArrowDown) throttle -= 1;
-      if (keys.ArrowLeft || keys.KeyA) turn -= 1;
-      if (keys.ArrowRight || keys.KeyD) turn += 1;
+      if (keys.ArrowLeft || keys.KeyA) turn += 1;
+      if (keys.ArrowRight || keys.KeyD) turn -= 1;
       if (joy.active) {
         throttle += -joy.y;
-        turn += joy.x;
+        turn -= joy.x;
       }
       throttle = Math.max(-1, Math.min(1, throttle));
       turn = Math.max(-1, Math.min(1, turn));
