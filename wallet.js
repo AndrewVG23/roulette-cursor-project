@@ -259,7 +259,7 @@
   }
 
   // -------------------------------------------------------- exchange panel
-  const BUY_SIZES = [0.1, 1];
+  const BUY_SIZES = [0.1, 0.25, 1];
 
   function panelEl() { return document.getElementById('purseHudPanel'); }
 

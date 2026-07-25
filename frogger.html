@@ -482,7 +482,8 @@
     casino: { id: 'casino', name: 'CASINO', href: 'index.html', sign: 'CASINO FLOOR', signBg: '#d0a23a', signFg: '#1a1307' },
     craps: { id: 'craps', name: 'CRAPS', href: 'craps.html', sign: 'CRAPS PIT', signBg: '#2f8f4e', signFg: '#f5edd8' },
     liquor: { id: 'liquor', name: 'LIQUOR', href: 'liquor.html', sign: 'LIQUOR • COLD BEER', signBg: '#16213e', signFg: '#ffd23f' },
-    gas: { id: 'gas', name: 'GAS', href: 'gas.html', sign: 'QUIK-FILL 64', signBg: '#e85c2a', signFg: '#fff7ef' }
+    gas: { id: 'gas', name: 'GAS', href: 'gas.html', sign: 'QUIK-FILL 64', signBg: '#e85c2a', signFg: '#fff7ef' },
+    coins: { id: 'coins', name: 'COINS', href: 'coins.html', sign: 'LAKE SHORE COIN', signBg: '#c9a24a', signFg: '#1a1208' }
   };
 
   // Highway exits you can take during the night drive
@@ -492,7 +493,8 @@
     { id: 'craps', name: 'CRAPS', href: 'craps.html', blurb: 'The craps pit.' },
     { id: 'hospital', name: 'ER', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
     { id: 'liquor', name: 'LIQUOR', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' },
-    { id: 'gas', name: 'GAS', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' }
+    { id: 'gas', name: 'GAS', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' },
+    { id: 'coins', name: 'COINS', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' }
   ];
 
   // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
@@ -585,7 +587,8 @@
       { n: 1000, e: -2.10, side: -1, id: 'hospital', name: 'ER', mapLabel: 'Hospital', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
       { n: 1200, e: 0.25, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' },
       { n: 820, e: -2.10, side: -1, id: 'liquor', name: 'LIQUOR', mapLabel: 'Liquor', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' },
-      { n: 620, e: -2.10, side: -1, id: 'gas', name: 'GAS', mapLabel: 'Gas', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' }
+      { n: 620, e: -2.10, side: -1, id: 'gas', name: 'GAS', mapLabel: 'Gas', href: 'gas.html', blurb: 'Quik-Fill 64 — top off the tank.' },
+      { n: 1120, e: -0.85, side: -1, id: 'coins', name: 'COINS', mapLabel: 'Coins', href: 'coins.html', blurb: 'Lake Shore Coin — gold under glass.' }
     ]
   };
 
@@ -1239,6 +1242,12 @@
       shortLabel: 'Gas',
       color: '#f0b429',
       svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="9" height="15" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="7" y="7" width="5" height="6" rx="0.8" fill="currentColor"/><path d="M14 8h2.5l2.5 4.5v6.5h-5V8z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 19v2.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
+    },
+    coins: {
+      label: 'Coin shop',
+      shortLabel: 'Coins',
+      color: '#f0d078',
+      svg: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="5.2" fill="currentColor" opacity="0.9"/><text x="12" y="14.2" text-anchor="middle" font-size="6.5" font-weight="800" fill="#2a1a08">Au</text></svg>'
     }
   };
   let mapNavBuilt = false;
@@ -1247,7 +1256,8 @@
     grill: [0, 11],
     hospital: [-10, 0],
     liquor: [10, 0],
-    gas: [0, 12]
+    gas: [0, 12],
+    coins: [12, -10]
   };
 
   function setHelpOpen(open) {
@@ -1479,6 +1489,7 @@
     };
     if (exitId === 'hospital') takeHospitalExit(ex);
     else if (exitId === 'gas') takeGasExit(ex);
+    else if (exitId === 'coins') takeCoinsExit(ex);
     else takeExit(ex);
   }
 
@@ -2546,6 +2557,25 @@
     window.location.href = 'gas.html';
   }
 
+  function takeCoinsExit(exit) {
+    if (!exit || exit.taken || state.mode !== 'drive' || !state.drive) return;
+    exit.taken = true;
+    const d = state.drive;
+    d.speed = Math.max(10, d.speed * 0.55);
+    d.approachingExit = exit;
+    try {
+      sessionStorage.setItem('drive-checkpoint', JSON.stringify({
+        drive: replaySnapDrive(d),
+        lives: state.lives,
+        level: state.level,
+        score: state.score
+      }));
+    } catch (_) { /* ignore quota errors */ }
+    beep(523, 0.07);
+    beep(784, 0.12);
+    window.location.href = 'coins.html';
+  }
+
   function takeExit(exit) {
     if (!exit || exit.taken || state.mode !== 'drive') return;
     if (exit.id === 'hospital') {
@@ -2554,6 +2584,10 @@
     }
     if (exit.id === 'gas') {
       takeGasExit(exit);
+      return;
+    }
+    if (exit.id === 'coins') {
+      takeCoinsExit(exit);
       return;
     }
     exit.taken = true;
