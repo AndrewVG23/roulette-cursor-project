@@ -884,7 +884,17 @@
       chain: 0,
       landTime: -10,
       facing: Math.PI,
-      squash: 0
+      squash: 0,
+      airTime: 0,
+      dived: false,
+      wallTimer: 0,
+      wallNx: 0,
+      wallNz: 0,
+      flipWindow: 0,
+      lastTurn: 0,
+      lean: 0,
+      yawSpin: 0, // visual flourish after side-flip / wall-kick
+      runCharge: 0 // builds while holding forward — walk → jog → run
     };
 
     const playerGroup = new THREE.Group();
@@ -1161,13 +1171,25 @@
     jumpBtn.addEventListener('pointerup', () => { jumpHeld = false; });
     jumpBtn.addEventListener('pointercancel', () => { jumpHeld = false; });
 
-    // ---------------------------------------------------------------- physics
-    const GRAV = 24;
-    const RUN_MAX = 9.2;
-    const ACCEL_G = 60;
-    const ACCEL_A = 26;
-    const JUMP_V = [9.8, 11.4, 13.4];
-    const TURN_RATE = 1.55;
+    // ---------------------------------------------------------------- physics (SM64-flavored momentum)
+    const GRAV = 28;
+    const RUN_MAX = 10.8;
+    const WALK_CAP = 3.4;
+    const ACCEL_G = 22;
+    const ACCEL_A = 9;
+    const DECEL_G = 14;
+    const SKID_DECEL = 38;
+    const AIR_DRAG = 0.35;
+    const JUMP_V = [10.4, 12.2, 14.6];
+    const LONG_JUMP_UP = 7.6;
+    const LONG_JUMP_FWD = 15.2;
+    const DIVE_UP = 3.2;
+    const DIVE_FWD = 12.5;
+    const WALL_KICK_UP = 11.8;
+    const WALL_KICK_OUT = 9.2;
+    const SIDE_FLIP_UP = 14.2;
+    const TURN_RATE_SLOW = 2.35;
+    const TURN_RATE_FAST = 0.9;
 
     function playerBounds() {
       return {
@@ -1201,53 +1223,189 @@
       if (keys.ArrowLeft || keys.KeyA) turn += 1;
       if (keys.ArrowRight || keys.KeyD) turn -= 1;
       if (joy.active) {
-        throttle += -joy.y;
-        turn -= joy.x;
+        // Analog stick: magnitude is speed intent, X is turn — not binary run.
+        const stickMag = Math.min(1, Math.hypot(joy.x, joy.y));
+        const stickY = -joy.y;
+        if (stickMag > 0.08) {
+          throttle += stickY >= 0 ? stickMag : -stickMag;
+          turn -= joy.x;
+        }
       }
       throttle = Math.max(-1, Math.min(1, throttle));
       turn = Math.max(-1, Math.min(1, turn));
 
+      player.wallTimer = Math.max(0, player.wallTimer - dt);
+      player.flipWindow = Math.max(0, player.flipWindow - dt);
+      if (player.lastTurn * turn < -0.2 && Math.abs(turn) > 0.35) {
+        player.flipWindow = 0.28;
+      }
+      player.lastTurn = turn;
+
+      let hSpeed = Math.hypot(player.vel.x, player.vel.z);
+      const speedT = Math.min(1, hSpeed / RUN_MAX);
+      const turnRate = TURN_RATE_SLOW + (TURN_RATE_FAST - TURN_RATE_SLOW) * speedT * speedT;
       if (Math.abs(turn) > 0.05) {
-        player.facing += turn * TURN_RATE * dt;
+        player.facing += turn * turnRate * dt;
       }
 
-      const wishX = Math.sin(player.facing) * throttle;
-      const wishZ = Math.cos(player.facing) * throttle;
-      const moving = Math.abs(throttle) > 0.05;
-
-      const accel = player.onGround ? ACCEL_G : ACCEL_A;
-      if (moving) {
-        player.vel.x += (wishX * RUN_MAX - player.vel.x) * Math.min(1, accel * dt / RUN_MAX);
-        player.vel.z += (wishZ * RUN_MAX - player.vel.z) * Math.min(1, accel * dt / RUN_MAX);
-      } else if (player.onGround) {
-        const f = Math.exp(-11 * dt);
-        player.vel.x *= f; player.vel.z *= f;
+      const faceX = Math.sin(player.facing);
+      const faceZ = Math.cos(player.facing);
+      const forwardSpeed = player.vel.x * faceX + player.vel.z * faceZ;
+      const crouchHeld = !!(keys.KeyC || keys.ControlLeft || keys.ControlRight || keys.ShiftLeft || keys.ShiftRight);
+      // Pulling back while still carrying forward speed = crouch slide (long-jump windup), not hard reverse.
+      const crouchIntent = crouchHeld || (throttle < -0.2 && forwardSpeed > 3.5);
+      // Analog stick = instant nuance; keyboard builds a run charge so you’re not binary walk/run.
+      const stickAnalog = joy.active && Math.hypot(joy.x, joy.y) > 0.08;
+      const inputMag = stickAnalog
+        ? Math.min(1, Math.hypot(joy.x, joy.y))
+        : Math.min(1, Math.abs(throttle));
+      if (player.onGround && inputMag > 0.05 && throttle >= 0 && !crouchIntent) {
+        player.runCharge = Math.min(1, player.runCharge + dt * (stickAnalog ? 2.8 : 1.35));
+      } else if (!player.onGround) {
+        player.runCharge = Math.max(player.runCharge * 0.998, Math.min(player.runCharge, inputMag));
+      } else {
+        player.runCharge = Math.max(0, player.runCharge - dt * 2.4);
       }
+      const charge = stickAnalog ? inputMag : Math.max(inputMag * 0.35, player.runCharge * inputMag);
+      const targetSpeed = (crouchIntent && forwardSpeed > 2)
+        ? 0
+        : charge <= 0.05
+          ? 0
+          : (charge < 0.55 ? WALK_CAP * (charge / 0.55) : WALK_CAP + (RUN_MAX - WALK_CAP) * ((charge - 0.55) / 0.45));
+      const wishSign = (!crouchIntent && throttle < 0) ? -1 : 1;
+      const wishX = faceX * wishSign * targetSpeed;
+      const wishZ = faceZ * wishSign * targetSpeed;
+      const moving = inputMag > 0.05 && !(crouchIntent && forwardSpeed > 2);
 
-      // jumping
-      player.coyote = player.onGround ? 0.12 : Math.max(0, player.coyote - dt);
-      player.jumpBuffer = Math.max(0, player.jumpBuffer - dt);
-      const hSpeed = Math.hypot(player.vel.x, player.vel.z);
-      if (player.jumpBuffer > 0 && player.coyote > 0) {
-        const chained = state.time - player.landTime < 0.34 && hSpeed > 4 &&
-          player.chain > 0 && player.chain < 3;
-        if (chained) {
-          player.chain += 1;
-          if (player.chain === 3 && hSpeed < 6.5) player.chain = 2;
+      if (player.onGround) {
+        if (crouchIntent && forwardSpeed > 2) {
+          // Keep the slide — friction, not a full stop — so long jumps stay timing-based
+          const f = Math.exp(-6.5 * dt);
+          player.vel.x *= f;
+          player.vel.z *= f;
+        } else if (moving) {
+          const reversing = forwardSpeed * wishSign < -1.2;
+          const accel = reversing ? SKID_DECEL : ACCEL_G;
+          // Traction falls off at speed — carve curves instead of snapping.
+          const traction = reversing ? 1 : (0.55 + 0.45 * (1 - speedT));
+          player.vel.x += (wishX - player.vel.x) * Math.min(1, (accel * traction) * dt / Math.max(1, RUN_MAX));
+          player.vel.z += (wishZ - player.vel.z) * Math.min(1, (accel * traction) * dt / Math.max(1, RUN_MAX));
+          // Soft redirect: rotate existing momentum toward facing
+          if (!reversing && hSpeed > 1.5) {
+            const align = 1 - Math.exp(-(2.2 + 3.5 * (1 - speedT)) * dt);
+            const spd = Math.hypot(player.vel.x, player.vel.z);
+            const fx = faceX * wishSign, fz = faceZ * wishSign;
+            player.vel.x += (fx * spd - player.vel.x) * align * 0.65;
+            player.vel.z += (fz * spd - player.vel.z) * align * 0.65;
+          }
         } else {
-          player.chain = 1;
+          const f = Math.exp(-DECEL_G * dt);
+          player.vel.x *= f;
+          player.vel.z *= f;
         }
-        player.vel.y = JUMP_V[player.chain - 1];
+      } else if (moving) {
+        // Air steer — nudge, don't rewrite momentum
+        player.vel.x += faceX * throttle * ACCEL_A * dt;
+        player.vel.z += faceZ * throttle * ACCEL_A * dt;
+        const airSpd = Math.hypot(player.vel.x, player.vel.z);
+        if (airSpd > RUN_MAX * 1.15) {
+          const s = (RUN_MAX * 1.15) / airSpd;
+          player.vel.x *= s;
+          player.vel.z *= s;
+        }
+      } else {
+        const f = Math.exp(-AIR_DRAG * dt);
+        player.vel.x *= f;
+        player.vel.z *= f;
+      }
+
+      hSpeed = Math.hypot(player.vel.x, player.vel.z);
+
+      // jumping / flourishes
+      player.coyote = player.onGround ? 0.14 : Math.max(0, player.coyote - dt);
+      player.jumpBuffer = Math.max(0, player.jumpBuffer - dt);
+      if (player.onGround) {
+        player.airTime = 0;
+        player.dived = false;
+      } else {
+        player.airTime += dt;
+      }
+
+      if (player.jumpBuffer > 0 && player.coyote > 0) {
+        hSpeed = Math.hypot(player.vel.x, player.vel.z);
+        const fwdNow = player.vel.x * faceX + player.vel.z * faceZ;
+        const wantLong = (crouchIntent || throttle < -0.2 || crouchHeld) && fwdNow > 4.0;
+        const wantSide = player.flipWindow > 0 && hSpeed > 3.2 && !wantLong;
+        if (wantLong) {
+          player.chain = 0;
+          player.vel.y = LONG_JUMP_UP;
+          player.vel.x = faceX * LONG_JUMP_FWD;
+          player.vel.z = faceZ * LONG_JUMP_FWD;
+          player.squash = -0.28;
+          sfx.jump(2);
+        } else if (wantSide) {
+          player.chain = 0;
+          player.vel.y = SIDE_FLIP_UP;
+          player.vel.x *= 0.35;
+          player.vel.z *= 0.35;
+          player.yawSpin = turn >= 0 ? 5.5 : -5.5;
+          player.squash = -0.32;
+          player.flipWindow = 0;
+          sfx.jump(3);
+        } else {
+          const chained = state.time - player.landTime < 0.38 && hSpeed > 3.6 &&
+            player.chain > 0 && player.chain < 3;
+          if (chained) {
+            player.chain += 1;
+            if (player.chain === 3 && hSpeed < 6.2) player.chain = 2;
+          } else {
+            player.chain = 1;
+          }
+          player.vel.y = JUMP_V[player.chain - 1];
+          // Carry a bit of run into the hop; triple gets a kick
+          if (player.chain === 3) {
+            player.vel.x += faceX * 2.4;
+            player.vel.z += faceZ * 2.4;
+            player.yawSpin = 3.2;
+          }
+          player.squash = -0.2 - player.chain * 0.04;
+          sfx.jump(player.chain);
+        }
         player.onGround = false;
         player.coyote = 0;
         player.jumpBuffer = 0;
-        player.squash = -0.18;
-        sfx.jump(player.chain);
+        player.dived = false;
+      } else if (player.jumpBuffer > 0 && !player.onGround && player.coyote <= 0) {
+        // Wall kick — jump into a wall, then jump again
+        if (player.wallTimer > 0) {
+          const nx = player.wallNx, nz = player.wallNz;
+          player.vel.x = nx * WALL_KICK_OUT;
+          player.vel.z = nz * WALL_KICK_OUT;
+          player.vel.y = WALL_KICK_UP;
+          player.facing = Math.atan2(nx, nz);
+          player.wallTimer = 0;
+          player.jumpBuffer = 0;
+          player.dived = false;
+          player.chain = 0;
+          player.squash = -0.26;
+          player.yawSpin = 4.5;
+          sfx.jump(2);
+        } else if (!player.dived && player.airTime > 0.1) {
+          // Dive — second jump press in the air
+          player.vel.y = Math.min(player.vel.y, DIVE_UP);
+          player.vel.x = faceX * DIVE_FWD;
+          player.vel.z = faceZ * DIVE_FWD;
+          player.dived = true;
+          player.jumpBuffer = 0;
+          player.squash = 0.35;
+          sfx.jump(1);
+        }
       }
-      if (!jumpHeld && player.vel.y > 4.5) player.vel.y = 4.5;
+      // Variable jump height
+      if (!jumpHeld && player.vel.y > 5.2 && !player.dived) player.vel.y = 5.2;
 
       player.vel.y -= GRAV * dt;
-      if (player.vel.y < -30) player.vel.y = -30;
+      if (player.vel.y < -34) player.vel.y = -34;
 
       // integrate + resolve, axis by axis
       player.pos.x += player.vel.x * dt;
@@ -1272,12 +1430,10 @@
           player.pos.y = c.min.y - player.height;
           player.vel.y = 0;
         } else {
-          // deep side overlap fallback: push out horizontally
           pushOut(c);
         }
         pb.min.y = player.pos.y; pb.max.y = player.pos.y + player.height;
       }
-      // remain grounded when standing still on a surface
       if (!player.onGround && player.vel.y <= 0) {
         const g = groundHeightAt(player.pos.x, player.pos.z, player.pos.y + 0.01);
         if (player.pos.y - g < 0.06 && player.pos.y - g > -0.01) {
@@ -1287,17 +1443,46 @@
         }
       }
 
-      if (player.pos.y < -6) { player.pos.set(0, 0.2, 20); player.vel.set(0, 0, 0); }
+      // Lean into velocity for that “piloting” read
+      const side = player.vel.x * faceZ - player.vel.z * faceX;
+      const leanWant = player.onGround ? Math.max(-0.35, Math.min(0.35, -side * 0.045)) : player.lean * 0.9;
+      player.lean += (leanWant - player.lean) * Math.min(1, 10 * dt);
+      if (Math.abs(player.yawSpin) > 0.05) {
+        player.facing += player.yawSpin * dt;
+        player.yawSpin *= Math.exp(-5 * dt);
+      } else {
+        player.yawSpin = 0;
+      }
+
+      if (player.pos.y < -6) {
+        player.pos.set(0, 0.2, 20);
+        player.vel.set(0, 0, 0);
+        player.chain = 0;
+      }
     }
 
     function land(wasGround) {
-      player.vel.y = 0;
       if (!wasGround) {
         player.landTime = state.time;
-        player.squash = 0.22;
+        player.squash = player.dived ? 0.38 : 0.24;
         sfx.land();
+        // Dive belly-flop kills horizontal speed
+        if (player.dived) {
+          player.vel.x *= 0.35;
+          player.vel.z *= 0.35;
+        }
       }
+      player.vel.y = 0;
       player.onGround = true;
+      player.dived = false;
+      player.airTime = 0;
+    }
+
+    function noteWall(nx, nz) {
+      const len = Math.hypot(nx, nz) || 1;
+      player.wallNx = nx / len;
+      player.wallNz = nz / len;
+      player.wallTimer = 0.16;
     }
 
     function resolveAxis(axis) {
@@ -1306,12 +1491,20 @@
         if (!overlaps(pb, c)) continue;
         // ignore boxes we are standing on (feet at their top)
         if (c.max.y - pb.min.y <= 0.28 && player.vel.y <= 0.1) continue;
+        const before = player.pos[axis];
         if (player.vel[axis] > 0 || (player.vel[axis] === 0 && player.pos[axis] < (c.min[axis] + c.max[axis]) / 2)) {
           player.pos[axis] -= (pb.max[axis] - c.min[axis]) + 0.001;
         } else {
           player.pos[axis] += (c.max[axis] - pb.min[axis]) + 0.001;
         }
-        player.vel[axis] = 0;
+        // Outward normal = direction we pushed the player (away from wall)
+        const push = player.pos[axis] - before;
+        if (!player.onGround && Math.abs(push) > 0) {
+          if (axis === 'x') noteWall(Math.sign(push), 0);
+          else noteWall(0, Math.sign(push));
+        }
+        if (player.onGround) player.vel[axis] = 0;
+        else player.vel[axis] *= -0.12;
         pb = playerBounds();
       }
     }
@@ -1535,13 +1728,19 @@
       // visuals
       playerGroup.position.copy(player.pos);
       playerGroup.rotation.y = player.facing;
-      player.squash += (0 - player.squash) * Math.min(1, 10 * rawDt);
+      playerGroup.rotation.z = player.lean;
+      const pitchWant = player.dived && !player.onGround ? 0.85 : 0;
+      playerGroup.rotation.x += (pitchWant - playerGroup.rotation.x) * Math.min(1, 12 * rawDt);
+      player.squash += (0 - player.squash) * Math.min(1, 9 * rawDt);
       playerGroup.scale.set(1 + player.squash * 0.6, 1 - player.squash, 1 + player.squash * 0.6);
       const hSpeed = Math.hypot(player.vel.x, player.vel.z);
       const { armL, armR } = playerGroup.userData;
-      const swing = player.onGround ? Math.sin(state.time * 13) * Math.min(1, hSpeed / RUN_MAX) * 0.7 : 0.9;
-      armL.rotation.x = swing;
-      armR.rotation.x = -swing;
+      const runPhase = state.time * (10 + hSpeed * 1.1);
+      const swing = player.onGround
+        ? Math.sin(runPhase) * Math.min(1, hSpeed / RUN_MAX) * 0.85
+        : (player.dived ? 1.35 : 0.95);
+      armL.rotation.x = player.dived ? -0.2 : swing;
+      armR.rotation.x = player.dived ? -0.2 : -swing;
 
       const gY = groundHeightAt(player.pos.x, player.pos.z, player.pos.y + 0.01);
       blobShadow.position.set(player.pos.x, gY + 0.02, player.pos.z);
