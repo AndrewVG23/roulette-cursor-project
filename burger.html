@@ -87,85 +87,6 @@
       flex-direction: column;
       gap: 0;
     }
-    .topbar {
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      z-index: 3;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: var(--space-3);
-      padding: 10px 12px;
-      background: linear-gradient(180deg, rgba(40,10,14,.78), transparent);
-      border: none;
-      pointer-events: none;
-    }
-    .topbar .stats { pointer-events: auto; }
-    .brand { display: none; }
-    .stats {
-      display: flex;
-      gap: var(--space-2);
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-    .stat {
-      min-width: 64px;
-      padding: 7px 11px;
-      border-radius: 14px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.14), transparent 40%),
-        linear-gradient(180deg, #3a1418, #220c10);
-      border: 2px solid rgba(246,239,228,.22);
-      box-shadow: 0 4px 0 rgba(80,10,16,.45), inset 0 1px 0 rgba(255,255,255,.12);
-      text-align: center;
-    }
-    .stat .label {
-      display: block;
-      font-size: 0.68rem;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      font-weight: 800;
-      color: var(--color-text-faint);
-    }
-    .stat .value {
-      display: block;
-      font-family: var(--font-display);
-      font-size: var(--text-base);
-      font-weight: 700;
-      color: #fff4ea;
-      line-height: 1.2;
-    }
-    .stat.health-stat {
-      min-width: 110px;
-      text-align: left;
-    }
-    .health-bar {
-      margin-top: 4px;
-      height: 12px;
-      border-radius: 999px;
-      background: rgba(0,0,0,.45);
-      border: 1px solid rgba(255,255,255,.14);
-      overflow: hidden;
-      box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
-    }
-    .health-fill {
-      height: 100%;
-      width: 100%;
-      border-radius: 999px;
-      background: linear-gradient(180deg, #8fe0a8, #3fa866);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
-      transition: width 180ms ease, background 180ms ease;
-    }
-    .health-fill.mid {
-      background: linear-gradient(180deg, #f0c86a, #d09028);
-    }
-    .health-fill.low {
-      background: linear-gradient(180deg, #ff7a8a, #c8102e);
-    }
-    .stat.health-stat .value {
-      font-size: 0.8rem;
-      margin-top: 2px;
-    }
     .canvas-wrap {
       position: absolute;
       inset: 0;
@@ -398,9 +319,6 @@
       box-shadow: 0 0 0 3px rgba(227,28,35,.35), 0 4px 0 rgba(120,16,30,.35);
     }
     @media (max-width: 520px) {
-      .brand h1 { font-size: var(--text-base); }
-      .brand p { display: none; }
-      .stat { min-width: 56px; padding: 4px 8px; }
       .controls .btn.ing { min-height: 64px; font-size: 0.65rem; }
       .ing-grid { gap: var(--space-1); }
     }
@@ -423,28 +341,6 @@
   <div class="app">
     <main id="main" class="panel">
       <div class="panel-inner">
-        <div class="topbar">
-          <div class="brand" hidden>
-            <h1>Night Shift Grill</h1>
-            <p></p>
-          </div>
-          <div class="stats" aria-live="polite">
-            <div class="stat">
-              <span class="label">Burger</span>
-              <span class="value" id="burgerPriceVal">$1</span>
-            </div>
-            <div class="stat">
-              <span class="label">Shift</span>
-              <span class="value" id="levelVal">1</span>
-            </div>
-            <div class="stat health-stat">
-              <span class="label">Health</span>
-              <div class="health-bar" aria-hidden="true"><div class="health-fill" id="healthFill"></div></div>
-              <span class="value" id="healthVal">100</span>
-            </div>
-          </div>
-        </div>
-
         <div class="canvas-wrap" id="canvasWrap">
           <canvas id="game" width="560" height="420" aria-label="Night Shift Grill assembly line"></canvas>
           <div class="overlay" id="overlay" hidden>
@@ -546,10 +442,6 @@
   const pauseBtn = document.getElementById('pauseBtn');
   const muteBtn = document.getElementById('muteBtn');
   const tossBtn = document.getElementById('tossBtn');
-  const levelVal = document.getElementById('levelVal');
-  const burgerPriceVal = document.getElementById('burgerPriceVal');
-  const healthVal = document.getElementById('healthVal');
-  const healthFill = document.getElementById('healthFill');
   const ingGrid = document.getElementById('ingGrid');
   const helpBtn = document.getElementById('helpBtn');
   const helpPanel = document.getElementById('helpPanel');
@@ -1666,13 +1558,6 @@
 
   function updateHUD() {
     Wallet.updateDisplay();
-    levelVal.textContent = String(state.level);
-    burgerPriceVal.textContent = Wallet.format(burgerPrice());
-    healthVal.textContent = String(state.health);
-    const pct = Math.max(0, Math.min(100, (state.health / MAX_HEALTH) * 100));
-    healthFill.style.width = pct + '%';
-    healthFill.classList.toggle('mid', state.health <= 60 && state.health > 30);
-    healthFill.classList.toggle('low', state.health <= 30);
   }
 
   function showOverlay(title, text, btnLabel) {
