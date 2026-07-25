@@ -4171,7 +4171,6 @@
 
     // Navigate to selected destination — arrive in its exit window to finish the drive
     d.approachingExit = null;
-    const pathLen = d.route.length;
     const routeZ = wrapRouteZ(d.z, pathLen);
     if (d.navTarget) {
       const navEx = getNavExit(d, d.navTarget);
