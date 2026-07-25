@@ -113,7 +113,7 @@
     .cases {
       flex: 1;
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: clamp(12px, 2.5vw, 28px);
       align-content: center;
       max-width: 1200px;
@@ -447,7 +447,7 @@
       <div class="ticker" aria-live="polite">
         Live spot
         <b id="spotVal">$2,000/oz</b>
-        <div class="fee">Cash ask · Krug +5% · Buffalo +10%</div>
+        <div class="fee">Cash ask · Krug +5% · Buffalo / Maple +10%</div>
       </div>
     </header>
 
@@ -535,11 +535,32 @@
           <div class="ask"><span data-price>——</span><small>cash ask · +10%</small></div>
         </div>
       </article>
+
+      <article class="case" data-oz="1" data-fee="0.10" data-name="Maple Leaf">
+        <div class="case-rail" aria-hidden="true"></div>
+        <div class="vitrine">
+          <div class="glass-glint" aria-hidden="true"></div>
+          <div class="coin-stage">
+            <div class="coin size-ounce" role="button" tabindex="0" aria-label="Flip 1 oz Maple Leaf">
+              <img class="coin-face front" src="assets/maple-reverse.png" alt="Maple Leaf reverse — maple leaf" draggable="false" />
+              <img class="coin-face back" src="assets/maple-obverse.png" alt="Maple Leaf obverse — Elizabeth II" draggable="false" />
+            </div>
+          </div>
+          <div class="plinth" aria-hidden="true"></div>
+        </div>
+        <div class="tag">
+          <div>
+            <span class="denom">Maple Leaf</span>
+            <span class="fine">1 oz · .999 fine · Canada</span>
+          </div>
+          <div class="ask"><span data-price>——</span><small>cash ask · +10%</small></div>
+        </div>
+      </article>
     </section>
 
     <footer class="foot">
       <p class="note">
-        Cash only — tap a case to buy. Krugerrands ask spot +5%; American Buffalo asks +10%.
+        Cash only — tap a case to buy. Krugerrands ask spot +5%; American Buffalo and Maple Leaf ask +10%.
         Spot climbs with every Quik-Fill visit. Sell from the purse (−5%).
       </p>
       <div class="actions">
