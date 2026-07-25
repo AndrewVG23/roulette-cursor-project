@@ -459,7 +459,7 @@
           <div><strong>A / S / D / F</strong> — slam Patty, Cheese, Tomato, Bacon</div>
           <div><strong>X</strong> — toss a ruined or gross burger</div>
           <div>Match the ticket order, then the bun seals itself. Tap the ingredient buttons if you skip the keys.</div>
-          <div>Every burger served pays <strong>$1</strong>. A clean good build pays <strong>$20</strong>.</div>
+          <div>Every burger handed off pays at least <strong>$1</strong> (rejected or gross). A clean good build pays <strong>$20</strong>.</div>
         </div>
 
         <div class="controls" aria-label="Game controls">
@@ -528,6 +528,12 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   let canvasDpr = 1;
+
+  function hudReserveRight() {
+    return (window.Wallet && Wallet.canvasInset)
+      ? Wallet.canvasInset(canvas).right
+      : 88;
+  }
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
@@ -1525,6 +1531,8 @@
       updateHUD();
       if (state.tickets.length < MAX_TICKETS) addTicket();
     } else {
+      // Rejected — wrong or ruined — still pays $1
+      bankTip(1);
       c.held = heldIds.length ? heldIds : ['patty'];
       c.heldScale = 1;
       setCustomerMood('pissed');
@@ -1532,7 +1540,11 @@
       rageSound();
       state.flash = Math.max(state.flash, 0.2);
       state.floatText.push({
-        x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 108,
+        x: CUSTOMER_SPOT_X - 10, y: CUSTOMER_Y - 100,
+        text: '+$1', life: 1.05, color: '#8fd989'
+      });
+      state.floatText.push({
+        x: CUSTOMER_SPOT_X, y: CUSTOMER_Y - 118,
         text: 'WRONG ORDER', life: 0.95, color: '#f0a46a'
       });
       c.willHit = true;
@@ -3045,6 +3057,7 @@
     const counterTop = LINE_Y + 18;
     const counterFront = 24;
     const vpX = W * 0.38;
+    const hudR = hudReserveRight();
 
     // Opaque base — every pixel must be repainted each frame (no motion trails)
     ctx.fillStyle = '#1a080c';
@@ -3054,19 +3067,19 @@
     ceil.addColorStop(0, '#1a080c');
     ceil.addColorStop(1, '#3a1820');
     ctx.fillStyle = ceil;
-    ctx.fillRect(0, 0, W, 72);
+    ctx.fillRect(0, 0, W - hudR, 72);
 
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(0, 72);
-    ctx.lineTo(W, 72);
-    ctx.lineTo(W - 24, 138);
+    ctx.lineTo(W - hudR, 72);
+    ctx.lineTo(W - 24 - hudR, 138);
     ctx.lineTo(24, 138);
     ctx.closePath();
     ctx.clip();
-    drawCheckeredWall(-10, 72, W + 10, 138, 28);
+    drawCheckeredWall(-10, 72, W + 10 - hudR, 138, 28);
     ctx.fillStyle = 'rgba(40,10,14,0.22)';
-    ctx.fillRect(0, 72, W, 66);
+    ctx.fillRect(0, 72, W - hudR, 66);
     ctx.restore();
 
     ctx.fillStyle = '#281018';
@@ -3079,18 +3092,18 @@
     ctx.fill();
     ctx.fillStyle = '#220c12';
     ctx.beginPath();
-    ctx.moveTo(W, 0);
-    ctx.lineTo(W, 138);
-    ctx.lineTo(W - 108, 138);
-    ctx.lineTo(W - 92, 0);
+    ctx.moveTo(W - hudR, 0);
+    ctx.lineTo(W - hudR, 138);
+    ctx.lineTo(W - 108 - hudR, 138);
+    ctx.lineTo(W - 92 - hudR, 0);
     ctx.closePath();
     ctx.fill();
 
     // Solid back wall behind the line — belt/customer zone (was transparent gaps)
     ctx.fillStyle = '#241018';
-    ctx.fillRect(0, 138, W, counterTop - 16 - 138);
+    ctx.fillRect(0, 138, W - hudR, counterTop - 16 - 138);
 
-    const wx = W - 108;
+    const wx = W - 108 - hudR;
     ctx.fillStyle = '#0e0608';
     roundRect(wx + 10, LINE_Y - 118, 88, 136, 6);
     ctx.fill();

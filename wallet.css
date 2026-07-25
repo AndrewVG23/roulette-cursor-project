@@ -1,24 +1,84 @@
-/* Shared purse HUD — same placement on every game screen */
+/* Shared purse HUD — fixed top-right on every game screen */
+:root {
+  --purse-hud-top: max(8px, env(safe-area-inset-top, 0px));
+  --purse-hud-right: max(10px, env(safe-area-inset-right, 0px));
+  --purse-hud-gap: 10px;
+  --purse-hud-width: 104px;
+  --purse-hud-height: 52px;
+  --purse-hud-clearance-right: calc(var(--purse-hud-width) + var(--purse-hud-right) + var(--purse-hud-gap));
+}
+
 .purse-hud {
   position: fixed;
-  top: max(8px, env(safe-area-inset-top, 0px));
-  right: max(10px, env(safe-area-inset-right, 0px));
+  top: var(--purse-hud-top);
+  right: var(--purse-hud-right);
   z-index: 10000;
-  min-width: 72px;
-  padding: 6px 10px;
-  border-radius: 3px;
-  text-align: center;
-  background: linear-gradient(180deg, rgba(20, 53, 40, 0.9), rgba(12, 26, 21, 0.96));
-  border: 1px solid rgba(238, 194, 97, 0.22);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 88px;
+  padding: 7px 12px 7px 9px;
+  border-radius: 10px;
+  text-align: left;
+  background:
+    linear-gradient(165deg, rgba(34, 72, 56, 0.94), rgba(12, 26, 21, 0.98));
+  border: 1px solid rgba(238, 194, 97, 0.3);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   pointer-events: none;
   font-family: 'General Sans', 'Inter', system-ui, sans-serif;
 }
 
+.purse-hud::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 42%);
+  pointer-events: none;
+}
+
+.purse-hud-chip {
+  position: relative;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, #fff0c8, #e8c05a 42%, #b8861a 78%, #7a5510);
+  border: 2px dashed rgba(255, 244, 210, 0.42);
+  box-shadow:
+    inset 0 -2px 5px rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.24);
+}
+
+.purse-hud-chip::after {
+  content: '$';
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: rgba(48, 32, 8, 0.72);
+}
+
+.purse-hud-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
 .purse-hud-label {
   display: block;
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #897f6d;
 }
@@ -30,11 +90,61 @@
   font-weight: 700;
   color: #d0a23a;
   font-variant-numeric: tabular-nums lining-nums;
-  line-height: 1.2;
+  line-height: 1.15;
+  white-space: nowrap;
 }
+
+.purse-hud-delta {
+  position: absolute;
+  right: 0;
+  top: -2px;
+  font-family: 'General Sans', 'Inter', system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+}
+
+.purse-hud-delta.is-up { color: #8fd989; }
+.purse-hud-delta.is-down { color: #f26e89; }
 
 .purse-hud.low .purse-hud-value { color: #ffd2a0; }
 .purse-hud.empty .purse-hud-value { color: #f26e89; }
+.purse-hud.empty .purse-hud-chip {
+  filter: saturate(0.45) brightness(0.82);
+}
+
+.purse-hud.pulse .purse-hud-value {
+  animation: purseHudPulse 420ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.purse-hud.show-delta .purse-hud-delta {
+  animation: purseHudDelta 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes purseHudPulse {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes purseHudDelta {
+  0% { opacity: 0; transform: translateY(6px); }
+  18% { opacity: 1; transform: translateY(0); }
+  72% { opacity: 1; transform: translateY(-2px); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+
+/* Keep game UI out from under the fixed HUD */
+body.has-purse-hud .topbar {
+  padding-right: var(--purse-hud-clearance-right);
+}
+
+body.has-purse-hud > .app > .controls {
+  padding-right: calc(var(--space-3, 0.75rem) + var(--purse-hud-clearance-right) - var(--purse-hud-right));
+}
 
 .purse-stack-amount.purse-stack-amount--hidden,
 .purse-block.purse-block--hidden {

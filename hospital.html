@@ -299,6 +299,12 @@
   const BALL_MAX_SPEED = 780;
 
   const canvas = document.getElementById('game');
+
+  function hudReserveRight() {
+    return (window.Wallet && Wallet.canvasInset)
+      ? Wallet.canvasInset(canvas).right
+      : 88;
+  }
   const ctx = canvas.getContext('2d');
   const pyramidPoster = new Image();
   let pyramidPosterReady = false;
@@ -979,60 +985,61 @@
     ctx.fill();
 
     // Far wall window
+    const hudR = hudReserveRight();
     ctx.fillStyle = '#7a98a8';
-    ctx.fillRect(W - 148, 108, 50, 42);
-    const glass = ctx.createLinearGradient(W - 144, 112, W - 144, 146);
+    ctx.fillRect(W - 148 - hudR, 108, 50, 42);
+    const glass = ctx.createLinearGradient(W - 144 - hudR, 112, W - 144 - hudR, 146);
     glass.addColorStop(0, '#cfe8f4');
     glass.addColorStop(1, '#9cc4dc');
     ctx.fillStyle = glass;
-    ctx.fillRect(W - 144, 112, 42, 34);
+    ctx.fillRect(W - 144 - hudR, 112, 42, 34);
     ctx.strokeStyle = '#7a98a8';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(W - 123, 112);
-    ctx.lineTo(W - 123, 146);
+    ctx.moveTo(W - 123 - hudR, 112);
+    ctx.lineTo(W - 123 - hudR, 146);
     ctx.stroke();
 
     // Door at the far end — normal-size next to the doctor, selling his scale
     ctx.fillStyle = '#8fa8b8';
-    ctx.fillRect(W - 132, FLOOR_Y - 110, 56, 110);
+    ctx.fillRect(W - 132 - hudR, FLOOR_Y - 110, 56, 110);
     ctx.fillStyle = '#b8ccd8';
-    ctx.fillRect(W - 128, FLOOR_Y - 106, 48, 106);
+    ctx.fillRect(W - 128 - hudR, FLOOR_Y - 106, 48, 106);
     ctx.fillStyle = '#d8e6ee';
-    ctx.fillRect(W - 120, FLOOR_Y - 98, 32, 26);
+    ctx.fillRect(W - 120 - hudR, FLOOR_Y - 98, 32, 26);
     ctx.fillStyle = '#5a7484';
     ctx.beginPath();
-    ctx.arc(W - 88, FLOOR_Y - 52, 2.2, 0, Math.PI * 2);
+    ctx.arc(W - 88 - hudR, FLOOR_Y - 52, 2.2, 0, Math.PI * 2);
     ctx.fill();
 
     // Wall clock, tiny with distance
     ctx.fillStyle = '#f4f8fa';
     ctx.beginPath();
-    ctx.arc(W - 176, 94, 6.5, 0, Math.PI * 2);
+    ctx.arc(W - 176 - hudR, 94, 6.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = '#5a7484';
     ctx.lineWidth = 1.4;
     ctx.stroke();
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(W - 176, 94);
-    ctx.lineTo(W - 176, 90.5);
-    ctx.moveTo(W - 176, 94);
-    ctx.lineTo(W - 173.5, 95);
+    ctx.moveTo(W - 176 - hudR, 94);
+    ctx.lineTo(W - 176 - hudR, 90.5);
+    ctx.moveTo(W - 176 - hudR, 94);
+    ctx.lineTo(W - 173.5 - hudR, 95);
     ctx.stroke();
 
     // Small vitals monitor on the far wall
     ctx.fillStyle = '#12222c';
-    ctx.fillRect(W - 218, 128, 36, 26);
+    ctx.fillRect(W - 218 - hudR, 128, 36, 26);
     ctx.strokeStyle = '#58c88a';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(W - 214, 141);
-    ctx.lineTo(W - 208, 141);
-    ctx.lineTo(W - 205, 134);
-    ctx.lineTo(W - 201, 148);
-    ctx.lineTo(W - 198, 141);
-    ctx.lineTo(W - 186, 141);
+    ctx.moveTo(W - 214 - hudR, 141);
+    ctx.lineTo(W - 208 - hudR, 141);
+    ctx.lineTo(W - 205 - hudR, 134);
+    ctx.lineTo(W - 201 - hudR, 148);
+    ctx.lineTo(W - 198 - hudR, 141);
+    ctx.lineTo(W - 186 - hudR, 141);
     ctx.stroke();
 
     drawFoodPyramidPoster();

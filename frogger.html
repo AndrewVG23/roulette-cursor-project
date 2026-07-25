@@ -409,6 +409,7 @@
             <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
             <a class="btn subtle" href="frogger.html?enter=grill">Grill</a>
             <a class="btn subtle" href="frogger.html?enter=casino">Tables</a>
+            <a class="btn subtle" href="gas.html">Gas</a>
           </div>
         </div>
       </div>
@@ -439,7 +440,8 @@
   const ESTABLISHMENTS = {
     grill: { id: 'grill', name: 'GRILL', href: 'burger.html', sign: 'NIGHT SHIFT GRILL', signBg: '#c8102e', signFg: '#fff7ef' },
     casino: { id: 'casino', name: 'CASINO', href: 'index.html', sign: 'CASINO FLOOR', signBg: '#d0a23a', signFg: '#1a1307' },
-    craps: { id: 'craps', name: 'CRAPS', href: 'craps.html', sign: 'CRAPS PIT', signBg: '#2f8f4e', signFg: '#f5edd8' }
+    craps: { id: 'craps', name: 'CRAPS', href: 'craps.html', sign: 'CRAPS PIT', signBg: '#2f8f4e', signFg: '#f5edd8' },
+    liquor: { id: 'liquor', name: 'LIQUOR', href: 'liquor.html', sign: 'LIQUOR • COLD BEER', signBg: '#16213e', signFg: '#ffd23f' }
   };
 
   // Highway exits you can take during the night drive
@@ -447,7 +449,8 @@
     { id: 'grill', name: 'GRILL', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' },
     { id: 'casino', name: 'CASINO', href: 'index.html', blurb: 'The casino — back to the tables.' },
     { id: 'craps', name: 'CRAPS', href: 'craps.html', blurb: 'The craps pit.' },
-    { id: 'hospital', name: 'ER', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' }
+    { id: 'hospital', name: 'ER', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
+    { id: 'liquor', name: 'LIQUOR', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' }
   ];
 
   // Reference map — complete Lake Shore / Gold Coast loop with 90° grid corners
@@ -538,7 +541,8 @@
     exits: [
       { n: 900, e: 2.30, side: -1, id: 'casino', name: 'CASINO', mapLabel: 'Casino', href: 'index.html', blurb: 'The casino — back to the tables.' },
       { n: 1000, e: -2.10, side: -1, id: 'hospital', name: 'ER', mapLabel: 'Hospital', href: 'hospital.html', blurb: 'County General — patch up and get back out there.' },
-      { n: 1200, e: 0.25, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' }
+      { n: 1200, e: 0.25, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: 'burger.html', blurb: 'Night Shift Grill — back on the line.' },
+      { n: 820, e: -2.10, side: -1, id: 'liquor', name: 'LIQUOR', mapLabel: 'Liquor', href: 'liquor.html', blurb: 'Corner liquor — night shift bottle run.' }
     ]
   };
 
@@ -1198,7 +1202,7 @@
   };
 
   const params = new URLSearchParams(location.search);
-  const ENTER_IDS = ['grill', 'casino', 'craps'];
+  const ENTER_IDS = ['grill', 'casino', 'craps', 'liquor'];
   const ENTER_PARAM = params.get('enter');
   const ENTER_ID = ENTER_IDS.includes(ENTER_PARAM) ? ENTER_PARAM : null;
   const RESUME_DRIVE = params.get('resumeDrive') === '1';
@@ -1515,6 +1519,11 @@
     beep(660, 0.1);
   }
 
+  function clearDriveOverlays() {
+    state.floatText = [];
+    state.particles = state.particles.filter(p => p.type !== 'text');
+  }
+
   function spawnFloat(text, x, y, color, opts = {}) {
     const life = opts.life ?? 0.85;
     state.floatText.push({
@@ -1583,6 +1592,7 @@
     state.invuln = 0;
     state.flash = 0;
     state.particles = [];
+    clearDriveOverlays();
     state.destination = null;
     state.drive = {
       z: 0,
@@ -1640,6 +1650,8 @@
       rumble: 0,
       hp: 100,
       maxHp: 100,
+      fuel: 100,
+      maxFuel: 100,
       approachingExit: null,
       chaser: null,
       chaserSpawnT: 4,
@@ -1850,6 +1862,8 @@
       rumble: d.rumble,
       hp: d.hp,
       maxHp: d.maxHp,
+      fuel: d.fuel,
+      maxFuel: d.maxFuel,
       approachingExit: d.approachingExit ? { ...d.approachingExit } : null,
       atSignal: d.atSignal ? { ...d.atSignal } : null,
       signalFlash: d.signalFlash,
@@ -2393,6 +2407,7 @@
     state.invuln = 0;
     state.flash = 0;
     state.particles = [];
+    clearDriveOverlays();
     state.destination = null;
     state.replay.buffer = [];
     state.replay.playing = false;
@@ -2456,6 +2471,8 @@
       rumble: 0,
       hp: 100,
       maxHp: 100,
+      fuel: 100,
+      maxFuel: 100,
       approachingExit: null,
       chaser: null,
       chaserSpawnT: 4,
@@ -2464,6 +2481,7 @@
       zoomPunch: 0
     };
     replayApplyDrive(state.drive, data.drive);
+    state.drive.fuel = state.drive.maxFuel ?? 100;
     seedChicagoLandmarks(state.drive);
     const resumeZ = state.drive.z || 0;
     seedCityBlocks(state.drive, Math.max(0, resumeZ - 240), Math.min(route.length, resumeZ + 1400));
@@ -3581,15 +3599,23 @@
     const gas = state.keys.up ? 1 : 0;
     const brake = state.keys.down ? 1 : 0;
     const speedNorm = d.speed / d.maxSpeed;
+    const fuelNorm = Math.max(0, (d.fuel || 0) / (d.maxFuel || 100));
+    const outOfGas = fuelNorm <= 0.001;
+
+    // Fuel burn — cruise + throttle; ER visit refills the tank
+    const fuelUse = (0.012 + d.speed * 0.00065 + gas * 0.038) * dt;
+    d.fuel = Math.max(0, (d.fuel ?? d.maxFuel) - fuelUse);
 
     // Engine force falls off toward top speed; aero drag + rolling resistance
-    const engine = gas * 48 * (1 - speedNorm * 0.82);
+    let engine = gas * 48 * (1 - speedNorm * 0.82);
+    if (outOfGas) engine *= 0.06;
     const brakes = brake * 70;
     const drag = 0.018 * d.speed * d.speed * 0.01 + 6.5 + (d.surface === 'curb' ? 14 : 0);
     d.accel = engine - brakes - drag * 0.15;
     d.speed = Math.max(0, Math.min(d.maxSpeed, d.speed + d.accel * dt));
+    if (outOfGas) d.speed = Math.min(d.speed, 18);
     // Idle creep so you don't stall dead in traffic unless hard-braking
-    if (!brake && d.speed < 12) d.speed += 18 * dt;
+    if (!brake && !outOfGas && d.speed < 12) d.speed += 18 * dt;
 
     // Surface under the tires
     const ax = Math.abs(d.playerX);
@@ -7664,6 +7690,131 @@
     ctx.restore();
   }
 
+  function drawDriveGauges(d) {
+    const fuelPct = Math.max(0, Math.min(1, (d.fuel ?? 0) / (d.maxFuel || 100)));
+    const speedPct = Math.max(0, Math.min(1, d.speed / Math.max(1, d.maxSpeed)));
+    const lowFuel = fuelPct <= 0.2;
+    const pulse = lowFuel ? 0.72 + Math.sin(performance.now() * 0.012) * 0.28 : 1;
+
+    // --- Gas gauge (bottom center-left, clear of the map) ---
+    const gx = 168;
+    const gy = H - 58;
+    const gw = 16;
+    const gh = 46;
+    ctx.fillStyle = 'rgba(12,14,18,0.88)';
+    ctx.strokeStyle = 'rgba(208,162,58,0.35)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(gx - 4, gy - 14, gw + 8, gh + 24);
+    ctx.strokeRect(gx - 3.5, gy - 13.5, gw + 7, gh + 23);
+    ctx.fillStyle = '#897f6d';
+    ctx.font = '600 8px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('GAS', gx + gw * 0.5, gy - 4);
+    ctx.fillStyle = '#2a2c30';
+    ctx.fillRect(gx, gy, gw, gh);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.strokeRect(gx + 0.5, gy + 0.5, gw - 1, gh - 1);
+    const fuelColor = fuelPct <= 0.12 ? '#c0392b' : fuelPct <= 0.28 ? '#d4a017' : '#5a9e68';
+    ctx.fillStyle = fuelColor;
+    ctx.globalAlpha = pulse;
+    ctx.fillRect(gx + 2, gy + 2 + (gh - 4) * (1 - fuelPct), gw - 4, (gh - 4) * fuelPct);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#897f6d';
+    ctx.fillText('F', gx + gw * 0.5, gy - 8);
+    ctx.fillText('E', gx + gw * 0.5, gy + gh + 10);
+    ctx.fillStyle = '#e8dcc0';
+    ctx.font = '700 10px "General Sans", sans-serif';
+    ctx.fillText(`${Math.round(fuelPct * 100)}%`, gx + gw * 0.5, gy + gh * 0.55);
+
+    // --- Speedometer (bottom right) ---
+    const cx = W - 68;
+    const cy = H - 16;
+    const r = 52;
+    const arcStart = Math.PI * 0.72;
+    const arcEnd = Math.PI * 2.28;
+    const arcSpan = arcEnd - arcStart;
+
+    ctx.fillStyle = 'rgba(12,14,18,0.88)';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r + 8, arcStart, arcEnd, false);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(208,162,58,0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + 2, arcStart, arcEnd, false);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(90,95,105,0.55)';
+    ctx.lineWidth = 1;
+    const dialMax = Math.max(40, Math.ceil(d.maxSpeed / 20) * 20);
+    for (let i = 0; i <= dialMax; i += 20) {
+      const t = i / dialMax;
+      const ang = arcStart + arcSpan * t;
+      const inner = r - (i % 40 === 0 ? 10 : 6);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ang) * inner, cy + Math.sin(ang) * inner);
+      ctx.lineTo(cx + Math.cos(ang) * (r + 1), cy + Math.sin(ang) * (r + 1));
+      ctx.stroke();
+      if (i % 40 === 0) {
+        ctx.fillStyle = 'rgba(189,179,155,0.85)';
+        ctx.font = '600 8px "General Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(i), cx + Math.cos(ang) * (r - 18), cy + Math.sin(ang) * (r - 18));
+      }
+    }
+
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(42,44,48,0.95)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 4, arcStart, arcEnd, false);
+    ctx.stroke();
+    const hotAng = arcStart + arcSpan * speedPct;
+    const hotGrad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+    hotGrad.addColorStop(0, '#d4a017');
+    hotGrad.addColorStop(0.65, speedPct > 0.85 ? '#e8722a' : '#d4a017');
+    hotGrad.addColorStop(1, speedPct > 0.85 ? '#c0392b' : '#d4a017');
+    ctx.strokeStyle = hotGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r - 4, arcStart, hotAng, false);
+    ctx.stroke();
+
+    const needleAng = arcStart + arcSpan * speedPct;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(needleAng);
+    ctx.fillStyle = '#f5edd8';
+    ctx.beginPath();
+    ctx.moveTo(r - 8, 0);
+    ctx.lineTo(-10, -2.5);
+    ctx.lineTo(-10, 2.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#d0a23a';
+    ctx.beginPath();
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = '#e8dcc0';
+    ctx.font = '700 20px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(Math.round(d.speed)), cx, cy - 10);
+    ctx.fillStyle = '#897f6d';
+    ctx.font = '600 8px "General Sans", sans-serif';
+    ctx.fillText('MPH', cx, cy + 8);
+
+    if (fuelPct <= 0.001) {
+      ctx.fillStyle = `rgba(231,76,60,${0.55 + Math.sin(performance.now() * 0.014) * 0.25})`;
+      ctx.font = '700 9px "General Sans", sans-serif';
+      ctx.fillText('EMPTY', gx + gw * 0.5, gy + gh + 22);
+    }
+  }
+
   function drawChaserCar(d) {
     const cop = d.chaser;
     if (!cop) return;
@@ -7979,11 +8130,9 @@
     } else {
       ctx.fillText('OPEN ROAD', 10, 22);
     }
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#d8d2c0';
-    ctx.fillText(`${Math.round(d.speed)} MPH`, W - 10, 22);
 
     drawReferenceMap(d);
+    drawDriveGauges(d);
 
     if (d.turnFlash > 0) {
       ctx.fillStyle = `rgba(125,206,122,${d.turnFlash * 0.25})`;
@@ -8004,12 +8153,6 @@
       ctx.fillStyle = `rgba(255,240,200,${d.signalFlash * 0.12 * pulse})`;
       ctx.fillRect(0, 0, W, H * 0.35);
     }
-
-    const sp = d.speed / d.maxSpeed;
-    ctx.fillStyle = '#2a2c30';
-    ctx.fillRect(10, H - 14, W - 20, 6);
-    ctx.fillStyle = sp > 0.85 ? '#c0392b' : '#d4a017';
-    ctx.fillRect(10, H - 14, (W - 20) * sp, 6);
 
     if (d.crashFlash > 0) {
       ctx.fillStyle = `rgba(192,57,43,${d.crashFlash * 0.5})`;

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-purse-hud="off">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -418,8 +418,8 @@
     .board-3d canvas { display: block; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 18px; outline: none; }
     .purse-stack {
       position: absolute;
-      top: 0;
-      right: 0;
+      top: max(8px, env(safe-area-inset-top, 0px));
+      right: max(10px, env(safe-area-inset-right, 0px));
       z-index: 6;
       display: flex;
       flex-direction: column;
@@ -749,6 +749,7 @@
               <a class="btn subtle" href="frogger.html?enter=craps" title="Craps table" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Craps</a>
               <a class="btn subtle" href="frogger.html" title="Return to your car" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Return to car</a>
               <a class="btn subtle" href="frogger.html?enter=grill" title="Night Shift Grill" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Grill</a>
+              <a class="btn subtle" href="frogger.html?enter=liquor" title="Corner liquor — Bottle Run" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Liquor</a>
             </div>
           </div>
           <div class="roulette-wrap" id="rouletteWrap">
