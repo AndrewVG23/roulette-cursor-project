@@ -162,50 +162,6 @@
       border: 2px solid rgba(160,20,30,.35);
       box-shadow: 0 4px 0 rgba(120,16,30,.4);
     }
-    .help-btn {
-      position: absolute;
-      left: max(10px, env(safe-area-inset-left, 0px));
-      bottom: max(10px, env(safe-area-inset-bottom, 0px));
-      z-index: 6;
-      width: 44px;
-      height: 44px;
-      padding: 0;
-      border-radius: 50%;
-      font-family: var(--font-display);
-      font-size: 1.25rem;
-      font-weight: 700;
-      line-height: 1;
-      color: #fff7ef;
-      background: linear-gradient(180deg, #4a2228, #2a1014);
-      border: 2px solid rgba(246,239,228,.28);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 3px 0 rgba(60,8,12,.55);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .help-btn[aria-expanded="true"] {
-      background: linear-gradient(180deg, #f04048, #c8102e);
-      border-color: rgba(255,230,220,.45);
-    }
-    .help-panel {
-      position: absolute;
-      left: max(10px, env(safe-area-inset-left, 0px));
-      bottom: calc(58px + env(safe-area-inset-bottom, 0px));
-      z-index: 6;
-      width: min(300px, calc(100vw - 20px));
-      padding: 12px 14px 14px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, rgba(42,16,20,.97), rgba(20,8,10,.98));
-      border: 2px solid rgba(246,239,228,.22);
-      box-shadow: 0 12px 32px rgba(40,8,12,.5);
-      display: grid;
-      gap: 8px;
-      color: var(--color-text-muted);
-      font-size: var(--text-xs);
-      line-height: 1.45;
-    }
-    .help-panel[hidden] { display: none; }
-    .help-panel strong { color: #fff7ef; font-weight: 800; }
     .controls {
       position: absolute;
       left: 0; right: 0; bottom: 0;
@@ -213,7 +169,6 @@
       display: grid;
       gap: var(--space-2);
       padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
-      padding-left: 56px;
       background:
         linear-gradient(0deg, rgba(28,8,12,.94), rgba(28,8,12,.55) 55%, transparent),
         repeating-linear-gradient(90deg, #c8102e 0 14px, #f6efe4 14px 28px);
@@ -224,7 +179,7 @@
       border-radius: 0;
       box-shadow: none;
     }
-    body:not(.help-open) .controls .btn.ing .key { display: none; }
+    .controls .btn.ing .key { display: none; }
     .control-row {
       display: flex;
       flex-wrap: wrap;
@@ -355,22 +310,10 @@
           </div>
         </div>
 
-        <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel">?</button>
-        <div class="help-panel" id="helpPanel" hidden role="dialog" aria-label="Controls">
-          <div><strong>A / S / D / F</strong> — slam Patty, Cheese, Tomato, Bacon</div>
-          <div><strong>X</strong> — toss a ruined or gross burger</div>
-          <div>Match the ticket order, then the bun seals itself. Tap the ingredient buttons if you skip the keys.</div>
-          <div>Menu price starts at <strong>$5</strong> and compounds at the debt rate (6% per gas visit). A clean good build adds a tip (base <strong>$15</strong> — full inflation).</div>
-          <div>Pay hits your <strong>phone</strong>. Nobody hands you paper here.</div>
-        </div>
-
         <div class="controls" aria-label="Game controls">
           <div class="control-row">
-            <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
-            <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
             <button class="btn primary" id="tossBtn" type="button" title="Trash this burger">Toss</button>
             <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
-            <a class="btn subtle" href="frogger.html?enter=casino">Tables</a>
           </div>
           <div class="ing-grid" id="ingGrid" aria-label="Slam ingredients"></div>
         </div>
@@ -440,23 +383,9 @@
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
   const startBtn = document.getElementById('startBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
-  const muteBtn = document.getElementById('muteBtn');
   const tossBtn = document.getElementById('tossBtn');
   const ingGrid = document.getElementById('ingGrid');
-  const helpBtn = document.getElementById('helpBtn');
-  const helpPanel = document.getElementById('helpPanel');
   const MAX_HEALTH = 100;
-
-  function setHelpOpen(open) {
-    helpPanel.hidden = !open;
-    helpBtn.setAttribute('aria-expanded', String(open));
-    helpBtn.setAttribute('aria-label', open ? 'Hide controls' : 'Show controls');
-    document.body.classList.toggle('help-open', open);
-  }
-  function toggleHelp() {
-    setHelpOpen(helpPanel.hidden);
-  }
 
   const LINE_Y = 290;
   const STATION_X = 260;
@@ -1493,7 +1422,6 @@
         localStorage.setItem('nightShiftGrillHigh', String(state.high));
       }
       const who = customer ? customer.name : 'A customer';
-      pauseBtn.disabled = true;
       try {
         sessionStorage.setItem('hospital-admit', JSON.stringify({
           score: Wallet.read(),
@@ -1549,8 +1477,6 @@
     state.dropperX = STATION_X;
     state.mode = 'play';
     overlay.hidden = true;
-    pauseBtn.disabled = false;
-    pauseBtn.textContent = 'Pause';
     addTicket();
     updateHUD();
     beep(440, 0.08);
@@ -2949,9 +2875,8 @@
       ctx.fillText(ing.name, x + 106, ry + 14);
       ctx.fillStyle = row.gross ? '#6a8030' : '#c8102e';
       ctx.font = '800 12px Nunito, sans-serif';
-      const helpOpen = document.body.classList.contains('help-open');
       ctx.fillText(
-        row.gross ? 'EWW — TOSS IT' : (helpOpen ? `HIT  ${ing.key.toUpperCase()}` : 'NEXT'),
+        row.gross ? 'EWW — TOSS IT' : 'NEXT',
         x + 106, ry + 30
       );
     });
@@ -3219,30 +3144,15 @@
   function togglePause() {
     if (state.mode === 'play') {
       state.mode = 'pause';
-      pauseBtn.textContent = 'Resume';
       beep(320, 0.06);
     } else if (state.mode === 'pause') {
       state.mode = 'play';
-      pauseBtn.textContent = 'Pause';
       beep(480, 0.06);
     }
   }
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
-      e.preventDefault();
-      toggleHelp();
-      return;
-    }
-    if (e.key === 'Escape') {
-      if (!helpPanel.hidden) {
-        setHelpOpen(false);
-        return;
-      }
-      if (state.mode === 'play' || state.mode === 'pause') togglePause();
-      return;
-    }
-    if (e.key === 'p' || e.key === 'P') {
+    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') {
       if (state.mode === 'play' || state.mode === 'pause') togglePause();
       return;
     }
@@ -3265,22 +3175,6 @@
     }
   });
 
-  helpBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleHelp();
-  });
-  document.addEventListener('pointerdown', (e) => {
-    if (helpPanel.hidden) return;
-    if (helpPanel.contains(e.target) || helpBtn.contains(e.target)) return;
-    setHelpOpen(false);
-  });
-
-  pauseBtn.addEventListener('click', togglePause);
-  muteBtn.addEventListener('click', () => {
-    state.muted = !state.muted;
-    muteBtn.setAttribute('aria-pressed', String(state.muted));
-    muteBtn.textContent = state.muted ? 'Muted' : 'Sound';
-  });
   tossBtn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     ensureAudio();

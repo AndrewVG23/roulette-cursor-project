@@ -2,10 +2,15 @@
 :root {
   --purse-hud-top: max(8px, env(safe-area-inset-top, 0px));
   --purse-hud-right: max(10px, env(safe-area-inset-right, 0px));
-  --purse-hud-gap: 10px;
-  --purse-hud-width: 128px;
-  --purse-hud-height: 56px;
+  --purse-hud-gap: 12px;
+  --purse-hud-width: 168px;
+  --purse-hud-height: 84px;
   --purse-hud-clearance-right: calc(var(--purse-hud-width) + var(--purse-hud-right) + var(--purse-hud-gap));
+  --purse-gold: #e8c878;
+  --purse-gold-bright: #f4dfa0;
+  --purse-gold-deep: #a67c28;
+  --purse-velvet: #0c1a15;
+  --purse-velvet-lit: #1f4636;
   --game-logo-top: max(8px, env(safe-area-inset-top, 0px));
   --game-logo-left: max(10px, env(safe-area-inset-left, 0px));
   --game-logo-height: clamp(34px, 5.2vw, 44px);
@@ -44,19 +49,22 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  min-width: 58px;
-  padding: 7px 9px 8px;
-  border-radius: 10px;
+  gap: 5px;
+  min-width: 66px;
+  padding: 9px 11px 10px;
+  border-radius: 14px;
   text-align: center;
   background:
-    linear-gradient(165deg, rgba(34, 72, 56, 0.94), rgba(12, 26, 21, 0.98));
-  border: 1px solid rgba(238, 194, 97, 0.3);
+    radial-gradient(ellipse 90% 70% at 50% 0%, rgba(232, 200, 120, 0.14), transparent 55%),
+    linear-gradient(165deg, rgba(40, 82, 64, 0.96), var(--purse-velvet) 72%);
+  border: 1.5px solid rgba(232, 200, 120, 0.42);
   box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+    0 0 0 1px rgba(20, 14, 6, 0.55),
+    0 14px 34px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 236, 180, 0.18),
+    inset 0 -10px 22px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   user-select: none;
   -webkit-user-select: none;
   pointer-events: none;
@@ -65,19 +73,20 @@
 .game-calendar-icon {
   display: grid;
   place-items: center;
-  color: #d0a23a;
+  color: var(--purse-gold);
   line-height: 0;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
+  filter: drop-shadow(0 2px 6px rgba(166, 124, 40, 0.45));
 }
 
 .game-calendar-date {
   font-family: 'Zodiak', Georgia, serif;
-  font-size: clamp(0.62rem, 0.58rem + 0.12vw, 0.72rem);
+  font-size: clamp(0.68rem, 0.64rem + 0.14vw, 0.8rem);
   font-weight: 700;
-  color: #e8c878;
+  color: var(--purse-gold-bright);
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1.1;
   white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
 }
 
 .purse-hud {
@@ -88,64 +97,107 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 5px;
-  min-width: 112px;
-  padding: 6px 12px 7px;
-  border-radius: 10px;
+  gap: 7px;
+  min-width: 148px;
+  padding: 12px 16px 11px;
+  border-radius: 16px;
   text-align: center;
+  color: var(--purse-gold-bright);
   background:
-    linear-gradient(165deg, rgba(34, 72, 56, 0.94), rgba(12, 26, 21, 0.98));
-  border: 1px solid rgba(238, 194, 97, 0.3);
+    radial-gradient(ellipse 120% 80% at 50% -10%, rgba(244, 223, 160, 0.18), transparent 52%),
+    radial-gradient(ellipse 70% 50% at 80% 110%, rgba(166, 124, 40, 0.16), transparent 50%),
+    linear-gradient(165deg, var(--purse-velvet-lit) 0%, #143528 38%, var(--purse-velvet) 100%);
+  border: 1.5px solid rgba(232, 200, 120, 0.48);
   box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.42),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+    0 0 0 1px rgba(20, 14, 6, 0.65),
+    0 0 0 3px rgba(166, 124, 40, 0.18),
+    0 18px 42px rgba(0, 0, 0, 0.55),
+    0 2px 0 rgba(244, 223, 160, 0.12),
+    inset 0 1px 0 rgba(255, 240, 190, 0.22),
+    inset 0 -14px 28px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   pointer-events: auto;
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
   font-family: 'General Sans', 'Inter', system-ui, sans-serif;
   transition:
-    min-width 220ms cubic-bezier(0.16, 1, 0.3, 1),
-    padding 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    min-width 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 240ms ease;
 }
 
 .purse-hud.is-expanded {
-  min-width: 180px;
-  padding: 7px 10px 8px;
+  min-width: 214px;
+  padding: 12px 14px 12px;
 }
 
 .purse-hud::before {
   content: '';
   position: absolute;
+  inset: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 200, 120, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 220, 0.08), transparent 38%);
+  pointer-events: none;
+}
+
+.purse-hud::after {
+  content: '';
+  position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 42%);
   pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(244, 223, 160, 0.55) 0 8px, transparent 8px) top left / 14px 14px no-repeat,
+    linear-gradient(-135deg, rgba(244, 223, 160, 0.55) 0 8px, transparent 8px) top right / 14px 14px no-repeat,
+    linear-gradient(45deg, rgba(244, 223, 160, 0.4) 0 8px, transparent 8px) bottom left / 14px 14px no-repeat,
+    linear-gradient(-45deg, rgba(244, 223, 160, 0.4) 0 8px, transparent 8px) bottom right / 14px 14px no-repeat;
+  opacity: 0.9;
 }
 
 .purse-hud-title {
   position: relative;
+  z-index: 1;
   margin-top: 2px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(238, 194, 97, 0.12);
-  font-size: 0.58rem;
-  letter-spacing: 0.14em;
+  padding-top: 7px;
+  border-top: 1px solid rgba(232, 200, 120, 0.22);
+  font-family: 'Zodiak', Georgia, serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
   text-transform: uppercase;
-  color: #897f6d;
+  color: var(--purse-gold);
   line-height: 1;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 }
 
+.purse-hud-title::before,
+.purse-hud-title::after {
+  content: '◆';
+  font-size: 0.42rem;
+  letter-spacing: 0;
+  text-indent: 0;
+  color: rgba(232, 200, 120, 0.55);
+  vertical-align: middle;
+}
+
+.purse-hud-title::before { margin-right: 0.45em; }
+.purse-hud-title::after { margin-left: 0.2em; }
+
 .purse-hud.is-expanded .purse-hud-title {
-  margin-top: 4px;
+  margin-top: 5px;
 }
 
 .purse-hud-slots {
   position: relative;
+  z-index: 1;
   display: none;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 8px;
   align-items: end;
 }
 
@@ -241,12 +293,13 @@
 .purse-hud-value {
   display: block;
   font-family: 'Zodiak', Georgia, serif;
-  font-size: clamp(0.68rem, 0.64rem + 0.15vw, 0.78rem);
+  font-size: clamp(0.72rem, 0.68rem + 0.16vw, 0.84rem);
   font-weight: 700;
-  color: #d0a23a;
+  color: var(--purse-gold);
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1.1;
   white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
 }
 
 .purse-hud-cash { color: #8fd989; }
@@ -255,66 +308,97 @@
 
 .purse-hud-networth {
   position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
   margin-top: 0;
-  padding-top: 0;
+  padding: 2px 4px 0;
 }
 
 .purse-hud.is-expanded .purse-hud-networth {
   flex-direction: row;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   margin-top: 2px;
-  padding-top: 5px;
-  border-top: 1px solid rgba(238, 194, 97, 0.16);
+  padding-top: 7px;
+  border-top: 1px solid rgba(232, 200, 120, 0.2);
 }
 
 .purse-hud-networth-label {
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
   text-transform: uppercase;
-  color: #897f6d;
+  color: rgba(232, 200, 120, 0.62);
+  font-weight: 700;
 }
 
 .purse-hud-networth-value {
-  font-size: clamp(0.88rem, 0.84rem + 0.22vw, 1.02rem);
-  color: #e8c878;
+  font-size: clamp(1.15rem, 1.05rem + 0.45vw, 1.42rem);
+  color: var(--purse-gold-bright);
+  letter-spacing: 0.01em;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(232, 200, 120, 0.22);
 }
 
 .purse-hud.is-expanded .purse-hud-networth-value {
-  font-size: clamp(0.76rem, 0.72rem + 0.18vw, 0.88rem);
+  font-size: clamp(0.95rem, 0.9rem + 0.28vw, 1.12rem);
 }
 
-.purse-hud.negative-net .purse-hud-networth-value { color: #f26e89; }
+.purse-hud.negative-net .purse-hud-networth-value {
+  color: #f26e89;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.55),
+    0 0 16px rgba(242, 110, 137, 0.28);
+}
 
 .purse-hud.is-expanded .purse-hud-slot--gold {
   cursor: pointer;
 }
 
 .purse-hud.is-expanded .purse-hud-slot--gold:hover .purse-hud-icon--gold {
-  filter: drop-shadow(0 2px 8px rgba(196, 145, 36, 0.55));
+  filter: drop-shadow(0 2px 10px rgba(196, 145, 36, 0.65));
 }
 
 .purse-hud-delta {
   position: absolute;
-  right: 6px;
-  top: 2px;
-  font-family: 'General Sans', 'Inter', system-ui, sans-serif;
-  font-size: 0.62rem;
+  left: 50%;
+  top: -6px;
+  z-index: 3;
+  font-family: 'Zodiak', Georgia, serif;
+  font-size: clamp(1.2rem, 1.05rem + 0.7vw, 1.65rem);
   font-weight: 700;
   letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
   opacity: 0;
-  transform: translateY(4px);
+  transform: translate(-50%, 8px);
   pointer-events: none;
+  white-space: nowrap;
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 6px 18px rgba(0, 0, 0, 0.45);
 }
 
-.purse-hud-delta.is-up { color: #8fd989; }
-.purse-hud-delta.is-down { color: #f26e89; }
+.purse-hud-delta.is-up {
+  color: #9be89a;
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 22px rgba(143, 217, 137, 0.45),
+    0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+.purse-hud-delta.is-down {
+  color: #ff7a94;
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 0 22px rgba(242, 110, 137, 0.42),
+    0 6px 18px rgba(0, 0, 0, 0.4);
+}
 
 .purse-hud.low .purse-hud-value { color: #ffd2a0; }
 .purse-hud.empty .purse-hud-value { color: #f26e89; }
@@ -322,41 +406,62 @@
   filter: saturate(0.45) brightness(0.82) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
 }
 
-.purse-hud.pulse .purse-hud-value {
-  animation: purseHudPulse 420ms cubic-bezier(0.16, 1, 0.3, 1);
+.purse-hud.pulse .purse-hud-networth-value {
+  animation: purseHudPulse 780ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .purse-hud.show-delta .purse-hud-delta {
-  animation: purseHudDelta 900ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: purseHudDelta 2400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes purseHudPulse {
   0% { transform: scale(1); }
-  35% { transform: scale(1.08); }
+  28% { transform: scale(1.12); }
   100% { transform: scale(1); }
 }
 
 @keyframes purseHudDelta {
-  0% { opacity: 0; transform: translateY(6px); }
-  18% { opacity: 1; transform: translateY(0); }
-  72% { opacity: 1; transform: translateY(-2px); }
-  100% { opacity: 0; transform: translateY(-8px); }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 14px) scale(0.82);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.1);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -6px) scale(1);
+  }
+  68% {
+    opacity: 1;
+    transform: translate(-50%, -22px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -42px) scale(0.94);
+  }
 }
 
 /* Exchange panel — gold desk + price ticker under the HUD */
 .purse-hud-panel {
   position: fixed;
-  top: calc(var(--purse-hud-top) + var(--purse-hud-height) + 8px);
+  top: calc(var(--purse-hud-top) + var(--purse-hud-height) + 10px);
   right: var(--purse-hud-right);
   z-index: 10000;
-  width: 236px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: linear-gradient(165deg, rgba(34, 72, 56, 0.96), rgba(12, 26, 21, 0.98));
-  border: 1px solid rgba(238, 194, 97, 0.3);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  width: 248px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background:
+    radial-gradient(ellipse 100% 60% at 50% 0%, rgba(244, 223, 160, 0.12), transparent 50%),
+    linear-gradient(165deg, rgba(40, 82, 64, 0.97), var(--purse-velvet) 78%);
+  border: 1.5px solid rgba(232, 200, 120, 0.42);
+  box-shadow:
+    0 0 0 1px rgba(20, 14, 6, 0.55),
+    0 16px 36px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 236, 180, 0.16);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   font-family: 'General Sans', 'Inter', system-ui, sans-serif;
   color: #e6dcc4;
 }

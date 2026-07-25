@@ -379,7 +379,7 @@
     void hud.offsetWidth;
     hud.classList.add('show-delta');
     clearTimeout(deltaTimer);
-    deltaTimer = setTimeout(() => hud.classList.remove('show-delta'), 920);
+    deltaTimer = setTimeout(() => hud.classList.remove('show-delta'), 2450);
   }
 
   function pulseHud() {
@@ -389,7 +389,7 @@
     void hud.offsetWidth;
     hud.classList.add('pulse');
     clearTimeout(pulseTimer);
-    pulseTimer = setTimeout(() => hud.classList.remove('pulse'), 440);
+    pulseTimer = setTimeout(() => hud.classList.remove('pulse'), 800);
   }
 
   function updateDisplay() {
@@ -640,8 +640,8 @@
     const root = getComputedStyle(document.documentElement);
     const top = parseFloat(root.getPropertyValue('--purse-hud-top')) || 8;
     const right = parseFloat(root.getPropertyValue('--purse-hud-clearance-right')) || 148;
-    const height = parseFloat(root.getPropertyValue('--purse-hud-height')) || 78;
-    return { top, right, bottom: top + height, height, width: parseFloat(root.getPropertyValue('--purse-hud-width')) || 148 };
+    const height = parseFloat(root.getPropertyValue('--purse-hud-height')) || 84;
+    return { top, right, bottom: top + height, height, width: parseFloat(root.getPropertyValue('--purse-hud-width')) || 168 };
   }
 
   function canvasInset(canvas) {

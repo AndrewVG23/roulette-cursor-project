@@ -976,7 +976,8 @@
 
   function showOverlay(title, text, btnLabel) {
     overlayTitle.textContent = title;
-    overlayText.textContent = text;
+    overlayText.textContent = text || '';
+    overlayText.hidden = !text;
     startBtn.textContent = btnLabel;
     overlay.hidden = false;
   }
@@ -2675,25 +2676,7 @@
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
 
-  const introWho = admit ? admit.who : 'The grill';
-  const fromDrive = admit && admit.from === 'drive';
-  const fromCross = admit && admit.from === 'cross';
-  const billNow = Math.round(100 * Wallet.priceMult());
-  const copayNow = Math.max(1, Math.round(1 * Wallet.priceMult()));
-  const debtReset = Wallet.format(Wallet.DEFAULT_DIGITAL);
-  const rewindDate = 'Jan 2022';
-  const howTo = 'Drag your finger to move the fingertip. Trash pills right; the doctor aims for your mouth on the left.';
-  showOverlay(
-    'County General',
-    fromDrive
-      ? `Pulled off for ER. ${howTo} Every swallow hits your phone (${Wallet.format(billNow)}). Red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and discharges you. Purple Reincarnate = ${debtReset} debt, no cash/gold. Gold Time Travel = rewind to ${rewindDate}, reset prices, ${debtReset} debt, keep gold.`
-      : fromCross
-        ? `Ambulance drop-off. ${howTo} Every swallow hits your phone (${Wallet.format(billNow)}). Red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and sends you back to the street. Purple Reincarnate = ${debtReset} debt, no cash/gold. Gold Time Travel = rewind to ${rewindDate}, reset prices, ${debtReset} debt, keep gold.`
-      : admit
-        ? `${introWho} sent you here. ${howTo} Swallowing bills the phone (${Wallet.format(billNow)}) — red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and discharges you. Purple Reincarnate = ${debtReset} debt, no cash/gold. Gold Time Travel = rewind to ${rewindDate}, reset prices, ${debtReset} debt, keep gold.`
-        : `Medication time. ${howTo} Every swallow bills your phone (${Wallet.format(billNow)}) — red pill (1 in 4) is a ${Wallet.format(copayNow)} copay and discharges you. Purple Reincarnate = ${debtReset} debt, no cash/gold. Gold Time Travel = rewind to ${rewindDate}, reset prices, ${debtReset} debt, keep gold.`,
-    'Kick Off'
-  );
+  showOverlay('County General', '', 'Kick Off');
   requestAnimationFrame(frame);
 })();
   </script>
