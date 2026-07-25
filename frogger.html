@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="wallet.css">
   <script src="wallet.js"></script>
   <script src="orientation.js"></script>
+  <script src="music.js"></script>
   <style>
     :root, [data-theme="light"] {
       --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
@@ -9444,8 +9445,16 @@
   pauseBtn?.addEventListener('click', togglePause);
   replayBtn?.addEventListener('click', startInstantReplay);
   shareReplayBtn?.addEventListener('click', () => shareDriveReplay(shareReplayBtn));
+  if (typeof BGM !== 'undefined') {
+    state.muted = BGM.isMuted();
+    if (muteBtn) {
+      muteBtn.setAttribute('aria-pressed', String(state.muted));
+      muteBtn.textContent = state.muted ? 'Muted' : 'Sound';
+    }
+  }
   muteBtn?.addEventListener('click', () => {
     state.muted = !state.muted;
+    if (typeof BGM !== 'undefined') BGM.setMuted(state.muted);
     muteBtn.setAttribute('aria-pressed', String(state.muted));
     muteBtn.textContent = state.muted ? 'Muted' : 'Sound';
   });
@@ -9467,6 +9476,7 @@
 
   startBtn.addEventListener('click', () => {
     ensureAudio();
+    if (typeof BGM !== 'undefined') BGM.play();
     if (state.phase === 'drive' && state.mode === 'title') {
       state.mode = 'drive';
       overlay.hidden = true;
