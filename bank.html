@@ -768,9 +768,9 @@
   const toastEl = document.getElementById('toast');
 
   let sessionPaid = 0;
-  let slamming = false;
   let toastTimer = null;
-  let slamTimer = null;
+  let pressTimer = null;
+  let slamAnimTimer = null;
   let audioCtx = null;
 
   function money(n) {
@@ -919,45 +919,40 @@
   }
 
   function slam() {
-    if (slamming) return;
     if (Wallet.cash() < BILL) {
       toast(Wallet.cash() <= 0 ? 'Pockets empty.' : `Need ${money(BILL)} in cash.`, 'bad');
       return;
     }
 
-    slamming = true;
+    spawnBill();
+    thump();
+
     slamBtn.classList.add('is-press');
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => slamBtn.classList.remove('is-press'), 80);
+
+    scene.classList.remove('is-slam');
+    void scene.offsetWidth;
+    scene.classList.add('is-slam');
+    clearTimeout(slamAnimTimer);
+    slamAnimTimer = setTimeout(() => scene.classList.remove('is-slam'), 220);
+
     const result = Wallet.payCashTowardCredit(BILL);
     if (!result.ok) {
-      slamming = false;
-      slamBtn.classList.remove('is-press');
       toast(result.reason || 'Declined', 'bad');
-      refresh();
       return;
     }
 
     sessionPaid += result.paid;
-    spawnBill();
-    thump();
-    scene.classList.remove('is-slam');
-    void scene.offsetWidth;
-    scene.classList.add('is-slam');
     debtAmt.classList.remove('is-punch');
     void debtAmt.offsetWidth;
     debtAmt.classList.add('is-punch');
     noticeTeller();
-    refresh();
+    paidAmt.textContent = money(sessionPaid);
 
     if (result.digital >= 0 && result.digital - result.paid < 0) {
       toast('Paid in full. Kessler almost smiled.', 'good');
     }
-
-    clearTimeout(slamTimer);
-    slamTimer = setTimeout(() => {
-      slamming = false;
-      slamBtn.classList.remove('is-press');
-      scene.classList.remove('is-slam');
-    }, 140);
   }
 
   // Idle teller life
@@ -983,7 +978,6 @@
 
   window.addEventListener('keydown', (ev) => {
     if (ev.code === 'Space' || ev.key === ' ') {
-      if (ev.repeat) return;
       const tag = (ev.target && ev.target.tagName) || '';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || tag === 'A') return;
       ev.preventDefault();

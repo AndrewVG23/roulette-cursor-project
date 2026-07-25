@@ -545,7 +545,6 @@
     wrap.id = 'purseHud';
     wrap.setAttribute('aria-live', 'polite');
     wrap.innerHTML = [
-      '<span class="purse-hud-title">Purse</span>',
       '<span class="purse-hud-slots">',
       '<span class="purse-hud-slot purse-hud-slot--credit">',
       '<span class="purse-hud-icon purse-hud-icon--credit" aria-hidden="true">',
@@ -560,17 +559,13 @@
       '</span>',
       '<span class="purse-hud-slot purse-hud-slot--cash">',
       '<span class="purse-hud-icon purse-hud-icon--cash" aria-hidden="true">',
-      '<svg viewBox="0 0 56 24" width="38" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">',
-      '<rect x="1" y="1" width="54" height="22" rx="2" fill="#2d8a4e" stroke="#1a5c32" stroke-width="1.2"/>',
-      '<text x="8" y="16" fill="#0f3d22" font-family="Georgia,serif" font-size="11" font-weight="700">$100</text>',
-      '<circle cx="34" cy="12" r="5" fill="#5ecf82" opacity="0.75"/>',
-      '</svg>',
+      '<img src="assets/hundred-dollar.jpg" alt="" width="38" height="16" draggable="false">',
       '</span>',
       '<span class="purse-hud-value purse-hud-cash" id="purseHudCash"></span>',
       '</span>',
       '<span class="purse-hud-slot purse-hud-slot--gold">',
       '<span class="purse-hud-icon purse-hud-icon--gold" aria-hidden="true">',
-      '<img src="assets/krugerrand.png" alt="" width="22" height="22" draggable="false">',
+      '<img src="assets/krugerrand-reverse.png" alt="" width="24" height="24" draggable="false">',
       '</span>',
       '<span class="purse-hud-value purse-hud-gold" id="purseHudGold"></span>',
       '</span>',
@@ -579,6 +574,7 @@
       '<span class="purse-hud-networth-label">Net worth</span>',
       '<span class="purse-hud-value purse-hud-networth-value" id="purseHudNetWorth"></span>',
       '</span>',
+      '<span class="purse-hud-title">Purse</span>',
       '<span class="purse-hud-delta" id="purseHudDelta" aria-hidden="true"></span>'
     ].join('');
     wrap.addEventListener('click', () => togglePanel());
