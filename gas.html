@@ -289,17 +289,10 @@
       <div class="overlay" id="overlay">
         <div class="overlay-card">
           <h2 id="overlayTitle">Quik-Fill 64</h2>
-          <p id="overlayText">
-            You coasted into QUIK-FILL on fumes. One island takes <b>cash</b>, the other
-            takes <b>credit</b> — run up to a pump to fill. Loose cans around the lot each
-            pour <b>one gallon</b> into the tank. Paper on the ground still spends.
-          </p>
-          <p class="keys" id="overlayKeys">
-            <b>W / S</b> run forward &amp; back &nbsp;·&nbsp; <b>← →</b> turn &nbsp;·&nbsp; <b>Space</b> jump<br>
-            <b>Scroll</b> zoom &nbsp;·&nbsp; <b>P</b> pause
-          </p>
+          <p id="overlayText">Pump your own gas</p>
+          <p class="keys" id="overlayKeys" hidden></p>
           <div class="control-row" id="overlayStartRow">
-            <button class="btn primary" id="startBtn" type="button">Start scrounging</button>
+            <button class="btn primary" id="startBtn" type="button">Start</button>
           </div>
         </div>
       </div>
@@ -1508,9 +1501,9 @@
       return d;
     }
     function updateCamera(dt) {
-      // Yaw trails facing with real inertia — character turns first, lens catches up.
+      // Yaw trails facing slowly — avatar turns first, lens swings around later.
       const yawErr = shortestAngleDelta(cam.yaw, player.facing);
-      const yawFollow = Math.abs(yawErr) > 0.9 ? 7 : 4.2;
+      const yawFollow = Math.abs(yawErr) > 0.9 ? 2.1 : 1.15;
       cam.yaw += yawErr * (1 - Math.exp(-yawFollow * dt));
 
       const lookYWant = player.pos.y + 1.45;
@@ -1576,11 +1569,6 @@
       state.paused = false;
       state.running = true;
     });
-
-    const isTouch = window.matchMedia('(pointer: coarse)').matches;
-    if (isTouch) {
-      overlayKeys.innerHTML = '<b>Left stick</b> forward / turn &nbsp;·&nbsp; <b>A</b> jump (chain jumps for height)';
-    }
 
     // ---------------------------------------------------------------- loop
     const clock = new THREE.Clock();
