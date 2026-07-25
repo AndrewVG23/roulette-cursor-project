@@ -3,8 +3,8 @@
   --purse-hud-top: max(8px, env(safe-area-inset-top, 0px));
   --purse-hud-right: max(10px, env(safe-area-inset-right, 0px));
   --purse-hud-gap: 10px;
-  --purse-hud-width: 148px;
-  --purse-hud-height: 78px;
+  --purse-hud-width: 196px;
+  --purse-hud-height: 88px;
   --purse-hud-clearance-right: calc(var(--purse-hud-width) + var(--purse-hud-right) + var(--purse-hud-gap));
 }
 
@@ -14,12 +14,13 @@
   right: var(--purse-hud-right);
   z-index: 10000;
   display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 88px;
-  padding: 7px 12px 7px 9px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-width: 168px;
+  padding: 7px 10px 8px;
   border-radius: 10px;
-  text-align: left;
+  text-align: center;
   background:
     linear-gradient(165deg, rgba(34, 72, 56, 0.94), rgba(12, 26, 21, 0.98));
   border: 1px solid rgba(238, 194, 97, 0.3);
@@ -44,63 +45,55 @@
   pointer-events: none;
 }
 
-.purse-hud-chip {
+.purse-hud-title {
   position: relative;
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, #fff0c8, #e8c05a 42%, #b8861a 78%, #7a5510);
-  border: 2px dashed rgba(255, 244, 210, 0.42);
-  box-shadow:
-    inset 0 -2px 5px rgba(0, 0, 0, 0.28),
-    0 2px 6px rgba(0, 0, 0, 0.24);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #897f6d;
+  line-height: 1;
 }
 
-.purse-hud-chip::after {
-  content: '$';
-  position: absolute;
-  inset: 0;
+.purse-hud-slots {
+  position: relative;
   display: grid;
-  place-items: center;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  color: rgba(48, 32, 8, 0.72);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  align-items: end;
 }
 
-.purse-hud-body {
-  position: relative;
+.purse-hud-slot {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 3px;
   min-width: 0;
 }
 
-.purse-hud-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+.purse-hud-icon {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  line-height: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
 }
 
-.purse-hud-label {
+.purse-hud-icon img {
   display: block;
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #897f6d;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 50%;
 }
 
 .purse-hud-value {
   display: block;
   font-family: 'Zodiak', Georgia, serif;
-  font-size: clamp(0.82rem, 0.78rem + 0.2vw, 0.95rem);
+  font-size: clamp(0.68rem, 0.64rem + 0.15vw, 0.78rem);
   font-weight: 700;
   color: #d0a23a;
   font-variant-numeric: tabular-nums lining-nums;
-  line-height: 1.2;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
@@ -108,12 +101,37 @@
 .purse-hud-gold { color: #f0d060; }
 .purse-hud.debt .purse-hud-digital { color: #f26e89; }
 
+.purse-hud-networth {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(238, 194, 97, 0.16);
+}
+
+.purse-hud-networth-label {
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #897f6d;
+}
+
+.purse-hud-networth-value {
+  font-size: clamp(0.76rem, 0.72rem + 0.18vw, 0.88rem);
+  color: #e8c878;
+}
+
+.purse-hud.negative-net .purse-hud-networth-value { color: #f26e89; }
+
 .purse-hud-delta {
   position: absolute;
-  right: 0;
-  top: -2px;
+  right: 6px;
+  top: 2px;
   font-family: 'General Sans', 'Inter', system-ui, sans-serif;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   opacity: 0;
@@ -126,8 +144,8 @@
 
 .purse-hud.low .purse-hud-value { color: #ffd2a0; }
 .purse-hud.empty .purse-hud-value { color: #f26e89; }
-.purse-hud.empty .purse-hud-chip {
-  filter: saturate(0.45) brightness(0.82);
+.purse-hud.empty .purse-hud-icon {
+  filter: saturate(0.45) brightness(0.82) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.28));
 }
 
 .purse-hud.pulse .purse-hud-value {

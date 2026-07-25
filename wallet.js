@@ -8,7 +8,7 @@
   //   gold    — ounces. Bought at 5% over spot, sold at 5% under, for cash.
   // One shared price index drives gas price, gold spot, and every inflated
   // price. Each gas-station visit compounds the index at a rate that rises
-  // one point per visit.
+  // one point per visit. Debt on credit compounds at 7% interest each visit.
   const STATE_KEY = 'walletV3';
   const LEGACY_PURSE_KEY = 'casinoPurse';
   const LEGACY_STATE_KEYS = ['walletV2'];
@@ -18,6 +18,9 @@
   const DEFAULT = DEFAULT_CASH;   // legacy alias
 
   const GAS_BASE = 3.89;      // $/gal at index 1.0
+  const GAS_TANK_GAL = 20;    // night-drive tank size
+  const GAS_EMPTY_SEC = 45;   // full tank lasts this long at cruise
+  const GAS_CASH_DISCOUNT = 0.10; // 10% off pump price when paying cash
   const GOLD_BASE = 2000;     // $/oz at index 1.0 — roughly real spot
   const GOLD_FEE = 0.05;      // cash buy 5% over spot, sell 5% under
   const GOLD_CREDIT_FEE = 0.10; // credit ask is 10% over the cash ask
@@ -25,6 +28,7 @@
   const VISIT_RATE_BASE = 0.02;  // first visit: +3% (base + step)
   const VISIT_RATE_STEP = 0.01;  // each visit inflates harder than the last
   const VISIT_RATE_CAP = 0.25;
+  const CREDIT_INTEREST_RATE = 0.07; // credit balance compounds +7% every gas visit
   const CASH_OUT_AMOUNTS = [20, 50, 100];
 
   const fmt = new Intl.NumberFormat('en-US', {
@@ -151,6 +155,9 @@
   function gold() { return state.gold; }
   function setGold(oz) { state.gold = Math.max(0, Math.round(oz * 100) / 100); persist(); return state.gold; }
   function goldSpot() { return GOLD_BASE * state.index; }
+  function netWorth() {
+    return Math.round(state.digital + state.cash + state.gold * goldSpot());
+  }
   function goldBuyCost(oz) { return Math.ceil(goldSpot() * (1 + GOLD_FEE) * oz); }
   function goldCreditCost(oz) { return Math.ceil(goldBuyCost(oz) * (1 + GOLD_CREDIT_FEE)); }
   function goldSellValue(oz) { return Math.floor(goldSpot() * (1 - GOLD_FEE) * oz); }
@@ -178,6 +185,21 @@
   // ------------------------------------------------------------------ prices
   function index() { return state.index; }
   function gasPrice() { return GAS_BASE * state.index; }
+  function gasFillGallons() { return GAS_TANK_GAL; }
+  function gasFillCost(method) {
+    const pump = gasPrice() * GAS_TANK_GAL;
+    if (method === 'cash') return Math.ceil(pump * (1 - GAS_CASH_DISCOUNT));
+    return Math.ceil(pump);
+  }
+  function buyGasFill(method) {
+    const cost = gasFillCost(method);
+    if (method === 'cash') {
+      if (!spendCash(cost)) return { ok: false, cost, reason: 'Not enough cash' };
+    } else {
+      takeDigital(cost);
+    }
+    return { ok: true, cost, gallons: GAS_TANK_GAL };
+  }
   function priceMult() { return state.index; }             // general inflated prices
   function tipMult() { return state.index; }               // tips ride full inflation
   function wageMult() { return 1 + (state.index - 1) / 2; } // wages lag at half inflation
@@ -190,13 +212,25 @@
     state.visits += 1;
     const rate = Math.min(VISIT_RATE_BASE + VISIT_RATE_STEP * state.visits, VISIT_RATE_CAP);
     state.index = Math.round(state.index * (1 + rate) * 10000) / 10000;
+    const creditBefore = state.digital;
+    let creditAfter = creditBefore;
+    let creditInterestPct = 0;
+    if (creditBefore < 0) {
+      creditAfter = Math.round(creditBefore * (1 + CREDIT_INTEREST_RATE));
+      state.digital = creditAfter;
+      creditInterestPct = CREDIT_INTEREST_RATE * 100;
+    }
     persist();
     return {
       visits: state.visits,
       ratePct: rate * 100,
       index: state.index,
       gasPrice: gasPrice(),
-      goldSpot: goldSpot()
+      goldSpot: goldSpot(),
+      creditBefore,
+      creditAfter,
+      creditInterestPct,
+      creditInterestApplied: creditBefore < 0
     };
   }
 
@@ -282,28 +316,31 @@
     const dEl = document.getElementById('purseHudDigital');
     const cEl = document.getElementById('purseHudCash');
     const gEl = document.getElementById('purseHudGold');
+    const nwEl = document.getElementById('purseHudNetWorth');
     if (dEl) dEl.textContent = fmt.format(state.digital);
     if (cEl) cEl.textContent = fmt.format(state.cash);
     if (gEl) gEl.textContent = formatGold(state.gold);
+    const nw = netWorth();
+    if (nwEl) nwEl.textContent = fmt.format(nw);
     if (hud) {
       hud.classList.toggle('debt', state.digital < 0);
-      hud.classList.toggle('empty', state.digital + state.cash <= 0);
-      hud.classList.toggle('low', state.digital + state.cash > 0 && state.digital + state.cash < DEFAULT * 0.25);
+      hud.classList.toggle('negative-net', nw < 0);
+      hud.classList.toggle('empty', state.digital + state.cash <= 0 && state.gold <= 0);
+      hud.classList.toggle('low', nw > 0 && nw < DEFAULT * 0.25);
       if (lastShown) {
-        const moneyDelta = (state.digital - lastShown.digital) + (state.cash - lastShown.cash);
-        const goldDelta = state.gold - lastShown.gold;
-        if (moneyDelta !== 0) {
-          flashDelta(moneyDelta > 0 ? `+${fmt.format(moneyDelta)}` : `−${fmt.format(Math.abs(moneyDelta))}`, moneyDelta > 0);
-          pulseHud();
-        } else if (Math.abs(goldDelta) >= 0.005) {
-          flashDelta(goldDelta > 0 ? `+${formatGold(goldDelta)}` : `−${formatGold(Math.abs(goldDelta))}`, goldDelta > 0);
+        const prevNw = Math.round(
+          lastShown.digital + lastShown.cash + lastShown.gold * GOLD_BASE * lastShown.index
+        );
+        const nwDelta = nw - prevNw;
+        if (nwDelta !== 0) {
+          flashDelta(nwDelta > 0 ? `+${fmt.format(nwDelta)}` : `−${fmt.format(Math.abs(nwDelta))}`, nwDelta > 0);
           pulseHud();
         }
       }
       syncHudMetrics();
     }
     updatePanel();
-    lastShown = { digital: state.digital, cash: state.cash, gold: state.gold };
+    lastShown = { digital: state.digital, cash: state.cash, gold: state.gold, index: state.index };
   }
 
   // -------------------------------------------------------- exchange panel
@@ -354,8 +391,8 @@
     const cashNote = panel.querySelector('[data-role="cashdesk-note"]');
     if (cashNote) {
       cashNote.textContent = canCashOut
-        ? 'Cage takes 10%. Positive phone balance only — debt stays on the phone.'
-        : 'Cash desk closed — phone needs a positive balance (debt can\'t walk out as paper).';
+        ? 'Cage takes 10%. Positive credit balance only — debt stays on the card.'
+        : 'Cash desk closed — credit needs a positive balance (debt can\'t walk out as paper).';
     }
   }
 
@@ -431,7 +468,7 @@
     btn.id = 'purseCashDeskBtn';
     btn.className = 'purse-cash-desk-btn';
     btn.textContent = 'Cash desk';
-    btn.title = 'Turn phone money into paper — 10% fee, positive balance only';
+    btn.title = 'Turn credit into paper — 10% fee, positive balance only';
     btn.addEventListener('click', (ev) => {
       ev.stopPropagation();
       togglePanel();
@@ -447,6 +484,16 @@
     }
     if (document.getElementById('purseHud')) {
       document.body.classList.add('has-purse-hud');
+      if (!document.getElementById('purseHudNetWorth')) {
+        const hud = document.getElementById('purseHud');
+        const row = document.createElement('span');
+        row.className = 'purse-hud-networth';
+        row.innerHTML =
+          '<span class="purse-hud-networth-label">Net worth</span>' +
+          '<span class="purse-hud-value purse-hud-networth-value" id="purseHudNetWorth"></span>';
+        const delta = document.getElementById('purseHudDelta');
+        hud.insertBefore(row, delta);
+      }
       updateDisplay();
       syncHudMetrics();
       return;
@@ -456,13 +503,41 @@
     wrap.id = 'purseHud';
     wrap.setAttribute('aria-live', 'polite');
     wrap.innerHTML = [
-      '<span class="purse-hud-chip" aria-hidden="true"></span>',
-      '<span class="purse-hud-body">',
-      '<span class="purse-hud-row"><span class="purse-hud-label">Phone</span><span class="purse-hud-value purse-hud-digital" id="purseHudDigital"></span></span>',
-      '<span class="purse-hud-row"><span class="purse-hud-label">Cash</span><span class="purse-hud-value purse-hud-cash" id="purseHudCash"></span></span>',
-      '<span class="purse-hud-row"><span class="purse-hud-label">Gold</span><span class="purse-hud-value purse-hud-gold" id="purseHudGold"></span></span>',
-      '<span class="purse-hud-delta" id="purseHudDelta" aria-hidden="true"></span>',
-      '</span>'
+      '<span class="purse-hud-title">Purse</span>',
+      '<span class="purse-hud-slots">',
+      '<span class="purse-hud-slot purse-hud-slot--credit">',
+      '<span class="purse-hud-icon purse-hud-icon--credit" aria-hidden="true">',
+      '<svg viewBox="0 0 48 32" width="34" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">',
+      '<rect x="1" y="1" width="46" height="30" rx="4" fill="#1a2848" stroke="#6eb5ff" stroke-width="1.5"/>',
+      '<rect x="1" y="8" width="46" height="7" fill="#243868"/>',
+      '<rect x="6" y="20" width="16" height="3" rx="1" fill="#c9d8f0" opacity="0.85"/>',
+      '<rect x="6" y="25" width="10" height="2" rx="1" fill="#8faee0" opacity="0.55"/>',
+      '</svg>',
+      '</span>',
+      '<span class="purse-hud-value purse-hud-digital" id="purseHudDigital"></span>',
+      '</span>',
+      '<span class="purse-hud-slot purse-hud-slot--cash">',
+      '<span class="purse-hud-icon purse-hud-icon--cash" aria-hidden="true">',
+      '<svg viewBox="0 0 56 24" width="38" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">',
+      '<rect x="1" y="1" width="54" height="22" rx="2" fill="#2d8a4e" stroke="#1a5c32" stroke-width="1.2"/>',
+      '<text x="8" y="16" fill="#0f3d22" font-family="Georgia,serif" font-size="11" font-weight="700">$100</text>',
+      '<circle cx="34" cy="12" r="5" fill="#5ecf82" opacity="0.75"/>',
+      '</svg>',
+      '</span>',
+      '<span class="purse-hud-value purse-hud-cash" id="purseHudCash"></span>',
+      '</span>',
+      '<span class="purse-hud-slot purse-hud-slot--gold">',
+      '<span class="purse-hud-icon purse-hud-icon--gold" aria-hidden="true">',
+      '<img src="assets/krugerrand.png" alt="" width="22" height="22" draggable="false">',
+      '</span>',
+      '<span class="purse-hud-value purse-hud-gold" id="purseHudGold"></span>',
+      '</span>',
+      '</span>',
+      '<span class="purse-hud-networth">',
+      '<span class="purse-hud-networth-label">Net worth</span>',
+      '<span class="purse-hud-value purse-hud-networth-value" id="purseHudNetWorth"></span>',
+      '</span>',
+      '<span class="purse-hud-delta" id="purseHudDelta" aria-hidden="true"></span>'
     ].join('');
     wrap.addEventListener('click', () => togglePanel());
     document.body.appendChild(wrap);
@@ -533,10 +608,12 @@
     cash, setCash, addCash, takeCash, spendCash,
     cashOut, cashOutAll, cashOutPayout, cashDeskAllowed,
     // gold
-    gold, goldSpot, goldBuyCost, goldCreditCost, goldSellValue, buyGold, sellGold,
+    gold, goldSpot, goldBuyCost, goldCreditCost, goldSellValue, buyGold, sellGold, netWorth,
     // economy
-    index, gasPrice, priceMult, tipMult, wageMult,
-    visits, nextVisitRate, recordGasVisit,
+    index, gasPrice, gasFillGallons, gasFillCost, buyGasFill,
+    priceMult, tipMult, wageMult,
+    visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
+    GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing
     snapshot, restore, getState,
     migrateTips, mountHud, updateDisplay, togglePanel,

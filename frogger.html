@@ -1833,8 +1833,8 @@
       rumble: 0,
       hp: 100,
       maxHp: 100,
-      fuel: 100,
-      maxFuel: 100,
+      fuel: Wallet.GAS_TANK_GAL,
+      maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
       chaser: null,
       chaserSpawnT: 4,
@@ -2610,12 +2610,31 @@
     startEntryCross(estab);
   }
 
-  function resumeDriveFromHospital() {
+  function normalizeDriveFuel(d) {
+    if (!d) return;
+    const tank = Wallet.GAS_TANK_GAL;
+    const max = d.maxFuel || tank;
+    if (max !== tank) {
+      const pct = Math.max(0, Math.min(1, (d.fuel ?? max) / max));
+      d.maxFuel = tank;
+      d.fuel = pct * tank;
+    } else {
+      d.maxFuel = tank;
+      d.fuel = Math.max(0, Math.min(tank, d.fuel ?? tank));
+    }
+  }
+
+  function resumeSavedDrive() {
     let data;
     try {
-      const raw = sessionStorage.getItem('drive-resume');
+      let raw = sessionStorage.getItem('drive-resume');
+      if (raw) {
+        sessionStorage.removeItem('drive-resume');
+      } else {
+        raw = sessionStorage.getItem('drive-checkpoint');
+        if (raw) sessionStorage.removeItem('drive-checkpoint');
+      }
       if (!raw) return false;
-      sessionStorage.removeItem('drive-resume');
       data = JSON.parse(raw);
     } catch (_) {
       return false;
@@ -2694,8 +2713,8 @@
       rumble: 0,
       hp: 100,
       maxHp: 100,
-      fuel: 100,
-      maxFuel: 100,
+      fuel: Wallet.GAS_TANK_GAL,
+      maxFuel: Wallet.GAS_TANK_GAL,
       approachingExit: null,
       chaser: null,
       chaserSpawnT: 4,
@@ -2704,7 +2723,7 @@
       zoomPunch: 0
     };
     replayApplyDrive(state.drive, data.drive);
-    state.drive.fuel = state.drive.maxFuel ?? 100;
+    normalizeDriveFuel(state.drive);
     seedChicagoLandmarks(state.drive);
     const resumeZ = state.drive.z || 0;
     seedCityBlocks(state.drive, Math.max(0, resumeZ - 240), Math.min(route.length, resumeZ + 1400));
@@ -3383,7 +3402,7 @@
     d.chaser = null;
     d.chaserSpawnT = 4 + Math.random() * 3;
     const bounty = copPileup ? 500 : 100;
-    Wallet.add(bounty);
+    Wallet.addCash(bounty);
     d.slowMo = Math.max(d.slowMo || 0, copPileup ? 0.65 : 0.5);
     d.zoomPunch = copPileup ? 1.5 : 1.2;
     d.camShake = Math.max(d.camShake, copPileup ? 9 : 6);
@@ -3648,10 +3667,10 @@
     const isChaser = !!(other && other.chaser);
     let cashTag = '';
     if (isChaser) {
-      Wallet.add(150);
+      Wallet.addCash(150);
       cashTag = '+$150';
     } else if (isCop) {
-      Wallet.add(50);
+      Wallet.addCash(50);
       cashTag = '+$50';
     } else {
       const fine = hard ? 80 + Math.floor(Math.random() * 120) : 10;
@@ -3821,12 +3840,13 @@
     const gas = state.keys.up ? 1 : 0;
     const brake = state.keys.down ? 1 : 0;
     const speedNorm = d.speed / d.maxSpeed;
-    const fuelNorm = Math.max(0, (d.fuel || 0) / (d.maxFuel || 100));
+    const fuelNorm = Math.max(0, (d.fuel || 0) / (d.maxFuel || Wallet.GAS_TANK_GAL));
     const outOfGas = fuelNorm <= 0.001;
 
-    // Fuel burn — cruise + throttle; ER visit refills the tank
-    const fuelUse = (0.012 + d.speed * 0.00065 + gas * 0.038) * dt;
-    d.fuel = Math.max(0, (d.fuel ?? d.maxFuel) - fuelUse);
+    // Fuel burn — 20 gal tank empties in ~45 s at cruise
+    const tankGal = d.maxFuel || Wallet.GAS_TANK_GAL;
+    const fuelUse = (tankGal / Wallet.GAS_EMPTY_SEC) * dt;
+    d.fuel = Math.max(0, (d.fuel ?? tankGal) - fuelUse);
 
     // Engine force falls off toward top speed; aero drag + rolling resistance
     let engine = gas * 48 * (1 - speedNorm * 0.82);
@@ -7880,7 +7900,7 @@
   }
 
   function drawDriveGauges(d) {
-    const fuelPct = Math.max(0, Math.min(1, (d.fuel ?? 0) / (d.maxFuel || 100)));
+    const fuelPct = Math.max(0, Math.min(1, (d.fuel ?? 0) / (d.maxFuel || Wallet.GAS_TANK_GAL)));
     const speed = Math.max(0, d.speed);
     const dialMax = 160;
     const speedPct = Math.max(0, Math.min(1, speed / dialMax));
@@ -8028,7 +8048,7 @@
     ctx.fillText('F', fcx + Math.cos(fArc1 - 0.08) * (fr - 24), fcy + Math.sin(fArc1 - 0.08) * (fr - 24));
     ctx.fillStyle = BMW_TICK;
     ctx.font = '600 8px "General Sans", sans-serif';
-    ctx.fillText('1/1', fcx, fcy + 7);
+    ctx.fillText(`${Math.ceil(d.fuel ?? 0)}/${d.maxFuel || Wallet.GAS_TANK_GAL}`, fcx, fcy + 7);
     const fuelAng = fArc0 + (fArc1 - fArc0) * fuelPct;
     ctx.globalAlpha = pulse;
     drawNeedle(fcx, fcy, fr, fuelAng, fuelPct <= 0.12 ? '#e04038' : BMW_ORANGE);
@@ -8660,8 +8680,8 @@
 
   setPhaseUI();
   overlay.hidden = true;
-  if (RESUME_DRIVE && resumeDriveFromHospital()) {
-    // resumed night drive after ER discharge
+  if (RESUME_DRIVE && resumeSavedDrive()) {
+    // resumed night drive after gas, hospital, etc.
   } else if (ENTER_ID && ESTABLISHMENTS[ENTER_ID]) {
     startEntryCross(ESTABLISHMENTS[ENTER_ID]);
   } else {

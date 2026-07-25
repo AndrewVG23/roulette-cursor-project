@@ -160,12 +160,41 @@
       left: 0; right: 0; bottom: 0;
       z-index: 3;
       display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: var(--space-2);
       justify-content: flex-start;
       padding: 10px;
       background: linear-gradient(0deg, rgba(8,12,10,.72), transparent);
       pointer-events: none;
     }
     .controls .control-row { pointer-events: auto; justify-content: flex-start; }
+    .pump-panel {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      background: rgba(10, 18, 14, 0.88);
+      border: 1px solid rgba(238,194,97,.28);
+      pointer-events: auto;
+      max-width: min(320px, calc(100vw - 20px));
+    }
+    .pump-panel[hidden] { display: none; }
+    .pump-panel .pump-title {
+      margin: 0;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--color-text-faint);
+    }
+    .pump-panel .pump-price {
+      margin: 0;
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      line-height: 1.4;
+    }
+    .pump-panel .control-row { justify-content: flex-start; }
 
     .help-btn {
       position: absolute;
@@ -272,7 +301,7 @@
         <p><b>Space</b> jumps — land and jump again right away while running to chain a double, then a triple jump.</p>
         <p><b>Scroll</b> zooms the chase camera in and out.</p>
         <p>Green bills are worth <b>$1</b>, red-tinted ones <b>$2</b>. One Krugerrand might be hiding up high. Gas cans pay <b>$25</b> each. Find all 8 red bills and a bonus can appears over the pumps.</p>
-      <p>Scrounged bills are <b>paper cash</b>; the Krugerrand lands in your <b>gold</b> stack. Every visit here compounds gas, gold, and every other price — a little harder each time.</p>
+      <p>Scrounged bills are <b>paper cash</b>; the Krugerrand lands in your <b>gold</b> stack. Every visit compounds gas, gold, and prices. If you're in the hole on credit, debt picks up <b>7% interest</b>.</p>
       </div>
 
       <div class="touch-ui">
@@ -281,10 +310,18 @@
       </div>
 
       <div class="controls" aria-label="Game controls">
+        <div class="pump-panel" id="pumpPanel" hidden>
+          <p class="pump-title">Night drive tank</p>
+          <p class="pump-price" id="pumpPrice"></p>
+          <div class="control-row">
+            <button class="btn primary" id="fillCashBtn" type="button">Fill 20 gal · Cash</button>
+            <button class="btn" id="fillCreditBtn" type="button">Fill 20 gal · Credit</button>
+          </div>
+        </div>
         <div class="control-row">
           <button class="btn subtle" id="pauseBtn" type="button">Pause</button>
           <button class="btn subtle" id="muteBtn" type="button" aria-pressed="false">Sound</button>
-          <a class="btn subtle" href="frogger.html">Leave</a>
+          <a class="btn subtle" id="leaveBtn" href="frogger.html?resumeDrive=1">Leave</a>
           <a class="btn subtle" href="frogger.html?enter=casino">Tables</a>
         </div>
       </div>
@@ -305,6 +342,103 @@
     // Every trip to the station compounds the whole economy — gas, gold spot,
     // and every inflated price tick up together, harder each visit.
     const visitReport = Wallet.recordGasVisit();
+
+    // ---------------------------------------------------------------- pumps (night drive refill)
+    const pumpPanel = document.getElementById('pumpPanel');
+    const pumpPrice = document.getElementById('pumpPrice');
+    const fillCashBtn = document.getElementById('fillCashBtn');
+    const fillCreditBtn = document.getElementById('fillCreditBtn');
+    const leaveBtn = document.getElementById('leaveBtn');
+
+    function hasDriveCheckpoint() {
+      try {
+        const raw = sessionStorage.getItem('drive-checkpoint');
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        return !!(data && data.drive);
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function readCheckpointFuel() {
+      try {
+        const raw = sessionStorage.getItem('drive-checkpoint');
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data?.drive) return null;
+        const max = data.drive.maxFuel || Wallet.GAS_TANK_GAL;
+        const fuel = data.drive.fuel ?? max;
+        return { fuel, max: Wallet.GAS_TANK_GAL };
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function writeCheckpointFuel(gallons) {
+      try {
+        const raw = sessionStorage.getItem('drive-checkpoint');
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        if (!data?.drive) return false;
+        data.drive.maxFuel = Wallet.GAS_TANK_GAL;
+        data.drive.fuel = Math.max(0, Math.min(Wallet.GAS_TANK_GAL, gallons));
+        sessionStorage.setItem('drive-checkpoint', JSON.stringify(data));
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function updatePumpUI() {
+      if (!hasDriveCheckpoint()) {
+        pumpPanel.hidden = true;
+        leaveBtn.textContent = 'Leave';
+        return;
+      }
+      pumpPanel.hidden = false;
+      const tank = readCheckpointFuel();
+      const gal = Wallet.gasFillGallons();
+      const pump = Wallet.formatGas(Wallet.gasPrice());
+      const cashCost = Wallet.gasFillCost('cash');
+      const creditCost = Wallet.gasFillCost('credit');
+      const inTank = tank ? Math.ceil(tank.fuel) : '?';
+      pumpPrice.innerHTML =
+        `Regular <b>${pump}</b>/gal · <b>${gal} gal</b> fill · ` +
+        `Cash <b>${Wallet.format(cashCost)}</b> (10% off) · Credit <b>${Wallet.format(creditCost)}</b><br>` +
+        `Tank now: <b>${inTank}/${Wallet.GAS_TANK_GAL} gal</b>`;
+      fillCashBtn.textContent = `Fill ${gal} gal · Cash ${Wallet.format(cashCost)}`;
+      fillCreditBtn.textContent = `Fill ${gal} gal · Credit ${Wallet.format(creditCost)}`;
+      const full = tank && tank.fuel >= Wallet.GAS_TANK_GAL - 0.05;
+      fillCashBtn.disabled = full;
+      fillCreditBtn.disabled = full;
+      leaveBtn.textContent = 'Back to drive';
+    }
+
+    function fillTank(method) {
+      if (!hasDriveCheckpoint()) return;
+      const tank = readCheckpointFuel();
+      if (tank && tank.fuel >= Wallet.GAS_TANK_GAL - 0.05) {
+        showToast('Tank full<small>Already topped off</small>', 1800);
+        return;
+      }
+      const res = Wallet.buyGasFill(method);
+      if (!res.ok) {
+        showToast(`Pump declined<small>${res.reason || 'Not enough funds'}</small>`, 2400);
+        return;
+      }
+      writeCheckpointFuel(Wallet.GAS_TANK_GAL);
+      showToast(
+        `Tank full<small>${Wallet.gasFillGallons()} gal · −${Wallet.format(res.cost)} ${method === 'cash' ? 'cash' : 'credit'}</small>`,
+        2600
+      );
+      updatePumpUI();
+    }
+
+    fillCashBtn?.addEventListener('click', () => fillTank('cash'));
+    fillCreditBtn?.addEventListener('click', () => fillTank('credit'));
+    Wallet.subscribe(() => updatePumpUI());
+    updatePumpUI();
 
     // ---------------------------------------------------------------- setup
     const canvas = document.getElementById('game');
@@ -1051,6 +1185,10 @@
       ` <br><br>The sign just ticked over: regular is <b>${Wallet.formatGas(visitReport.gasPrice)}</b>/gal` +
       ` (prices +${visitReport.ratePct.toFixed(0)}% this visit, visit #${visitReport.visits}).` +
       ` Gold spot rides the pump — now <b>${Wallet.format(Math.round(visitReport.goldSpot))}</b>/oz.` +
+      (visitReport.creditInterestApplied
+        ? ` Credit debt compounded <b>+${visitReport.creditInterestPct.toFixed(0)}%</b>` +
+          ` (${Wallet.format(visitReport.creditBefore)} → ${Wallet.format(visitReport.creditAfter)}).`
+        : '') +
       ` Scrounge green bills for paper cash — keep an eye out for a Krugerrand.`;
 
     let toastTimer = 0;
