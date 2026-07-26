@@ -455,11 +455,24 @@
       align-items: center;
       justify-content: center;
       gap: 0.06em;
-      padding: 20% 8% 14%;
+      padding: 18% 7% 12%;
       pointer-events: none;
     }
     .panel-inner.drive-phase .phone-rhyme {
       display: flex;
+    }
+    .phone-rhyme-title {
+      font-family: var(--font-display);
+      font-size: calc(var(--phone-w) * 0.072);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: 0.04em;
+      text-align: center;
+      color: rgba(243, 226, 184, 0.72);
+      text-shadow: 0 0 8px rgba(240, 200, 120, 0.25);
+      margin-bottom: 0.45em;
+      max-width: 100%;
+      hyphens: auto;
     }
     .phone-rhyme-word {
       font-family: var(--font-display);
@@ -911,6 +924,7 @@
               <div class="phone-face phone-face--front">
                 <div class="phone-face--front-screen">
                   <div class="phone-rhyme" id="phoneRhyme" aria-hidden="true">
+                    <span class="phone-rhyme-title" id="phoneRhymeTitle"></span>
                     <span class="phone-rhyme-word"></span>
                     <span class="phone-rhyme-word"></span>
                     <span class="phone-rhyme-word"></span>
@@ -1747,6 +1761,62 @@
   let nowPlayingTimer = null;
   const phone3dEl = document.querySelector('.phone-3d');
   const phoneRhymeEls = Array.from(document.querySelectorAll('#phoneRhyme .phone-rhyme-word'));
+  const phoneRhymeTitleEl = document.getElementById('phoneRhymeTitle');
+  const PHONE_TITLES = [
+    'Vegan Food',
+    'Mental Health',
+    'Small Jail',
+    'Delicious Diet',
+    'Mini Disaster',
+    'Old Photocopy',
+    'New Characters',
+    'Rare Objects',
+    'Antique Images',
+    'Movie Theatre',
+    'Mission: Impossible',
+    'Frustrated Dreams',
+    'Business Venture',
+    'Media',
+    'Bus Station',
+    'New Era',
+    'Time Periods',
+    'Money Heist',
+    'Time Travel',
+    'World War',
+    'Birthday Gifts',
+    'Elder Artists',
+    'Digital Addictions',
+    'Parallel Universes',
+    'Unbroken Promises',
+    'Street Entrepreneurship',
+    'Artificial Empathy',
+    'Underground Legends',
+    'Social Media Warfare',
+    'Broken Systems',
+    'Imposter Syndrome',
+    'City Under Blackout',
+    'Guilty Pleasures',
+    'Silence vs Noise',
+    'Exiled From Home',
+    'Rise of the Underdog',
+    'Loyalty and Betrayal',
+    'Algorithmic Destiny',
+    'Invisible Workers',
+    'Revolution in Slow Motion',
+    'Childhood Memories',
+    'Lost Masterpieces',
+    'Fear of Success',
+    'Corporate Life',
+    'Dreams vs Reality',
+    'Second Chance',
+    'Playing with Fate',
+    'Heroes without Capes',
+    'Selling Your Soul',
+    'Social Fabric',
+    'Youth Entrepreneurship',
+    'Criminal Conspiracy',
+    'Olympic Games'
+  ];
   const PHONE_RHYMES = [
     ['night', 'light'],
     ['street', 'heat'],
@@ -2946,10 +3016,20 @@
     return pickFrom(pool, Math.min(n, pool.length));
   }
 
-  function setPhoneRhymeWords(words) {
+  function setPhoneRhymeWords(words, title) {
     for (let i = 0; i < phoneRhymeEls.length; i++) {
       phoneRhymeEls[i].textContent = words[i] || '';
     }
+    if (phoneRhymeTitleEl) phoneRhymeTitleEl.textContent = title || '';
+  }
+
+  function pickPhoneTitle(exclude) {
+    if (!PHONE_TITLES.length) return '';
+    let title = PHONE_TITLES[Math.floor(Math.random() * PHONE_TITLES.length)];
+    if (PHONE_TITLES.length > 1 && title === exclude) {
+      title = PHONE_TITLES[Math.floor(Math.random() * PHONE_TITLES.length)];
+    }
+    return title;
   }
 
   function pickPhoneRhyme() {
@@ -2985,10 +3065,11 @@
         words = [a, b1, c, b2];
       }
 
-      const key = `${scheme}:${words.join('|')}`;
+      const title = pickPhoneTitle(phoneRhymeTitleEl?.textContent);
+      const key = `${scheme}:${title}:${words.join('|')}`;
       if (key === phoneRhymeLastKey) continue;
       phoneRhymeLastKey = key;
-      setPhoneRhymeWords(words);
+      setPhoneRhymeWords(words, title);
       return;
     }
   }
