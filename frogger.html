@@ -5456,27 +5456,35 @@
     });
   }
 
-  function spawnCrashFX(screenX, screenY, impactDir, intensity) {
-    const n = Math.floor(18 + intensity * 22);
-    const shardColors = ['#1a2430', '#efc84a', '#c0392b', '#7ec8e3', '#4a5568', '#e8dcc0', '#f5c400'];
+  const PEBBLE_COLORS = ['#3a342c', '#4a4036', '#2e2a24', '#5c5348', '#6b5e4e', '#35302a', '#7a6a55', '#4d4438'];
+
+  function spawnPebbleBurst(screenX, screenY, impactDir, intensity, count) {
+    const n = Math.floor(count != null ? count : (16 + intensity * 20));
     for (let i = 0; i < n; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const sp = 80 + Math.random() * 220 * intensity;
+      const sp = 70 + Math.random() * 210 * intensity;
       state.particles.push({
-        type: 'shard',
-        x: screenX, y: screenY,
-        vx: Math.cos(ang) * sp + impactDir * 60,
-        vy: Math.sin(ang) * sp - 40 - Math.random() * 120,
-        rot: Math.random() * Math.PI,
+        type: 'pebble',
+        x: screenX,
+        y: screenY,
+        vx: Math.cos(ang) * sp + impactDir * 55,
+        vy: Math.sin(ang) * sp - 50 - Math.random() * 150,
+        rot: Math.random() * Math.PI * 2,
         rotV: (Math.random() - 0.5) * 14,
-        life: 0.55 + Math.random() * 0.7,
-        maxLife: 1.1,
-        size: 4 + Math.random() * 10 * intensity,
-        color: shardColors[Math.floor(Math.random() * shardColors.length)],
-        sides: 3 + Math.floor(Math.random() * 2)
+        life: 0.65 + Math.random() * 0.85,
+        maxLife: 1.4,
+        size: 2.4 + Math.random() * 5.2 * Math.min(1.25, 0.55 + intensity),
+        color: PEBBLE_COLORS[Math.floor(Math.random() * PEBBLE_COLORS.length)],
+        sides: 4 + Math.floor(Math.random() * 3),
+        seed: Math.random() * 1000,
+        heat: 0.75 + Math.random() * 0.55
       });
     }
-    for (let i = 0; i < 14 + intensity * 10; i++) {
+  }
+
+  function spawnCrashFX(screenX, screenY, impactDir, intensity) {
+    spawnPebbleBurst(screenX, screenY, impactDir, intensity);
+    for (let i = 0; i < 12 + intensity * 8; i++) {
       state.particles.push({
         type: 'spark',
         x: screenX, y: screenY,
@@ -5487,16 +5495,17 @@
         color: Math.random() > 0.4 ? '#ffe08a' : '#ff6b3d'
       });
     }
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) {
       state.particles.push({
         type: 'smoke',
         x: screenX + (Math.random() - 0.5) * 20,
         y: screenY,
         vx: (Math.random() - 0.5) * 40,
         vy: -20 - Math.random() * 50,
-        life: 0.6 + Math.random() * 0.8,
-        maxLife: 1.2,
-        size: 10 + Math.random() * 24
+        life: 0.55 + Math.random() * 0.7,
+        maxLife: 1.1,
+        size: 10 + Math.random() * 22,
+        color: '#3a3530'
       });
     }
   }
@@ -5554,23 +5563,7 @@
       life: 0.28, maxLife: 0.28,
       size: 90 * Math.min(1.5, 0.7 + p.scale)
     });
-    for (let i = 0; i < 14; i++) {
-      const ang = Math.random() * Math.PI * 2;
-      const sp = 80 + Math.random() * 220;
-      state.particles.push({
-        type: 'shard',
-        x: p.x, y: p.y - 10 * p.scale,
-        vx: Math.cos(ang) * sp + dir * 100,
-        vy: Math.sin(ang) * sp - 90 - Math.random() * 160,
-        rot: Math.random() * Math.PI,
-        rotV: (Math.random() - 0.5) * 22,
-        life: 0.7 + Math.random() * 0.8,
-        maxLife: 1.5,
-        size: 5 + Math.random() * 11,
-        color: Math.random() > 0.35 ? (car.color || '#4a5560') : '#2a2a30',
-        sides: 3 + Math.floor(Math.random() * 2)
-      });
-    }
+    spawnPebbleBurst(p.x, p.y - 10 * p.scale, dir, intensity, 14);
     for (let i = 0; i < 12; i++) {
       const ang = -Math.PI * (0.1 + Math.random() * 0.8);
       const sp = 150 + Math.random() * 320;
@@ -5919,24 +5912,8 @@
           color: i < 3 ? '#e8722a' : '#c4471e'
         });
       }
-      // Body panels tearing off
-      for (let i = 0; i < 22 + intensity * 12; i++) {
-        const ang = Math.random() * Math.PI * 2;
-        const sp = 90 + Math.random() * 260 * intensity;
-        state.particles.push({
-          type: 'shard',
-          x: hitP.x, y: hitP.y - 10 * hitP.scale,
-          vx: Math.cos(ang) * sp + dir * 130,
-          vy: Math.sin(ang) * sp - 110 - Math.random() * 200,
-          rot: Math.random() * Math.PI,
-          rotV: (Math.random() - 0.5) * 26,
-          life: 0.8 + Math.random() * 1,
-          maxLife: 1.8,
-          size: 5 + Math.random() * 14 * intensity,
-          color: Math.random() > 0.35 ? (other.color || '#4a5560') : '#2a2a30',
-          sides: 3 + Math.floor(Math.random() * 2)
-        });
-      }
+      // Hot gravel / flaming pebbles flung off the wreck
+      spawnPebbleBurst(hitP.x, hitP.y - 10 * hitP.scale, dir, intensity, 20 + intensity * 12);
       // Spark fountain out of the impact point
       for (let i = 0; i < 20; i++) {
         const ang = -Math.PI * (0.1 + Math.random() * 0.8);
@@ -6553,10 +6530,11 @@
     for (const p of state.particles) {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      if (p.type === 'shard') {
-        p.vy += 380 * dt;
-        p.vx *= Math.pow(0.4, dt);
+      if (p.type === 'shard' || p.type === 'pebble') {
+        p.vy += (p.type === 'pebble' ? 440 : 380) * dt;
+        p.vx *= Math.pow(p.type === 'pebble' ? 0.42 : 0.4, dt);
         p.rot += (p.rotV || 0) * dt;
+        if (p.type === 'pebble') p.heat = (p.heat || 1) * Math.pow(0.28, dt);
       } else if (p.type === 'spark') {
         p.vy += 420 * dt;
         p.vx *= Math.pow(0.25, dt);
@@ -10128,7 +10106,80 @@
   function drawDriveParticles() {
     for (const p of state.particles) {
       const a = Math.max(0, p.life / (p.maxLife || 0.8));
-      if (p.type === 'shard') {
+      if (p.type === 'pebble') {
+        const s = p.size || 4;
+        const spd = Math.hypot(p.vx, p.vy) || 1;
+        const nx = p.vx / spd;
+        const ny = p.vy / spd;
+        const heat = Math.max(0, Math.min(1, (p.heat || 1) * a));
+        // Smoke puff trailing the rock
+        const sx = p.x - nx * s * 2.1;
+        const sy = p.y - ny * s * 2.1;
+        const sr = s * (1.6 + (1 - a) * 1.4);
+        const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+        sg.addColorStop(0, `rgba(28,24,20,${0.55 * Math.max(heat, a * 0.45)})`);
+        sg.addColorStop(0.45, `rgba(48,42,36,${0.22 * Math.max(heat, a * 0.35)})`);
+        sg.addColorStop(1, 'rgba(30,26,22,0)');
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = sg;
+        ctx.beginPath();
+        ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+        ctx.fill();
+        // Flame tongue trailing opposite travel
+        if (heat > 0.12) {
+          const flameLen = s * (2.4 + heat * 2.2);
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(Math.atan2(p.vy, p.vx) + Math.PI);
+          const fg = ctx.createLinearGradient(0, 0, flameLen, 0);
+          fg.addColorStop(0, `rgba(255,236,150,${0.95 * heat})`);
+          fg.addColorStop(0.28, `rgba(255,140,40,${0.75 * heat})`);
+          fg.addColorStop(0.62, `rgba(220,55,18,${0.4 * heat})`);
+          fg.addColorStop(1, 'rgba(60,16,8,0)');
+          ctx.fillStyle = fg;
+          ctx.beginPath();
+          ctx.moveTo(0, -s * 0.5);
+          ctx.quadraticCurveTo(flameLen * 0.35, -s * (0.85 + heat * 0.25), flameLen, 0);
+          ctx.quadraticCurveTo(flameLen * 0.35, s * (0.85 + heat * 0.25), 0, s * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          // Hot core
+          const core = ctx.createRadialGradient(s * 0.15, 0, 0, s * 0.15, 0, s * 0.7);
+          core.addColorStop(0, `rgba(255,250,210,${0.85 * heat})`);
+          core.addColorStop(0.5, `rgba(255,160,50,${0.35 * heat})`);
+          core.addColorStop(1, 'rgba(255,100,30,0)');
+          ctx.fillStyle = core;
+          ctx.beginPath();
+          ctx.arc(s * 0.1, 0, s * 0.7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        // Irregular pebble
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot || 0);
+        ctx.globalAlpha = Math.min(1, a * 1.25);
+        ctx.fillStyle = p.color || '#4a4036';
+        ctx.beginPath();
+        const sides = p.sides || 5;
+        const seed = p.seed || 1;
+        for (let i = 0; i < sides; i++) {
+          const t = (i / sides) * Math.PI * 2;
+          const jitter = 0.62 + (Math.sin(seed * 11.7 + i * 6.9) * 0.5 + 0.5) * 0.48;
+          const px = Math.cos(t) * s * jitter;
+          const py = Math.sin(t) * s * 0.82 * jitter;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        if (heat > 0.1) {
+          ctx.strokeStyle = `rgba(255,150,50,${0.4 * heat})`;
+          ctx.lineWidth = 1.1;
+          ctx.stroke();
+        }
+        ctx.restore();
+      } else if (p.type === 'shard') {
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot || 0);
