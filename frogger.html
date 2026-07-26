@@ -506,10 +506,11 @@
     }
     .phone-edge--left,
     .phone-edge--right {
-      top: var(--phone-r);
+      /* Slight overlap into corners so rails meet the corner facets */
+      top: calc(var(--phone-r) * 0.92);
       left: 50%;
       width: var(--phone-depth);
-      height: calc(100% - var(--phone-r) * 2);
+      height: calc(100% - var(--phone-r) * 1.84);
       margin-left: calc(var(--phone-depth) / -2);
       border-radius: calc(var(--phone-depth) * 0.28);
     }
@@ -528,9 +529,9 @@
     }
     .phone-edge--top,
     .phone-edge--bottom {
-      left: var(--phone-r);
+      left: calc(var(--phone-r) * 0.92);
       top: 50%;
-      width: calc(100% - var(--phone-r) * 2);
+      width: calc(100% - var(--phone-r) * 1.84);
       height: var(--phone-depth);
       margin-top: calc(var(--phone-depth) / -2);
       border-radius: calc(var(--phone-depth) * 0.28);
@@ -545,6 +546,51 @@
     }
     .phone-edge--bottom {
       transform: rotateX(-90deg) translateZ(calc(var(--phone-h) / 2));
+    }
+    /* Chord facets that close the rounded-corner gaps the rails leave */
+    .phone-edge--corner {
+      width: var(--phone-depth);
+      height: calc(var(--phone-r) * 1.414);
+      margin-left: calc(var(--phone-depth) / -2);
+      margin-top: calc(var(--phone-r) * -0.707);
+      border-radius: calc(var(--phone-depth) * 0.28);
+      background:
+        linear-gradient(180deg,
+          #efb6d0 0%,
+          #dfa0bc 40%,
+          #c984a6 100%);
+    }
+    .phone-edge--tl {
+      left: var(--phone-r);
+      top: var(--phone-r);
+      transform:
+        rotateZ(-45deg)
+        rotateY(-90deg)
+        translateZ(calc(var(--phone-r) * 0.7071));
+    }
+    .phone-edge--tr {
+      left: calc(100% - var(--phone-r));
+      top: var(--phone-r);
+      transform:
+        rotateZ(45deg)
+        rotateY(90deg)
+        translateZ(calc(var(--phone-r) * 0.7071));
+    }
+    .phone-edge--bl {
+      left: var(--phone-r);
+      top: calc(100% - var(--phone-r));
+      transform:
+        rotateZ(45deg)
+        rotateY(-90deg)
+        translateZ(calc(var(--phone-r) * 0.7071));
+    }
+    .phone-edge--br {
+      left: calc(100% - var(--phone-r));
+      top: calc(100% - var(--phone-r));
+      transform:
+        rotateZ(-45deg)
+        rotateY(90deg)
+        translateZ(calc(var(--phone-r) * 0.7071));
     }
     /* Side buttons */
     .phone-edge--left::before,
@@ -579,13 +625,13 @@
     .panel-inner.drive-phase .phone-ctl {
       left: max(12px, env(safe-area-inset-left, 0px));
       bottom: max(14px, env(safe-area-inset-bottom, 0px));
-      width: 126px;
-      height: calc(117px * 1024 / 540);
+      width: 95px;
+      height: calc(88px * 1024 / 540);
     }
     /* Now-playing chip — sits just off the phone when the drive starts */
     .now-playing {
       position: absolute;
-      left: calc(max(12px, env(safe-area-inset-left, 0px)) + 131px);
+      left: calc(max(12px, env(safe-area-inset-left, 0px)) + 102px);
       bottom: max(34px, calc(env(safe-area-inset-bottom, 0px) + 28px));
       z-index: 6;
       display: none;
@@ -637,8 +683,8 @@
       border-radius: 0;
     }
     .panel-inner.drive-phase .phone-scene {
-      --phone-w: 117px;
-      --phone-depth: 18px;
+      --phone-w: 88px;
+      --phone-depth: 14px;
       --phone-screen-inset: 2.8%;
       width: var(--phone-w);
       height: var(--phone-h);
@@ -675,7 +721,7 @@
       gap: 10px;
     }
     .panel-inner.drive-phase .help-panel {
-      bottom: calc(236px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(181px + env(safe-area-inset-bottom, 0px));
     }
     .help-panel[hidden] { display: none; }
     .help-panel .hint {
@@ -802,21 +848,21 @@
       }
       .phone-ctl { width: 40px; height: 40px; }
       .panel-inner.drive-phase .phone-ctl {
-        width: 108px;
-        height: calc(99px * 1024 / 540);
+        width: 81px;
+        height: calc(74px * 1024 / 540);
       }
       .panel-inner.drive-phase .phone-scene {
-        --phone-w: 99px;
-        --phone-depth: 15px;
+        --phone-w: 74px;
+        --phone-depth: 11px;
         width: var(--phone-w);
         height: var(--phone-h);
       }
       .panel-inner.drive-phase .now-playing {
-        left: calc(max(12px, env(safe-area-inset-left, 0px)) + 111px);
+        left: calc(max(12px, env(safe-area-inset-left, 0px)) + 86px);
       }
       .help-panel { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
       .panel-inner.drive-phase .help-panel {
-        bottom: calc(201px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(151px + env(safe-area-inset-bottom, 0px));
       }
     }
   </style>
@@ -882,6 +928,10 @@
               <div class="phone-edge phone-edge--right"></div>
               <div class="phone-edge phone-edge--top"></div>
               <div class="phone-edge phone-edge--bottom"></div>
+              <div class="phone-edge phone-edge--corner phone-edge--tl"></div>
+              <div class="phone-edge phone-edge--corner phone-edge--tr"></div>
+              <div class="phone-edge phone-edge--corner phone-edge--bl"></div>
+              <div class="phone-edge phone-edge--corner phone-edge--br"></div>
             </div>
           </div>
           <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel"></button>
@@ -5457,57 +5507,128 @@
   }
 
   const PEBBLE_COLORS = ['#3a342c', '#4a4036', '#2e2a24', '#5c5348', '#6b5e4e', '#35302a', '#7a6a55', '#4d4438'];
+  const FIREBALL_COLORS = ['#ffe08a', '#ffb040', '#ff7a28', '#e8722a', '#c4471e', '#ff5a20', '#fff2c0'];
+  const SPARK_COLORS = ['#fff6c8', '#ffe08a', '#ffb040', '#ff9040', '#ff6b3d', '#ffd070'];
+
+  function randRange(a, b) {
+    return a + Math.random() * (b - a);
+  }
 
   function spawnPebbleBurst(screenX, screenY, impactDir, intensity, count) {
-    const n = Math.floor(count != null ? count : (16 + intensity * 20));
+    const n = Math.floor(count != null ? count : randRange(14, 22 + intensity * 28));
     for (let i = 0; i < n; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const sp = 70 + Math.random() * 210 * intensity;
+      const sp = randRange(50, 120) + Math.random() * randRange(160, 340) * intensity;
+      const loft = randRange(40, 220);
       state.particles.push({
         type: 'pebble',
-        x: screenX,
-        y: screenY,
-        vx: Math.cos(ang) * sp + impactDir * 55,
-        vy: Math.sin(ang) * sp - 50 - Math.random() * 150,
+        x: screenX + randRange(-10, 10),
+        y: screenY + randRange(-8, 8),
+        vx: Math.cos(ang) * sp + impactDir * randRange(30, 110),
+        vy: Math.sin(ang) * sp - loft,
         rot: Math.random() * Math.PI * 2,
-        rotV: (Math.random() - 0.5) * 14,
-        life: 0.65 + Math.random() * 0.85,
-        maxLife: 1.4,
-        size: 2.4 + Math.random() * 5.2 * Math.min(1.25, 0.55 + intensity),
+        rotV: randRange(-22, 22),
+        life: randRange(0.55, 1.55),
+        maxLife: 1.8,
+        size: randRange(2, 4) + Math.random() * randRange(3, 9) * Math.min(1.4, 0.5 + intensity),
         color: PEBBLE_COLORS[Math.floor(Math.random() * PEBBLE_COLORS.length)],
-        sides: 4 + Math.floor(Math.random() * 3),
+        sides: 4 + Math.floor(Math.random() * 4),
         seed: Math.random() * 1000,
-        heat: 0.75 + Math.random() * 0.55
+        heat: randRange(0.65, 1.35)
       });
     }
   }
 
-  function spawnCrashFX(screenX, screenY, impactDir, intensity) {
-    spawnPebbleBurst(screenX, screenY, impactDir, intensity);
-    for (let i = 0; i < 12 + intensity * 8; i++) {
+  /** Big randomized blast — flashes, fireballs, pebbles, sparks, soot. */
+  function spawnExplosion(screenX, screenY, impactDir, intensity, opts = {}) {
+    const power = Math.max(0.55, intensity || 1) * (opts.power != null ? opts.power : 1);
+    const scale = opts.scale != null ? opts.scale : 1;
+    const drama = 0.7 + Math.random() * 0.9; // per-blast personality
+
+    // Core flash + 1–3 random secondary blooms
+    const flashN = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < flashN; i++) {
+      const life = randRange(0.22, 0.48) * (i === 0 ? 1.15 : 0.85);
       state.particles.push({
-        type: 'spark',
-        x: screenX, y: screenY,
-        vx: (Math.random() - 0.5) * 340 + impactDir * 80,
-        vy: -80 - Math.random() * 220,
-        life: 0.2 + Math.random() * 0.35,
-        maxLife: 0.5,
-        color: Math.random() > 0.4 ? '#ffe08a' : '#ff6b3d'
+        type: 'flash',
+        x: screenX + randRange(-18, 18) * scale,
+        y: screenY + randRange(-22, 10) * scale,
+        vx: 0,
+        vy: randRange(-20, -4),
+        life,
+        maxLife: life,
+        size: (randRange(70, 140) + power * randRange(40, 100)) * scale * drama,
+        hot: Math.random() > 0.35,
+        ring: Math.random() > 0.55
       });
     }
-    for (let i = 0; i < 6; i++) {
+
+    // Rising fireball / ember clouds
+    const fireN = Math.floor(randRange(7, 14) + power * randRange(4, 10));
+    for (let i = 0; i < fireN; i++) {
+      const life = randRange(0.28, 0.85);
       state.particles.push({
         type: 'smoke',
-        x: screenX + (Math.random() - 0.5) * 20,
-        y: screenY,
-        vx: (Math.random() - 0.5) * 40,
-        vy: -20 - Math.random() * 50,
-        life: 0.55 + Math.random() * 0.7,
-        maxLife: 1.1,
-        size: 10 + Math.random() * 22,
-        color: '#3a3530'
+        x: screenX + randRange(-28, 28) * scale,
+        y: screenY + randRange(-16, 8) * scale,
+        vx: randRange(-90, 90) + impactDir * randRange(20, 80),
+        vy: -randRange(50, 160) * (0.7 + power * 0.4),
+        life,
+        maxLife: life + randRange(0.1, 0.4),
+        size: (randRange(12, 28) + power * randRange(8, 22)) * scale,
+        color: FIREBALL_COLORS[Math.floor(Math.random() * FIREBALL_COLORS.length)],
+        fireball: true
       });
     }
+
+    // Dark soot plumes (some blasts get extra)
+    const sootN = Math.floor(randRange(5, 11) + (Math.random() > 0.4 ? power * 4 : 0));
+    for (let i = 0; i < sootN; i++) {
+      const life = randRange(0.6, 1.5);
+      state.particles.push({
+        type: 'smoke',
+        x: screenX + randRange(-24, 24) * scale,
+        y: screenY + randRange(-6, 14) * scale,
+        vx: randRange(-50, 50) + impactDir * randRange(-10, 40),
+        vy: -randRange(18, 70),
+        life,
+        maxLife: life + 0.3,
+        size: (randRange(14, 36) + power * randRange(6, 18)) * scale,
+        color: Math.random() > 0.5 ? '#2a2620' : '#3a3530'
+      });
+    }
+
+    // Flaming pebbles — count and spray vary a lot
+    const pebbleN = Math.floor(randRange(12, 28) + power * randRange(10, 26) * drama);
+    spawnPebbleBurst(screenX, screenY, impactDir, power * drama, pebbleN);
+
+    // Spark fountain — wide scatter, sometimes a tight jet
+    const sparkN = Math.floor(randRange(16, 36) + power * randRange(10, 28));
+    const jet = Math.random() > 0.55;
+    for (let i = 0; i < sparkN; i++) {
+      const ang = jet
+        ? -Math.PI * randRange(0.15, 0.85) + randRange(-0.25, 0.25)
+        : Math.random() * Math.PI * 2;
+      const sp = randRange(140, 280) + Math.random() * randRange(220, 520) * power;
+      const life = randRange(0.18, 0.7);
+      state.particles.push({
+        type: 'spark',
+        x: screenX + randRange(-6, 6),
+        y: screenY + randRange(-6, 6),
+        vx: Math.cos(ang) * sp + impactDir * randRange(40, 140),
+        vy: Math.sin(ang) * sp - (jet ? 0 : randRange(0, 80)),
+        life,
+        maxLife: life + 0.15,
+        color: SPARK_COLORS[Math.floor(Math.random() * SPARK_COLORS.length)],
+        thick: Math.random() > 0.6
+      });
+    }
+
+    return { drama, power };
+  }
+
+  function spawnCrashFX(screenX, screenY, impactDir, intensity) {
+    spawnExplosion(screenX, screenY, impactDir, intensity, { power: 0.95 + Math.random() * 0.35 });
   }
 
   // --- Chase cop: hunts you from behind, lunges to ram — dodge it and smash him back ---
@@ -5556,27 +5677,10 @@
     car.flyY = 6;
     car.speed = Math.max(12, car.speed * 0.8 + 20);
     const p = projectWorld(car.x, 0, car.z, d);
-    state.particles.push({
-      type: 'flash',
-      x: p.x, y: p.y - 14 * p.scale,
-      vx: 0, vy: 0,
-      life: 0.28, maxLife: 0.28,
-      size: 90 * Math.min(1.5, 0.7 + p.scale)
+    spawnExplosion(p.x, p.y - 12 * p.scale, dir, intensity, {
+      power: 0.85 + Math.random() * 0.55,
+      scale: Math.min(1.7, 0.65 + p.scale)
     });
-    spawnPebbleBurst(p.x, p.y - 10 * p.scale, dir, intensity, 14);
-    for (let i = 0; i < 12; i++) {
-      const ang = -Math.PI * (0.1 + Math.random() * 0.8);
-      const sp = 150 + Math.random() * 320;
-      state.particles.push({
-        type: 'spark',
-        x: p.x, y: p.y - 8 * p.scale,
-        vx: Math.cos(ang) * sp + dir * 80,
-        vy: Math.sin(ang) * sp,
-        life: 0.22 + Math.random() * 0.35,
-        maxLife: 0.6,
-        color: Math.random() > 0.4 ? '#ffe08a' : '#ff9040'
-      });
-    }
   }
 
   function chaserWrecksOnTraffic(d, cop, other) {
@@ -5590,9 +5694,9 @@
     d.chaserSpawnT = 4 + Math.random() * 3;
     const bounty = copPileup ? copBounty(COP_BOUNTY_COP_PILEUP) : copBounty(COP_BOUNTY_PILEUP);
     Wallet.addCash(bounty);
-    d.slowMo = Math.max(d.slowMo || 0, copPileup ? 0.65 : 0.5);
-    d.zoomPunch = copPileup ? 1.5 : 1.2;
-    d.camShake = Math.max(d.camShake, copPileup ? 9 : 6);
+    d.slowMo = Math.max(d.slowMo || 0, (copPileup ? 0.7 : 0.5) * (0.85 + Math.random() * 0.45));
+    d.zoomPunch = Math.max(d.zoomPunch || 0, (copPileup ? 1.8 : 1.3) * (0.85 + Math.random() * 0.55));
+    d.camShake = Math.max(d.camShake, (copPileup ? 12 : 7) * (0.9 + Math.random() * 0.5));
     const hitP = projectWorld((cop.x + other.x) * 0.5, 0, (cop.z + other.z) * 0.5, d);
     spawnFloat(`+${Wallet.format(bounty)}`, hitP.x, hitP.y - 40 * hitP.scale, '#7dce7a', {
       life: 1.2,
@@ -5885,49 +5989,16 @@
       other.flyY = 8;
       other.speed = Math.max(12, d.speed * 0.7 + 24 + Math.random() * 30);
       other.z += 8;
-      // Slow-mo beat + camera lunge + flash so the launch reads huge
-      d.slowMo = 0.6;
-      d.zoomPunch = 1.5;
-      d.crashFlash = Math.max(d.crashFlash, 0.35);
+      // Slow-mo / punch / screen flash — vary so every wreck feels different
+      const boom = 0.75 + Math.random() * 0.85;
+      d.slowMo = Math.max(d.slowMo || 0, randRange(0.45, 0.95) * boom);
+      d.zoomPunch = Math.max(d.zoomPunch || 0, randRange(1.2, 2.4) * boom);
+      d.crashFlash = Math.max(d.crashFlash, randRange(0.4, 0.85) * boom);
       const hitP = projectWorld(other.x, 0, other.z, d);
-      // Explosion flash at the impact point
-      state.particles.push({
-        type: 'flash',
-        x: hitP.x, y: hitP.y - 14 * hitP.scale,
-        vx: 0, vy: 0,
-        life: 0.32, maxLife: 0.32,
-        size: 110 * Math.min(1.6, 0.7 + hitP.scale)
+      spawnExplosion(hitP.x, hitP.y - 12 * hitP.scale, dir, intensity, {
+        power: boom * (0.9 + intensity * 0.35),
+        scale: Math.min(1.85, 0.7 + hitP.scale)
       });
-      // Fireball puffs rolling up out of the hit
-      for (let i = 0; i < 6; i++) {
-        state.particles.push({
-          type: 'smoke',
-          x: hitP.x + (Math.random() - 0.5) * 20,
-          y: hitP.y - 10 * hitP.scale,
-          vx: (Math.random() - 0.5) * 60 + dir * 30,
-          vy: -40 - Math.random() * 70,
-          life: 0.35 + Math.random() * 0.35,
-          maxLife: 0.7,
-          size: 10 + Math.random() * 16,
-          color: i < 3 ? '#e8722a' : '#c4471e'
-        });
-      }
-      // Hot gravel / flaming pebbles flung off the wreck
-      spawnPebbleBurst(hitP.x, hitP.y - 10 * hitP.scale, dir, intensity, 20 + intensity * 12);
-      // Spark fountain out of the impact point
-      for (let i = 0; i < 20; i++) {
-        const ang = -Math.PI * (0.1 + Math.random() * 0.8);
-        const sp = 180 + Math.random() * 380;
-        state.particles.push({
-          type: 'spark',
-          x: hitP.x, y: hitP.y - 8 * hitP.scale,
-          vx: Math.cos(ang) * sp + dir * 90,
-          vy: Math.sin(ang) * sp,
-          life: 0.25 + Math.random() * 0.4,
-          maxLife: 0.65,
-          color: Math.random() > 0.4 ? '#ffe08a' : '#ff9040'
-        });
-      }
       // Floating tag: cop hits pay a bounty, everyone else sends a bill
       spawnFloat(cashTag, hitP.x, hitP.y - 40 * hitP.scale, isCop ? '#7dce7a' : '#ff6a5a', {
         life: 1.2,
@@ -5950,9 +6021,9 @@
     d.velX += -dir * (0.45 + intensity * 0.35);
     d.speed = Math.max(14, d.speed * (hard ? 0.22 : 0.72 + Math.random() * 0.1));
     d.suspVel -= (hard ? 18 : 7) * intensity;
-    d.camShake = (hard ? 12 : 5) + intensity * (hard ? 14 : 6);
-    d.crashT = hard ? 0.9 : 0.35;
-    d.crashFlash = hard ? 0.65 : 0.28;
+    d.camShake = ((hard ? 14 : 6) + intensity * (hard ? 16 : 8)) * (0.85 + Math.random() * 0.5);
+    d.crashT = (hard ? 0.9 : 0.35) * (0.9 + Math.random() * 0.35);
+    d.crashFlash = Math.max(d.crashFlash, (hard ? 0.75 : 0.38) * (0.85 + Math.random() * 0.45));
     d.skid = hard ? 1.1 : 0.45;
     d.roll = -dir * (hard ? 0.4 : 0.12);
     d.invuln = hard ? 1.4 : 0.85;
@@ -10234,10 +10305,10 @@
       } else if (p.type === 'spark') {
         ctx.globalAlpha = a;
         ctx.strokeStyle = p.color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = p.thick ? 3.2 : 2;
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - p.vx * 0.02, p.y - p.vy * 0.02);
+        ctx.lineTo(p.x - p.vx * (p.thick ? 0.028 : 0.02), p.y - p.vy * (p.thick ? 0.028 : 0.02));
         ctx.stroke();
       } else if (p.type === 'smoke') {
         const r = p.size || 10;
@@ -10255,23 +10326,51 @@
           ctx.beginPath();
           ctx.ellipse(p.x, p.y, r * (1.05 + (1 - a) * 0.25), r * (0.85 + (1 - a) * 0.2), 0, 0, Math.PI * 2);
           ctx.fill();
+        } else if (p.fireball) {
+          const g = ctx.createRadialGradient(p.x, p.y - r * 0.15, r * 0.05, p.x, p.y, r);
+          const baseA = a * 0.85;
+          g.addColorStop(0, `rgba(255,245,200,${baseA})`);
+          g.addColorStop(0.25, `rgba(255,170,60,${baseA * 0.85})`);
+          g.addColorStop(0.55, `rgba(230,70,20,${baseA * 0.45})`);
+          g.addColorStop(1, 'rgba(40,10,5,0)');
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, r * (1.1 + (1 - a) * 0.35), r * (0.9 + (1 - a) * 0.25), 0, 0, Math.PI * 2);
+          ctx.fill();
         } else {
-          ctx.globalAlpha = a * 0.35;
+          ctx.globalAlpha = a * 0.4;
           ctx.fillStyle = p.color || '#6a6a72';
           ctx.beginPath();
           ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
           ctx.fill();
         }
       } else if (p.type === 'flash') {
-        // Expanding explosion glare
-        const r = (p.size || 90) * (1.3 - a * 0.9);
+        // Expanding explosion glare — hotter cores + optional shock ring
+        const grow = 1.15 + (1 - a) * 1.35;
+        const r = (p.size || 90) * grow;
         const g = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, r);
-        g.addColorStop(0, `rgba(255,235,180,${0.85 * a})`);
-        g.addColorStop(0.35, `rgba(255,160,60,${0.5 * a})`);
-        g.addColorStop(1, 'rgba(255,120,40,0)');
+        if (p.hot) {
+          g.addColorStop(0, `rgba(255,255,240,${0.95 * a})`);
+          g.addColorStop(0.18, `rgba(255,220,120,${0.8 * a})`);
+          g.addColorStop(0.45, `rgba(255,120,40,${0.45 * a})`);
+          g.addColorStop(1, 'rgba(255,60,20,0)');
+        } else {
+          g.addColorStop(0, `rgba(255,235,180,${0.85 * a})`);
+          g.addColorStop(0.35, `rgba(255,160,60,${0.5 * a})`);
+          g.addColorStop(1, 'rgba(255,120,40,0)');
+        }
         ctx.globalAlpha = 1;
         ctx.fillStyle = g;
         ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+        if (p.ring) {
+          const rr = r * (0.55 + (1 - a) * 0.55);
+          ctx.strokeStyle = `rgba(255,200,120,${0.35 * a})`;
+          ctx.lineWidth = Math.max(2, 4 * (1 - a));
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
+          ctx.stroke();
+        }
       } else if (p.type === 'text') {
         ctx.globalAlpha = Math.min(1, a * 1.6);
         ctx.font = `800 ${p.size || 15}px "General Sans", sans-serif`;
