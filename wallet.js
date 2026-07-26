@@ -8,8 +8,11 @@
   //   gold    — ounces. Bought at 5% over spot, sold at 5% under, for cash.
   // One shared price index drives gas price, gold spot, and every inflated
   // price. Inflation (+4%) and credit interest (+6%) are quoted per 10-week
-  // period and compound weekly as (1+rate)^(weeks/10). Gas visits jump the
-  // calendar one full period (10 weeks); liquor beers advance one week.
+  // period and compound as (1+rate)^(weeks/10). The price index is DERIVED
+  // from elapsed calendar weeks so gold/gas always match the date (beer runs
+  // can't leave spot stuck while the year races ahead). Credit interest still
+  // applies to the phone balance when weeks advance. Gas visits jump one
+  // full 10-week period; liquor beers advance one week.
   const STATE_KEY = 'walletV3';
   const LEGACY_PURSE_KEY = 'casinoPurse';
   const LEGACY_STATE_KEYS = ['walletV2'];
@@ -108,7 +111,36 @@
 
   let state = loadState();
 
+  function totalWeeks() {
+    return state.visits * VISIT_WEEKS_ADVANCE + (state.weeks || 0);
+  }
+
+  // Compound a period rate across weeks: (1+rate)^(weeks/10).
+  function weekGrowth(periodRate, weeks) {
+    const w = Math.max(0, Number(weeks) || 0);
+    if (w <= 0) return 1;
+    return Math.pow(1 + periodRate, w / RATE_PERIOD_WEEKS);
+  }
+
+  function weeklyRate(periodRate) {
+    return weekGrowth(periodRate, 1) - 1;
+  }
+
+  // Prices always track the calendar — not a separately compounded store.
+  function priceIndex() {
+    return Math.max(1, Math.round(weekGrowth(INFLATION_PERIOD_RATE, totalWeeks()) * 1e6) / 1e6);
+  }
+
+  function syncIndexFromCalendar() {
+    state.index = priceIndex();
+    return state.index;
+  }
+
+  // Heal saves where weeks raced ahead of a stale stored index.
+  syncIndexFromCalendar();
+
   function persist() {
+    syncIndexFromCalendar();
     global.localStorage.setItem(STATE_KEY, JSON.stringify(state));
     // Keep the legacy key mirrored so old saves/tools don't explode.
     global.localStorage.setItem(LEGACY_PURSE_KEY, String(Math.max(0, state.cash)));
@@ -123,7 +155,7 @@
       digital: state.digital,
       cash: state.cash,
       gold: state.gold,
-      index: state.index,
+      index: priceIndex(),
       visits: state.visits,
       weeks: state.weeks || 0,
       fuel: state.fuel
@@ -164,7 +196,7 @@
   // ------------------------------------------------------------------ gold
   function gold() { return state.gold; }
   function setGold(oz) { state.gold = Math.max(0, Math.round(oz * 100) / 100); persist(); return state.gold; }
-  function goldSpot() { return GOLD_BASE * state.index; }
+  function goldSpot() { return GOLD_BASE * priceIndex(); }
   function netWorth() {
     return Math.round(state.digital + state.cash + state.gold * goldSpot());
   }
@@ -199,7 +231,7 @@
   }
 
   // ------------------------------------------------------------------ prices
-  function index() { return state.index; }
+  function index() { return priceIndex(); }
   function fuel() { return state.fuel; }
   function setFuel(gallons) {
     state.fuel = Math.round(clampFuel(gallons) * 100) / 100;
@@ -209,7 +241,7 @@
   function addFuel(gallons) {
     return setFuel(state.fuel + (Number(gallons) || 0));
   }
-  function gasPrice() { return GAS_BASE * state.index; }
+  function gasPrice() { return GAS_BASE * priceIndex(); }
   function gasFillGallons() {
     return Math.max(0, Math.round((GAS_TANK_GAL - state.fuel) * 100) / 100);
   }
@@ -231,34 +263,19 @@
     setFuel(GAS_TANK_GAL);
     return { ok: true, cost, gallons };
   }
-  function priceMult() { return state.index; }             // general inflated prices
-  function tipMult() { return state.index; }               // tips ride full inflation
-  function wageMult() { return 1 + (state.index - 1) / 2; } // wages lag at half inflation
+  function priceMult() { return priceIndex(); }             // general inflated prices
+  function tipMult() { return priceIndex(); }               // tips ride full inflation
+  function wageMult() { return 1 + (priceIndex() - 1) / 2; } // wages lag at half inflation
   function goldScaled(base) {
-    return Math.max(1, Math.round(Number(base) * state.index));
+    return Math.max(1, Math.round(Number(base) * priceIndex()));
   }
-  function debtCostMult() { return state.index; }
+  function debtCostMult() { return priceIndex(); }
   function debtScaled(base) { return goldScaled(base); }
   function visits() { return state.visits; }
 
-  function totalWeeks() {
-    return state.visits * VISIT_WEEKS_ADVANCE + (state.weeks || 0);
-  }
-
-  // Compound a period rate across weeks: (1+rate)^(weeks/10).
-  function weekGrowth(periodRate, weeks) {
-    const w = Math.max(0, Number(weeks) || 0);
-    if (w <= 0) return 1;
-    return Math.pow(1 + periodRate, w / RATE_PERIOD_WEEKS);
-  }
-
-  function weeklyRate(periodRate) {
-    return weekGrowth(periodRate, 1) - 1;
-  }
-
   // Menu prices that track the credit period rate over elapsed game weeks.
   function debtPriceMult() {
-    return Math.round(weekGrowth(CREDIT_PERIOD_RATE, totalWeeks()) * 10000) / 10000;
+    return Math.round(weekGrowth(CREDIT_PERIOD_RATE, totalWeeks()) * 1e6) / 1e6;
   }
   function debtPriceScaled(base) {
     return Math.max(1, Math.round(Number(base) * debtPriceMult()));
@@ -287,38 +304,53 @@
     cal.classList.add('is-tick');
   }
 
-  // Apply weekly compounding for inflation + credit interest (no calendar move).
+  // Apply credit interest for elapsed weeks. Price index follows the calendar.
   function applyEconomyWeeks(weeks) {
     const steps = Math.max(0, Math.round(Number(weeks) || 0));
+    const indexBefore = priceIndex();
     if (!steps) {
-      return { weeks: 0, indexMult: 1, creditMult: 1, creditBefore: state.digital, creditAfter: state.digital };
+      return {
+        weeks: 0, indexMult: 1, creditMult: 1,
+        creditBefore: state.digital, creditAfter: state.digital, indexBefore, indexAfter: indexBefore
+      };
     }
-    const indexMult = weekGrowth(INFLATION_PERIOD_RATE, steps);
     const creditMult = weekGrowth(CREDIT_PERIOD_RATE, steps);
-    state.index = Math.round(state.index * indexMult * 10000) / 10000;
     const creditBefore = state.digital;
     let creditAfter = creditBefore;
     if (creditBefore < 0) {
       creditAfter = Math.round(creditBefore * creditMult);
       state.digital = creditAfter;
     }
-    return { weeks: steps, indexMult, creditMult, creditBefore, creditAfter };
+    // Calendar weeks are updated by the caller before/with this; recompute index after.
+    const indexAfter = priceIndex();
+    return {
+      weeks: steps,
+      indexMult: indexBefore > 0 ? indexAfter / indexBefore : 1,
+      creditMult,
+      creditBefore,
+      creditAfter,
+      indexBefore,
+      indexAfter
+    };
   }
 
-  // Liquor beers drunk — +N calendar weeks at the weekly period rates.
+  // Liquor beers drunk — +N calendar weeks; prices snap to the new date.
   function advanceWeek(n = 1) {
     const steps = Math.max(0, Math.round(Number(n) || 0));
     if (!steps) return { weeks: state.weeks || 0, date: formatGameDate() };
+    const indexBefore = priceIndex();
     state.weeks = Math.max(0, (state.weeks || 0) + steps);
     const eco = applyEconomyWeeks(steps);
     persist();
     tickCalendar();
+    const indexAfter = priceIndex();
     return {
       weeks: state.weeks,
       date: formatGameDate(),
       gameDate: gameDate(),
-      index: state.index,
-      inflationPct: (eco.indexMult - 1) * 100,
+      index: indexAfter,
+      goldSpot: goldSpot(),
+      inflationPct: (indexAfter / indexBefore - 1) * 100,
       creditInterestPct: eco.creditBefore < 0 ? (eco.creditMult - 1) * 100 : 0,
       creditInterestApplied: eco.creditBefore < 0,
       creditBefore: eco.creditBefore,
@@ -331,14 +363,16 @@
   }
 
   function recordGasVisit() {
+    const indexBefore = priceIndex();
     state.visits += 1;
     const eco = applyEconomyWeeks(VISIT_WEEKS_ADVANCE);
     persist();
     tickCalendar();
+    const indexAfter = priceIndex();
     return {
       visits: state.visits,
-      ratePct: (eco.indexMult - 1) * 100,
-      index: state.index,
+      ratePct: (indexAfter / indexBefore - 1) * 100,
+      index: indexAfter,
       gasPrice: gasPrice(),
       goldSpot: goldSpot(),
       creditBefore: eco.creditBefore,
@@ -508,7 +542,7 @@
       }
       syncHudMetrics();
     }
-    lastShown = { digital: state.digital, cash: state.cash, gold: state.gold, index: state.index };
+    lastShown = { digital: state.digital, cash: state.cash, gold: state.gold, index: priceIndex() };
   }
 
   function toggleHudExpanded(force) {
@@ -702,7 +736,7 @@
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
     INFLATION_APR, CREDIT_APR, INFLATION_PERIOD_RATE, CREDIT_PERIOD_RATE,
     RATE_PERIOD_WEEKS, WEEKS_PER_YEAR, VISIT_WEEKS_ADVANCE,
-    weeks: () => state.weeks || 0, totalWeeks, advanceWeek, weeklyRate, weekGrowth,
+    weeks: () => state.weeks || 0, totalWeeks, advanceWeek, weeklyRate, weekGrowth, priceIndex,
     gameDate, formatGameDate, GAME_START_YEAR,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing

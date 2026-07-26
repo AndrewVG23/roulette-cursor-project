@@ -217,6 +217,25 @@
       transform: translateZ(18px) rotateX(calc(var(--desk-tilt) * -0.72));
     }
 
+    /* Flat, camera-facing hit plate — 3D coin faces/edges miss clicks mid-spin */
+    .coin-hit {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      cursor: pointer;
+      transform: translateZ(28px);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .coin-hit:focus-visible {
+      outline: 2px solid var(--brass-hot);
+      outline-offset: 4px;
+    }
+
     .coin-stage::after {
       content: '';
       position: absolute;
@@ -242,7 +261,7 @@
       border-radius: 50%;
       transform-style: preserve-3d;
       -webkit-transform-style: preserve-3d;
-      cursor: pointer;
+      pointer-events: none;
       transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
       /* Soft ground shadow without filter() — filter flattens preserve-3d */
       box-shadow: 0 16px 18px rgba(0, 0, 0, 0.45);
@@ -590,11 +609,12 @@
 
     card.innerHTML = [
       '<div class="coin-stage">',
-      `<div class="coin ${item.sizeClass}" role="button" tabindex="0" aria-label="Flip ${item.sizeLabel} ${item.name}">`,
+      `<div class="coin ${item.sizeClass}" aria-hidden="true">`,
       buildEdges(EDGE_N),
       `<span class="coin-face front"><img src="${item.front}" alt="" draggable="false"></span>`,
       `<span class="coin-face back"><img src="${item.back}" alt="" draggable="false"></span>`,
       '</div>',
+      `<button type="button" class="coin-hit" aria-label="Flip ${item.sizeLabel} ${item.name}"></button>`,
       '</div>',
       '<div class="tag">',
       `<span class="denom">${item.name}</span>`,
@@ -607,6 +627,7 @@
     ].join('');
 
     const coin = card.querySelector('.coin');
+    const hit = card.querySelector('.coin-hit');
     const askBtn = card.querySelector('.ask');
     function applySpin(animate) {
       if (!animate) coin.style.transition = 'none';
@@ -622,13 +643,7 @@
       flipY += 180;
       applySpin(true);
     };
-    coin.addEventListener('click', flip);
-    coin.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') {
-        ev.preventDefault();
-        flip();
-      }
-    });
+    hit.addEventListener('click', flip);
     card.addEventListener('mouseenter', () => {
       if (!card.classList.contains('is-unaffordable')) {
         hoverZ = 8;
