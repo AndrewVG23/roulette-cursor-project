@@ -1664,7 +1664,7 @@
   const PLAYER_CAR_IMG = new Image();
   PLAYER_CAR_IMG.src = 'copper_car.png';
   const PLAYER_CAR_SRC = { x: 193, y: 71, w: 646, h: 618 };
-  const PLAYER_CAR_BASE_W = 40;
+  const PLAYER_CAR_BASE_W = 50;
   // Dual exhaust tip centers as fractions of the cropped sprite
   const PLAYER_CAR_TIPS = [
     { fx: 0.280, fy: 0.908 },
@@ -1674,7 +1674,7 @@
   const POLICE_CAR_IMG = new Image();
   POLICE_CAR_IMG.src = 'police_car.png';
   const POLICE_CAR_SRC = { x: 123, y: 18, w: 791, h: 643 };
-  const POLICE_CAR_BASE_W = 44;
+  const POLICE_CAR_BASE_W = 55;
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
@@ -2848,12 +2848,15 @@
   let phoneRhymeFront = true;
   let phoneRhymeRaf = 0;
   let phoneRhymeLastKey = '';
-  // Base spin = one turn / 14s; front 50% slower, back 50% faster
+  // Base spin = one turn / 14s. Slow only when the screen is mostly face-on;
+  // otherwise a bit quicker than the old 1.5× back rate.
   const PHONE_SPIN_BASE_DPS = 360 / 14;
-  const PHONE_SPIN_FRONT_DPS = PHONE_SPIN_BASE_DPS * 0.5;
-  const PHONE_SPIN_BACK_DPS = PHONE_SPIN_BASE_DPS * 1.5;
+  const PHONE_SPIN_SLOW_DPS = PHONE_SPIN_BASE_DPS * 0.5;
+  const PHONE_SPIN_FAST_DPS = PHONE_SPIN_BASE_DPS * 1.85;
+  // cos(yaw) threshold ≈ ±39° from dead-on before it counts as "facing forward"
+  const PHONE_SPIN_FACE_ON = 0.78;
   let phoneYawDeg = 0;
-  let phoneSpinRate = PHONE_SPIN_FRONT_DPS;
+  let phoneSpinRate = PHONE_SPIN_FAST_DPS;
   let phoneSpinLastTs = 0;
   let phoneSpinPaused = false;
   const phoneCtlEl = document.querySelector('.phone-ctl');
@@ -2959,8 +2962,8 @@
     dt = Math.min(0.05, Math.max(0, dt));
 
     if (!phoneReduceMotion.matches && !phoneSpinPaused) {
-      const front = Math.cos(phoneYawRad()) > 0.08;
-      const target = front ? PHONE_SPIN_FRONT_DPS : PHONE_SPIN_BACK_DPS;
+      const faceOn = Math.cos(phoneYawRad()) > PHONE_SPIN_FACE_ON;
+      const target = faceOn ? PHONE_SPIN_SLOW_DPS : PHONE_SPIN_FAST_DPS;
       // Ease into the new rate so the edge handoff doesn't hitch
       phoneSpinRate += (target - phoneSpinRate) * Math.min(1, dt * 5);
       phoneYawDeg = (phoneYawDeg + phoneSpinRate * dt) % 360;
@@ -2988,7 +2991,7 @@
     phoneRhymeFront = true;
     phoneSpinLastTs = 0;
     phoneSpinPaused = false;
-    phoneSpinRate = PHONE_SPIN_FRONT_DPS;
+    phoneSpinRate = PHONE_SPIN_FAST_DPS;
     if (phone3dEl) phone3dEl.style.transform = '';
   }
 
@@ -3111,6 +3114,8 @@
       helpBtn.setAttribute('aria-label', open ? 'Hide phone' : 'Show phone');
       if (open && state.drive) syncMapNav(state.drive);
       else hideMapNav();
+      updateReplayButton();
+      updateShareReplayButton();
       return;
     }
     panelInner?.classList.remove('phone-open');
@@ -3118,6 +3123,8 @@
     helpBtn.setAttribute('aria-expanded', String(open));
     helpBtn.setAttribute('aria-label', open ? 'Hide controls' : 'Show controls');
     hideMapNav();
+    updateReplayButton();
+    updateShareReplayButton();
   }
 
   function toggleHelp() {
@@ -4129,11 +4136,11 @@
     if (!replayBtn) return;
     const inDrive = state.phase === 'drive';
     const hasClip = state.replay.buffer.length >= 2 || state.replay.playing;
-    const show = inDrive && hasClip;
+    // Only above the phone after you tap it open
+    const show = inDrive && isPhoneOpen() && hasClip;
     replayBtn.hidden = false;
     replayBtn.setAttribute('aria-hidden', show ? 'false' : 'true');
     if (show) {
-      // Next frame so the pop-in transition runs after leaving display:none
       requestAnimationFrame(() => replayBtn.classList.add('is-up'));
     } else {
       replayBtn.classList.remove('is-up');
@@ -4143,14 +4150,14 @@
       || state.replay.exporting
       || (!state.replay.playing && state.replay.buffer.length < 2);
     replayBtn.tabIndex = show ? 0 : -1;
-    replayBtn.textContent = state.replay.playing && !state.replay.exporting ? 'Skip' : 'Replay';
-    replayBtn.setAttribute('aria-label', state.replay.playing ? 'Skip replay' : 'Play instant replay');
+    replayBtn.textContent = 'Replay';
+    replayBtn.setAttribute('aria-label', 'Play instant replay');
   }
 
   function updateShareReplayButton() {
     if (!shareReplayBtn) return;
-    // Share only while a replay is on screen (or while export/share is in flight from it)
-    const show = state.phase === 'drive' && (
+    // Share while a replay is on screen; also requires the phone open
+    const show = state.phase === 'drive' && isPhoneOpen() && (
       state.replay.playing || state.replay.exporting || state.replay.sharing
     );
     shareReplayBtn.hidden = false;
@@ -8193,6 +8200,12 @@
     ctx.restore();
   }
 
+  // Perspective scale for police — same FOV factor as the player, high enough
+  // that a cruiser still grows as it fills the frame (old 1.35 cap froze size).
+  function policeCarScale(p) {
+    return Math.min(2.6, Math.max(0.12, p.scale * 0.58));
+  }
+
   // Police Interceptor sprite — chaser + traffic cops (low-poly fallback if not loaded / smashed).
   function drawPoliceCar(x, y, scale, opts = {}) {
     const yaw = opts.yaw || 0;
@@ -10641,7 +10654,7 @@
     glow.addColorStop(1, `rgba(${col},0)`);
     ctx.fillStyle = glow;
     ctx.fillRect(p.x - gw, cy - gw, gw * 2, gw * 2);
-    drawPoliceCar(p.x, p.y + (cop.bob || 0) * p.scale, Math.min(1.35, p.scale * 0.55), {
+    drawPoliceCar(p.x, p.y + (cop.bob || 0) * p.scale, policeCarScale(p), {
       yaw: cop.yaw || 0,
       pitch: cop.pitch || 0,
       color: cop.color,
@@ -10862,10 +10875,10 @@
         wheelSpin: car.wheelSpin || 0,
         trim: car.trim
       };
-      const carScale = Math.min(1.35, p.scale * 0.55);
       if (car.kind === 'police') {
-        drawPoliceCar(p.x, p.y + (car.bob || 0) * p.scale, carScale, carOpts);
+        drawPoliceCar(p.x, p.y + (car.bob || 0) * p.scale, policeCarScale(p), carOpts);
       } else {
+        const carScale = Math.min(1.35, p.scale * 0.55);
         drawLowPolyCar(p.x, p.y + (car.bob || 0) * p.scale, carScale, car.kind, carOpts);
       }
       // Taillight glow on live cars ahead
@@ -11012,7 +11025,7 @@
         ctx.fillText('Instant Replay', W / 2, H * 0.42);
         ctx.font = '600 12px "General Sans", sans-serif';
         ctx.fillStyle = '#bdb39b';
-        ctx.fillText('Last 5 seconds · Share above the phone · Skip / R to exit', W / 2, H * 0.42 + 24);
+        ctx.fillText('Last 5 seconds · Share above the phone · R to exit', W / 2, H * 0.42 + 24);
         ctx.fillStyle = '#2a2c30';
         ctx.fillRect(W * 0.15, H * 0.42 + 36, W * 0.7, 5);
         ctx.fillStyle = '#d4a017';
