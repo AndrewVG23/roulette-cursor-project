@@ -1603,6 +1603,7 @@
   const PLAYER_CAR_IMG = new Image();
   PLAYER_CAR_IMG.src = 'bronze_car.png';
   const PLAYER_CAR_SRC = { x: 140, y: 34, w: 940, h: 848 };
+  const PLAYER_CAR_BASE_W = 62;
   // Dual exhaust tip centers as fractions of the cropped sprite
   const PLAYER_CAR_TIPS = [
     { fx: (298 - 140) / 940, fy: (779 - 34) / 848 },
@@ -5182,7 +5183,7 @@
         const ground = projectWorld(d.playerX, 0, carZ, d);
         const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
         const s = Math.min(1.4, ground.scale * 0.58);
-        const drawW = 118 * s;
+        const drawW = PLAYER_CAR_BASE_W * s;
         const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
         const ang = (d.yaw || 0) * 0.38 + (d.roll || 0);
         const cos = Math.cos(ang);
@@ -6845,7 +6846,7 @@
     const pitch = opts.pitch || 0;
     const roll = opts.roll || 0;
     const s = Math.max(0.12, scale);
-    const drawW = 118 * s;
+    const drawW = PLAYER_CAR_BASE_W * s;
     const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
     const ready = PLAYER_CAR_IMG.complete && PLAYER_CAR_IMG.naturalWidth > 0;
 
