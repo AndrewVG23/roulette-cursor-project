@@ -307,7 +307,10 @@
       transform: translateY(0) scale(1);
       pointer-events: auto;
     }
-    .phone-action:disabled {
+    .phone-action[hidden] {
+      display: none !important;
+    }
+    .phone-action.is-up:disabled {
       opacity: 0.4;
       cursor: default;
       filter: grayscale(0.2);
@@ -857,8 +860,8 @@
 
         <div class="phone-ctl">
           <div class="phone-actions" id="phoneActions" aria-live="polite">
-            <button class="phone-action phone-action--replay" id="replayBtn" type="button" aria-hidden="true" tabindex="-1">Replay</button>
-            <button class="phone-action phone-action--share" id="shareReplayBtn" type="button" aria-hidden="true" tabindex="-1">Share</button>
+            <button class="phone-action phone-action--replay" id="replayBtn" type="button" hidden aria-hidden="true" tabindex="-1">Replay</button>
+            <button class="phone-action phone-action--share" id="shareReplayBtn" type="button" hidden aria-hidden="true" tabindex="-1">Share</button>
           </div>
           <div class="phone-scene" aria-hidden="true">
             <div class="phone-3d">
@@ -2853,8 +2856,8 @@
   const PHONE_SPIN_BASE_DPS = 360 / 14;
   const PHONE_SPIN_SLOW_DPS = PHONE_SPIN_BASE_DPS * 0.5;
   const PHONE_SPIN_FAST_DPS = PHONE_SPIN_BASE_DPS * 1.85;
-  // cos(yaw) threshold ≈ ±75° from dead-on — linger slow past the perfect front
-  const PHONE_SPIN_FACE_ON = 0.26;
+  // cos(yaw) threshold ≈ ±70° from dead-on — linger slow past the perfect front
+  const PHONE_SPIN_FACE_ON = 0.342;
   let phoneYawDeg = 0;
   let phoneSpinRate = PHONE_SPIN_FAST_DPS;
   let phoneSpinLastTs = 0;
@@ -4133,44 +4136,46 @@
     state.score = Wallet.read();
   }
 
+  function setPhoneActionVisible(btn, show) {
+    if (!btn) return;
+    btn.dataset.wantUp = show ? '1' : '0';
+    btn.hidden = !show;
+    btn.setAttribute('aria-hidden', show ? 'false' : 'true');
+    btn.tabIndex = show ? 0 : -1;
+    if (show) {
+      // Guard against a stale rAF re-showing after the phone closes
+      requestAnimationFrame(() => {
+        if (btn.dataset.wantUp === '1') btn.classList.add('is-up');
+      });
+    } else {
+      btn.classList.remove('is-up');
+    }
+  }
+
   function updateReplayButton() {
     if (!replayBtn) return;
     const inDrive = state.phase === 'drive';
     const hasClip = state.replay.buffer.length >= 2 || state.replay.playing;
     // Only above the phone after you tap it open
     const show = inDrive && isPhoneOpen() && hasClip;
-    replayBtn.hidden = false;
-    replayBtn.setAttribute('aria-hidden', show ? 'false' : 'true');
-    if (show) {
-      requestAnimationFrame(() => replayBtn.classList.add('is-up'));
-    } else {
-      replayBtn.classList.remove('is-up');
-    }
+    setPhoneActionVisible(replayBtn, show);
     replayBtn.disabled = !show
       || state.replay.sharing
       || state.replay.exporting
       || (!state.replay.playing && state.replay.buffer.length < 2);
-    replayBtn.tabIndex = show ? 0 : -1;
     replayBtn.textContent = 'Replay';
     replayBtn.setAttribute('aria-label', 'Play instant replay');
   }
 
   function updateShareReplayButton() {
     if (!shareReplayBtn) return;
-    // Share while a replay is on screen; also requires the phone open
+    // Only while a replay is on screen AND the phone has been opened
     const show = state.phase === 'drive' && isPhoneOpen() && (
       state.replay.playing || state.replay.exporting || state.replay.sharing
     );
-    shareReplayBtn.hidden = false;
-    shareReplayBtn.setAttribute('aria-hidden', show ? 'false' : 'true');
-    if (show) {
-      requestAnimationFrame(() => shareReplayBtn.classList.add('is-up'));
-    } else {
-      shareReplayBtn.classList.remove('is-up');
-    }
+    setPhoneActionVisible(shareReplayBtn, show);
     const canShare = !!getShareableClip() && canShareReplayVideo();
     shareReplayBtn.disabled = !show || state.replay.sharing || state.replay.exporting || !canShare;
-    shareReplayBtn.tabIndex = show ? 0 : -1;
     if (!shareReplayBtn.classList.contains('is-shared')) {
       shareReplayBtn.textContent = state.replay.sharing
         ? 'Sharing…'
@@ -4417,8 +4422,6 @@
       beep(220, 0.08, 'triangle', 0.025);
       return;
     }
-    // Phone must stay open so Share can appear with the replay
-    if (!isPhoneOpen()) setHelpOpen(true);
     state.replay.savedLive = captureLiveCheckpoint();
     state.replay.clip = state.replay.buffer.map(f => structuredClone(f));
     state.replay.frameIdx = 0;
