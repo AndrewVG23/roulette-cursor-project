@@ -258,7 +258,84 @@
       display: grid;
       place-items: center;
     }
-    .phone-ctl > * { grid-area: 1 / 1; }
+    .phone-ctl > *:not(.phone-actions) { grid-area: 1 / 1; }
+    .phone-actions {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      transform: translateX(-50%);
+      z-index: 8;
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 6px;
+      width: max(100%, 76px);
+      pointer-events: none;
+    }
+    .phone-action {
+      appearance: none;
+      -webkit-appearance: none;
+      margin: 0;
+      padding: 7px 8px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 210, 200, 0.35);
+      font-family: var(--font-ui);
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #fff6e3;
+      cursor: pointer;
+      opacity: 0;
+      transform: translateY(10px) scale(0.9);
+      pointer-events: none;
+      /* Stay out of the stack until popped up so Share doesn't leave a gap */
+      position: absolute;
+      left: 0;
+      right: 0;
+      transition:
+        opacity 280ms ease,
+        transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 160ms ease,
+        filter 160ms ease;
+    }
+    .phone-action.is-up {
+      position: relative;
+      left: auto;
+      right: auto;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+    .phone-action:disabled {
+      opacity: 0.4;
+      cursor: default;
+      filter: grayscale(0.2);
+    }
+    .phone-action--replay {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03)),
+        linear-gradient(180deg, #e24a43, #9a1f1c);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        0 6px 16px rgba(120, 20, 16, 0.45);
+    }
+    .phone-action--share {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
+        linear-gradient(180deg, #2a6b45, #163528);
+      border-color: rgba(255, 238, 198, 0.28);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        0 5px 14px rgba(0, 0, 0, 0.4);
+    }
+    .phone-action--share.is-shared {
+      border-color: rgba(143, 217, 164, 0.5);
+      color: #eafff0;
+    }
+    .phone-action:not(:disabled):active {
+      transform: translateY(1px) scale(0.98);
+    }
     .help-btn {
       position: relative;
       width: 100%;
@@ -572,35 +649,13 @@
     }
     .panel-inner.drive-phase .phone-3d {
       transform-origin: center center;
-      -webkit-animation: phoneLongAxisSpin 14s linear infinite;
-      animation: phoneLongAxisSpin 14s linear infinite;
+      /* Yaw spin is JS-driven so front/back can use different speeds */
       will-change: transform;
     }
     .panel-inner.drive-phase .phone-ctl:has(.help-btn[aria-expanded="true"]) .phone-face {
       box-shadow:
         0 7px 16px rgba(0, 0, 0, 0.58),
         0 0 12px rgba(232, 154, 187, 0.35);
-    }
-    /* Pause only on real hover — sticky :hover on phones was freezing the spin. */
-    @media (hover: hover) and (pointer: fine) {
-      .panel-inner.drive-phase .phone-ctl:hover .phone-3d {
-        -webkit-animation-play-state: paused;
-        animation-play-state: paused;
-      }
-    }
-    @-webkit-keyframes phoneLongAxisSpin {
-      from { -webkit-transform: rotateY(0deg); transform: rotateY(0deg); }
-      to { -webkit-transform: rotateY(360deg); transform: rotateY(360deg); }
-    }
-    @keyframes phoneLongAxisSpin {
-      from { transform: rotateY(0deg); }
-      to { transform: rotateY(360deg); }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .panel-inner.drive-phase .phone-3d {
-        -webkit-animation: none;
-        animation: none;
-      }
     }
     .help-panel {
       position: absolute;
@@ -801,6 +856,10 @@
         </div>
 
         <div class="phone-ctl">
+          <div class="phone-actions" id="phoneActions" aria-live="polite">
+            <button class="phone-action phone-action--replay" id="replayBtn" type="button" aria-hidden="true" tabindex="-1">Replay</button>
+            <button class="phone-action phone-action--share" id="shareReplayBtn" type="button" aria-hidden="true" tabindex="-1">Share</button>
+          </div>
           <div class="phone-scene" aria-hidden="true">
             <div class="phone-3d">
               <div class="phone-face phone-face--front">
@@ -1601,20 +1660,20 @@
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  // Player ride — rear-view copper/patina BMW X5 sprite (transparent studio cutout)
+  // Player ride — pixel copper/patina BMW X5 (transparent cutout)
   const PLAYER_CAR_IMG = new Image();
   PLAYER_CAR_IMG.src = 'copper_car.png';
-  const PLAYER_CAR_SRC = { x: 196, y: 74, w: 643, h: 615 };
+  const PLAYER_CAR_SRC = { x: 193, y: 71, w: 646, h: 618 };
   const PLAYER_CAR_BASE_W = 40;
   // Dual exhaust tip centers as fractions of the cropped sprite
   const PLAYER_CAR_TIPS = [
-    { fx: (407 - 196) / 643, fy: (606 - 74) / 615 },
-    { fx: (601 - 196) / 643, fy: (607 - 74) / 615 }
+    { fx: 0.280, fy: 0.908 },
+    { fx: 0.724, fy: 0.910 }
   ];
-  // Chase / traffic — rear-view Crown Vic Police Interceptor
+  // Chase / traffic — pixel Crown Vic Police Interceptor
   const POLICE_CAR_IMG = new Image();
   POLICE_CAR_IMG.src = 'police_car.png';
-  const POLICE_CAR_SRC = { x: 126, y: 18, w: 785, h: 641 };
+  const POLICE_CAR_SRC = { x: 123, y: 18, w: 791, h: 643 };
   const POLICE_CAR_BASE_W = 44;
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
@@ -2789,6 +2848,25 @@
   let phoneRhymeFront = true;
   let phoneRhymeRaf = 0;
   let phoneRhymeLastKey = '';
+  // Base spin = one turn / 14s; front 50% slower, back 50% faster
+  const PHONE_SPIN_BASE_DPS = 360 / 14;
+  const PHONE_SPIN_FRONT_DPS = PHONE_SPIN_BASE_DPS * 0.5;
+  const PHONE_SPIN_BACK_DPS = PHONE_SPIN_BASE_DPS * 1.5;
+  let phoneYawDeg = 0;
+  let phoneSpinRate = PHONE_SPIN_FRONT_DPS;
+  let phoneSpinLastTs = 0;
+  let phoneSpinPaused = false;
+  const phoneCtlEl = document.querySelector('.phone-ctl');
+  const phoneFineHover = window.matchMedia('(hover: hover) and (pointer: fine)');
+  const phoneReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (phoneCtlEl) {
+    phoneCtlEl.addEventListener('mouseenter', () => {
+      if (phoneFineHover.matches) phoneSpinPaused = true;
+    });
+    phoneCtlEl.addEventListener('mouseleave', () => {
+      phoneSpinPaused = false;
+    });
+  }
 
   function pickFrom(arr, n) {
     const copy = arr.slice();
@@ -2854,15 +2932,12 @@
   }
 
   function phoneYawRad() {
-    if (!phone3dEl) return 0;
-    const t = getComputedStyle(phone3dEl).transform;
-    if (!t || t === 'none') return 0;
-    try {
-      const m = new DOMMatrixReadOnly(t);
-      return Math.atan2(m.m13, m.m11);
-    } catch (_) {
-      return 0;
-    }
+    return (phoneYawDeg * Math.PI) / 180;
+  }
+
+  function applyPhoneYaw() {
+    if (!phone3dEl) return;
+    phone3dEl.style.transform = `rotateY(${phoneYawDeg}deg)`;
   }
 
   function syncPhoneRhyme() {
@@ -2876,11 +2951,32 @@
     phoneRhymeFront = front;
   }
 
+  function tickPhoneSpin(ts) {
+    if (!phone3dEl || state.phase !== 'drive') return;
+    if (!phoneSpinLastTs) phoneSpinLastTs = ts;
+    let dt = (ts - phoneSpinLastTs) / 1000;
+    phoneSpinLastTs = ts;
+    dt = Math.min(0.05, Math.max(0, dt));
+
+    if (!phoneReduceMotion.matches && !phoneSpinPaused) {
+      const front = Math.cos(phoneYawRad()) > 0.08;
+      const target = front ? PHONE_SPIN_FRONT_DPS : PHONE_SPIN_BACK_DPS;
+      // Ease into the new rate so the edge handoff doesn't hitch
+      phoneSpinRate += (target - phoneSpinRate) * Math.min(1, dt * 5);
+      phoneYawDeg = (phoneYawDeg + phoneSpinRate * dt) % 360;
+      if (phoneYawDeg < 0) phoneYawDeg += 360;
+      applyPhoneYaw();
+    }
+    syncPhoneRhyme();
+  }
+
   function startPhoneRhymeLoop() {
-    if (!phoneRhymeEls.length || phoneRhymeRaf) return;
-    if (!phoneRhymeEls[0].textContent) pickPhoneRhyme();
-    const tick = () => {
-      syncPhoneRhyme();
+    if (phoneRhymeRaf) return;
+    if (phoneRhymeEls.length && !phoneRhymeEls[0].textContent) pickPhoneRhyme();
+    phoneSpinLastTs = 0;
+    applyPhoneYaw();
+    const tick = (ts) => {
+      tickPhoneSpin(ts);
       phoneRhymeRaf = requestAnimationFrame(tick);
     };
     phoneRhymeRaf = requestAnimationFrame(tick);
@@ -2890,6 +2986,10 @@
     if (phoneRhymeRaf) cancelAnimationFrame(phoneRhymeRaf);
     phoneRhymeRaf = 0;
     phoneRhymeFront = true;
+    phoneSpinLastTs = 0;
+    phoneSpinPaused = false;
+    phoneSpinRate = PHONE_SPIN_FRONT_DPS;
+    if (phone3dEl) phone3dEl.style.transform = '';
   }
 
   function flashNowPlaying(title) {
@@ -4027,20 +4127,48 @@
 
   function updateReplayButton() {
     if (!replayBtn) return;
-    replayBtn.hidden = state.phase !== 'drive';
-    replayBtn.disabled = state.replay.sharing
+    const inDrive = state.phase === 'drive';
+    const hasClip = state.replay.buffer.length >= 2 || state.replay.playing;
+    const show = inDrive && hasClip;
+    replayBtn.hidden = false;
+    replayBtn.setAttribute('aria-hidden', show ? 'false' : 'true');
+    if (show) {
+      // Next frame so the pop-in transition runs after leaving display:none
+      requestAnimationFrame(() => replayBtn.classList.add('is-up'));
+    } else {
+      replayBtn.classList.remove('is-up');
+    }
+    replayBtn.disabled = !show
+      || state.replay.sharing
       || state.replay.exporting
       || (!state.replay.playing && state.replay.buffer.length < 2);
+    replayBtn.tabIndex = show ? 0 : -1;
     replayBtn.textContent = state.replay.playing && !state.replay.exporting ? 'Skip' : 'Replay';
+    replayBtn.setAttribute('aria-label', state.replay.playing ? 'Skip replay' : 'Play instant replay');
   }
 
   function updateShareReplayButton() {
     if (!shareReplayBtn) return;
-    shareReplayBtn.hidden = state.phase !== 'drive';
+    // Share only while a replay is on screen (or while export/share is in flight from it)
+    const show = state.phase === 'drive' && (
+      state.replay.playing || state.replay.exporting || state.replay.sharing
+    );
+    shareReplayBtn.hidden = false;
+    shareReplayBtn.setAttribute('aria-hidden', show ? 'false' : 'true');
+    if (show) {
+      requestAnimationFrame(() => shareReplayBtn.classList.add('is-up'));
+    } else {
+      shareReplayBtn.classList.remove('is-up');
+    }
     const canShare = !!getShareableClip() && canShareReplayVideo();
-    shareReplayBtn.disabled = state.replay.sharing || state.replay.exporting || !canShare;
+    shareReplayBtn.disabled = !show || state.replay.sharing || state.replay.exporting || !canShare;
+    shareReplayBtn.tabIndex = show ? 0 : -1;
     if (!shareReplayBtn.classList.contains('is-shared')) {
-      shareReplayBtn.textContent = state.replay.sharing ? 'Sharing…' : 'Share';
+      shareReplayBtn.textContent = state.replay.sharing
+        ? 'Sharing…'
+        : state.replay.exporting
+          ? 'Saving…'
+          : 'Share';
     }
   }
 
@@ -8056,6 +8184,7 @@
     ctx.ellipse(0, 3 * s, drawW * 0.44, drawH * 0.09, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(
       PLAYER_CAR_IMG,
       PLAYER_CAR_SRC.x, PLAYER_CAR_SRC.y, PLAYER_CAR_SRC.w, PLAYER_CAR_SRC.h,
@@ -8094,6 +8223,7 @@
     ctx.ellipse(0, 3 * s, drawW * 0.44, drawH * 0.09, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(
       POLICE_CAR_IMG,
       POLICE_CAR_SRC.x, POLICE_CAR_SRC.y, POLICE_CAR_SRC.w, POLICE_CAR_SRC.h,
@@ -10882,7 +11012,7 @@
         ctx.fillText('Instant Replay', W / 2, H * 0.42);
         ctx.font = '600 12px "General Sans", sans-serif';
         ctx.fillStyle = '#bdb39b';
-        ctx.fillText('Last 5 seconds · R or Skip to exit · Share to send', W / 2, H * 0.42 + 24);
+        ctx.fillText('Last 5 seconds · Share above the phone · Skip / R to exit', W / 2, H * 0.42 + 24);
         ctx.fillStyle = '#2a2c30';
         ctx.fillRect(W * 0.15, H * 0.42 + 36, W * 0.7, 5);
         ctx.fillStyle = '#d4a017';
