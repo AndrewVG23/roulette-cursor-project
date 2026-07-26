@@ -6546,45 +6546,66 @@
       });
     }
 
-    // Dual-pipe exhaust — only under real throttle (gas held, climbing speed)
+    // Dual-pipe exhaust — soot under throttle; blue flames once you're over 80
     {
       const gas = !!state.keys.up && !state.keys.down;
       const pulling = gas && (d.accel || 0) > 6;
-      if (pulling) {
-        const throttle = Math.min(1, (d.accel || 0) / 40);
-        const rate = 6 + throttle * 16 + Math.min(5, d.speed * 0.04);
-        if (Math.random() < dt * rate) {
+      const lit = d.speed > 80;
+      if (pulling || lit) {
+        const throttle = pulling ? Math.min(1, (d.accel || 0) / 40) : 0;
+        const over = lit ? Math.min(1, (d.speed - 80) / 45) : 0;
+        const smokeRate = pulling ? 6 + throttle * 16 + Math.min(5, d.speed * 0.04) : 0;
+        const flameRate = lit ? 18 + over * 40 : 0;
+        if (Math.random() < dt * Math.max(smokeRate, flameRate)) {
           const carZ = d.z + 14;
           const ground = projectWorld(d.playerX, 0, carZ, d);
           const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
-          const s = Math.min(1.4, ground.scale * 0.58);
+          const s = playerCarScale(ground);
           const drawW = PLAYER_CAR_BASE_W * s;
           const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
           const ang = (d.yaw || 0) * 0.38 + (d.roll || 0);
           const cos = Math.cos(ang);
           const sin = Math.sin(ang);
-          const tip = PLAYER_CAR_TIPS[Math.random() < 0.5 ? 0 : 1];
-          const lx = -drawW / 2 + tip.fx * drawW + (Math.random() - 0.5) * 2 * s;
-          const ly = -drawH + 2 * s + tip.fy * drawH;
           const ox = ground.x;
           const oy = ground.y + bob;
-          const tipX = ox + lx * cos - ly * sin;
-          const tipY = oy + lx * sin + ly * cos;
-          const soot = Math.random();
-          const puffN = throttle > 0.55 && Math.random() < 0.5 ? 2 : 1;
-          for (let i = 0; i < puffN; i++) {
-            state.particles.push({
-              type: 'smoke',
-              exhaust: true,
-              x: tipX + (Math.random() - 0.5) * 4,
-              y: tipY + (Math.random() - 0.5) * 3,
-              vx: -d.velX * 10 + (Math.random() - 0.5) * (10 + throttle * 14) + (d.yaw || 0) * 28,
-              vy: -4 - Math.random() * (12 + throttle * 16),
-              life: 0.4 + Math.random() * 0.55 + throttle * 0.15,
-              maxLife: 0.95,
-              size: (2.5 + Math.random() * 4 + throttle * 4) * Math.min(1.35, 0.55 + s),
-              color: soot > 0.6 ? '#12100e' : soot > 0.3 ? '#0a0a0c' : '#1c1814'
-            });
+          const tipCount = lit && Math.random() < 0.55 + over * 0.35 ? 2 : 1;
+          for (let ti = 0; ti < tipCount; ti++) {
+            const tip = PLAYER_CAR_TIPS[tipCount === 2 ? ti : (Math.random() < 0.5 ? 0 : 1)];
+            const lx = -drawW / 2 + tip.fx * drawW + (Math.random() - 0.5) * 2 * s;
+            const ly = -drawH + 2 * s + tip.fy * drawH;
+            const tipX = ox + lx * cos - ly * sin;
+            const tipY = oy + lx * sin + ly * cos;
+            if (lit && Math.random() < 0.85) {
+              const burst = 1 + (Math.random() < over * 0.7 ? 1 : 0);
+              for (let i = 0; i < burst; i++) {
+                state.particles.push({
+                  type: 'exhaustFlame',
+                  x: tipX + (Math.random() - 0.5) * 3 * s,
+                  y: tipY + (Math.random() - 0.5) * 2 * s,
+                  vx: -d.velX * 8 + (Math.random() - 0.5) * (18 + over * 30) + (d.yaw || 0) * 22,
+                  vy: 55 + Math.random() * (70 + over * 90),
+                  life: 0.07 + Math.random() * 0.11 + over * 0.06,
+                  maxLife: 0.22,
+                  size: (3.5 + Math.random() * 4 + over * 5) * Math.min(1.4, 0.55 + s),
+                  heat: 0.85 + Math.random() * 0.15
+                });
+              }
+            }
+            if (pulling && (!lit || Math.random() < 0.35)) {
+              const soot = Math.random();
+              state.particles.push({
+                type: 'smoke',
+                exhaust: true,
+                x: tipX + (Math.random() - 0.5) * 4,
+                y: tipY + (Math.random() - 0.5) * 3,
+                vx: -d.velX * 10 + (Math.random() - 0.5) * (10 + throttle * 14) + (d.yaw || 0) * 28,
+                vy: -4 - Math.random() * (12 + throttle * 16),
+                life: 0.4 + Math.random() * 0.55 + throttle * 0.15,
+                maxLife: 0.95,
+                size: (2.5 + Math.random() * 4 + throttle * 4) * Math.min(1.35, 0.55 + s),
+                color: soot > 0.6 ? '#12100e' : soot > 0.3 ? '#0a0a0c' : '#1c1814'
+              });
+            }
           }
         }
       }
@@ -6613,6 +6634,11 @@
         p.size = (p.size || 10) + grow * dt;
         p.vx *= Math.pow(p.exhaust ? 0.62 : 0.5, dt);
         if (p.exhaust) p.vy *= Math.pow(0.92, dt);
+      } else if (p.type === 'exhaustFlame') {
+        p.size = (p.size || 4) * Math.pow(0.12, dt);
+        p.vx *= Math.pow(0.35, dt);
+        p.vy *= Math.pow(0.55, dt);
+        p.heat = (p.heat || 1) * Math.pow(0.08, dt);
       } else if (p.type === 'text') {
         p.vy *= Math.pow(0.3, dt);
       } else if (p.type === 'flash') {
@@ -8217,6 +8243,47 @@
     }
   }
 
+  // Nitro-style blue jets from the dual tips (intensity 0–1 from speed over 80).
+  function drawPlayerExhaustFlames(drawW, drawH, s, intensity) {
+    if (intensity <= 0.02) return;
+    const t = performance.now() / 1000;
+    for (let i = 0; i < PLAYER_CAR_TIPS.length; i++) {
+      const tip = PLAYER_CAR_TIPS[i];
+      const tx = -drawW / 2 + tip.fx * drawW;
+      const ty = -drawH + 2 * s + tip.fy * drawH;
+      const flicker = 0.72 + Math.sin(t * 31 + i * 5.1) * 0.18 + Math.sin(t * 67 + i * 2.3) * 0.1;
+      const len = (11 + intensity * 26) * s * flicker;
+      const wid = (2.4 + intensity * 3.2) * s * (0.85 + flicker * 0.2);
+      ctx.save();
+      ctx.translate(tx, ty);
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createLinearGradient(0, 0, 0, len);
+      g.addColorStop(0, `rgba(230,248,255,${0.95 * Math.min(1, intensity + 0.25)})`);
+      g.addColorStop(0.18, `rgba(120,210,255,${0.9})`);
+      g.addColorStop(0.48, `rgba(50,120,255,${0.55 * intensity})`);
+      g.addColorStop(1, 'rgba(30,60,200,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(-wid * 0.4, 0);
+      ctx.quadraticCurveTo(-wid * 1.25, len * 0.42, 0, len);
+      ctx.quadraticCurveTo(wid * 1.25, len * 0.42, wid * 0.4, 0);
+      ctx.closePath();
+      ctx.fill();
+      const core = ctx.createLinearGradient(0, 0, 0, len * 0.58);
+      core.addColorStop(0, `rgba(255,255,255,${0.95})`);
+      core.addColorStop(0.35, `rgba(180,230,255,${0.65})`);
+      core.addColorStop(1, 'rgba(90,160,255,0)');
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.moveTo(-wid * 0.16, 0);
+      ctx.quadraticCurveTo(-wid * 0.45, len * 0.28, 0, len * 0.58);
+      ctx.quadraticCurveTo(wid * 0.45, len * 0.28, wid * 0.16, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
   // Player car — copper X5 sprite with chase-cam lean / suspension.
   function drawPlayerCar(x, y, scale, opts = {}) {
     const yaw = opts.yaw || 0;
@@ -8226,6 +8293,7 @@
     const drawW = PLAYER_CAR_BASE_W * s;
     const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
     const ready = PLAYER_CAR_IMG.complete && PLAYER_CAR_IMG.naturalWidth > 0;
+    const flames = Math.max(0, Math.min(1, opts.flames || 0));
 
     if (!ready) {
       drawLowPolyCar(x, y, scale, 'suv', {
@@ -8254,6 +8322,7 @@
       PLAYER_CAR_SRC.x, PLAYER_CAR_SRC.y, PLAYER_CAR_SRC.w, PLAYER_CAR_SRC.h,
       -drawW / 2, -drawH + 2 * s, drawW, drawH
     );
+    if (flames > 0) drawPlayerExhaustFlames(drawW, drawH, s, flames);
     ctx.restore();
   }
 
@@ -10427,6 +10496,35 @@
         ctx.closePath();
         ctx.fill();
         ctx.restore();
+      } else if (p.type === 'exhaustFlame') {
+        const s = p.size || 4;
+        const heat = Math.max(0, Math.min(1, (p.heat || 1) * a));
+        const len = s * (1.8 + heat * 1.6);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(Math.atan2(p.vy, p.vx));
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createLinearGradient(0, 0, len, 0);
+        g.addColorStop(0, `rgba(240,250,255,${0.95 * heat})`);
+        g.addColorStop(0.25, `rgba(110,200,255,${0.8 * heat})`);
+        g.addColorStop(0.6, `rgba(40,110,255,${0.4 * heat})`);
+        g.addColorStop(1, 'rgba(20,50,180,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(0, -s * 0.45);
+        ctx.quadraticCurveTo(len * 0.4, -s * (0.7 + heat * 0.2), len, 0);
+        ctx.quadraticCurveTo(len * 0.4, s * (0.7 + heat * 0.2), 0, s * 0.45);
+        ctx.closePath();
+        ctx.fill();
+        const core = ctx.createRadialGradient(s * 0.1, 0, 0, s * 0.1, 0, s * 0.65);
+        core.addColorStop(0, `rgba(255,255,255,${0.85 * heat})`);
+        core.addColorStop(0.45, `rgba(160,220,255,${0.4 * heat})`);
+        core.addColorStop(1, 'rgba(80,140,255,0)');
+        ctx.fillStyle = core;
+        ctx.beginPath();
+        ctx.arc(s * 0.08, 0, s * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       } else if (p.type === 'spark') {
         ctx.globalAlpha = a;
         ctx.strokeStyle = p.color;
@@ -11235,7 +11333,8 @@
       yaw: d.yaw,
       pitch: d.pitch,
       roll: d.roll + (d.crashT > 0 ? Math.sin(d.crashT * 40) * 0.2 : 0),
-      wheelSpin: d.wheelSpin || 0
+      wheelSpin: d.wheelSpin || 0,
+      flames: d.speed > 80 ? Math.min(1, (d.speed - 80) / 45) : 0
     });
 
     // Cruiser on your bumper draws over the player (closer to camera)
