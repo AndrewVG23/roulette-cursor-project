@@ -7,9 +7,9 @@
   //   cash    — physical paper dollars. Floor of $0. Liquor + casino money.
   //   gold    — ounces. Bought at 5% over spot, sold at 5% under, for cash.
   // One shared price index drives gas price, gold spot, and every inflated
-  // price. Inflation (4% APR) and credit interest (6% APR) compound weekly.
-  // Gas visits jump the calendar nine weeks and apply nine weeks of that
-  // growth; liquor beers drunk (from beer cases) advance one week at a time.
+  // price. Inflation (+4%) and credit interest (+6%) are quoted per 10-week
+  // period and compound weekly as (1+rate)^(weeks/10). Gas visits jump the
+  // calendar one full period (10 weeks); liquor beers advance one week.
   const STATE_KEY = 'walletV3';
   const LEGACY_PURSE_KEY = 'casinoPurse';
   const LEGACY_STATE_KEYS = ['walletV2'];
@@ -25,13 +25,16 @@
   const GOLD_BASE = 2000;     // $/oz at index 1.0 — roughly real spot
   const GOLD_FEE = 0.05;      // cash buy 5% over spot, sell 5% under
   const GOLD_CREDIT_FEE = 0.10; // credit ask is 10% over the cash ask
-  const WEEKS_PER_YEAR = 52;
-  const INFLATION_APR = 0.04; // price index, annualized
-  const CREDIT_APR = 0.06;    // credit-balance interest + debt-priced menus, annualized
-  const CREDIT_INTEREST_RATE = CREDIT_APR; // exported alias
-  const VISIT_WEEKS_ADVANCE = 9;
-  // Effective growth across one gas visit (9 weeks of APR compounding)
-  const VISIT_RATE_BASE = Math.pow(1 + INFLATION_APR, VISIT_WEEKS_ADVANCE / WEEKS_PER_YEAR) - 1;
+  const RATE_PERIOD_WEEKS = 10;
+  const INFLATION_PERIOD_RATE = 0.04; // +4% per 10 weeks (price index)
+  const CREDIT_PERIOD_RATE = 0.06;    // +6% per 10 weeks (debt + debt menus)
+  const CREDIT_INTEREST_RATE = CREDIT_PERIOD_RATE; // exported alias
+  // Legacy export names — these are period rates, not annual APRs.
+  const INFLATION_APR = INFLATION_PERIOD_RATE;
+  const CREDIT_APR = CREDIT_PERIOD_RATE;
+  const WEEKS_PER_YEAR = 52; // calendar only
+  const VISIT_WEEKS_ADVANCE = RATE_PERIOD_WEEKS;
+  const VISIT_RATE_BASE = INFLATION_PERIOD_RATE;
   const VISIT_RATE_STEP = 0;
   const VISIT_RATE_CAP = VISIT_RATE_BASE;
   const GAME_START_YEAR = 2022;
@@ -242,20 +245,20 @@
     return state.visits * VISIT_WEEKS_ADVANCE + (state.weeks || 0);
   }
 
-  // Compound an APR across an integer number of weeks: (1+apr)^(weeks/52).
-  function weekGrowth(apr, weeks) {
+  // Compound a period rate across weeks: (1+rate)^(weeks/10).
+  function weekGrowth(periodRate, weeks) {
     const w = Math.max(0, Number(weeks) || 0);
     if (w <= 0) return 1;
-    return Math.pow(1 + apr, w / WEEKS_PER_YEAR);
+    return Math.pow(1 + periodRate, w / RATE_PERIOD_WEEKS);
   }
 
-  function weeklyRate(apr) {
-    return weekGrowth(apr, 1) - 1;
+  function weeklyRate(periodRate) {
+    return weekGrowth(periodRate, 1) - 1;
   }
 
-  // Menu prices that track the credit APR over elapsed game weeks.
+  // Menu prices that track the credit period rate over elapsed game weeks.
   function debtPriceMult() {
-    return Math.round(weekGrowth(CREDIT_APR, totalWeeks()) * 10000) / 10000;
+    return Math.round(weekGrowth(CREDIT_PERIOD_RATE, totalWeeks()) * 10000) / 10000;
   }
   function debtPriceScaled(base) {
     return Math.max(1, Math.round(Number(base) * debtPriceMult()));
@@ -290,8 +293,8 @@
     if (!steps) {
       return { weeks: 0, indexMult: 1, creditMult: 1, creditBefore: state.digital, creditAfter: state.digital };
     }
-    const indexMult = weekGrowth(INFLATION_APR, steps);
-    const creditMult = weekGrowth(CREDIT_APR, steps);
+    const indexMult = weekGrowth(INFLATION_PERIOD_RATE, steps);
+    const creditMult = weekGrowth(CREDIT_PERIOD_RATE, steps);
     state.index = Math.round(state.index * indexMult * 10000) / 10000;
     const creditBefore = state.digital;
     let creditAfter = creditBefore;
@@ -302,7 +305,7 @@
     return { weeks: steps, indexMult, creditMult, creditBefore, creditAfter };
   }
 
-  // Liquor beers drunk — +N calendar weeks at the weekly APR rates.
+  // Liquor beers drunk — +N calendar weeks at the weekly period rates.
   function advanceWeek(n = 1) {
     const steps = Math.max(0, Math.round(Number(n) || 0));
     if (!steps) return { weeks: state.weeks || 0, date: formatGameDate() };
@@ -697,7 +700,8 @@
     index, gasPrice, fuel, setFuel, addFuel, gasFillGallons, gasFillCost, buyGasFill,
     priceMult, tipMult, wageMult, goldScaled, debtCostMult, debtScaled, debtPriceMult, debtPriceScaled,
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
-    INFLATION_APR, CREDIT_APR, WEEKS_PER_YEAR, VISIT_WEEKS_ADVANCE,
+    INFLATION_APR, CREDIT_APR, INFLATION_PERIOD_RATE, CREDIT_PERIOD_RATE,
+    RATE_PERIOD_WEEKS, WEEKS_PER_YEAR, VISIT_WEEKS_ADVANCE,
     weeks: () => state.weeks || 0, totalWeeks, advanceWeek, weeklyRate, weekGrowth,
     gameDate, formatGameDate, GAME_START_YEAR,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
