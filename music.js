@@ -7,7 +7,11 @@
     'assets/music-neon.mp3',
     'assets/music-underbound.mp3',
     'assets/music-citizen.mp3',
-    'assets/music-madness.mp3'
+    'assets/music-madness.mp3',
+    'assets/music-oxygen.mp3',
+    'assets/music-savage.mp3',
+    'assets/music-venom.mp3',
+    'assets/music-sniper.mp3'
   ];
   const TITLES = [
     'Umbra',
@@ -16,7 +20,11 @@
     'Neon',
     'Underbound',
     'Citizen',
-    'Madness'
+    'Madness',
+    'Oxygen',
+    'Savage',
+    'Venom',
+    'Sniper'
   ];
   const MUTE_KEY = 'cfc-bgm-muted';
   const VOL = 0.3;

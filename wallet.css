@@ -15,7 +15,7 @@
   --purse-velvet-lit: #1f4636;
   --game-logo-top: max(8px, env(safe-area-inset-top, 0px));
   --game-logo-left: max(10px, env(safe-area-inset-left, 0px));
-  --game-logo-height: clamp(34px, 5.2vw, 44px);
+  --game-logo-height: clamp(51px, 7.8vw, 66px);
   --game-logo-clearance-left: calc(var(--game-logo-left) + (var(--game-logo-height) * 5.25) + 12px);
 }
 
@@ -27,7 +27,7 @@
   z-index: 10001;
   height: var(--game-logo-height);
   width: auto;
-  max-width: min(46vw, 240px);
+  max-width: min(52vw, 360px);
   object-fit: contain;
   object-position: left center;
   pointer-events: none;
@@ -489,12 +489,12 @@ body.has-game-logo > .app > .controls {
     --purse-hud-gap: 6px;
     --purse-hud-width: 108px;
     --purse-hud-height: 62px;
-    --game-logo-height: 28px;
-    --game-logo-clearance-left: calc(var(--game-logo-left) + min(38vw, 148px) + 8px);
+    --game-logo-height: 42px;
+    --game-logo-clearance-left: calc(var(--game-logo-left) + min(48vw, 222px) + 8px);
   }
 
   .game-logo {
-    max-width: min(38vw, 148px);
+    max-width: min(48vw, 222px);
   }
 
   .purse-hud-cluster {
