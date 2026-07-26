@@ -547,50 +547,47 @@
     .phone-edge--bottom {
       transform: rotateX(-90deg) translateZ(calc(var(--phone-h) / 2));
     }
-    /* Chord facets that close the rounded-corner gaps the rails leave */
-    .phone-edge--corner {
+    /*
+      Corner rim — 3 chords per corner (30° each). Same hinge as the side rails:
+      rotateY to stand the strip up, translateZ out to the radius, rotateZ to fan
+      around the curvature center. (Earlier facets used the wrong Z signs and were
+      backface-culled, so corners looked empty.)
+    */
+    .phone-edge--c {
+      left: 50%;
+      top: 50%;
       width: var(--phone-depth);
-      height: calc(var(--phone-r) * 1.414);
+      height: calc(var(--phone-r) * 0.5176); /* 2 R sin(15°) */
       margin-left: calc(var(--phone-depth) / -2);
-      margin-top: calc(var(--phone-r) * -0.707);
-      border-radius: calc(var(--phone-depth) * 0.28);
+      margin-top: calc(var(--phone-r) * -0.2588);
+      border-radius: calc(var(--phone-depth) * 0.22);
       background:
         linear-gradient(180deg,
           #efb6d0 0%,
-          #dfa0bc 40%,
+          #dfa0bc 42%,
           #c984a6 100%);
+      backface-visibility: visible;
+      -webkit-backface-visibility: visible;
     }
-    .phone-edge--tl {
-      left: var(--phone-r);
-      top: var(--phone-r);
+    .phone-edge--c-tl {
       transform:
-        rotateZ(-45deg)
-        rotateY(-90deg)
-        translateZ(calc(var(--phone-r) * 0.7071));
+        translate3d(calc(var(--phone-w) / -2 + var(--phone-r)), calc(var(--phone-h) / -2 + var(--phone-r)), 0)
+        rotateZ(var(--a)) rotateY(-90deg) translateZ(calc(var(--phone-r) * 0.9659));
     }
-    .phone-edge--tr {
-      left: calc(100% - var(--phone-r));
-      top: var(--phone-r);
+    .phone-edge--c-tr {
       transform:
-        rotateZ(45deg)
-        rotateY(90deg)
-        translateZ(calc(var(--phone-r) * 0.7071));
+        translate3d(calc(var(--phone-w) / 2 - var(--phone-r)), calc(var(--phone-h) / -2 + var(--phone-r)), 0)
+        rotateZ(var(--a)) rotateY(90deg) translateZ(calc(var(--phone-r) * 0.9659));
     }
-    .phone-edge--bl {
-      left: var(--phone-r);
-      top: calc(100% - var(--phone-r));
+    .phone-edge--c-bl {
       transform:
-        rotateZ(45deg)
-        rotateY(-90deg)
-        translateZ(calc(var(--phone-r) * 0.7071));
+        translate3d(calc(var(--phone-w) / -2 + var(--phone-r)), calc(var(--phone-h) / 2 - var(--phone-r)), 0)
+        rotateZ(var(--a)) rotateY(-90deg) translateZ(calc(var(--phone-r) * 0.9659));
     }
-    .phone-edge--br {
-      left: calc(100% - var(--phone-r));
-      top: calc(100% - var(--phone-r));
+    .phone-edge--c-br {
       transform:
-        rotateZ(-45deg)
-        rotateY(90deg)
-        translateZ(calc(var(--phone-r) * 0.7071));
+        translate3d(calc(var(--phone-w) / 2 - var(--phone-r)), calc(var(--phone-h) / 2 - var(--phone-r)), 0)
+        rotateZ(var(--a)) rotateY(90deg) translateZ(calc(var(--phone-r) * 0.9659));
     }
     /* Side buttons */
     .phone-edge--left::before,
@@ -928,10 +925,19 @@
               <div class="phone-edge phone-edge--right"></div>
               <div class="phone-edge phone-edge--top"></div>
               <div class="phone-edge phone-edge--bottom"></div>
-              <div class="phone-edge phone-edge--corner phone-edge--tl"></div>
-              <div class="phone-edge phone-edge--corner phone-edge--tr"></div>
-              <div class="phone-edge phone-edge--corner phone-edge--bl"></div>
-              <div class="phone-edge phone-edge--corner phone-edge--br"></div>
+              <!-- 3 chord facets / corner ≈ quarter-cylinder frame -->
+              <div class="phone-edge phone-edge--c phone-edge--c-tl" style="--a:15deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-tl" style="--a:45deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-tl" style="--a:75deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-tr" style="--a:-15deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-tr" style="--a:-45deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-tr" style="--a:-75deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-bl" style="--a:-15deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-bl" style="--a:-45deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-bl" style="--a:-75deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-br" style="--a:15deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-br" style="--a:45deg"></div>
+              <div class="phone-edge phone-edge--c phone-edge--c-br" style="--a:75deg"></div>
             </div>
           </div>
           <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel"></button>
@@ -4581,7 +4587,6 @@
       spawnSplash(state.frog.col * TILE + TILE / 2, state.frog.row * TILE + TILE / 2);
     } else if (state.drive) {
       // crash FX already spawned by triggerDriveCrash
-      state.drive.crashFlash = 0.55;
       state.drive.invuln = 1.6;
     }
     beep(90, 0.12, 'sawtooth', 0.06);
@@ -5539,29 +5544,11 @@
     }
   }
 
-  /** Big randomized blast — flashes, fireballs, pebbles, sparks, soot. */
+  /** Big randomized blast — fireballs, pebbles, sparks, soot (no screen flashes). */
   function spawnExplosion(screenX, screenY, impactDir, intensity, opts = {}) {
     const power = Math.max(0.55, intensity || 1) * (opts.power != null ? opts.power : 1);
     const scale = opts.scale != null ? opts.scale : 1;
     const drama = 0.7 + Math.random() * 0.9; // per-blast personality
-
-    // Core flash + 1–3 random secondary blooms
-    const flashN = 1 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < flashN; i++) {
-      const life = randRange(0.22, 0.48) * (i === 0 ? 1.15 : 0.85);
-      state.particles.push({
-        type: 'flash',
-        x: screenX + randRange(-18, 18) * scale,
-        y: screenY + randRange(-22, 10) * scale,
-        vx: 0,
-        vy: randRange(-20, -4),
-        life,
-        maxLife: life,
-        size: (randRange(70, 140) + power * randRange(40, 100)) * scale * drama,
-        hot: Math.random() > 0.35,
-        ring: Math.random() > 0.55
-      });
-    }
 
     // Rising fireball / ember clouds
     const fireN = Math.floor(randRange(7, 14) + power * randRange(4, 10));
@@ -5723,7 +5710,6 @@
     d.speed = Math.min(d.maxSpeed, d.speed + 8);
     d.suspVel -= 10;
     d.camShake = Math.max(d.camShake, 11);
-    d.crashFlash = Math.max(d.crashFlash, 0.4);
     d.skid = Math.max(d.skid, 0.9);
     cop.hitCd = 1.3;
     cop.ai = 'fallback';
@@ -5989,11 +5975,10 @@
       other.flyY = 8;
       other.speed = Math.max(12, d.speed * 0.7 + 24 + Math.random() * 30);
       other.z += 8;
-      // Slow-mo / punch / screen flash — vary so every wreck feels different
+      // Slow-mo / punch — vary so every wreck feels different (no full-screen flash)
       const boom = 0.75 + Math.random() * 0.85;
       d.slowMo = Math.max(d.slowMo || 0, randRange(0.45, 0.95) * boom);
       d.zoomPunch = Math.max(d.zoomPunch || 0, randRange(1.2, 2.4) * boom);
-      d.crashFlash = Math.max(d.crashFlash, randRange(0.4, 0.85) * boom);
       const hitP = projectWorld(other.x, 0, other.z, d);
       spawnExplosion(hitP.x, hitP.y - 12 * hitP.scale, dir, intensity, {
         power: boom * (0.9 + intensity * 0.35),
@@ -6023,7 +6008,6 @@
     d.suspVel -= (hard ? 18 : 7) * intensity;
     d.camShake = ((hard ? 14 : 6) + intensity * (hard ? 16 : 8)) * (0.85 + Math.random() * 0.5);
     d.crashT = (hard ? 0.9 : 0.35) * (0.9 + Math.random() * 0.35);
-    d.crashFlash = Math.max(d.crashFlash, (hard ? 0.75 : 0.38) * (0.85 + Math.random() * 0.45));
     d.skid = hard ? 1.1 : 0.45;
     d.roll = -dir * (hard ? 0.4 : 0.12);
     d.invuln = hard ? 1.4 : 0.85;
@@ -8784,53 +8768,192 @@
     }
 
     if (lm.kind === 'hancock') {
-      const top = lmTop(460);
-      const bw = 52 * s;
-      const bh = gy - top.y;
-      lmGlow(gx, top.y, bw * 1.4, bh, 'rgba(120,170,220,0.35)');
-      lmBase(bw);
-      const tW = bw * 0.42;
-      const gap = bw * 0.16;
-      const lX = gx - gap * 0.5 - tW;
-      const rX = gx + gap * 0.5;
-      ctx.fillStyle = '#222830';
-      ctx.fillRect(lX, top.y + bh * 0.06, tW, bh * 0.94);
-      ctx.fillRect(rX, top.y, tW, bh);
-      ctx.fillStyle = '#323a44';
-      for (let r = 0; r < 11; r++) {
-        const bandY = top.y + r * bh * 0.085;
-        ctx.fillRect(lX + 2 * s, bandY, tW - 4 * s, 3 * s);
-        ctx.fillRect(rX + 2 * s, bandY, tW - 4 * s, 3 * s);
-      }
-      ctx.strokeStyle = 'rgba(180,200,220,0.35)';
-      ctx.lineWidth = Math.max(1, 1.2 * s);
+      // 875 N Michigan — tapered charcoal tower, 5 X-brace tiers, twin masts
+      const bodyH = 500;
+      const mastH = 210;
+      const roof = lmTop(bodyH);
+      const mastTip = lmTop(bodyH + mastH);
+      const baseW = 68 * s;
+      const topW = baseW * 0.56;
+      const bh = Math.max(12, gy - roof.y);
+      const mastPxH = Math.max(8, roof.y - mastTip.y);
+      const widthAt = (t) => topW + (baseW - topW) * t; // t: 0 roof → 1 ground
+      const yAt = (t) => roof.y + bh * t;
+
+      lmGlow(gx, roof.y, baseW * 1.15, bh, 'rgba(80,100,130,0.28)');
+      lmBase(baseW);
+
+      // Tapered glass body
       ctx.beginPath();
-      ctx.moveTo(lX + tW * 0.2, top.y + bh * 0.15);
-      ctx.lineTo(rX + tW * 0.8, top.y + bh * 0.88);
-      ctx.moveTo(lX + tW * 0.8, top.y + bh * 0.15);
-      ctx.lineTo(rX + tW * 0.2, top.y + bh * 0.88);
-      ctx.stroke();
-      ctx.fillStyle = '#6a7078';
-      ctx.fillRect(lX + tW * 0.28, top.y - 14 * s, tW * 0.44, 12 * s);
-      ctx.fillRect(rX + tW * 0.28, top.y - 10 * s, tW * 0.44, 10 * s);
-      ctx.fillStyle = 'rgba(255,80,60,0.75)';
-      ctx.beginPath();
-      ctx.arc(gx - gap * 0.25, top.y - 16 * s, 3 * s, 0, Math.PI * 2);
-      ctx.arc(gx + gap * 0.25, top.y - 12 * s, 3 * s, 0, Math.PI * 2);
+      ctx.moveTo(gx - topW * 0.5, roof.y);
+      ctx.lineTo(gx + topW * 0.5, roof.y);
+      ctx.lineTo(gx + baseW * 0.5, gy);
+      ctx.lineTo(gx - baseW * 0.5, gy);
+      ctx.closePath();
+      const facade = ctx.createLinearGradient(gx - baseW * 0.5, roof.y, gx + baseW * 0.5, gy);
+      facade.addColorStop(0, '#1c1e24');
+      facade.addColorStop(0.45, '#14161a');
+      facade.addColorStop(1, '#0e1014');
+      ctx.fillStyle = facade;
       ctx.fill();
-      lmWinGrid(gx - gap * 0.5 - tW * 0.5, top.y + bh * 0.42, tW * 0.82, bh * 0.38, 3, 4, true);
-      lmWinGrid(gx + gap * 0.5 + tW * 0.5, top.y + bh * 0.38, tW * 0.82, bh * 0.42, 3, 4, true);
-      ctx.fillStyle = 'rgba(240,248,255,0.55)';
-      ctx.fillRect(gx - bw * 0.55, top.y + bh * 0.68, bw * 1.1, 5 * s);
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.685, bw, 2 * s);
-      ctx.fillStyle = 'rgba(100,140,180,0.35)';
-      ctx.fillRect(gx - gap * 0.5 - 2 * s, top.y + bh * 0.52, gap + 4 * s, 4 * s);
-      ctx.fillStyle = 'rgba(255,228,160,0.2)';
-      ctx.fillRect(lX - 2 * s, top.y + bh * 0.08, 2 * s, bh * 0.84);
-      ctx.fillRect(rX + tW, top.y + bh * 0.04, 2 * s, bh * 0.88);
-      lmPodiumLights(gx, gy - 2 * s, bw * 1.1);
-      lmRim(gx, top.y, bw * 1.2, bh);
+
+      // Dense dark window grid (follows taper)
+      const rows = 28;
+      const cols = 8;
+      for (let r = 0; r < rows; r++) {
+        const t0 = (r + 0.15) / rows;
+        const t1 = (r + 0.85) / rows;
+        const ym = yAt((t0 + t1) * 0.5);
+        const wm = widthAt((t0 + t1) * 0.5) * 0.88;
+        const cellH = Math.max(1, (yAt(t1) - yAt(t0)) * 0.72);
+        for (let c = 0; c < cols; c++) {
+          const wx = gx - wm * 0.5 + (c + 0.18) * (wm / cols);
+          const ww = (wm / cols) * 0.58;
+          const key = (r * 11 + c * 5 + Math.floor(lm.z)) % 9;
+          ctx.fillStyle = key === 0 ? 'rgba(255,210,140,0.28)'
+            : key === 3 ? 'rgba(70,90,120,0.55)'
+            : 'rgba(22,26,34,0.92)';
+          ctx.fillRect(wx, ym - cellH * 0.5, ww, cellH);
+        }
+      }
+
+      // Five stacked X-brace tiers + horizontals (the Hancock signature)
+      const tiers = 5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (let i = 0; i < tiers; i++) {
+        const t0 = i / tiers;
+        const t1 = (i + 1) / tiers;
+        const tm = (t0 + t1) * 0.5;
+        const y0 = yAt(t0);
+        const y1 = yAt(t1);
+        const ym = yAt(tm);
+        const inset = 0.04;
+        const l0 = gx - widthAt(t0) * (0.5 - inset);
+        const r0 = gx + widthAt(t0) * (0.5 - inset);
+        const l1 = gx - widthAt(t1) * (0.5 - inset);
+        const r1 = gx + widthAt(t1) * (0.5 - inset);
+        const lMid = gx - widthAt(tm) * (0.5 - inset);
+        const rMid = gx + widthAt(tm) * (0.5 - inset);
+
+        // Soft depth under the steel
+        ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+        ctx.lineWidth = Math.max(2.4, 3.6 * s);
+        ctx.beginPath();
+        ctx.moveTo(l0, y0); ctx.lineTo(r1, y1);
+        ctx.moveTo(r0, y0); ctx.lineTo(l1, y1);
+        ctx.stroke();
+
+        // Charcoal exoskeleton X
+        ctx.strokeStyle = '#0a0b0e';
+        ctx.lineWidth = Math.max(1.8, 2.6 * s);
+        ctx.beginPath();
+        ctx.moveTo(l0, y0); ctx.lineTo(r1, y1);
+        ctx.moveTo(r0, y0); ctx.lineTo(l1, y1);
+        ctx.stroke();
+
+        // Mid-tier + tier-floor horizontals
+        ctx.strokeStyle = '#08090c';
+        ctx.lineWidth = Math.max(1.6, 2.2 * s);
+        ctx.beginPath();
+        ctx.moveTo(lMid, ym); ctx.lineTo(rMid, ym);
+        ctx.moveTo(l1, y1); ctx.lineTo(r1, y1);
+        if (i === 0) { ctx.moveTo(l0, y0); ctx.lineTo(r0, y0); }
+        ctx.stroke();
+
+        // Thin highlight on the near edge of each brace
+        if (near > 0.15) {
+          ctx.strokeStyle = 'rgba(90,95,105,0.35)';
+          ctx.lineWidth = Math.max(0.6, 0.9 * s);
+          ctx.beginPath();
+          ctx.moveTo(l0 + s, y0); ctx.lineTo(r1 + s, y1);
+          ctx.moveTo(r0 - s, y0); ctx.lineTo(l1 - s, y1);
+          ctx.stroke();
+        }
+      }
+
+      // Corner columns following the taper
+      ctx.strokeStyle = '#050608';
+      ctx.lineWidth = Math.max(2.2, 3.4 * s);
+      ctx.beginPath();
+      ctx.moveTo(gx - topW * 0.5, roof.y);
+      ctx.lineTo(gx - baseW * 0.5, gy);
+      ctx.moveTo(gx + topW * 0.5, roof.y);
+      ctx.lineTo(gx + baseW * 0.5, gy);
+      ctx.stroke();
+
+      // Mechanical crown — twin dark bands with vertical fins
+      for (let b = 0; b < 2; b++) {
+        const t = 0.02 + b * 0.045;
+        const by = yAt(t);
+        const bw = widthAt(t);
+        const bandH = Math.max(2, bh * 0.028);
+        ctx.fillStyle = '#0a0c10';
+        ctx.fillRect(gx - bw * 0.5, by, bw, bandH);
+        ctx.fillStyle = 'rgba(50,55,62,0.55)';
+        const fins = 10;
+        for (let f = 0; f < fins; f++) {
+          ctx.fillRect(
+            gx - bw * 0.46 + f * (bw * 0.92 / fins),
+            by + bandH * 0.15,
+            Math.max(1, bw * 0.035),
+            bandH * 0.7
+          );
+        }
+      }
+
+      // Flat roof cap
+      ctx.fillStyle = '#12141a';
+      ctx.fillRect(gx - topW * 0.52, roof.y - 2 * s, topW * 1.04, 3 * s);
+
+      // Twin lattice antennas (offset toward the front corners)
+      const antSpan = topW * 0.42;
+      for (const sign of [-1, 1]) {
+        const ax = gx + sign * antSpan * 0.5;
+        const tipY = roof.y - mastPxH;
+        // Mast
+        ctx.strokeStyle = '#c8ccd2';
+        ctx.lineWidth = Math.max(1.2, 1.7 * s);
+        ctx.beginPath();
+        ctx.moveTo(ax, roof.y);
+        ctx.lineTo(ax, tipY);
+        ctx.stroke();
+        // Lattice / platforms
+        const platforms = 5;
+        for (let p = 0; p < platforms; p++) {
+          const py = roof.y - mastPxH * (0.18 + p * 0.16);
+          const pw = (3.2 - p * 0.35) * s;
+          ctx.strokeStyle = 'rgba(190,195,205,0.85)';
+          ctx.lineWidth = Math.max(0.8, s);
+          ctx.strokeRect(ax - pw, py - 1.2 * s, pw * 2, 2.4 * s);
+          ctx.beginPath();
+          ctx.moveTo(ax - pw, py);
+          ctx.lineTo(ax + pw, py);
+          ctx.stroke();
+        }
+        // Tip light
+        const blink = Math.floor(performance.now() / 480 + sign) % 2;
+        ctx.fillStyle = blink ? 'rgba(255,70,55,0.95)' : 'rgba(255,200,90,0.55)';
+        ctx.beginPath();
+        ctx.arc(ax, tipY, Math.max(1.4, 2.1 * s), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      lmPodiumLights(gx, gy - 2 * s, baseW * 1.05);
+      if (near > 0.12) {
+        ctx.save();
+        ctx.globalAlpha = near * 0.3 * fade;
+        ctx.strokeStyle = 'rgba(160,170,185,0.3)';
+        ctx.lineWidth = Math.max(1, 1.2 * s);
+        ctx.beginPath();
+        ctx.moveTo(gx - topW * 0.5, roof.y);
+        ctx.lineTo(gx + topW * 0.5, roof.y);
+        ctx.lineTo(gx + baseW * 0.5, gy);
+        ctx.lineTo(gx - baseW * 0.5, gy);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.restore();
+      }
     } else if (lm.kind === 'drake') {
       const top = lmTop(175);
       const bw = 98 * s;
@@ -9539,10 +9662,10 @@
 
     const towerKinds = ['hancock', 'tribune', 'wtplace', 'ninems', 'onemag', 'parktower', 'palmolive', 'aon', 'london'];
     if (towerKinds.includes(lm.kind)) {
-      const topH = lm.kind === 'hancock' ? 460 : lm.kind === 'aon' ? 520 : lm.kind === 'parktower' ? 360 : 280;
+      const topH = lm.kind === 'hancock' ? 500 : lm.kind === 'aon' ? 520 : lm.kind === 'parktower' ? 360 : 280;
       const topPt = lmTop(topH);
       const tbh = gy - topPt.y;
-      const tbw = (lm.kind === 'hancock' ? 52 : lm.kind === 'drake' ? 98 : 70) * s;
+      const tbw = (lm.kind === 'hancock' ? 68 : lm.kind === 'drake' ? 98 : 70) * s;
       lmLakeReflect(gx, gy, tbw, tbh);
     }
 
