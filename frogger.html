@@ -374,8 +374,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0.12em;
-      padding: 22% 10% 16%;
+      gap: 0.06em;
+      padding: 20% 8% 14%;
       pointer-events: none;
     }
     .panel-inner.drive-phase .phone-rhyme {
@@ -383,10 +383,10 @@
     }
     .phone-rhyme-word {
       font-family: var(--font-display);
-      font-size: calc(var(--phone-w) * 0.175);
+      font-size: calc(var(--phone-w) * 0.132);
       font-weight: 700;
       line-height: 1.05;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.02em;
       text-transform: lowercase;
       color: #f3e2b8;
       text-shadow: 0 0 10px rgba(240, 200, 120, 0.35);
@@ -806,8 +806,10 @@
               <div class="phone-face phone-face--front">
                 <div class="phone-face--front-screen">
                   <div class="phone-rhyme" id="phoneRhyme" aria-hidden="true">
-                    <span class="phone-rhyme-word" id="phoneRhymeA"></span>
-                    <span class="phone-rhyme-word" id="phoneRhymeB"></span>
+                    <span class="phone-rhyme-word"></span>
+                    <span class="phone-rhyme-word"></span>
+                    <span class="phone-rhyme-word"></span>
+                    <span class="phone-rhyme-word"></span>
                   </div>
                 </div>
               </div>
@@ -1609,6 +1611,11 @@
     { fx: (407 - 196) / 643, fy: (606 - 74) / 615 },
     { fx: (601 - 196) / 643, fy: (607 - 74) / 615 }
   ];
+  // Chase / traffic — rear-view Crown Vic Police Interceptor
+  const POLICE_CAR_IMG = new Image();
+  POLICE_CAR_IMG.src = 'police_car.png';
+  const POLICE_CAR_SRC = { x: 126, y: 18, w: 785, h: 641 };
+  const POLICE_CAR_BASE_W = 44;
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
@@ -1621,8 +1628,7 @@
   const nowPlayingTitle = document.getElementById('nowPlayingTitle');
   let nowPlayingTimer = null;
   const phone3dEl = document.querySelector('.phone-3d');
-  const phoneRhymeA = document.getElementById('phoneRhymeA');
-  const phoneRhymeB = document.getElementById('phoneRhymeB');
+  const phoneRhymeEls = Array.from(document.querySelectorAll('#phoneRhyme .phone-rhyme-word'));
   const PHONE_RHYMES = [
     ['night', 'light'],
     ['street', 'heat'],
@@ -2747,20 +2753,104 @@
     ['enjoy', 'deploy'],
     ['destroy', 'annoy']
   ];
-  let phoneRhymeIdx = -1;
+
+  function buildPhoneRhymeFamilies(pairs) {
+    const parent = new Map();
+    const find = (x) => {
+      let p = parent.get(x);
+      if (p == null) {
+        parent.set(x, x);
+        return x;
+      }
+      while (parent.get(p) !== p) {
+        parent.set(p, parent.get(parent.get(p)));
+        p = parent.get(p);
+      }
+      return p;
+    };
+    const unite = (a, b) => {
+      const ra = find(a);
+      const rb = find(b);
+      if (ra !== rb) parent.set(rb, ra);
+    };
+    for (const [a, b] of pairs) unite(a, b);
+    const groups = new Map();
+    for (const word of parent.keys()) {
+      const root = find(word);
+      if (!groups.has(root)) groups.set(root, []);
+      groups.get(root).push(word);
+    }
+    return Array.from(groups.values()).filter((f) => f.length >= 2);
+  }
+
+  const PHONE_RHYME_FAMILIES = buildPhoneRhymeFamilies(PHONE_RHYMES);
+  const PHONE_RHYME_FAMILIES_4 = PHONE_RHYME_FAMILIES.filter((f) => f.length >= 4);
+  const PHONE_RHYME_SCHEMES = ['AABB', 'ABAB', 'ABCB', 'AAAA'];
   let phoneRhymeFront = true;
   let phoneRhymeRaf = 0;
+  let phoneRhymeLastKey = '';
+
+  function pickFrom(arr, n) {
+    const copy = arr.slice();
+    for (let i = 0; i < n; i++) {
+      const j = i + Math.floor(Math.random() * (copy.length - i));
+      const tmp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = tmp;
+    }
+    return copy.slice(0, n);
+  }
+
+  function pickFamilies(n, minSize = 2, exclude = null) {
+    const pool = PHONE_RHYME_FAMILIES.filter((f) => f.length >= minSize && (!exclude || !exclude.has(f)));
+    return pickFrom(pool, Math.min(n, pool.length));
+  }
+
+  function setPhoneRhymeWords(words) {
+    for (let i = 0; i < phoneRhymeEls.length; i++) {
+      phoneRhymeEls[i].textContent = words[i] || '';
+    }
+  }
 
   function pickPhoneRhyme() {
-    if (!phoneRhymeA || !phoneRhymeB || !PHONE_RHYMES.length) return;
-    let next = Math.floor(Math.random() * PHONE_RHYMES.length);
-    if (PHONE_RHYMES.length > 1 && next === phoneRhymeIdx) {
-      next = (next + 1) % PHONE_RHYMES.length;
+    if (phoneRhymeEls.length < 4 || PHONE_RHYME_FAMILIES.length < 2) return;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      let scheme = PHONE_RHYME_SCHEMES[Math.floor(Math.random() * PHONE_RHYME_SCHEMES.length)];
+      if (scheme === 'AAAA' && !PHONE_RHYME_FAMILIES_4.length) scheme = 'AABB';
+
+      let words = null;
+      if (scheme === 'AAAA') {
+        const [fam] = pickFrom(PHONE_RHYME_FAMILIES_4, 1);
+        if (!fam) continue;
+        words = pickFrom(fam, 4);
+      } else if (scheme === 'AABB' || scheme === 'ABAB') {
+        const [fa, fb] = pickFamilies(2, 2);
+        if (!fa || !fb) continue;
+        const [a1, a2] = pickFrom(fa, 2);
+        const [b1, b2] = pickFrom(fb, 2);
+        words = scheme === 'AABB' ? [a1, a2, b1, b2] : [a1, b1, a2, b2];
+      } else {
+        // ABCB — only the 2nd/4th lines rhyme
+        const [fb] = pickFamilies(1, 2);
+        if (!fb) continue;
+        const used = new Set([fb]);
+        const [fa] = pickFamilies(1, 2, used);
+        if (!fa) continue;
+        used.add(fa);
+        const [fc] = pickFamilies(1, 2, used);
+        if (!fc) continue;
+        const [b1, b2] = pickFrom(fb, 2);
+        const [a] = pickFrom(fa, 1);
+        const [c] = pickFrom(fc, 1);
+        words = [a, b1, c, b2];
+      }
+
+      const key = `${scheme}:${words.join('|')}`;
+      if (key === phoneRhymeLastKey) continue;
+      phoneRhymeLastKey = key;
+      setPhoneRhymeWords(words);
+      return;
     }
-    phoneRhymeIdx = next;
-    const [a, b] = PHONE_RHYMES[next];
-    phoneRhymeA.textContent = a;
-    phoneRhymeB.textContent = b;
   }
 
   function phoneYawRad() {
@@ -2787,8 +2877,8 @@
   }
 
   function startPhoneRhymeLoop() {
-    if (!phoneRhymeA || phoneRhymeRaf) return;
-    if (!phoneRhymeA.textContent) pickPhoneRhyme();
+    if (!phoneRhymeEls.length || phoneRhymeRaf) return;
+    if (!phoneRhymeEls[0].textContent) pickPhoneRhyme();
     const tick = () => {
       syncPhoneRhyme();
       phoneRhymeRaf = requestAnimationFrame(tick);
@@ -7935,7 +8025,7 @@
     }
   }
 
-  // Player car — bronze X5 sprite with chase-cam lean / suspension.
+  // Player car — copper X5 sprite with chase-cam lean / suspension.
   function drawPlayerCar(x, y, scale, opts = {}) {
     const yaw = opts.yaw || 0;
     const pitch = opts.pitch || 0;
@@ -7969,6 +8059,44 @@
     ctx.drawImage(
       PLAYER_CAR_IMG,
       PLAYER_CAR_SRC.x, PLAYER_CAR_SRC.y, PLAYER_CAR_SRC.w, PLAYER_CAR_SRC.h,
+      -drawW / 2, -drawH + 2 * s, drawW, drawH
+    );
+    ctx.restore();
+  }
+
+  // Police Interceptor sprite — chaser + traffic cops (low-poly fallback if not loaded / smashed).
+  function drawPoliceCar(x, y, scale, opts = {}) {
+    const yaw = opts.yaw || 0;
+    const pitch = opts.pitch || 0;
+    const roll = opts.roll || 0;
+    if (opts.smashed) {
+      drawLowPolyCar(x, y, scale, 'police', opts);
+      return;
+    }
+    const s = Math.max(0.12, scale);
+    const bodyScale = opts.bodyScale || 1;
+    const drawW = POLICE_CAR_BASE_W * s * bodyScale;
+    const drawH = drawW * (POLICE_CAR_SRC.h / POLICE_CAR_SRC.w);
+    const ready = POLICE_CAR_IMG.complete && POLICE_CAR_IMG.naturalWidth > 0;
+
+    if (!ready) {
+      drawLowPolyCar(x, y, scale, 'police', opts);
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(roll + yaw * 0.38);
+    ctx.transform(1, pitch * 0.12, 0, 1, 0, 0);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.34)';
+    ctx.beginPath();
+    ctx.ellipse(0, 3 * s, drawW * 0.44, drawH * 0.09, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.drawImage(
+      POLICE_CAR_IMG,
+      POLICE_CAR_SRC.x, POLICE_CAR_SRC.y, POLICE_CAR_SRC.w, POLICE_CAR_SRC.h,
       -drawW / 2, -drawH + 2 * s, drawW, drawH
     );
     ctx.restore();
@@ -10383,7 +10511,7 @@
     glow.addColorStop(1, `rgba(${col},0)`);
     ctx.fillStyle = glow;
     ctx.fillRect(p.x - gw, cy - gw, gw * 2, gw * 2);
-    drawLowPolyCar(p.x, p.y + (cop.bob || 0) * p.scale, Math.min(1.35, p.scale * 0.55), 'police', {
+    drawPoliceCar(p.x, p.y + (cop.bob || 0) * p.scale, Math.min(1.35, p.scale * 0.55), {
       yaw: cop.yaw || 0,
       pitch: cop.pitch || 0,
       color: cop.color,
@@ -10591,7 +10719,7 @@
       const carFade = Math.max(0, Math.min(1, (1250 - p.relZ) / 280));
       ctx.save();
       ctx.globalAlpha = carFade;
-      drawLowPolyCar(p.x, p.y + (car.bob || 0) * p.scale, Math.min(1.35, p.scale * 0.55), car.kind, {
+      const carOpts = {
         yaw: car.yaw || 0,
         roll: car.smashed ? (car.roll || 0) : 0,
         pitch: car.smashed ? Math.min(0.85, fly * 0.05) : (car.pitch || 0),
@@ -10603,7 +10731,13 @@
         rear: car.rear,
         wheelSpin: car.wheelSpin || 0,
         trim: car.trim
-      });
+      };
+      const carScale = Math.min(1.35, p.scale * 0.55);
+      if (car.kind === 'police') {
+        drawPoliceCar(p.x, p.y + (car.bob || 0) * p.scale, carScale, carOpts);
+      } else {
+        drawLowPolyCar(p.x, p.y + (car.bob || 0) * p.scale, carScale, car.kind, carOpts);
+      }
       // Taillight glow on live cars ahead
       if (!car.smashed && car.z > d.z + 40) {
         const gw = 18 * p.scale;
