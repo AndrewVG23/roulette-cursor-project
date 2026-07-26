@@ -213,8 +213,8 @@
       display: grid;
       place-items: center;
       transform-style: preserve-3d;
-      /* Counter-tilt toward the camera so faces read as disks, not rims */
-      transform: translateZ(18px) rotateX(calc(var(--desk-tilt) * -0.72));
+      /* Sit above the velvet so a Y-flip never swings through the table */
+      transform: translateZ(36px) rotateX(calc(var(--desk-tilt) * -0.72));
     }
 
     /* Flat, camera-facing hit plate — 3D coin faces/edges miss clicks mid-spin */
@@ -243,7 +243,7 @@
       top: 58%;
       width: 88%;
       height: 42%;
-      transform: translateX(-50%) translateZ(-10px);
+      transform: translateX(-50%) translateZ(-28px);
       border-radius: 50%;
       background: radial-gradient(ellipse, rgba(0, 0, 0, 0.5), transparent 70%);
       pointer-events: none;
@@ -353,7 +353,7 @@
       gap: 2px;
       margin-top: 10px;
       text-align: center;
-      transform: translateZ(18px) rotateX(calc(var(--desk-tilt) * -0.85));
+      transform: translateZ(36px) rotateX(calc(var(--desk-tilt) * -0.85));
       transform-style: preserve-3d;
     }
     .tag .denom {
@@ -605,6 +605,8 @@
     const showBackFirst = Math.random() < 0.5;
     let flipY = showBackFirst ? 180 : 0;
     let hoverZ = 0;
+    let liftZ = 0;
+    let settleTimer = 0;
     const EDGE_N = 36;
 
     card.innerHTML = [
@@ -631,7 +633,7 @@
     const askBtn = card.querySelector('.ask');
     function applySpin(animate) {
       if (!animate) coin.style.transition = 'none';
-      coin.style.transform = `rotateZ(${yaw}deg) rotateY(${flipY}deg) translateZ(${hoverZ}px)`;
+      coin.style.transform = `rotateZ(${yaw}deg) rotateY(${flipY}deg) translateZ(${hoverZ + liftZ}px)`;
       if (!animate) {
         void coin.offsetWidth;
         coin.style.transition = '';
@@ -641,7 +643,15 @@
 
     const flip = () => {
       flipY += 180;
+      // Lift by ~radius so the spinning disk clears the velvet mid-flip
+      liftZ = Math.ceil(coin.offsetWidth * 0.55) + 8;
       applySpin(true);
+      window.clearTimeout(settleTimer);
+      const settleMs = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 20 : 720;
+      settleTimer = window.setTimeout(() => {
+        liftZ = 0;
+        applySpin(true);
+      }, settleMs);
     };
     hit.addEventListener('click', flip);
     card.addEventListener('mouseenter', () => {
