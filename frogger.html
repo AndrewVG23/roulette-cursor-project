@@ -1599,15 +1599,15 @@
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  // Player ride — rear-view bronze BMW X5 sprite (transparent studio cutout)
+  // Player ride — rear-view copper/patina BMW X5 sprite (transparent studio cutout)
   const PLAYER_CAR_IMG = new Image();
-  PLAYER_CAR_IMG.src = 'bronze_car.png';
-  const PLAYER_CAR_SRC = { x: 140, y: 34, w: 940, h: 848 };
-  const PLAYER_CAR_BASE_W = 62;
+  PLAYER_CAR_IMG.src = 'copper_car.png';
+  const PLAYER_CAR_SRC = { x: 196, y: 74, w: 643, h: 615 };
+  const PLAYER_CAR_BASE_W = 31;
   // Dual exhaust tip centers as fractions of the cropped sprite
   const PLAYER_CAR_TIPS = [
-    { fx: (298 - 140) / 940, fy: (779 - 34) / 848 },
-    { fx: (934 - 140) / 940, fy: (782 - 34) / 848 }
+    { fx: (407 - 196) / 643, fy: (606 - 74) / 615 },
+    { fx: (601 - 196) / 643, fy: (607 - 74) / 615 }
   ];
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
@@ -6855,8 +6855,8 @@
         player: true,
         yaw, pitch, roll,
         wheelSpin: opts.wheelSpin || 0,
-        color: '#8a6a45',
-        trim: '#3a2a18'
+        color: '#8a4a32',
+        trim: '#3a2018'
       });
       return;
     }
@@ -9529,7 +9529,7 @@
     // Chase cruiser ahead of the player draws first (farther from camera)
     if (d.chaser && d.chaser.z >= d.z + 14) drawChaserCar(d);
 
-    // Player car — bronze X5 on the road plane with suspension compression
+    // Player car — copper X5 on the road plane with suspension compression
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const carZ = d.z + 14;
     const ground = projectWorld(d.playerX, 0, carZ, d);
