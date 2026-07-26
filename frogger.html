@@ -2848,13 +2848,13 @@
   let phoneRhymeFront = true;
   let phoneRhymeRaf = 0;
   let phoneRhymeLastKey = '';
-  // Base spin = one turn / 14s. Slow only when the screen is mostly face-on;
+  // Base spin = one turn / 14s. Slow while the screen is still readable face-on;
   // otherwise a bit quicker than the old 1.5× back rate.
   const PHONE_SPIN_BASE_DPS = 360 / 14;
   const PHONE_SPIN_SLOW_DPS = PHONE_SPIN_BASE_DPS * 0.5;
   const PHONE_SPIN_FAST_DPS = PHONE_SPIN_BASE_DPS * 1.85;
-  // cos(yaw) threshold ≈ ±39° from dead-on before it counts as "facing forward"
-  const PHONE_SPIN_FACE_ON = 0.78;
+  // cos(yaw) threshold ≈ ±75° from dead-on — linger slow past the perfect front
+  const PHONE_SPIN_FACE_ON = 0.26;
   let phoneYawDeg = 0;
   let phoneSpinRate = PHONE_SPIN_FAST_DPS;
   let phoneSpinLastTs = 0;
@@ -2964,8 +2964,9 @@
     if (!phoneReduceMotion.matches && !phoneSpinPaused) {
       const faceOn = Math.cos(phoneYawRad()) > PHONE_SPIN_FACE_ON;
       const target = faceOn ? PHONE_SPIN_SLOW_DPS : PHONE_SPIN_FAST_DPS;
-      // Ease into the new rate so the edge handoff doesn't hitch
-      phoneSpinRate += (target - phoneSpinRate) * Math.min(1, dt * 5);
+      // Drop into slow quickly; ease back up more slowly so the front lingers
+      const ease = target < phoneSpinRate ? 5 : 1.6;
+      phoneSpinRate += (target - phoneSpinRate) * Math.min(1, dt * ease);
       phoneYawDeg = (phoneYawDeg + phoneSpinRate * dt) % 360;
       if (phoneYawDeg < 0) phoneYawDeg += 360;
       applyPhoneYaw();
@@ -4405,13 +4406,19 @@
     if (state.phase !== 'drive' || !state.drive) return;
     if (state.replay.sharing || state.replay.exporting) return;
     if (state.replay.playing) {
-      endInstantReplay();
+      // Replay label stays "Replay" — second tap restarts the clip instead of acting like Skip
+      state.replay.frameIdx = 0;
+      state.replay.elapsed = 0;
+      if (state.replay.clip?.length) applyReplayFrame(state.replay.clip[0]);
+      beep(660, 0.05, 'square', 0.03);
       return;
     }
     if (state.replay.buffer.length < 2) {
       beep(220, 0.08, 'triangle', 0.025);
       return;
     }
+    // Phone must stay open so Share can appear with the replay
+    if (!isPhoneOpen()) setHelpOpen(true);
     state.replay.savedLive = captureLiveCheckpoint();
     state.replay.clip = state.replay.buffer.map(f => structuredClone(f));
     state.replay.frameIdx = 0;
@@ -11203,11 +11210,20 @@
     e.stopPropagation();
     toggleHelp();
   });
+  // Keep phone open when using Replay / Share above it
+  document.getElementById('phoneActions')?.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+  });
+  document.getElementById('phoneActions')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
   document.addEventListener('pointerdown', (e) => {
     if (!isHelpUiOpen()) return;
     if (helpBtn.contains(e.target)) return;
     if (state.phase === 'drive') {
       if (mapNav?.contains(e.target)) return;
+      // Phone chrome + Replay/Share sit in phone-ctl — don't treat as dismiss
+      if (phoneCtlEl?.contains(e.target)) return;
     } else if (helpPanel.contains(e.target)) {
       return;
     }
