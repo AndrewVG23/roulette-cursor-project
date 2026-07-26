@@ -579,13 +579,13 @@
     .panel-inner.drive-phase .phone-ctl {
       left: max(12px, env(safe-area-inset-left, 0px));
       bottom: max(14px, env(safe-area-inset-bottom, 0px));
-      width: 84px;
-      height: calc(78px * 1024 / 540);
+      width: 126px;
+      height: calc(117px * 1024 / 540);
     }
     /* Now-playing chip — sits just off the phone when the drive starts */
     .now-playing {
       position: absolute;
-      left: calc(max(12px, env(safe-area-inset-left, 0px)) + 92px);
+      left: calc(max(12px, env(safe-area-inset-left, 0px)) + 131px);
       bottom: max(34px, calc(env(safe-area-inset-bottom, 0px) + 28px));
       z-index: 6;
       display: none;
@@ -637,8 +637,8 @@
       border-radius: 0;
     }
     .panel-inner.drive-phase .phone-scene {
-      --phone-w: 78px;
-      --phone-depth: 12px;
+      --phone-w: 117px;
+      --phone-depth: 18px;
       --phone-screen-inset: 2.8%;
       width: var(--phone-w);
       height: var(--phone-h);
@@ -675,7 +675,7 @@
       gap: 10px;
     }
     .panel-inner.drive-phase .help-panel {
-      bottom: calc(162px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(236px + env(safe-area-inset-bottom, 0px));
     }
     .help-panel[hidden] { display: none; }
     .help-panel .hint {
@@ -802,21 +802,21 @@
       }
       .phone-ctl { width: 40px; height: 40px; }
       .panel-inner.drive-phase .phone-ctl {
-        width: 72px;
-        height: calc(66px * 1024 / 540);
+        width: 108px;
+        height: calc(99px * 1024 / 540);
       }
       .panel-inner.drive-phase .phone-scene {
-        --phone-w: 66px;
-        --phone-depth: 10px;
+        --phone-w: 99px;
+        --phone-depth: 15px;
         width: var(--phone-w);
         height: var(--phone-h);
       }
       .panel-inner.drive-phase .now-playing {
-        left: calc(max(12px, env(safe-area-inset-left, 0px)) + 78px);
+        left: calc(max(12px, env(safe-area-inset-left, 0px)) + 111px);
       }
       .help-panel { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
       .panel-inner.drive-phase .help-panel {
-        bottom: calc(138px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(201px + env(safe-area-inset-bottom, 0px));
       }
     }
   </style>
