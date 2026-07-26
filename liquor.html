@@ -557,7 +557,7 @@
   function stopMusic() { music.on = false; }
 
   // ---------------------------------------------------------------- levels
-  // Grid chars: . empty | # floor | X crate | B brick | ? coin block | M malt block
+  // Grid chars: . empty | # floor | X crate | B brick | ? beer case | M malt block
   // U used block | = shelf | C cooler | o coin | F flagpole | D door
   const SOLID = { '#': 1, X: 1, B: 1, '?': 1, M: 1, U: 1, '=': 1, C: 1 };
 
@@ -866,16 +866,17 @@
   function bumpBlock(tx, ty) {
     const ch = tileAt(tx, ty);
     const p = G.player;
-    if (ch === '?' || ch === 'M') {
+    if (ch === '?') {
+      // Beer cases never empty — each head-bonk advances the game calendar a week.
+      G.bumps.push({ tx, ty, t: 0.18 });
+      sfx.bump();
+      if (window.Wallet && typeof Wallet.advanceWeek === 'function') Wallet.advanceWeek(1);
+      addFloat(tx * TILE + 2, ty * TILE - 10, '+1 WK', '#ffd23f');
+    } else if (ch === 'M') {
       setTile(tx, ty, 'U');
       G.bumps.push({ tx, ty, t: 0.18 });
-      if (ch === 'M') {
-        G.items.push({ type: 'forty', x: tx * TILE + 2, y: ty * TILE, vx: 0, vy: 0, w: 12, h: 14, rise: 14, dir: 1 });
-        sfx.power();
-      } else {
-        G.pops.push({ x: tx * TILE + 4, y: ty * TILE - 10, vy: -170, t: 0.5 });
-        collectCoin(tx * TILE + 4, ty * TILE - 12);
-      }
+      G.items.push({ type: 'forty', x: tx * TILE + 2, y: ty * TILE, vx: 0, vy: 0, w: 12, h: 14, rise: 14, dir: 1 });
+      sfx.power();
     } else if (ch === 'B') {
       if (p.big) {
         setTile(tx, ty, '.');
@@ -1681,7 +1682,34 @@
         ctx.fillRect(sx, sy, TILE, 1);
         break;
       }
-      case '?': case 'M': {
+      case '?': {
+        // 24-pack beer case — cardboard sleeve, bottle-cap row on top
+        ctx.fillStyle = '#8a6230';
+        ctx.fillRect(sx, sy, TILE, TILE);
+        ctx.fillStyle = '#6e4a1c';
+        ctx.fillRect(sx, sy + 11, TILE, 5);
+        ctx.fillStyle = '#a87838';
+        ctx.fillRect(sx + 1, sy + 1, TILE - 2, 9);
+        ctx.fillStyle = '#3a2810';
+        ctx.fillRect(sx + 1, sy + 9, TILE - 2, 2);
+        // bottle crowns peeking out
+        for (let i = 0; i < 4; i++) {
+          const bx = sx + 2 + i * 3.5;
+          ctx.fillStyle = i % 2 ? '#2a6a28' : '#1e4a1c';
+          ctx.fillRect(bx, sy + 2, 3, 5);
+          ctx.fillStyle = '#c8a040';
+          ctx.fillRect(bx, sy + 1, 3, 2);
+        }
+        ctx.strokeStyle = '#4a3010';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(sx + 0.5, sy + 0.5, TILE - 1, TILE - 1);
+        ctx.fillStyle = '#f0e0a0';
+        ctx.font = '4px "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('24', sx + 8, sy + 15);
+        break;
+      }
+      case 'M': {
         const blink = Math.floor(G.anim * 4) % 4 === 3;
         ctx.fillStyle = blink ? '#fcd868' : '#f8b800';
         ctx.fillRect(sx, sy, TILE, TILE);

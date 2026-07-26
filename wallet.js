@@ -71,6 +71,7 @@
           gold: Math.max(0, Math.round((Number(s.gold) || 0) * 100) / 100),
           index: Math.max(1, Number(s.index) || 1),
           visits: Math.max(0, Math.round(Number(s.visits) || 0)),
+          weeks: Math.max(0, Math.round(Number(s.weeks) || 0)),
           fuel: Math.round(clampFuel(s.fuel ?? GAS_TANK_GAL) * 100) / 100
         };
       }
@@ -94,7 +95,7 @@
       const legacy = Number(global.localStorage.getItem(LEGACY_PURSE_KEY));
       if (Number.isFinite(legacy) && legacy >= 0) cash = Math.round(legacy);
     }
-    return { digital: DEFAULT_DIGITAL, cash, gold: 0, index: 1, visits: 0, fuel: GAS_TANK_GAL };
+    return { digital: DEFAULT_DIGITAL, cash, gold: 0, index: 1, visits: 0, weeks: 0, fuel: GAS_TANK_GAL };
   }
 
   let state = loadState();
@@ -116,6 +117,7 @@
       gold: state.gold,
       index: state.index,
       visits: state.visits,
+      weeks: state.weeks || 0,
       fuel: state.fuel
     };
   }
@@ -238,8 +240,12 @@
   }
   function visits() { return state.visits; }
 
+  function totalWeeks() {
+    return state.visits * VISIT_WEEKS_ADVANCE + (state.weeks || 0);
+  }
+
   function gameDate() {
-    const ms = GAME_START_MS + state.visits * VISIT_WEEKS_ADVANCE * MS_PER_WEEK;
+    const ms = GAME_START_MS + totalWeeks() * MS_PER_WEEK;
     const d = new Date(ms);
     return {
       year: d.getUTCFullYear(),
@@ -249,8 +255,23 @@
   }
 
   function formatGameDate() {
-    const { year, month } = gameDate();
-    return `${MONTH_NAMES[month]} ${year}`;
+    const { year, month, day } = gameDate();
+    return `${MONTH_NAMES[month]} ${day}, ${year}`;
+  }
+
+  // Liquor beer-case bumps, etc. — moves the calendar without gas inflation.
+  function advanceWeek(n = 1) {
+    const steps = Math.max(0, Math.round(Number(n) || 0));
+    if (!steps) return { weeks: state.weeks || 0, date: formatGameDate() };
+    state.weeks = Math.max(0, (state.weeks || 0) + steps);
+    persist();
+    const cal = document.getElementById('gameCalendar');
+    if (cal) {
+      cal.classList.remove('is-tick');
+      void cal.offsetWidth;
+      cal.classList.add('is-tick');
+    }
+    return { weeks: state.weeks, date: formatGameDate(), gameDate: gameDate() };
   }
 
   function nextVisitRate() {
@@ -314,6 +335,7 @@
 
   function resetTimeline() {
     state.visits = 0;
+    state.weeks = 0;
     state.index = 1;
     state.digital = DEFAULT_DIGITAL;
     state.cash = 0;
@@ -633,6 +655,7 @@
     index, gasPrice, fuel, setFuel, addFuel, gasFillGallons, gasFillCost, buyGasFill,
     priceMult, tipMult, wageMult, goldScaled, debtCostMult, debtScaled, debtPriceMult, debtPriceScaled,
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
+    weeks: () => state.weeks || 0, totalWeeks, advanceWeek,
     gameDate, formatGameDate, GAME_START_YEAR,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing

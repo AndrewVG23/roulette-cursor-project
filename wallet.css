@@ -62,7 +62,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-width: 66px;
+  min-width: 84px;
   padding: 9px 11px 10px;
   border-radius: 14px;
   text-align: center;
@@ -92,13 +92,23 @@
 
 .game-calendar-date {
   font-family: 'Zodiak', Georgia, serif;
-  font-size: clamp(0.68rem, 0.64rem + 0.14vw, 0.8rem);
+  font-size: clamp(0.62rem, 0.58rem + 0.14vw, 0.74rem);
   font-weight: 700;
   color: var(--purse-gold-bright);
   font-variant-numeric: tabular-nums lining-nums;
   line-height: 1.1;
   white-space: nowrap;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.game-calendar.is-tick {
+  animation: calendar-tick 420ms ease;
+}
+
+@keyframes calendar-tick {
+  0% { transform: scale(1); filter: none; }
+  35% { transform: scale(1.06); filter: brightness(1.25); }
+  100% { transform: scale(1); filter: none; }
 }
 
 .purse-hud {
@@ -502,7 +512,7 @@ body.has-game-logo > .app > .controls {
   }
 
   .game-calendar {
-    min-width: 48px;
+    min-width: 72px;
     padding: 6px 7px 7px;
     border-radius: 10px;
     gap: 3px;
