@@ -5550,8 +5550,8 @@
     const scale = opts.scale != null ? opts.scale : 1;
     const drama = 0.7 + Math.random() * 0.9; // per-blast personality
 
-    // Rising fireball / ember clouds
-    const fireN = Math.floor(randRange(7, 14) + power * randRange(4, 10));
+    // Rising fireball / ember clouds — bright but translucent
+    const fireN = Math.floor(randRange(8, 16) + power * randRange(5, 12));
     for (let i = 0; i < fireN; i++) {
       const life = randRange(0.28, 0.85);
       state.particles.push({
@@ -5562,26 +5562,28 @@
         vy: -randRange(50, 160) * (0.7 + power * 0.4),
         life,
         maxLife: life + randRange(0.1, 0.4),
-        size: (randRange(12, 28) + power * randRange(8, 22)) * scale,
+        size: (randRange(10, 22) + power * randRange(6, 16)) * scale,
         color: FIREBALL_COLORS[Math.floor(Math.random() * FIREBALL_COLORS.length)],
-        fireball: true
+        fireball: true,
+        soft: randRange(0.28, 0.42)
       });
     }
 
-    // Dark soot plumes (some blasts get extra)
-    const sootN = Math.floor(randRange(5, 11) + (Math.random() > 0.4 ? power * 4 : 0));
+    // Lots of soft smoke — more particles, lower opacity so the road stays readable
+    const sootN = Math.floor(randRange(18, 34) + power * randRange(10, 22));
     for (let i = 0; i < sootN; i++) {
-      const life = randRange(0.6, 1.5);
+      const life = randRange(0.7, 1.8);
       state.particles.push({
         type: 'smoke',
-        x: screenX + randRange(-24, 24) * scale,
-        y: screenY + randRange(-6, 14) * scale,
-        vx: randRange(-50, 50) + impactDir * randRange(-10, 40),
-        vy: -randRange(18, 70),
+        x: screenX + randRange(-36, 36) * scale,
+        y: screenY + randRange(-10, 18) * scale,
+        vx: randRange(-55, 55) + impactDir * randRange(-15, 45),
+        vy: -randRange(22, 85),
         life,
-        maxLife: life + 0.3,
-        size: (randRange(14, 36) + power * randRange(6, 18)) * scale,
-        color: Math.random() > 0.5 ? '#2a2620' : '#3a3530'
+        maxLife: life + 0.4,
+        size: (randRange(16, 42) + power * randRange(8, 20)) * scale,
+        color: Math.random() > 0.5 ? '#7a7468' : '#9a9286',
+        soft: randRange(0.12, 0.22)
       });
     }
 
@@ -10450,11 +10452,12 @@
           ctx.ellipse(p.x, p.y, r * (1.05 + (1 - a) * 0.25), r * (0.85 + (1 - a) * 0.2), 0, 0, Math.PI * 2);
           ctx.fill();
         } else if (p.fireball) {
+          const soft = p.soft != null ? p.soft : 0.35;
           const g = ctx.createRadialGradient(p.x, p.y - r * 0.15, r * 0.05, p.x, p.y, r);
-          const baseA = a * 0.85;
+          const baseA = a * soft;
           g.addColorStop(0, `rgba(255,245,200,${baseA})`);
-          g.addColorStop(0.25, `rgba(255,170,60,${baseA * 0.85})`);
-          g.addColorStop(0.55, `rgba(230,70,20,${baseA * 0.45})`);
+          g.addColorStop(0.25, `rgba(255,170,60,${baseA * 0.75})`);
+          g.addColorStop(0.55, `rgba(230,70,20,${baseA * 0.35})`);
           g.addColorStop(1, 'rgba(40,10,5,0)');
           ctx.globalAlpha = 1;
           ctx.fillStyle = g;
@@ -10462,10 +10465,18 @@
           ctx.ellipse(p.x, p.y, r * (1.1 + (1 - a) * 0.35), r * (0.9 + (1 - a) * 0.25), 0, 0, Math.PI * 2);
           ctx.fill();
         } else {
-          ctx.globalAlpha = a * 0.4;
-          ctx.fillStyle = p.color || '#6a6a72';
+          // Soft translucent plume — volume without blotting out the scene
+          const soft = p.soft != null ? p.soft : 0.18;
+          const g = ctx.createRadialGradient(p.x - r * 0.08, p.y - r * 0.12, r * 0.05, p.x, p.y, r);
+          const baseA = a * soft;
+          g.addColorStop(0, `rgba(120,114,104,${baseA * 1.35})`);
+          g.addColorStop(0.4, `rgba(100,94,86,${baseA * 0.7})`);
+          g.addColorStop(0.75, `rgba(80,76,70,${baseA * 0.28})`);
+          g.addColorStop(1, 'rgba(60,56,50,0)');
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.ellipse(p.x, p.y, r * (1.15 + (1 - a) * 0.4), r * (0.9 + (1 - a) * 0.3), 0, 0, Math.PI * 2);
           ctx.fill();
         }
       } else if (p.type === 'flash') {
@@ -11298,12 +11309,8 @@
     }
 
     if (d.crashFlash > 0) {
-      ctx.fillStyle = `rgba(192,57,43,${d.crashFlash * 0.5})`;
-      ctx.fillRect(0, 0, W, H);
-      const g = ctx.createRadialGradient(W / 2, H * 0.62, 30, W / 2, H / 2, W * 0.75);
-      g.addColorStop(0, 'rgba(255,200,80,0.12)');
-      g.addColorStop(1, `rgba(0,0,0,${d.crashFlash * 0.55})`);
-      ctx.fillStyle = g;
+      // Keep any leftover flash very light so wrecks don't black out the road
+      ctx.fillStyle = `rgba(192,57,43,${d.crashFlash * 0.12})`;
       ctx.fillRect(0, 0, W, H);
     }
 
