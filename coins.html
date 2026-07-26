@@ -235,7 +235,8 @@
     .coin {
       --coin-d: 120px;
       --coin-depth: 10px;
-      --edge-n: 28;
+      --edge-n: 36;
+      --edge-seg: calc(3.14159 * var(--coin-d) / var(--edge-n) + 0.8px);
       position: relative;
       width: var(--coin-d);
       height: var(--coin-d);
@@ -295,25 +296,31 @@
       pointer-events: none;
     }
 
-    /* Rim strips = coin thickness only (not the full diameter — that hid the faces) */
+    /*
+      Rim = cylinder around Z (same axis as the faces).
+      Width = thickness → becomes Z after rotateY(90); height = arc segment.
+    */
     .coin-edge {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: calc(3.14159 * var(--coin-d) / var(--edge-n) + 0.6px);
-      height: var(--coin-depth);
-      margin-top: calc(var(--coin-depth) / -2);
-      margin-left: calc(3.14159 * var(--coin-d) / var(--edge-n) / -2);
+      width: var(--coin-depth);
+      height: var(--edge-seg);
+      margin-top: calc(var(--edge-seg) / -2);
+      margin-left: calc(var(--coin-depth) / -2);
       background:
         linear-gradient(
-          180deg,
+          90deg,
           #f0d078 0%,
           #c9a24a 22%,
           #8a6a28 48%,
           #5a4218 72%,
           #d4b56a 100%
         );
-      transform: rotateY(var(--a)) translateZ(calc(var(--coin-d) / 2));
+      transform:
+        rotateZ(var(--a))
+        translateX(calc(var(--coin-d) / 2 - 0.5px))
+        rotateY(90deg);
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
     }
@@ -550,7 +557,7 @@
     const showBackFirst = Math.random() < 0.5;
     let flipY = showBackFirst ? 180 : 0;
     let hoverZ = 0;
-    const EDGE_N = 28;
+    const EDGE_N = 36;
 
     card.innerHTML = [
       '<div class="coin-stage">',

@@ -366,6 +366,32 @@
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.28);
     }
+    .phone-rhyme {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.12em;
+      padding: 22% 10% 16%;
+      pointer-events: none;
+    }
+    .panel-inner.drive-phase .phone-rhyme {
+      display: flex;
+    }
+    .phone-rhyme-word {
+      font-family: var(--font-display);
+      font-size: calc(var(--phone-w) * 0.175);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: 0.03em;
+      text-transform: lowercase;
+      color: #f3e2b8;
+      text-shadow: 0 0 10px rgba(240, 200, 120, 0.35);
+      white-space: nowrap;
+    }
     .phone-face--back {
       transform: rotateY(180deg) translateZ(calc(var(--phone-depth) / 2));
       background: #e8b4cc;
@@ -778,7 +804,12 @@
           <div class="phone-scene" aria-hidden="true">
             <div class="phone-3d">
               <div class="phone-face phone-face--front">
-                <div class="phone-face--front-screen"></div>
+                <div class="phone-face--front-screen">
+                  <div class="phone-rhyme" id="phoneRhyme" aria-hidden="true">
+                    <span class="phone-rhyme-word" id="phoneRhymeA"></span>
+                    <span class="phone-rhyme-word" id="phoneRhymeB"></span>
+                  </div>
+                </div>
               </div>
               <div class="phone-face phone-face--back">
                 <img src="assets/iphone16-back.png" alt="" width="540" height="1024" draggable="false">
@@ -1568,6 +1599,15 @@
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+  // Player ride — rear-view bronze BMW X5 sprite (transparent studio cutout)
+  const PLAYER_CAR_IMG = new Image();
+  PLAYER_CAR_IMG.src = 'bronze_car.png';
+  const PLAYER_CAR_SRC = { x: 140, y: 34, w: 940, h: 848 };
+  // Dual exhaust tip centers as fractions of the cropped sprite
+  const PLAYER_CAR_TIPS = [
+    { fx: (298 - 140) / 940, fy: (779 - 34) / 848 },
+    { fx: (934 - 140) / 940, fy: (782 - 34) / 848 }
+  ];
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
@@ -1579,6 +1619,95 @@
   const nowPlayingEl = document.getElementById('nowPlaying');
   const nowPlayingTitle = document.getElementById('nowPlayingTitle');
   let nowPlayingTimer = null;
+  const phone3dEl = document.querySelector('.phone-3d');
+  const phoneRhymeA = document.getElementById('phoneRhymeA');
+  const phoneRhymeB = document.getElementById('phoneRhymeB');
+  const PHONE_RHYMES = [
+    ['night', 'light'],
+    ['street', 'heat'],
+    ['gold', 'bold'],
+    ['cash', 'flash'],
+    ['ride', 'tide'],
+    ['glow', 'flow'],
+    ['spin', 'win'],
+    ['dark', 'spark'],
+    ['fast', 'blast'],
+    ['lane', 'gain'],
+    ['chrome', 'home'],
+    ['wheel', 'deal'],
+    ['purse', 'curse'],
+    ['smoke', 'broke'],
+    ['dice', 'nice'],
+    ['chip', 'trip'],
+    ['luck', 'buck'],
+    ['cruise', 'blues'],
+    ['debt', 'bet'],
+    ['zoom', 'doom'],
+    ['brake', 'stake'],
+    ['fold', 'cold'],
+    ['ace', 'pace'],
+    ['risk', 'brisk'],
+    ['gas', 'class'],
+    ['bank', 'rank'],
+    ['horn', 'torn'],
+    ['flame', 'game'],
+    ['rush', 'crush'],
+    ['veil', 'steel']
+  ];
+  let phoneRhymeIdx = -1;
+  let phoneRhymeFront = true;
+  let phoneRhymeRaf = 0;
+
+  function pickPhoneRhyme() {
+    if (!phoneRhymeA || !phoneRhymeB || !PHONE_RHYMES.length) return;
+    let next = Math.floor(Math.random() * PHONE_RHYMES.length);
+    if (PHONE_RHYMES.length > 1 && next === phoneRhymeIdx) {
+      next = (next + 1) % PHONE_RHYMES.length;
+    }
+    phoneRhymeIdx = next;
+    const [a, b] = PHONE_RHYMES[next];
+    phoneRhymeA.textContent = a;
+    phoneRhymeB.textContent = b;
+  }
+
+  function phoneYawRad() {
+    if (!phone3dEl) return 0;
+    const t = getComputedStyle(phone3dEl).transform;
+    if (!t || t === 'none') return 0;
+    try {
+      const m = new DOMMatrixReadOnly(t);
+      return Math.atan2(m.m13, m.m11);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function syncPhoneRhyme() {
+    if (state.phase !== 'drive' || !phone3dEl) {
+      phoneRhymeFront = true;
+      return;
+    }
+    // Front faces the camera when cos(yaw) > 0; swap while the back is out.
+    const front = Math.cos(phoneYawRad()) > 0.08;
+    if (!front && phoneRhymeFront) pickPhoneRhyme();
+    phoneRhymeFront = front;
+  }
+
+  function startPhoneRhymeLoop() {
+    if (!phoneRhymeA || phoneRhymeRaf) return;
+    if (!phoneRhymeA.textContent) pickPhoneRhyme();
+    const tick = () => {
+      syncPhoneRhyme();
+      phoneRhymeRaf = requestAnimationFrame(tick);
+    };
+    phoneRhymeRaf = requestAnimationFrame(tick);
+  }
+
+  function stopPhoneRhymeLoop() {
+    if (phoneRhymeRaf) cancelAnimationFrame(phoneRhymeRaf);
+    phoneRhymeRaf = 0;
+    phoneRhymeFront = true;
+  }
 
   function flashNowPlaying(title) {
     if (!nowPlayingEl || !nowPlayingTitle) return;
@@ -2014,6 +2143,8 @@
       hintText.textContent = 'Tap a destination to route there (~15s) · stop at red when cruising · R replay';
       dpad.classList.add('drive-mode');
       panelInner?.classList.add('drive-phase');
+      pickPhoneRhyme();
+      startPhoneRhymeLoop();
       setHelpOpen(false);
     } else if (isEnter()) {
       if (meterStat) meterStat.hidden = true;
@@ -2026,6 +2157,7 @@
       hintText.textContent = 'Arrows / WASD · swipe · get inside';
       dpad.classList.remove('drive-mode');
       panelInner?.classList.remove('drive-phase');
+      stopPhoneRhymeLoop();
       hideMapNav();
     } else if (isGrill()) {
       if (meterStat) meterStat.hidden = true;
@@ -2037,6 +2169,7 @@
       hintText.textContent = 'Arrows / WASD · dash across · hoopty is across the street';
       dpad.classList.remove('drive-mode');
       panelInner?.classList.remove('drive-phase');
+      stopPhoneRhymeLoop();
       hideMapNav();
     } else {
       if (meterStat) meterStat.hidden = true;
@@ -2048,6 +2181,7 @@
       hintText.textContent = 'Arrows / WASD · swipe · cross Midtown to your car';
       dpad.classList.remove('drive-mode');
       panelInner?.classList.remove('drive-phase');
+      stopPhoneRhymeLoop();
       hideMapNav();
     }
   }
@@ -5038,6 +5172,47 @@
       });
     }
 
+    // Dual-pipe exhaust — dark soot from the bronze car's tips
+    {
+      const throttle = state.keys.up ? 1 : (state.keys.down ? 0.15 : Math.min(0.85, d.speed / 90));
+      const idle = d.speed < 6 && !state.keys.up;
+      const rate = idle ? 2.2 : (3.5 + throttle * 12 + Math.min(6, d.speed * 0.05));
+      if (Math.random() < dt * rate) {
+        const carZ = d.z + 14;
+        const ground = projectWorld(d.playerX, 0, carZ, d);
+        const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
+        const s = Math.min(1.4, ground.scale * 0.58);
+        const drawW = 118 * s;
+        const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
+        const ang = (d.yaw || 0) * 0.38 + (d.roll || 0);
+        const cos = Math.cos(ang);
+        const sin = Math.sin(ang);
+        const tip = PLAYER_CAR_TIPS[Math.random() < 0.5 ? 0 : 1];
+        const lx = -drawW / 2 + tip.fx * drawW + (Math.random() - 0.5) * 2 * s;
+        const ly = -drawH + 2 * s + tip.fy * drawH;
+        const ox = ground.x;
+        const oy = ground.y + bob;
+        const tipX = ox + lx * cos - ly * sin;
+        const tipY = oy + lx * sin + ly * cos;
+        const soot = Math.random();
+        const puffN = throttle > 0.7 && Math.random() < 0.45 ? 2 : 1;
+        for (let i = 0; i < puffN; i++) {
+          state.particles.push({
+            type: 'smoke',
+            exhaust: true,
+            x: tipX + (Math.random() - 0.5) * 4,
+            y: tipY + (Math.random() - 0.5) * 3,
+            vx: -d.velX * 10 + (Math.random() - 0.5) * (10 + throttle * 14) + (d.yaw || 0) * 28,
+            vy: -4 - Math.random() * (12 + throttle * 16) - (idle ? 2 : 0),
+            life: 0.4 + Math.random() * 0.55 + throttle * 0.15,
+            maxLife: 0.95,
+            size: (2.5 + Math.random() * 4 + throttle * 4) * Math.min(1.35, 0.55 + s),
+            color: soot > 0.6 ? '#12100e' : soot > 0.3 ? '#0a0a0c' : '#1c1814'
+          });
+        }
+      }
+    }
+
     updateParticles(dt);
     recordReplayFrame();
   }
@@ -5054,9 +5229,12 @@
         p.vy += 420 * dt;
         p.vx *= Math.pow(0.25, dt);
       } else if (p.type === 'smoke') {
-        p.vy -= 10 * dt;
-        p.size = (p.size || 10) + 28 * dt;
-        p.vx *= Math.pow(0.5, dt);
+        const rise = p.exhaust ? 22 : 10;
+        const grow = p.exhaust ? 42 : 28;
+        p.vy -= rise * dt;
+        p.size = (p.size || 10) + grow * dt;
+        p.vx *= Math.pow(p.exhaust ? 0.62 : 0.5, dt);
+        if (p.exhaust) p.vy *= Math.pow(0.92, dt);
       } else if (p.type === 'text') {
         p.vy *= Math.pow(0.3, dt);
       } else if (p.type === 'flash') {
@@ -6659,6 +6837,45 @@
         ctx.fillRect(-rearW * 0.85, rearY - h * 0.05, w * 0.14, h * 0.1);
         ctx.fillRect(rearW * 0.7, rearY - h * 0.05, w * 0.14, h * 0.1);
     }
+  }
+
+  // Player car — bronze X5 sprite with chase-cam lean / suspension.
+  function drawPlayerCar(x, y, scale, opts = {}) {
+    const yaw = opts.yaw || 0;
+    const pitch = opts.pitch || 0;
+    const roll = opts.roll || 0;
+    const s = Math.max(0.12, scale);
+    const drawW = 118 * s;
+    const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
+    const ready = PLAYER_CAR_IMG.complete && PLAYER_CAR_IMG.naturalWidth > 0;
+
+    if (!ready) {
+      drawLowPolyCar(x, y, scale, 'suv', {
+        player: true,
+        yaw, pitch, roll,
+        wheelSpin: opts.wheelSpin || 0,
+        color: '#8a6a45',
+        trim: '#3a2a18'
+      });
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(roll + yaw * 0.38);
+    ctx.transform(1, pitch * 0.12, 0, 1, 0, 0);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.34)';
+    ctx.beginPath();
+    ctx.ellipse(0, 3 * s, drawW * 0.44, drawH * 0.09, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.drawImage(
+      PLAYER_CAR_IMG,
+      PLAYER_CAR_SRC.x, PLAYER_CAR_SRC.y, PLAYER_CAR_SRC.w, PLAYER_CAR_SRC.h,
+      -drawW / 2, -drawH + 2 * s, drawW, drawH
+    );
+    ctx.restore();
   }
 
   // Rear / 3rd-person car render — smooth gradients, glass, wheels, kind-specific trim.
@@ -8563,11 +8780,28 @@
         ctx.lineTo(p.x - p.vx * 0.02, p.y - p.vy * 0.02);
         ctx.stroke();
       } else if (p.type === 'smoke') {
-        ctx.globalAlpha = a * 0.35;
-        ctx.fillStyle = p.color || '#6a6a72';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size || 10, 0, Math.PI * 2);
-        ctx.fill();
+        const r = p.size || 10;
+        if (p.exhaust) {
+          // Dark sooty plume — soft core, smoky falloff
+          const g = ctx.createRadialGradient(p.x - r * 0.1, p.y - r * 0.15, r * 0.05, p.x, p.y, r);
+          const baseA = a * 0.72;
+          g.addColorStop(0, `rgba(10,9,8,${baseA})`);
+          g.addColorStop(0.28, `rgba(22,20,18,${baseA * 0.75})`);
+          g.addColorStop(0.55, `rgba(36,32,28,${baseA * 0.35})`);
+          g.addColorStop(0.82, `rgba(48,44,40,${baseA * 0.12})`);
+          g.addColorStop(1, 'rgba(20,18,16,0)');
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, r * (1.05 + (1 - a) * 0.25), r * (0.85 + (1 - a) * 0.2), 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.globalAlpha = a * 0.35;
+          ctx.fillStyle = p.color || '#6a6a72';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
       } else if (p.type === 'flash') {
         // Expanding explosion glare
         const r = (p.size || 90) * (1.3 - a * 0.9);
@@ -9294,18 +9528,15 @@
     // Chase cruiser ahead of the player draws first (farther from camera)
     if (d.chaser && d.chaser.z >= d.z + 14) drawChaserCar(d);
 
-    // Player car — on the road plane with suspension compression
+    // Player car — bronze X5 on the road plane with suspension compression
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const carZ = d.z + 14;
     const ground = projectWorld(d.playerX, 0, carZ, d);
-    drawLowPolyCar(ground.x, ground.y + bob, Math.min(1.4, ground.scale * 0.58), 'player', {
-      player: true,
+    drawPlayerCar(ground.x, ground.y + bob, Math.min(1.4, ground.scale * 0.58), {
       yaw: d.yaw,
       pitch: d.pitch,
       roll: d.roll + (d.crashT > 0 ? Math.sin(d.crashT * 40) * 0.2 : 0),
-      wheelSpin: d.wheelSpin || 0,
-      color: '#1a2430',
-      trim: '#0e1418'
+      wheelSpin: d.wheelSpin || 0
     });
 
     // Cruiser on your bumper draws over the player (closer to camera)
