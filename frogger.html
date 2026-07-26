@@ -6274,18 +6274,20 @@
     // Slow → pull in close; full speed keeps the current highway framing.
     d.camX += (d.playerX - d.camX) * Math.min(1, 1.8 * dt);
     const maxSpd = Math.max(48, d.maxSpeed || 72);
+    // Square the blend so the zoom-in only really kicks in when you're crawling
     const speedT = Math.min(1, Math.max(0, d.speed / maxSpd));
-    const camYNear = 29;
+    const zoomT = speedT * speedT;
+    const camYNear = 26;
     const camYFar = 42;
-    const camTargetY = camYNear + (camYFar - camYNear) * speedT
+    const camTargetY = camYNear + (camYFar - camYNear) * zoomT
       + Math.abs(d.velX) * 0.55 - d.susp * 0.35;
-    d.camY += (camTargetY - d.camY) * Math.min(1, 1.6 * dt);
-    const camBackNear = 68;
+    d.camY += (camTargetY - d.camY) * Math.min(1, 2.2 * dt);
+    const camBackNear = 52;
     const camBackFar = 119;
-    const camBackTarget = camBackNear + (camBackFar - camBackNear) * speedT
+    const camBackTarget = camBackNear + (camBackFar - camBackNear) * zoomT
       - (d.zoomPunch || 0) * 26;
     d.camBack = (d.camBack || camBackFar)
-      + (camBackTarget - (d.camBack || camBackFar)) * Math.min(1, 3.8 * dt);
+      + (camBackTarget - (d.camBack || camBackFar)) * Math.min(1, 4.2 * dt);
 
     maintainEnvAroundPlayer(d);
     d.exits = d.exits.filter(e =>
@@ -8198,8 +8200,11 @@
     ctx.restore();
   }
 
-  // Perspective scale for police — same FOV factor as the player, high enough
-  // that a cruiser still grows as it fills the frame (old 1.35 cap froze size).
+  // Perspective scales — keep highway size, but allow growth when the cam pulls in.
+  // Old player cap of 1.4 froze the copper X5 even as camBack shrank.
+  function playerCarScale(p) {
+    return Math.min(2.45, Math.max(0.12, p.scale * 0.58));
+  }
   function policeCarScale(p) {
     return Math.min(2.6, Math.max(0.12, p.scale * 0.58));
   }
@@ -10976,7 +10981,7 @@
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const carZ = d.z + 14;
     const ground = projectWorld(d.playerX, 0, carZ, d);
-    drawPlayerCar(ground.x, ground.y + bob, Math.min(1.4, ground.scale * 0.58), {
+    drawPlayerCar(ground.x, ground.y + bob, playerCarScale(ground), {
       yaw: d.yaw,
       pitch: d.pitch,
       roll: d.roll + (d.crashT > 0 ? Math.sin(d.crashT * 40) * 0.2 : 0),
