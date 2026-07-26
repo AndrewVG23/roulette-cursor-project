@@ -203,11 +203,10 @@
       flex: 1 1 0;
       min-width: 0;
       max-width: 280px;
-      cursor: pointer;
       transform-style: preserve-3d;
       -webkit-tap-highlight-color: transparent;
     }
-    .piece.is-unaffordable { cursor: default; opacity: 0.7; }
+    .piece.is-unaffordable { opacity: 0.7; }
 
     .coin-stage {
       position: relative;
@@ -356,15 +355,51 @@
       text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
     }
     .ask {
-      margin-top: 3px;
-      font-family: var(--font-display);
-      font-weight: 700;
-      font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.35rem);
+      appearance: none;
+      margin-top: 6px;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 6px 12px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(201, 162, 74, 0.45);
+      background: rgba(12, 10, 8, 0.72);
       color: var(--brass-hot);
-      font-variant-numeric: tabular-nums;
+      font-family: var(--font-display);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
       text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
     }
-    .piece.is-unaffordable .ask { color: #a89880; }
+    .ask:hover:not(:disabled) {
+      border-color: rgba(240, 208, 120, 0.7);
+      background: rgba(201, 162, 74, 0.18);
+    }
+    .ask:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    .ask .ask-label {
+      font-family: var(--font-ui);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 214, 160, 0.78);
+      text-shadow: none;
+    }
+    .ask .ask-amt {
+      font-weight: 700;
+      font-size: clamp(1.05rem, 0.95rem + 0.5vw, 1.35rem);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .piece.is-unaffordable .ask {
+      color: #a89880;
+      border-color: rgba(168, 152, 128, 0.35);
+      cursor: not-allowed;
+    }
+    .piece.is-unaffordable .ask .ask-label { color: rgba(168, 152, 128, 0.75); }
 
     .toast {
       position: fixed;
@@ -407,7 +442,7 @@
       }
       .tag { margin-top: 6px; }
       .tag .denom { font-size: clamp(0.72rem, 2.6vw, 0.95rem); }
-      .ask { font-size: clamp(0.9rem, 3.2vw, 1.15rem); }
+      .ask .ask-amt { font-size: clamp(0.9rem, 3.2vw, 1.15rem); }
       .coin.size-tenth { --coin-d: clamp(52px, 14vw, 72px); }
       .coin.size-quarter { --coin-d: clamp(68px, 18vw, 96px); }
       .coin.size-ounce { --coin-d: clamp(86px, 22vw, 120px); }
@@ -442,10 +477,11 @@
   const casesEl = document.getElementById('cases');
   let toastTimer = null;
 
+  // Smaller coins carry a steeper premium over spot.
   const SIZES = [
-    { oz: 0.1, className: 'size-tenth', label: '1/10 oz' },
-    { oz: 0.25, className: 'size-quarter', label: '1/4 oz' },
-    { oz: 1, className: 'size-ounce', label: '1 oz' }
+    { oz: 0.1, className: 'size-tenth', label: '1/10 oz', fee: 0.15 },
+    { oz: 0.25, className: 'size-quarter', label: '1/4 oz', fee: 0.10 },
+    { oz: 1, className: 'size-ounce', label: '1 oz', fee: 0.07 }
   ];
   const SIZE_BY_OZ = Object.fromEntries(SIZES.map((s) => [s.oz, s]));
 
@@ -453,28 +489,24 @@
   const KINDS = [
     {
       name: 'Krugerrand',
-      fee: 0.05,
       ozList: [0.1, 0.25, 1],
       front: 'assets/krugerrand-reverse.png',
       back: 'assets/krugerrand-obverse.png'
     },
     {
       name: 'American Eagle',
-      fee: 0.10,
       ozList: [0.1, 0.25, 1],
       front: 'assets/eagle-reverse.png',
       back: 'assets/eagle-obverse.png'
     },
     {
       name: 'American Buffalo',
-      fee: 0.10,
       ozList: [1],
       front: 'assets/buffalo-reverse.png',
       back: 'assets/buffalo-obverse.png'
     },
     {
       name: 'Maple Leaf',
-      fee: 0.10,
       ozList: [0.1, 0.25, 1],
       front: 'assets/maple-reverse.png',
       back: 'assets/maple-obverse.png'
@@ -486,7 +518,7 @@
       const size = SIZE_BY_OZ[oz];
       return {
         name: kind.name,
-        fee: kind.fee,
+        fee: size.fee,
         front: kind.front,
         back: kind.back,
         oz: size.oz,
@@ -549,9 +581,6 @@
     card.dataset.oz = String(item.oz);
     card.dataset.fee = String(item.fee);
     card.dataset.name = item.name;
-    card.setAttribute('role', 'button');
-    card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', `Buy ${item.sizeLabel} ${item.name} with cash`);
 
     const yaw = ((Math.random() * 16) - 8).toFixed(1);
     const showBackFirst = Math.random() < 0.5;
@@ -570,11 +599,15 @@
       '<div class="tag">',
       `<span class="denom">${item.name}</span>`,
       `<span class="weight">${item.sizeLabel}</span>`,
-      '<div class="ask" data-price>——</div>',
+      `<button type="button" class="ask" aria-label="Ask price — buy ${item.sizeLabel} ${item.name} with cash">`,
+      '<span class="ask-label">Ask</span>',
+      '<span class="ask-amt" data-price>——</span>',
+      '</button>',
       '</div>'
     ].join('');
 
     const coin = card.querySelector('.coin');
+    const askBtn = card.querySelector('.ask');
     function applySpin(animate) {
       if (!animate) coin.style.transition = 'none';
       coin.style.transform = `rotateZ(${yaw}deg) rotateY(${flipY}deg) translateZ(${hoverZ}px)`;
@@ -589,14 +622,10 @@
       flipY += 180;
       applySpin(true);
     };
-    coin.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      flip();
-    });
+    coin.addEventListener('click', flip);
     coin.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') {
         ev.preventDefault();
-        ev.stopPropagation();
         flip();
       }
     });
@@ -610,12 +639,7 @@
       hoverZ = 0;
       applySpin(true);
     });
-    card.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') {
-        ev.preventDefault();
-        buyCase(card);
-      }
-    });
+    askBtn.addEventListener('click', () => buyCase(card));
 
     return card;
   }
@@ -630,10 +654,13 @@
     casesEl.querySelectorAll('.piece').forEach((card) => {
       const oz = Number(card.dataset.oz);
       const cashAsk = Wallet.goldBuyCost(oz, caseFee(card));
+      const askBtn = card.querySelector('.ask');
       card.querySelectorAll('[data-price]').forEach((el) => {
         el.textContent = money(cashAsk);
       });
-      card.classList.toggle('is-unaffordable', Wallet.cash() < cashAsk);
+      const broke = Wallet.cash() < cashAsk;
+      card.classList.toggle('is-unaffordable', broke);
+      if (askBtn) askBtn.disabled = broke;
     });
   }
 
@@ -651,13 +678,6 @@
     toast(`${caseLabel(card)} — ${money(result.cost)} cash`);
     refresh();
   }
-
-  casesEl.addEventListener('click', (ev) => {
-    if (ev.target.closest('.coin')) return;
-    const card = ev.target.closest('.piece');
-    if (!card || !casesEl.contains(card)) return;
-    buyCase(card);
-  });
 
   stockCases();
   Wallet.subscribe(refresh);
