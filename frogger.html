@@ -8205,8 +8205,10 @@
   function playerCarScale(p) {
     return Math.min(2.45, Math.max(0.12, p.scale * 0.58));
   }
+  // No upper cap — a hard max made cops freeze then look smaller as the road
+  // kept growing when they filled the frame.
   function policeCarScale(p) {
-    return Math.min(2.6, Math.max(0.12, p.scale * 0.58));
+    return Math.max(0.12, p.scale * 0.58);
   }
 
   // Police Interceptor sprite — chaser + traffic cops (low-poly fallback if not loaded / smashed).
@@ -9886,13 +9888,17 @@
 
   function drawTrafficSignal(sig, d) {
     const phase = signalPhase(sig, performance.now() / 1000);
-    const ix = sig.intersection;
     const stopZ = sig.z - 8;
     const poleZ = sig.z - 32;
     const p = projectWorld(0, 0, stopZ, d);
-    if (p.relZ < 30 || p.relZ > 950) return;
-    const fade = Math.max(0, Math.min(1, (950 - p.relZ) / 240));
-    const s = p.scale;
+    // Soft near fade — hard cull at 30 was chopping heads mid-frame when close
+    if (p.relZ < 12 || p.relZ > 950) return;
+    const farFade = Math.max(0, Math.min(1, (950 - p.relZ) / 240));
+    const nearFade = p.relZ < 70 ? Math.max(0, (p.relZ - 12) / 58) : 1;
+    const fade = farFade * nearFade;
+    if (fade <= 0.02) return;
+    // Cap scale so mast-arm heads don't explode off the top of the canvas
+    const s = Math.min(1.7, Math.max(0.08, p.scale));
     ctx.save();
     ctx.globalAlpha = fade;
 
@@ -9908,6 +9914,7 @@
     const base = projectWorld(poleX, 0, poleZ, d);
     const top = projectWorld(poleX, 46, poleZ, d);
     const mastEnd = projectWorld(DW.ROAD * 0.45, 44, stopZ - 2, d);
+    const mastS = Math.min(1.7, Math.max(0.08, mastEnd.scale || s));
     ctx.strokeStyle = '#3a3a42';
     ctx.lineWidth = Math.max(2, 3.2 * s);
     ctx.lineCap = 'round';
@@ -9924,30 +9931,40 @@
     ctx.beginPath();
     ctx.arc(top.x, top.y, 3 * s, 0, Math.PI * 2);
     ctx.fill();
-    const hangY = mastEnd.y + 8 * s;
+    // Keep the hanging head fully on-screen (avoid top-edge clip)
+    const headH = 32 * mastS;
+    let hangY = mastEnd.y + 8 * mastS;
+    const headTop = hangY - headH;
+    if (headTop < 6) hangY += 6 - headTop;
+    if (hangY > H - 8) hangY = H - 8;
     const strobe = d.signalFlash > 0 && d.flashingSignalZ === sig.z;
-    drawClassicSignalHead(mastEnd.x, hangY, s, phase, fade, strobe);
+    drawClassicSignalHead(mastEnd.x, hangY, mastS, phase, fade, strobe);
 
     // —— Far-left corner signal (classic 4-way intersection look) ——
     const farPoleX = DW.CURB + 0.55;
     const farBase = projectWorld(farPoleX, 0, sig.z + 18, d);
     const farTop = projectWorld(farPoleX, 38, sig.z + 18, d);
-    if (farBase.relZ > 40 && farBase.relZ < 900) {
-      const farFade = Math.max(0, Math.min(1, (900 - farBase.relZ) / 200));
-      ctx.globalAlpha = fade * farFade * 0.85;
-      ctx.lineWidth = Math.max(1, 2.4 * farBase.scale);
+    if (farBase.relZ > 18 && farBase.relZ < 900) {
+      const farFadeAmt = Math.max(0, Math.min(1, (900 - farBase.relZ) / 200))
+        * (farBase.relZ < 70 ? Math.max(0, (farBase.relZ - 18) / 52) : 1);
+      const farS = Math.min(1.55, Math.max(0.08, farBase.scale * 0.82));
+      ctx.globalAlpha = fade * farFadeAmt * 0.85;
+      ctx.lineWidth = Math.max(1, 2.4 * farS);
       ctx.beginPath();
       ctx.moveTo(farBase.x, farBase.y);
       ctx.lineTo(farTop.x, farTop.y);
       ctx.stroke();
       const farMast = projectWorld(-DW.ROAD * 0.3, 36, sig.z + 6, d);
-      ctx.lineWidth = Math.max(1, 2 * farBase.scale);
+      ctx.lineWidth = Math.max(1, 2 * farS);
       ctx.beginPath();
       ctx.moveTo(farTop.x, farTop.y);
       ctx.lineTo(farMast.x, farMast.y);
       ctx.stroke();
       const farPhase = signalPhase({ offset: (sig.offset || 0) + SIGNAL_CYCLE * 0.5 }, performance.now() / 1000);
-      drawClassicSignalHead(farMast.x, farMast.y + 7 * farBase.scale, farBase.scale * 0.82, farPhase, fade * farFade, strobe);
+      let farHangY = farMast.y + 7 * farS;
+      const farHeadH = 32 * farS;
+      if (farHangY - farHeadH < 6) farHangY += 6 - (farHangY - farHeadH);
+      drawClassicSignalHead(farMast.x, farHangY, farS, farPhase, fade * farFadeAmt, strobe);
     }
 
     ctx.restore();
@@ -10911,10 +10928,6 @@
     const ixs = [...(d.route.intersections || [])].sort(byRouteDist);
     for (const ix of ixs) drawIntersection(ix, d);
 
-    // Classic mast-arm traffic signals
-    const sigs = [...(d.signals || [])].sort(byRouteDist);
-    for (const sig of sigs) drawTrafficSignal(sig, d);
-
     // City blocks (far → near), sit on sidewalk grade
     const builds = [...d.buildings].sort(byRouteDist);
     for (const b of builds) drawBuilding(b, d);
@@ -10928,6 +10941,10 @@
 
     const lms = [...(d.landmarks || [])].sort(byRouteDist);
     for (const lm of lms) drawLandmark(lm, d);
+
+    // Mast-arm signals after facades so buildings don't paint over / clip them
+    const sigs = [...(d.signals || [])].sort(byRouteDist);
+    for (const sig of sigs) drawTrafficSignal(sig, d);
 
     // Traffic on the road plane — absolute Z, not loop-wrapped
     const cars = [...d.traffic].sort((a, b) => b.z - a.z);
