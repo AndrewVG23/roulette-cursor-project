@@ -7,8 +7,9 @@
   //   cash    — physical paper dollars. Floor of $0. Liquor + casino money.
   //   gold    — ounces. Bought at 5% over spot, sold at 5% under, for cash.
   // One shared price index drives gas price, gold spot, and every inflated
-  // price. Each gas-station visit compounds the index by 4%, advances the
-  // calendar nine weeks from a January 2022 start, and applies debt interest.
+  // price. Inflation (4% APR) and credit interest (6% APR) compound weekly.
+  // Gas visits jump the calendar nine weeks and apply nine weeks of that
+  // growth; liquor beers drunk (from beer cases) advance one week at a time.
   const STATE_KEY = 'walletV3';
   const LEGACY_PURSE_KEY = 'casinoPurse';
   const LEGACY_STATE_KEYS = ['walletV2'];
@@ -24,11 +25,15 @@
   const GOLD_BASE = 2000;     // $/oz at index 1.0 — roughly real spot
   const GOLD_FEE = 0.05;      // cash buy 5% over spot, sell 5% under
   const GOLD_CREDIT_FEE = 0.10; // credit ask is 10% over the cash ask
-  const VISIT_RATE_BASE = 0.04;  // +4% inflation per gas visit
-  const VISIT_RATE_STEP = 0;
-  const VISIT_RATE_CAP = 0.04;
-  const CREDIT_INTEREST_RATE = 0.06; // credit balance compounds +6% every gas visit
+  const WEEKS_PER_YEAR = 52;
+  const INFLATION_APR = 0.04; // price index, annualized
+  const CREDIT_APR = 0.06;    // credit-balance interest + debt-priced menus, annualized
+  const CREDIT_INTEREST_RATE = CREDIT_APR; // exported alias
   const VISIT_WEEKS_ADVANCE = 9;
+  // Effective growth across one gas visit (9 weeks of APR compounding)
+  const VISIT_RATE_BASE = Math.pow(1 + INFLATION_APR, VISIT_WEEKS_ADVANCE / WEEKS_PER_YEAR) - 1;
+  const VISIT_RATE_STEP = 0;
+  const VISIT_RATE_CAP = VISIT_RATE_BASE;
   const GAME_START_YEAR = 2022;
   const GAME_START_MONTH = 0; // January
   const GAME_START_DAY = 1;
@@ -231,17 +236,29 @@
   }
   function debtCostMult() { return state.index; }
   function debtScaled(base) { return goldScaled(base); }
-  // Menu prices that compound at the credit-debt rate (6% per gas visit).
-  function debtPriceMult() {
-    return Math.round(Math.pow(1 + CREDIT_INTEREST_RATE, state.visits) * 10000) / 10000;
-  }
-  function debtPriceScaled(base) {
-    return Math.max(1, Math.round(Number(base) * debtPriceMult()));
-  }
   function visits() { return state.visits; }
 
   function totalWeeks() {
     return state.visits * VISIT_WEEKS_ADVANCE + (state.weeks || 0);
+  }
+
+  // Compound an APR across an integer number of weeks: (1+apr)^(weeks/52).
+  function weekGrowth(apr, weeks) {
+    const w = Math.max(0, Number(weeks) || 0);
+    if (w <= 0) return 1;
+    return Math.pow(1 + apr, w / WEEKS_PER_YEAR);
+  }
+
+  function weeklyRate(apr) {
+    return weekGrowth(apr, 1) - 1;
+  }
+
+  // Menu prices that track the credit APR over elapsed game weeks.
+  function debtPriceMult() {
+    return Math.round(weekGrowth(CREDIT_APR, totalWeeks()) * 10000) / 10000;
+  }
+  function debtPriceScaled(base) {
+    return Math.max(1, Math.round(Number(base) * debtPriceMult()));
   }
 
   function gameDate() {
@@ -259,19 +276,51 @@
     return `${MONTH_NAMES[month]} ${day}, ${year}`;
   }
 
-  // Liquor beer-case bumps, etc. — moves the calendar without gas inflation.
+  function tickCalendar() {
+    const cal = document.getElementById('gameCalendar');
+    if (!cal) return;
+    cal.classList.remove('is-tick');
+    void cal.offsetWidth;
+    cal.classList.add('is-tick');
+  }
+
+  // Apply weekly compounding for inflation + credit interest (no calendar move).
+  function applyEconomyWeeks(weeks) {
+    const steps = Math.max(0, Math.round(Number(weeks) || 0));
+    if (!steps) {
+      return { weeks: 0, indexMult: 1, creditMult: 1, creditBefore: state.digital, creditAfter: state.digital };
+    }
+    const indexMult = weekGrowth(INFLATION_APR, steps);
+    const creditMult = weekGrowth(CREDIT_APR, steps);
+    state.index = Math.round(state.index * indexMult * 10000) / 10000;
+    const creditBefore = state.digital;
+    let creditAfter = creditBefore;
+    if (creditBefore < 0) {
+      creditAfter = Math.round(creditBefore * creditMult);
+      state.digital = creditAfter;
+    }
+    return { weeks: steps, indexMult, creditMult, creditBefore, creditAfter };
+  }
+
+  // Liquor beers drunk — +N calendar weeks at the weekly APR rates.
   function advanceWeek(n = 1) {
     const steps = Math.max(0, Math.round(Number(n) || 0));
     if (!steps) return { weeks: state.weeks || 0, date: formatGameDate() };
     state.weeks = Math.max(0, (state.weeks || 0) + steps);
+    const eco = applyEconomyWeeks(steps);
     persist();
-    const cal = document.getElementById('gameCalendar');
-    if (cal) {
-      cal.classList.remove('is-tick');
-      void cal.offsetWidth;
-      cal.classList.add('is-tick');
-    }
-    return { weeks: state.weeks, date: formatGameDate(), gameDate: gameDate() };
+    tickCalendar();
+    return {
+      weeks: state.weeks,
+      date: formatGameDate(),
+      gameDate: gameDate(),
+      index: state.index,
+      inflationPct: (eco.indexMult - 1) * 100,
+      creditInterestPct: eco.creditBefore < 0 ? (eco.creditMult - 1) * 100 : 0,
+      creditInterestApplied: eco.creditBefore < 0,
+      creditBefore: eco.creditBefore,
+      creditAfter: eco.creditAfter
+    };
   }
 
   function nextVisitRate() {
@@ -280,27 +329,20 @@
 
   function recordGasVisit() {
     state.visits += 1;
-    const rate = Math.min(VISIT_RATE_BASE + VISIT_RATE_STEP * state.visits, VISIT_RATE_CAP);
-    state.index = Math.round(state.index * (1 + rate) * 10000) / 10000;
-    const creditBefore = state.digital;
-    let creditAfter = creditBefore;
-    let creditInterestPct = 0;
-    if (creditBefore < 0) {
-      creditAfter = Math.round(creditBefore * (1 + CREDIT_INTEREST_RATE));
-      state.digital = creditAfter;
-      creditInterestPct = CREDIT_INTEREST_RATE * 100;
-    }
+    const eco = applyEconomyWeeks(VISIT_WEEKS_ADVANCE);
     persist();
+    tickCalendar();
     return {
       visits: state.visits,
-      ratePct: rate * 100,
+      ratePct: (eco.indexMult - 1) * 100,
       index: state.index,
       gasPrice: gasPrice(),
       goldSpot: goldSpot(),
-      creditBefore,
-      creditAfter,
-      creditInterestPct,
-      creditInterestApplied: creditBefore < 0
+      creditBefore: eco.creditBefore,
+      creditAfter: eco.creditAfter,
+      creditInterestPct: eco.creditBefore < 0 ? (eco.creditMult - 1) * 100 : 0,
+      creditInterestApplied: eco.creditBefore < 0,
+      weeksAdvanced: VISIT_WEEKS_ADVANCE
     };
   }
 
@@ -655,7 +697,8 @@
     index, gasPrice, fuel, setFuel, addFuel, gasFillGallons, gasFillCost, buyGasFill,
     priceMult, tipMult, wageMult, goldScaled, debtCostMult, debtScaled, debtPriceMult, debtPriceScaled,
     visits, nextVisitRate, recordGasVisit, CREDIT_INTEREST_RATE,
-    weeks: () => state.weeks || 0, totalWeeks, advanceWeek,
+    INFLATION_APR, CREDIT_APR, WEEKS_PER_YEAR, VISIT_WEEKS_ADVANCE,
+    weeks: () => state.weeks || 0, totalWeeks, advanceWeek, weeklyRate, weekGrowth,
     gameDate, formatGameDate, GAME_START_YEAR,
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing

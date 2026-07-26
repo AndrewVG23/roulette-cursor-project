@@ -463,6 +463,22 @@
     '..aAAAAAAa..'
   ], FORTY_PAL);
 
+  // Single from the 24-pack — green bottle, gold crown
+  const BEER_PAL = { G: '#2a6a28', g: '#1e4a1c', A: '#4a8838', C: '#c8a040', N: '#3a2810', W: '#e8f0c8' };
+  const BEER = sprite([
+    '....CC....',
+    '....NN....',
+    '...AAAA...',
+    '..AGGGGA..',
+    '..GWWWWG..',
+    '..GGGGGG..',
+    '..GgGGgG..',
+    '..GGGGGG..',
+    '..GGGGGG..',
+    '..gGGGGg..',
+    '...gggg...'
+  ], BEER_PAL);
+
   const COIN_PAL = { Y: '#f8b800', y: '#fcd868', d: '#a05800' };
   const COIN_F = [
     sprite(['..YYYY..', '.YyyyyY.', 'YyydyyyY', 'YydyyydY', 'YydyyydY', 'YydyyydY', 'YyydyyyY', '.YyyyyY.', '..YYYY..'], COIN_PAL),
@@ -867,11 +883,13 @@
     const ch = tileAt(tx, ty);
     const p = G.player;
     if (ch === '?') {
-      // Beer cases never empty — each head-bonk advances the game calendar a week.
+      // Beer cases never empty — each head-bonk kicks out a beer to drink (+1 week).
       G.bumps.push({ tx, ty, t: 0.18 });
+      G.items.push({
+        type: 'beer', x: tx * TILE + 3, y: ty * TILE, vx: 0, vy: 0,
+        w: 10, h: 11, rise: 14, dir: 1
+      });
       sfx.bump();
-      if (window.Wallet && typeof Wallet.advanceWeek === 'function') Wallet.advanceWeek(1);
-      addFloat(tx * TILE + 2, ty * TILE - 10, '+1 WK', '#ffd23f');
     } else if (ch === 'M') {
       setTile(tx, ty, 'U');
       G.bumps.push({ tx, ty, t: 0.18 });
@@ -1122,6 +1140,40 @@
     G.ents = G.ents.filter(e => !e.dead);
   }
 
+  function drinkBeer(it) {
+    it.dead = true;
+    if (window.Wallet && typeof Wallet.advanceWeek === 'function') Wallet.advanceWeek(1);
+    addFloat(it.x, it.y - 18, '+1 WK', '#ffd23f');
+    addScore(100, it.x, it.y - 8);
+    sfx.coin();
+  }
+
+  function drinkForty(it) {
+    const p = G.player;
+    // No paper, no forty — the counter doesn't take the phone.
+    const price = fortyPrice();
+    if (!Wallet.spendCash(price)) {
+      if (!(it.denyT > 0)) {
+        addFloat(it.x, it.y - 18, `CASH ONLY — $${price}`, '#ff6a5a');
+        it.denyT = 1.2;
+      }
+      return;
+    }
+    it.dead = true;
+    addFloat(it.x, it.y - 30, `-$${price} CASH`, '#8fd989');
+    if (p.big) {
+      addScore(1000, it.x, it.y - 8);
+      G.coins += 3;
+      addFloat(it.x, it.y - 18, '$3', '#ffd23f');
+      sfx.oneup();
+    } else {
+      setBig(p, true);
+      addScore(1000, it.x, it.y - 8);
+      addFloat(it.x, it.y - 18, '40oz!', '#c89858');
+      sfx.power();
+    }
+  }
+
   function updateItems(dt) {
     const p = G.player;
     for (const it of G.items) {
@@ -1136,28 +1188,8 @@
       if (it.y > H + 40) it.dead = true;
       if (it.denyT > 0) it.denyT -= dt;
       if (G.mode === 'play' && overlap(p, it)) {
-        // No paper, no forty — the counter doesn't take the phone.
-        const price = fortyPrice();
-        if (!Wallet.spendCash(price)) {
-          if (!(it.denyT > 0)) {
-            addFloat(it.x, it.y - 18, `CASH ONLY — $${price}`, '#ff6a5a');
-            it.denyT = 1.2;
-          }
-          continue;
-        }
-        it.dead = true;
-        addFloat(it.x, it.y - 30, `-$${price} CASH`, '#8fd989');
-        if (p.big) {
-          addScore(1000, it.x, it.y - 8);
-          G.coins += 3;
-          addFloat(it.x, it.y - 18, '$3', '#ffd23f');
-          sfx.oneup();
-        } else {
-          setBig(p, true);
-          addScore(1000, it.x, it.y - 8);
-          addFloat(it.x, it.y - 18, '40oz!', '#c89858');
-          sfx.power();
-        }
+        if (it.type === 'beer') drinkBeer(it);
+        else drinkForty(it);
       }
     }
     G.items = G.items.filter(i => !i.dead);
@@ -1861,7 +1893,8 @@
 
   function drawItems() {
     for (const it of G.items) {
-      ctx.drawImage(FORTY, px(it.x - G.cam), px(it.y));
+      const img = it.type === 'beer' ? BEER : FORTY;
+      ctx.drawImage(img, px(it.x - G.cam), px(it.y));
     }
   }
 
