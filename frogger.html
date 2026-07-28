@@ -1403,8 +1403,9 @@
     if (profile.lakeOpen) {
       const lakeGrad = ctx.createLinearGradient(W * 0.52, horizonY - 100, W + 20, horizonY + 20);
       lakeGrad.addColorStop(0, 'rgba(126,120,108,0)');
-      lakeGrad.addColorStop(0.35, 'rgba(55,90,125,0.14)');
-      lakeGrad.addColorStop(1, 'rgba(35,70,105,0.28)');
+      lakeGrad.addColorStop(0.32, 'rgba(48,118,128,0.15)');
+      lakeGrad.addColorStop(0.7, 'rgba(32,85,118,0.24)');
+      lakeGrad.addColorStop(1, 'rgba(22,58,96,0.3)');
       ctx.fillStyle = lakeGrad;
       ctx.fillRect(W * 0.42, horizonY - 110, W * 0.6, 140);
     }
@@ -4128,10 +4129,12 @@
         });
       }
       if (env.onLakefront) {
-        if (zi % 2 === 0) d.props.push({ z: routeZ + 8, side: env.lakeSide, kind: 'lake_wall' });
-        if (zi % 3 === 0) d.props.push({ z: routeZ + 20, side: env.lakeSide, kind: 'tree' });
-        if (zi % 5 === 0) d.props.push({ z: routeZ + 34, side: env.lakeSide, kind: 'bench' });
-        if (zi % 8 === 0) d.props.push({ z: routeZ + 42, side: env.lakeSide, kind: 'boat' });
+        // Lake-side offsets: curb → park trees → trail benches → seawall → boats offshore
+        if (zi % 2 === 0) d.props.push({ z: routeZ + 8, side: env.lakeSide, kind: 'lake_wall', xOff: 0.98 });
+        if (zi % 2 === 1) d.props.push({ z: routeZ + 18, side: env.lakeSide, kind: 'tree', xOff: 0.38 });
+        if (zi % 3 === 0) d.props.push({ z: routeZ + 28, side: env.lakeSide, kind: 'tree', xOff: 0.52 });
+        if (zi % 5 === 0) d.props.push({ z: routeZ + 34, side: env.lakeSide, kind: 'bench', xOff: 0.62 });
+        if (zi % 8 === 0) d.props.push({ z: routeZ + 42, side: env.lakeSide, kind: 'boat', xOff: 1.62 });
         d.props.push({ z: routeZ + 12, side: env.citySide, kind: 'light' });
         if (zi % 4 === 0) d.props.push({ z: routeZ + 26, side: env.citySide, kind: 'hydrant' });
       } else {
@@ -6159,14 +6162,16 @@
     const fuelNorm = Math.max(0, (d.fuel || 0) / (d.maxFuel || Wallet.GAS_TANK_GAL));
     const outOfGas = fuelNorm <= 0.001;
 
-    // Fuel burn — 20 gal tank empties in ~45 s at cruise
+    // Fuel burn only while accelerating — 20 gal tank empties in ~45 s on the gas
     const tankGal = d.maxFuel || Wallet.GAS_TANK_GAL;
-    const fuelUse = (tankGal / Wallet.GAS_EMPTY_SEC) * dt;
-    d.fuel = Math.max(0, (d.fuel ?? tankGal) - fuelUse);
-    d._fuelSyncT = (d._fuelSyncT || 0) + dt;
-    if (d._fuelSyncT >= 1) {
-      d._fuelSyncT = 0;
-      Wallet.setFuel(d.fuel);
+    if (gas) {
+      const fuelUse = (tankGal / Wallet.GAS_EMPTY_SEC) * dt;
+      d.fuel = Math.max(0, (d.fuel ?? tankGal) - fuelUse);
+      d._fuelSyncT = (d._fuelSyncT || 0) + dt;
+      if (d._fuelSyncT >= 1) {
+        d._fuelSyncT = 0;
+        Wallet.setFuel(d.fuel);
+      }
     }
 
     const navigating = !!(d.navTarget && d.navTarget !== d.skipExitId);
@@ -8709,28 +8714,112 @@
   }
 
   function drawLakeStrip(z0, z1, d, fogT) {
+    // LSD water side: curb → green buffer → trail → sand → lake (not road-to-water)
     if (!routeEnvAt(d, z0).onLakefront && !routeEnvAt(d, z1).onLakefront) return;
-    const wR = projectWorld(DW.WALK, 0, z0, d);
-    const vR = projectWorld(DW.WALK, 0, z1, d);
-    const pR = projectWorld(DW.ROAD, 0, z0, d);
-    const qR = projectWorld(DW.ROAD, 0, z1, d);
-    if (wR.relZ < 8) return;
-    const LAKE = [26, 62, 98];
+    const parkIn = DW.WALK;
+    const trailIn = DW.WALK + 0.5;
+    const sandIn = DW.WALK + 0.74;
+    const waterIn = DW.WALK + 1.42;
+    const a0 = projectWorld(parkIn, 0, z0, d);
+    if (a0.relZ < 8) return;
     const FOG = [126, 120, 108];
-    const t = Math.pow(Math.max(0, Math.min(1, wR.relZ / 920)), 1.15) * 0.88;
-    ctx.fillStyle = hazeMix(LAKE, FOG, t * fogT);
+    const t = Math.pow(Math.max(0, Math.min(1, a0.relZ / 920)), 1.15) * 0.88;
+    const fog = t * fogT;
+
+    function band(xA, xB, rgb, alpha = 1) {
+      const p0 = projectWorld(xA, 0, z0, d);
+      const p1 = projectWorld(xA, 0, z1, d);
+      const q0 = projectWorld(xB, 0, z0, d);
+      const q1 = projectWorld(xB, 0, z1, d);
+      ctx.fillStyle = hazeMix(rgb, FOG, fog);
+      if (alpha < 1) ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      ctx.lineTo(q0.x, q0.y);
+      ctx.lineTo(q1.x, q1.y);
+      ctx.lineTo(p1.x, p1.y);
+      ctx.closePath();
+      ctx.fill();
+      if (alpha < 1) ctx.globalAlpha = 1;
+      return p0;
+    }
+
+    // Park lawn + soft tree canopy tint (green buffer beside the drive)
+    band(parkIn, trailIn, [52, 92, 58]);
+    ctx.fillStyle = `rgba(34,78,48,${0.16 * (1 - t)})`;
+    {
+      const g0 = projectWorld(parkIn + 0.12, 0, z0, d);
+      const g1 = projectWorld(parkIn + 0.12, 0, z1, d);
+      const h0 = projectWorld(trailIn - 0.08, 0, z0, d);
+      const h1 = projectWorld(trailIn - 0.08, 0, z1, d);
+      ctx.beginPath();
+      ctx.moveTo(g0.x, g0.y - 5 * g0.scale);
+      ctx.lineTo(h0.x, h0.y - 7 * h0.scale);
+      ctx.lineTo(h1.x, h1.y - 7 * h1.scale);
+      ctx.lineTo(g1.x, g1.y - 5 * g1.scale);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Lakefront Trail — pale concrete path between trees and beach
+    band(trailIn, sandIn, [168, 166, 158]);
+    band(trailIn + 0.04, sandIn - 0.04, [198, 196, 186], 0.35 * (1 - t));
+
+    // Wide sandy shelf before the water (Oak / North Ave style)
+    band(sandIn, waterIn, [186, 168, 132]);
+    ctx.fillStyle = `rgba(235,220,185,${0.1 * (1 - t)})`;
+    {
+      const s0 = projectWorld(sandIn + 0.18, 0, z0, d);
+      const s1 = projectWorld(sandIn + 0.18, 0, z1, d);
+      const e0 = projectWorld(waterIn - 0.1, 0, z0, d);
+      ctx.beginPath();
+      ctx.moveTo(s0.x, s0.y);
+      ctx.lineTo(e0.x, e0.y - 1.5 * e0.scale);
+      ctx.lineTo(projectWorld(waterIn - 0.1, 0, z1, d).x, s1.y - 1.5 * s1.scale);
+      ctx.lineTo(s1.x, s1.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Lake Michigan — teal near shore, deeper navy offshore
+    const w0 = projectWorld(waterIn, 0, z0, d);
+    const w1 = projectWorld(waterIn, 0, z1, d);
+    const SHOAL = [48, 122, 132];
+    const DEEP = [22, 58, 96];
+    ctx.fillStyle = hazeMix(SHOAL, FOG, fog);
     ctx.beginPath();
-    ctx.moveTo(wR.x, wR.y);
-    ctx.lineTo(W + 50, wR.y + 2);
-    ctx.lineTo(W + 50, vR.y + 2);
-    ctx.lineTo(vR.x, vR.y);
-    ctx.lineTo(qR.x, qR.y);
-    ctx.lineTo(pR.x, pR.y);
+    ctx.moveTo(w0.x, w0.y);
+    ctx.lineTo(W + 50, w0.y + 2);
+    ctx.lineTo(W + 50, w1.y + 2);
+    ctx.lineTo(w1.x, w1.y);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = `rgba(160,210,255,${0.07 * (1 - t)})`;
-    const waveY = wR.y - 4 * wR.scale - Math.sin(z0 * 0.08) * 2 * wR.scale;
-    ctx.fillRect(wR.x, waveY, Math.max(20, (W - wR.x) * 0.4), 2 * wR.scale);
+    ctx.fillStyle = hazeMix(DEEP, FOG, fog * 0.85);
+    ctx.globalAlpha = 0.42 * (1 - t * 0.5);
+    ctx.beginPath();
+    const midX = w0.x + Math.max(40, (W - w0.x) * 0.38);
+    ctx.moveTo(midX, w0.y);
+    ctx.lineTo(W + 50, w0.y + 2);
+    ctx.lineTo(W + 50, w1.y + 2);
+    ctx.lineTo(w1.x + Math.max(40, (W - w1.x) * 0.38), w1.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Soft surf line + light chop
+    ctx.fillStyle = `rgba(220,240,245,${0.12 * (1 - t)})`;
+    const surf0 = projectWorld(waterIn + 0.02, 0, z0, d);
+    const surf1 = projectWorld(waterIn + 0.02, 0, z1, d);
+    ctx.beginPath();
+    ctx.moveTo(surf0.x, surf0.y - 1.2 * surf0.scale);
+    ctx.lineTo(surf0.x + 10 * surf0.scale, surf0.y);
+    ctx.lineTo(surf1.x + 10 * surf1.scale, surf1.y);
+    ctx.lineTo(surf1.x, surf1.y - 1.2 * surf1.scale);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = `rgba(170,220,230,${0.08 * (1 - t)})`;
+    const waveY = w0.y - 3 * w0.scale - Math.sin(z0 * 0.08) * 2 * w0.scale;
+    ctx.fillRect(w0.x + 8 * w0.scale, waveY, Math.max(18, (W - w0.x) * 0.28), 1.6 * w0.scale);
   }
 
   function drawLandmark(lm, d) {
@@ -9166,25 +9255,30 @@
       ctx.fillRect(gx - bw * 0.2, gy - 3 * s, bw * 0.4, 3 * s);
       lmCornice(gx, top.y + bh * 0.08, bw * 0.9, 6 * s);
     } else if (lm.kind === 'beach' || lm.kind === 'oakbeach') {
-      const sandX = side > 0 ? xWorld + 0.28 : xWorld - 0.12;
+      const sandX = side > 0 ? xWorld + 0.42 : xWorld - 0.12;
       const sand = projectWorld(sandX, 0, lm.z, d);
-      const sandH = (lm.kind === 'oakbeach' ? 18 : 24) * s;
-      ctx.fillStyle = lm.kind === 'oakbeach' ? '#a89878' : '#968870';
+      const sandH = (lm.kind === 'oakbeach' ? 22 : 28) * s;
+      ctx.fillStyle = lm.kind === 'oakbeach' ? '#b8a484' : '#a89878';
       ctx.beginPath();
-      ctx.moveTo(sand.x - 28 * s, sand.y);
+      ctx.moveTo(sand.x - 34 * s, sand.y);
       ctx.lineTo(side > 0 ? W + 40 : sand.x - 70 * s, sand.y);
       ctx.lineTo(side > 0 ? W + 40 : sand.x - 70 * s, sand.y - sandH);
-      ctx.lineTo(sand.x - 8 * s, sand.y - sandH * 0.65);
+      ctx.lineTo(sand.x - 10 * s, sand.y - sandH * 0.62);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = 'rgba(255,240,200,0.08)';
+      ctx.fillStyle = 'rgba(255,240,200,0.1)';
       ctx.fillRect(sand.x, sand.y - sandH * 0.55, (side > 0 ? W - sand.x + 30 : 50 * s), sandH * 0.35);
       if (side > 0) {
-        ctx.fillStyle = '#1a8cb0';
-        ctx.fillRect(sand.x - 10 * s, sand.y - 8 * s, W - sand.x + 30, 7 * s);
-        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        // thin park/trail cue before the sand shelf
+        ctx.fillStyle = 'rgba(46,88,54,0.45)';
+        ctx.fillRect(sand.x - 22 * s, sand.y - 5 * s, 14 * s, 5 * s);
+        ctx.fillStyle = 'rgba(170,168,160,0.55)';
+        ctx.fillRect(sand.x - 10 * s, sand.y - 4 * s, 8 * s, 3 * s);
+        ctx.fillStyle = '#2a8a9a';
+        ctx.fillRect(sand.x + 6 * s, sand.y - 9 * s, W - sand.x + 24, 8 * s);
+        ctx.fillStyle = 'rgba(255,255,255,0.14)';
         for (let w = 0; w < 5; w++) {
-          ctx.fillRect(sand.x + w * 18 * s, sand.y - 7 * s, 12 * s, 2 * s);
+          ctx.fillRect(sand.x + 10 * s + w * 18 * s, sand.y - 8 * s, 12 * s, 2 * s);
         }
       }
       for (let u = 0; u < 4; u++) {
@@ -10084,6 +10178,7 @@
 
   function drawCrosswalkAt(d, zLine, eCenter, halfSpan, map) {
     const stripes = 8;
+    const zHalf = 3.2; // paint sits on the asphalt, not upright above it
     for (let i = 0; i < stripes; i++) {
       const t0 = i / stripes;
       const t1 = (i + 0.45) / stripes;
@@ -10091,12 +10186,20 @@
       const e1 = eCenter - halfSpan + t1 * halfSpan * 2;
       const wx0 = (e0 - eCenter) * map.xPerBlock;
       const wx1 = (e1 - eCenter) * map.xPerBlock;
-      const a = projectWorld(wx0, 0, zLine, d);
-      const b = projectWorld(wx1, 0, zLine, d);
-      if (a.relZ < 25 || a.relZ > 1000) continue;
-      const cwA = Math.max(0, Math.min(1, (1000 - a.relZ) / 220));
+      const a0 = projectWorld(wx0, 0, zLine - zHalf, d);
+      const a1 = projectWorld(wx1, 0, zLine - zHalf, d);
+      const b0 = projectWorld(wx0, 0, zLine + zHalf, d);
+      const b1 = projectWorld(wx1, 0, zLine + zHalf, d);
+      if (a0.relZ < 25 || a0.relZ > 1000) continue;
+      const cwA = Math.max(0, Math.min(1, (1000 - a0.relZ) / 220));
       ctx.fillStyle = `rgba(235,230,215,${0.62 * cwA})`;
-      ctx.fillRect(a.x, a.y - 5 * a.scale, Math.max(2, b.x - a.x), Math.max(2, 10 * a.scale));
+      ctx.beginPath();
+      ctx.moveTo(a0.x, a0.y);
+      ctx.lineTo(a1.x, a1.y);
+      ctx.lineTo(b1.x, b1.y);
+      ctx.lineTo(b0.x, b0.y);
+      ctx.closePath();
+      ctx.fill();
     }
   }
 
@@ -10173,17 +10276,32 @@
       }
       for (let side of [-1, 1]) {
         const stripeZ = ix.z + side * (depth - 6);
-        const a = projectWorld(crossWx - hw, 0, stripeZ, d);
-        const b = projectWorld(crossWx + hw, 0, stripeZ, d);
-        if (a.relZ < 25 || a.relZ > 1000) continue;
-        const cwA = Math.max(0, Math.min(1, (1000 - a.relZ) / 220));
+        const zHalf = 3.2;
+        const aL = projectWorld(crossWx - hw, 0, stripeZ - zHalf, d);
+        const aR = projectWorld(crossWx + hw, 0, stripeZ - zHalf, d);
+        const bL = projectWorld(crossWx - hw, 0, stripeZ + zHalf, d);
+        const bR = projectWorld(crossWx + hw, 0, stripeZ + zHalf, d);
+        if (aL.relZ < 25 || aL.relZ > 1000) continue;
+        const cwA = Math.max(0, Math.min(1, (1000 - aL.relZ) / 220));
         ctx.fillStyle = `rgba(235,230,215,${0.62 * cwA})`;
         const stripes = 7;
         for (let i = 0; i < stripes; i++) {
           const t0 = i / stripes, t1 = (i + 0.42) / stripes;
-          const x0 = a.x + (b.x - a.x) * t0;
-          const x1 = a.x + (b.x - a.x) * t1;
-          ctx.fillRect(x0, a.y - 5 * a.scale, Math.max(2, x1 - x0), Math.max(2, 10 * a.scale));
+          const x0n = aL.x + (aR.x - aL.x) * t0;
+          const y0n = aL.y + (aR.y - aL.y) * t0;
+          const x1n = aL.x + (aR.x - aL.x) * t1;
+          const y1n = aL.y + (aR.y - aL.y) * t1;
+          const x0f = bL.x + (bR.x - bL.x) * t0;
+          const y0f = bL.y + (bR.y - bL.y) * t0;
+          const x1f = bL.x + (bR.x - bL.x) * t1;
+          const y1f = bL.y + (bR.y - bL.y) * t1;
+          ctx.beginPath();
+          ctx.moveTo(x0n, y0n);
+          ctx.lineTo(x1n, y1n);
+          ctx.lineTo(x1f, y1f);
+          ctx.lineTo(x0f, y0f);
+          ctx.closePath();
+          ctx.fill();
         }
       }
     }
@@ -10412,8 +10530,8 @@
       ctx.restore();
       return;
     }
-    // Furniture lives on the concrete sidewalk strip
-    const xWorld = pr.side * ((DW.ROAD + DW.WALK) * 0.5);
+    // Furniture lives on the concrete sidewalk strip (lake props may push further out)
+    const xWorld = pr.side * ((DW.ROAD + DW.WALK) * 0.5 + (pr.xOff || 0));
     const p = projectWorld(xWorld, 0, pr.z, d);
     if (p.relZ > 1100) return;
     const nearFade = facadeProximityFade(p, d, { minZ: 78, fadeZ: 230 });
@@ -10468,10 +10586,13 @@
       ctx.fillRect(p.x - 12 * p.scale, p.y - 4 * p.scale, 3 * p.scale, 4 * p.scale);
       ctx.fillRect(p.x + 9 * p.scale, p.y - 4 * p.scale, 3 * p.scale, 4 * p.scale);
     } else if (pr.kind === 'lake_wall') {
-      ctx.fillStyle = '#6a6860';
-      ctx.fillRect(p.x - 2 * p.scale, p.y - 12 * p.scale, 4 * p.scale, 12 * p.scale);
-      ctx.fillStyle = '#888880';
-      ctx.fillRect(p.x - 18 * p.scale, p.y - 10 * p.scale, 36 * p.scale, 3 * p.scale);
+      // Low lakefront seawall / railing at the sand edge
+      ctx.fillStyle = '#7a7870';
+      ctx.fillRect(p.x - 20 * p.scale, p.y - 5 * p.scale, 40 * p.scale, 5 * p.scale);
+      ctx.fillStyle = '#5a5850';
+      ctx.fillRect(p.x - 2 * p.scale, p.y - 14 * p.scale, 4 * p.scale, 10 * p.scale);
+      ctx.fillStyle = '#9a9890';
+      ctx.fillRect(p.x - 18 * p.scale, p.y - 12 * p.scale, 36 * p.scale, 2.5 * p.scale);
     } else if (pr.kind === 'boat') {
       ctx.fillStyle = '#e8e6e0';
       ctx.beginPath();
