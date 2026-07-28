@@ -278,10 +278,10 @@
 
       <div class="toast" id="toast"></div>
 
-      <div class="overlay" id="overlay">
+      <div class="overlay" id="overlay" hidden>
         <div class="overlay-card">
           <h2 id="overlayTitle" hidden></h2>
-          <p id="overlayText">Pump your own gas</p>
+          <p id="overlayText"></p>
           <p class="keys" id="overlayKeys" hidden></p>
           <div class="control-row" id="overlayStartRow">
             <button class="btn primary" id="startBtn" type="button">Start</button>
@@ -1098,7 +1098,7 @@
 
     // ---------------------------------------------------------------- state & hud
     const state = {
-      running: false,
+      running: true,
       paused: false,
       won: false,
       coins: 0,
