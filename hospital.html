@@ -7,7 +7,9 @@
   <meta name="description" content="Play Medication Time at County General, a free hospital minigame in the connected Cash 4 Copper browser game world." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#0d1512" />
-  <link rel="canonical" href="https://cashforcopper.us/hospital" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="canonical" href="https://cashforcopper.us/hospital" />
   <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
@@ -225,7 +227,7 @@
     @media (hover: none), (pointer: coarse) {
       .canvas-wrap {
         display: flex;
-        align-items: center;
+        align-items: flex-end;
         justify-content: center;
         bottom: calc(168px + env(safe-area-inset-bottom, 0px));
       }
@@ -269,8 +271,44 @@
       .app:has(#overlay:not([hidden])) .move-pad { display: none; }
     }
   </style>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Medication Time",
+    "url": "https://cashforcopper.us/hospital",
+    "image": "https://cashforcopper.us/assets/cash-4-copper-logo.png",
+    "description": "Play a round of pill soccer at County General, then return to the street.",
+    "genre": ["Arcade"],
+    "playMode": "SinglePlayer",
+    "applicationCategory": "Game",
+    "operatingSystem": "Web browser",
+    "isAccessibleForFree": true,
+    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/frogger" }
+  }
+  </script>
 </head>
 <body>
+<details class="world-nav">
+  <summary>Games</summary>
+  <div class="world-nav-card">
+    <h2>Medication Time</h2>
+    <p>Play a round of pill soccer at County General, then return to the street. Part of the free Cash 4 Copper browser game world.</p>
+    <nav aria-label="Cash 4 Copper games">
+      <a href="/frogger">Night Drive</a>
+      <a href="/roulette">Roulette</a>
+      <a href="/craps">Craps</a>
+      <a href="/burger">Night Shift Grill</a>
+      <a href="/liquor">Bottle Run</a>
+      <a href="/gas">Quik-Fill 64</a>
+      <a href="/hospital">Medication Time</a>
+      <a href="/coins">Bullion Desk</a>
+      <a href="/bank">Teller Window</a>
+    </nav>
+  </div>
+</details>
+
   <div class="app">
     <div class="canvas-wrap">
       <canvas id="game" width="560" height="420" aria-label="Medication time — pill soccer against the doctor"></canvas>
@@ -392,7 +430,7 @@
       ? Wallet.canvasInset(canvas).right
       : 88;
   }
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   const pyramidPoster = new Image();
   let pyramidPosterReady = false;
   pyramidPoster.onload = () => { pyramidPosterReady = true; };

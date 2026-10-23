@@ -7,7 +7,8 @@
   <meta name="description" content="Play free craps in your browser, roll the dice, place table bets, and explore detailed payout probabilities and game analytics." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#0d1512" />
-  <link rel="canonical" href="https://cashforcopper.us/craps" />
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="canonical" href="https://cashforcopper.us/craps" />
   <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
@@ -355,8 +356,44 @@
       .purse-block { align-items: flex-start; }
     }
   </style>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Craps",
+    "url": "https://cashforcopper.us/craps",
+    "image": "https://cashforcopper.us/assets/cash-4-copper-logo.png",
+    "description": "Roll the dice at a free craps table and see how each bet pays.",
+    "genre": ["Casino"],
+    "playMode": "SinglePlayer",
+    "applicationCategory": "Game",
+    "operatingSystem": "Web browser",
+    "isAccessibleForFree": true,
+    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/frogger" }
+  }
+  </script>
 </head>
 <body>
+<details class="world-nav">
+  <summary>Games</summary>
+  <div class="world-nav-card">
+    <h2>Craps</h2>
+    <p>Roll the dice at a free craps table and see how each bet pays. Part of the free Cash 4 Copper browser game world.</p>
+    <nav aria-label="Cash 4 Copper games">
+      <a href="/frogger">Night Drive</a>
+      <a href="/roulette">Roulette</a>
+      <a href="/craps">Craps</a>
+      <a href="/burger">Night Shift Grill</a>
+      <a href="/liquor">Bottle Run</a>
+      <a href="/gas">Quik-Fill 64</a>
+      <a href="/hospital">Medication Time</a>
+      <a href="/coins">Bullion Desk</a>
+      <a href="/bank">Teller Window</a>
+    </nav>
+  </div>
+</details>
+
   <script>
   (function () {
     var id = 'craps';
@@ -2603,7 +2640,8 @@
       const w = els.board3d.clientWidth;
       const h = els.board3d.clientHeight;
       if (w < 2 || h < 2) return;
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      const dprCap = window.matchMedia('(hover: none), (pointer: coarse)').matches ? 1.25 : 2;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
@@ -3434,7 +3472,11 @@
 
       camera = new THREE.PerspectiveCamera(32, 1, 1, 4000);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer = new THREE.WebGLRenderer({
+        antialias: !window.matchMedia('(hover: none), (pointer: coarse)').matches,
+        alpha: false,
+        powerPreference: 'high-performance'
+      });
       renderer.setClearColor(0x0b3d28, 1);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;

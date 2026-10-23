@@ -7,7 +7,8 @@
   <meta name="description" content="Visit the Teller Window at Lake Shore Trust, a free bank minigame in the connected Cash 4 Copper browser game world." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#0d1512" />
-  <link rel="canonical" href="https://cashforcopper.us/bank" />
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="canonical" href="https://cashforcopper.us/bank" />
   <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
@@ -719,8 +720,44 @@
       .fluorescent, .teller-head { animation: none; }
     }
   </style>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Teller Window",
+    "url": "https://cashforcopper.us/bank",
+    "image": "https://cashforcopper.us/assets/cash-4-copper-logo.png",
+    "description": "Step up to the teller window at Lake Shore Trust, then return to the drive.",
+    "genre": ["Arcade"],
+    "playMode": "SinglePlayer",
+    "applicationCategory": "Game",
+    "operatingSystem": "Web browser",
+    "isAccessibleForFree": true,
+    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/frogger" }
+  }
+  </script>
 </head>
 <body>
+<details class="world-nav">
+  <summary>Games</summary>
+  <div class="world-nav-card">
+    <h2>Teller Window</h2>
+    <p>Step up to the teller window at Lake Shore Trust, then return to the drive. Part of the free Cash 4 Copper browser game world.</p>
+    <nav aria-label="Cash 4 Copper games">
+      <a href="/frogger">Night Drive</a>
+      <a href="/roulette">Roulette</a>
+      <a href="/craps">Craps</a>
+      <a href="/burger">Night Shift Grill</a>
+      <a href="/liquor">Bottle Run</a>
+      <a href="/gas">Quik-Fill 64</a>
+      <a href="/hospital">Medication Time</a>
+      <a href="/coins">Bullion Desk</a>
+      <a href="/bank">Teller Window</a>
+    </nav>
+  </div>
+</details>
+
   <div class="scene" id="scene">
     <header class="mast">
       <div class="brand">

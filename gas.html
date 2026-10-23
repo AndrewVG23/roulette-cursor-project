@@ -7,7 +7,8 @@
   <meta name="description" content="Visit Quik-Fill 64, a free gas station minigame in the connected Cash 4 Copper browser game world." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#0d1512" />
-  <link rel="canonical" href="https://cashforcopper.us/gas" />
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="canonical" href="https://cashforcopper.us/gas" />
   <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
@@ -283,8 +284,44 @@
       touch-action: none;
     }
   </style>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Quik-Fill 64",
+    "url": "https://cashforcopper.us/gas",
+    "image": "https://cashforcopper.us/assets/cash-4-copper-logo.png",
+    "description": "Pump the tank at the corner station and roll back onto the drive.",
+    "genre": ["Arcade"],
+    "playMode": "SinglePlayer",
+    "applicationCategory": "Game",
+    "operatingSystem": "Web browser",
+    "isAccessibleForFree": true,
+    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/frogger" }
+  }
+  </script>
 </head>
 <body class="has-purse-hud">
+<details class="world-nav">
+  <summary>Games</summary>
+  <div class="world-nav-card">
+    <h2>Quik-Fill 64</h2>
+    <p>Pump the tank at the corner station and roll back onto the drive. Part of the free Cash 4 Copper browser game world.</p>
+    <nav aria-label="Cash 4 Copper games">
+      <a href="/frogger">Night Drive</a>
+      <a href="/roulette">Roulette</a>
+      <a href="/craps">Craps</a>
+      <a href="/burger">Night Shift Grill</a>
+      <a href="/liquor">Bottle Run</a>
+      <a href="/gas">Quik-Fill 64</a>
+      <a href="/hospital">Medication Time</a>
+      <a href="/coins">Bullion Desk</a>
+      <a href="/bank">Teller Window</a>
+    </nav>
+  </div>
+</details>
+
   <div class="app">
     <main class="stage" id="stage">
       <canvas id="game" aria-label="Quik-Fill 64: run and jump around the gas station"></canvas>
@@ -361,10 +398,11 @@
     // ---------------------------------------------------------------- setup
     const canvas = document.getElementById('game');
     const stage = document.getElementById('stage');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const phoneGpu = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: !phoneGpu, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, phoneGpu ? 1.25 : 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = phoneGpu ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.3;
 

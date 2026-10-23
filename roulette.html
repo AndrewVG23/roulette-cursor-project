@@ -7,7 +7,8 @@
   <meta name="description" content="Play free American roulette in your browser, place chips on a detailed table, and explore expected value, payout curves, and outcome probabilities." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#0d1512" />
-  <link rel="canonical" href="https://cashforcopper.us/roulette" />
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="canonical" href="https://cashforcopper.us/roulette" />
   <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
@@ -719,8 +720,44 @@
     }
     @media (max-width: 560px) { .scoreboard-grid, .scoreboard-outcomes, .stats { grid-template-columns: 1fr; } }
   </style>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "American Roulette",
+    "url": "https://cashforcopper.us/roulette",
+    "image": "https://cashforcopper.us/assets/cash-4-copper-logo.png",
+    "description": "Place chips on a free American roulette table and read the payout for every bet.",
+    "genre": ["Casino"],
+    "playMode": "SinglePlayer",
+    "applicationCategory": "Game",
+    "operatingSystem": "Web browser",
+    "isAccessibleForFree": true,
+    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/frogger" }
+  }
+  </script>
 </head>
 <body>
+<details class="world-nav">
+  <summary>Games</summary>
+  <div class="world-nav-card">
+    <h2>American Roulette</h2>
+    <p>Place chips on a free American roulette table and read the payout for every bet. Part of the free Cash 4 Copper browser game world.</p>
+    <nav aria-label="Cash 4 Copper games">
+      <a href="/frogger">Night Drive</a>
+      <a href="/roulette">Roulette</a>
+      <a href="/craps">Craps</a>
+      <a href="/burger">Night Shift Grill</a>
+      <a href="/liquor">Bottle Run</a>
+      <a href="/gas">Quik-Fill 64</a>
+      <a href="/hospital">Medication Time</a>
+      <a href="/coins">Bullion Desk</a>
+      <a href="/bank">Teller Window</a>
+    </nav>
+  </div>
+</details>
+
   <script>
   (function () {
     var id = 'casino';
@@ -3099,7 +3136,8 @@
       if (!renderer || !camera || !board3dEl) return;
       const width = Math.max(1, Math.round(board3dEl.clientWidth));
       const height = Math.max(1, Math.round(board3dEl.clientHeight));
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dprCap = window.matchMedia('(hover: none), (pointer: coarse)').matches ? 1.25 : 2;
+      const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
       const mobile = isMobileViewport();
       const mobileChanged = lastMobileCamera !== null && lastMobileCamera !== mobile;
       if (
@@ -3143,7 +3181,7 @@
       camera = new THREE.PerspectiveCamera(28, 1, 1, 3000);
 
       renderer = new THREE.WebGLRenderer({
-        antialias: true,
+        antialias: !window.matchMedia('(hover: none), (pointer: coarse)').matches,
         alpha: false,
         powerPreference: 'high-performance',
         // Needed so MP4 frame grabs can read the WebGL canvas after render.

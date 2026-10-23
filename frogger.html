@@ -7,7 +7,8 @@
   <meta name="description" content="Play Return to Your Car, a free Frogger-style street-crossing and night-driving browser game. Dodge traffic and explore the Cash 4 Copper game world." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#0d1512" />
-  <link rel="canonical" href="https://cashforcopper.us/frogger" />
+    <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link rel="canonical" href="https://cashforcopper.us/frogger" />
   <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
@@ -23,21 +24,43 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "VideoGame",
-    "name": "Return to Your Car",
-    "url": "https://cashforcopper.us/frogger",
-    "image": "https://cashforcopper.us/assets/cash-4-copper-logo.png",
-    "description": "A free Frogger-style street-crossing and night-driving browser game set in the Cash 4 Copper game world.",
-    "genre": ["Arcade", "Street-crossing", "Driving"],
-    "playMode": "SinglePlayer",
-    "applicationCategory": "Game",
-    "operatingSystem": "Any",
-    "isAccessibleForFree": true,
-    "publisher": {
-      "@type": "Organization",
-      "name": "Cash 4 Copper",
-      "url": "https://cashforcopper.us/"
-    }
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "name": "Cash 4 Copper",
+        "url": "https://cashforcopper.us/frogger",
+        "description": "A free browser game world: cross the street, drive the city, and stop in at the tables, grill, and shops."
+      },
+      {
+        "@type": "VideoGame",
+        "name": "Return to Your Car",
+        "url": "https://cashforcopper.us/frogger",
+        "image": "https://cashforcopper.us/assets/cash-4-copper-logo.png",
+        "description": "A free Frogger-style street-crossing and night-driving browser game set in the Cash 4 Copper game world.",
+        "genre": ["Arcade", "Street-crossing", "Driving"],
+        "playMode": "SinglePlayer",
+        "applicationCategory": "Game",
+        "operatingSystem": "Web browser",
+        "browserRequirements": "Requires JavaScript and HTML5 canvas.",
+        "isAccessibleForFree": true,
+        "publisher": { "@type": "Organization", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/frogger" }
+      },
+      {
+        "@type": "ItemList",
+        "name": "Cash 4 Copper games",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Return to Your Car", "url": "https://cashforcopper.us/frogger" },
+          { "@type": "ListItem", "position": 2, "name": "American Roulette", "url": "https://cashforcopper.us/roulette" },
+          { "@type": "ListItem", "position": 3, "name": "Craps", "url": "https://cashforcopper.us/craps" },
+          { "@type": "ListItem", "position": 4, "name": "Night Shift Grill", "url": "https://cashforcopper.us/burger" },
+          { "@type": "ListItem", "position": 5, "name": "Bottle Run", "url": "https://cashforcopper.us/liquor" },
+          { "@type": "ListItem", "position": 6, "name": "Quik-Fill 64", "url": "https://cashforcopper.us/gas" },
+          { "@type": "ListItem", "position": 7, "name": "Medication Time", "url": "https://cashforcopper.us/hospital" },
+          { "@type": "ListItem", "position": 8, "name": "Bullion Desk", "url": "https://cashforcopper.us/coins" },
+          { "@type": "ListItem", "position": 9, "name": "Teller Window", "url": "https://cashforcopper.us/bank" }
+        ]
+      }
+    ]
   }
   </script>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700,900&display=swap" rel="stylesheet">
@@ -1935,7 +1958,9 @@
   }
 
   const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+  const liteFx = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+  ctx.imageSmoothingEnabled = !liteFx;
   // Player ride — pixel copper/patina BMW X5 (transparent cutout)
   const PLAYER_CAR_IMG = new Image();
   PLAYER_CAR_IMG.src = 'copper_car.png';
@@ -7104,7 +7129,7 @@
     if (yours) {
       const pulse = 0.45 + 0.55 * Math.sin(performance.now() / 260);
       ctx.shadowColor = '#efc84a';
-      ctx.shadowBlur = 6 + pulse * 14;
+      ctx.shadowBlur = liteFx ? 0 : 6 + pulse * 14;
       ctx.fillStyle = `rgba(239,200,74,${0.12 + pulse * 0.12})`;
       ctx.beginPath();
       ctx.ellipse(0, 2, 22 + pulse * 3, 14 + pulse * 2, 0, 0, Math.PI * 2);
@@ -7901,7 +7926,7 @@
     ctx.translate(x + TILE / 2, y + TILE / 2 + 2);
     ctx.rotate(-0.04);
     ctx.shadowColor = '#d4a017';
-    ctx.shadowBlur = 5 + pulse * 12;
+    ctx.shadowBlur = liteFx ? 0 : 5 + pulse * 12;
     ctx.fillStyle = '#3a4a38';
     ctx.fillRect(-16, -8, 32, 16);
     ctx.shadowBlur = 0;
@@ -10393,7 +10418,7 @@
         ctx.arc(cx - 1.5 * s, ly - 1.5 * s, 1.3 * s, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowColor = lampColors[order[i]];
-        ctx.shadowBlur = strobe ? 22 * s : 14 * s;
+        ctx.shadowBlur = liteFx ? 0 : (strobe ? 22 * s : 14 * s);
         ctx.fillStyle = lampColors[order[i]];
         ctx.beginPath();
         ctx.arc(cx, ly, (strobe ? 2.6 : 2) * s, 0, Math.PI * 2);

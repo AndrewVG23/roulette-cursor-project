@@ -7,7 +7,9 @@
   <meta name="description" content="Play Bottle Run at Corner Liquor, a free arcade minigame in the connected Cash 4 Copper browser game world." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#0d1512" />
-  <link rel="canonical" href="https://cashforcopper.us/liquor" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="canonical" href="https://cashforcopper.us/liquor" />
   <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
@@ -115,8 +117,44 @@
       .touch { display: flex; }
     }
   </style>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Bottle Run",
+    "url": "https://cashforcopper.us/liquor",
+    "image": "https://cashforcopper.us/assets/cash-4-copper-logo.png",
+    "description": "Stock the cooler on a night shift, then head back to the car.",
+    "genre": ["Arcade"],
+    "playMode": "SinglePlayer",
+    "applicationCategory": "Game",
+    "operatingSystem": "Web browser",
+    "isAccessibleForFree": true,
+    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/frogger" }
+  }
+  </script>
 </head>
 <body>
+<details class="world-nav">
+  <summary>Games</summary>
+  <div class="world-nav-card">
+    <h2>Bottle Run</h2>
+    <p>Stock the cooler on a night shift, then head back to the car. Part of the free Cash 4 Copper browser game world.</p>
+    <nav aria-label="Cash 4 Copper games">
+      <a href="/frogger">Night Drive</a>
+      <a href="/roulette">Roulette</a>
+      <a href="/craps">Craps</a>
+      <a href="/burger">Night Shift Grill</a>
+      <a href="/liquor">Bottle Run</a>
+      <a href="/gas">Quik-Fill 64</a>
+      <a href="/hospital">Medication Time</a>
+      <a href="/coins">Bullion Desk</a>
+      <a href="/bank">Teller Window</a>
+    </nav>
+  </div>
+</details>
+
   <div class="topbar">
     <span class="title">BOTTLE RUN</span>
     <span class="spacer"></span>
@@ -149,7 +187,7 @@
   const TOUCH_CONTROLS = window.matchMedia('(pointer: coarse)').matches;
   const ROWS = 15;
   const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   ctx.imageSmoothingEnabled = false;
 
   function fitCanvas() {

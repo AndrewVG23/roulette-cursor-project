@@ -589,3 +589,42 @@ body.has-game-logo > .app > .controls {
 .purse-block.purse-block--hidden {
   display: none !important;
 }
+
+/* Crawlable game list. Closed, it is only a small chip under the logo. */
+.world-nav {
+  position: fixed;
+  z-index: 40;
+  top: calc(var(--game-logo-top) + var(--game-logo-height) + 8px);
+  left: var(--game-logo-left);
+  width: max-content;
+  max-width: min(300px, calc(100vw - 16px));
+  color: #f5edd8;
+  font-family: "General Sans", "Nunito", system-ui, sans-serif;
+  font-size: 0.78rem;
+}
+.world-nav[open] { width: min(300px, calc(100vw - 16px)); }
+.world-nav summary {
+  width: max-content;
+  padding: 6px 10px;
+  cursor: pointer;
+  list-style: none;
+  border: 1px solid rgba(238, 194, 97, 0.35);
+  border-radius: 999px;
+  background: rgba(12, 26, 21, 0.9);
+}
+.world-nav summary::-webkit-details-marker { display: none; }
+.world-nav-card {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid rgba(238, 194, 97, 0.24);
+  border-radius: 8px;
+  background: rgba(12, 26, 21, 0.96);
+}
+.world-nav-card h2 {
+  margin: 0 0 6px;
+  font-family: Georgia, "Zodiak", serif;
+  font-size: 1rem;
+}
+.world-nav-card p { margin: 0 0 8px; line-height: 1.4; color: #d7c9aa; }
+.world-nav-card nav { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+.world-nav-card a { color: #efbb49; }
