@@ -953,6 +953,111 @@
         bottom: calc(151px + env(safe-area-inset-bottom, 0px));
       }
     }
+    /* Phones: a thumb pad, because the direction pad otherwise stays hidden
+       and the drive touch handler cannot brake. */
+    @media (hover: none), (pointer: coarse) {
+      .game-guide {
+        top: max(8px, env(safe-area-inset-top, 0px));
+        left: auto;
+        right: max(8px, env(safe-area-inset-right, 0px));
+        width: min(280px, calc(100vw - 16px));
+      }
+      .game-guide summary { padding: 6px 10px; }
+      #helpPanel.help-panel {
+        padding: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        pointer-events: none;
+      }
+      #helpPanel.help-panel .hint { display: none; }
+      #helpPanel.help-panel .btn.dir {
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      #helpPanel.help-panel .btn.dir:active {
+        transform: scale(0.96);
+        filter: brightness(1.12);
+      }
+      .panel-inner:not(.drive-phase) #helpPanel.help-panel {
+        left: auto;
+        right: max(8px, env(safe-area-inset-right, 0px));
+        bottom: max(8px, env(safe-area-inset-bottom, 0px));
+        width: auto;
+      }
+      .panel-inner:not(.drive-phase) #helpPanel .dpad {
+        pointer-events: auto;
+        grid-template-columns: repeat(3, 64px);
+        grid-template-rows: repeat(2, 58px);
+        gap: 8px;
+      }
+      .panel-inner:not(.drive-phase) #helpPanel .btn.dir {
+        width: 64px;
+        min-width: 64px;
+        height: 58px;
+        font-size: 1.25rem;
+      }
+      .panel-inner.drive-phase #helpPanel.help-panel {
+        left: 0;
+        right: 0;
+        width: auto;
+        bottom: max(8px, env(safe-area-inset-bottom, 0px));
+        padding: 0 max(10px, env(safe-area-inset-right, 0px)) 0 max(10px, env(safe-area-inset-left, 0px));
+      }
+      .panel-inner.drive-phase #helpPanel .dpad.drive-mode {
+        pointer-events: none;
+        width: 100%;
+        grid-template-columns: 76px 76px 1fr 112px;
+        grid-template-rows: 72px 58px;
+        gap: 8px;
+      }
+      .panel-inner.drive-phase .dpad.drive-mode .left,
+      .panel-inner.drive-phase .dpad.drive-mode .right,
+      .panel-inner.drive-phase .dpad.drive-mode .up,
+      .panel-inner.drive-phase .dpad.drive-mode .down {
+        opacity: 1;
+        pointer-events: auto;
+        width: 100%;
+        min-width: 0;
+        height: 100%;
+      }
+      .panel-inner.drive-phase .dpad.drive-mode .left {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        font-size: 1.45rem;
+      }
+      .panel-inner.drive-phase .dpad.drive-mode .right {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        font-size: 1.45rem;
+      }
+      .panel-inner.drive-phase .dpad.drive-mode .up {
+        grid-column: 4;
+        grid-row: 1;
+        font-size: 0.85rem;
+        letter-spacing: 0.14em;
+        background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
+        color: #fff6e3;
+        border-color: rgba(255,210,200,.28);
+      }
+      .panel-inner.drive-phase .dpad.drive-mode .down {
+        grid-column: 4;
+        grid-row: 2;
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+      }
+      .panel-inner.drive-phase:not(:has(#overlay:not([hidden]))) .phone-ctl {
+        bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+      }
+      .panel-inner.drive-phase:not(:has(#overlay:not([hidden]))) .now-playing {
+        left: calc(max(12px, env(safe-area-inset-left, 0px)) + 108px);
+        bottom: calc(210px + env(safe-area-inset-bottom, 0px));
+      }
+      .panel-inner:has(#overlay:not([hidden])) #helpPanel.help-panel {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1056,7 +1161,7 @@
           <span class="now-playing-label">Now</span>
           <span class="now-playing-title" id="nowPlayingTitle">—</span>
         </div>
-        <div class="help-panel" id="helpPanel" hidden role="dialog" aria-label="Controls">
+        <div class="help-panel" id="helpPanel" hidden role="group" aria-label="Controls">
           <p class="hint" id="hintText"></p>
           <div class="dpad" id="dpad" aria-label="Direction pad">
             <button class="btn dir up" type="button" data-dir="up" aria-label="Move up">▲</button>
@@ -3345,17 +3450,37 @@
     return state.phase === 'drive' && isPhoneOpen();
   }
 
+  function coarsePointer() {
+    return window.matchMedia('(hover: none), (pointer: coarse)').matches;
+  }
+
+  function labelThumbPad() {
+    const driving = state.phase === 'drive' && coarsePointer();
+    const up = dpad?.querySelector('.up');
+    const down = dpad?.querySelector('.down');
+    if (!up || !down) return;
+    up.textContent = driving ? 'GAS' : '▲';
+    down.textContent = driving ? 'STOP' : '▼';
+    up.setAttribute('aria-label', driving ? 'Gas' : 'Move up');
+    down.setAttribute('aria-label', driving ? 'Brake' : 'Move down');
+  }
+
+  function syncThumbPad() {
+    if (!helpPanel || !overlay) return;
+    const show = coarsePointer() && overlay.hidden;
+    if (helpPanel.hidden === show) helpPanel.hidden = !show;
+  }
+
   function setHelpOpen(open) {
     if (state.phase !== 'drive') {
       panelInner?.classList.remove('phone-open');
-      if (helpPanel) helpPanel.hidden = true;
       helpBtn?.setAttribute('aria-expanded', 'false');
       hideMapNav();
       updateReplayButton();
       updateShareReplayButton();
+      syncThumbPad();
       return;
     }
-    if (helpPanel) helpPanel.hidden = true;
     panelInner?.classList.toggle('phone-open', open);
     helpBtn?.setAttribute('aria-expanded', String(open));
     helpBtn?.setAttribute('aria-label', open ? 'Hide phone' : 'Show phone');
@@ -3363,6 +3488,7 @@
     else hideMapNav();
     updateReplayButton();
     updateShareReplayButton();
+    syncThumbPad();
   }
 
   function toggleHelp() {
@@ -3579,7 +3705,10 @@
     const gap = 6;
     mapNav.style.left = `${((mx + mapW + gap) / W) * 100}%`;
     mapNav.style.top = 'auto';
-    mapNav.style.bottom = `${((H - my - mapH) / H) * 100}%`;
+    const bottomPct = ((H - my - mapH) / H) * 100;
+    mapNav.style.bottom = coarsePointer()
+      ? `max(${bottomPct}%, calc(156px + env(safe-area-inset-bottom, 0px)))`
+      : `${bottomPct}%`;
     mapNav.style.height = 'auto';
     const taken = new Set((d.exits || []).filter(e => e.taken).map(e => e.id));
     for (const btn of mapNav.querySelectorAll('.map-dest')) {
@@ -3711,6 +3840,8 @@
       panelInner?.classList.remove('drive-phase');
       hideMapNav();
     }
+    labelThumbPad();
+    syncThumbPad();
   }
 
   function makeJankyCar(dir, level) {
@@ -11306,13 +11437,21 @@
       ctx.restore();
     }
 
-    // Floating dials — bottom-right, full circles (no housing box)
+    // Floating dials — bottom-right, full circles (no housing box).
+    // On a phone the thumb pad owns that corner, so the dials sit above it.
     const sr = 52;
     const fr = 30;
+    let lift = 0;
+    if (coarsePointer() && overlay.hidden) {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.height) lift = 156 * (H / rect.height);
+    }
+    const maxLift = Math.max(0, H - sr - 14 - (sr + 48));
+    lift = Math.min(lift, maxLift);
     const scx = W - sr - 14;
-    const scy = H - sr - 14;
+    const scy = H - sr - 14 - lift;
     const fcx = scx - sr - fr - 10;
-    const fcy = H - fr - 18;
+    const fcy = H - fr - 18 - lift;
 
     // --- Fuel gauge ---
     const fArc0 = Math.PI * 0.82;
@@ -11785,6 +11924,7 @@
     dt = Math.min(dt, 0.05);
     update(dt);
     draw();
+    syncThumbPad();
     if (state.replay.exporting && state.replay.mp4Encoder) {
       state.replay.mp4Encoder.tick();
     }
@@ -11865,6 +12005,7 @@
     btn.addEventListener('pointerdown', down);
     btn.addEventListener('pointerup', up);
     btn.addEventListener('pointerleave', up);
+    btn.addEventListener('pointercancel', up);
   });
 
   let touchStart = null;
@@ -11876,6 +12017,9 @@
         setHelpOpen(false);
         return;
       }
+      // Phones use the thumb pad so a finger on the road doesn't floor it
+      // or wipe a button that's still held.
+      if (coarsePointer()) return;
       const rect = canvas.getBoundingClientRect();
       const nx = (e.clientX - rect.left) / rect.width;
       // Wide touch bands — left half / right half steers
@@ -11885,7 +12029,7 @@
     }
   });
   canvas.addEventListener('pointermove', (e) => {
-    if (state.phase !== 'drive' || !touchStart) return;
+    if (state.phase !== 'drive' || !touchStart || coarsePointer()) return;
     const rect = canvas.getBoundingClientRect();
     const nx = (e.clientX - rect.left) / rect.width;
     state.keys.left = nx < 0.48;
@@ -11894,7 +12038,9 @@
   });
   canvas.addEventListener('pointerup', (e) => {
     if (state.phase === 'drive') {
-      state.keys.left = state.keys.right = state.keys.up = state.keys.down = false;
+      if (!coarsePointer()) {
+        state.keys.left = state.keys.right = state.keys.up = state.keys.down = false;
+      }
       touchStart = null;
       return;
     }
@@ -11954,6 +12100,7 @@
     if (helpBtn?.contains(e.target)) return;
     if (mapNav?.contains(e.target)) return;
     if (phoneCtlEl?.contains(e.target)) return;
+    if (helpPanel?.contains(e.target)) return;
     setHelpOpen(false);
   });
 
