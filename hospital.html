@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-orient="none">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -9,6 +9,7 @@
   <meta name="theme-color" content="#0d1512" />
   <link rel="canonical" href="https://cashforcopper.us/hospital" />
   <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
+  <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Cash 4 Copper" />
   <meta property="og:title" content="Medication Time – Free Hospital Browser Game" />
@@ -215,9 +216,57 @@
       height: 26px;
       display: block;
     }
+    .move-pad { display: none; }
     @media (max-width: 420px) {
       .pill-label { font-size: 0.68rem; }
       .btn.pill-btn { padding: 0 10px 0 8px; gap: 8px; }
+    }
+    /* Upright play: the pitch keeps its shape, and a thumb pad moves the slime. */
+    @media (hover: none), (pointer: coarse) {
+      .canvas-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        bottom: calc(168px + env(safe-area-inset-bottom, 0px));
+      }
+      canvas {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        aspect-ratio: 560 / 420;
+      }
+      .move-pad {
+        position: absolute;
+        left: max(10px, env(safe-area-inset-left, 0px));
+        right: max(10px, env(safe-area-inset-right, 0px));
+        bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+        z-index: 4;
+        display: grid;
+        grid-template-columns: 76px 76px 1fr 112px;
+        height: 76px;
+        gap: 8px;
+        pointer-events: none;
+      }
+      .move-pad button {
+        pointer-events: auto;
+        touch-action: none;
+        border-radius: 14px;
+        border: 2px solid rgba(184,212,232,.28);
+        background: linear-gradient(180deg, #244858, #142830);
+        color: #eef8ff;
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        font-weight: 700;
+      }
+      .move-pad button:active { transform: scale(0.96); filter: brightness(1.12); }
+      .move-pad [data-move="up"] {
+        grid-column: 4;
+        font-size: 0.85rem;
+        letter-spacing: 0.08em;
+        background: linear-gradient(180deg, #48b8e8, #1878a8);
+      }
+      .app:has(#overlay:not([hidden])) .move-pad { display: none; }
     }
   </style>
 </head>
@@ -234,6 +283,12 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="move-pad" aria-label="Move">
+      <button type="button" data-move="left" aria-label="Move left">◀</button>
+      <button type="button" data-move="right" aria-label="Move right">▶</button>
+      <button type="button" data-move="up" aria-label="Jump">JUMP</button>
     </div>
 
     <div class="controls">
@@ -2671,12 +2726,26 @@
     if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') state.keys.up = false;
   });
 
+  document.querySelectorAll('[data-move]').forEach((btn) => {
+    const down = (e) => {
+      e.preventDefault();
+      ensureAudio();
+      state.keys[btn.dataset.move] = true;
+    };
+    const up = () => { state.keys[btn.dataset.move] = false; };
+    btn.addEventListener('pointerdown', down);
+    btn.addEventListener('pointerup', up);
+    btn.addEventListener('pointerleave', up);
+    btn.addEventListener('pointercancel', up);
+  });
+
   function fitCanvas() {
     canvasDpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(W * canvasDpr);
     canvas.height = Math.round(H * canvasDpr);
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
+    const phone = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+    canvas.style.width = phone ? '' : '100%';
+    canvas.style.height = phone ? '' : '100%';
   }
   window.addEventListener('resize', fitCanvas);
   fitCanvas();

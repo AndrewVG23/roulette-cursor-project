@@ -59,9 +59,50 @@ echo "Waiting for DNS..."
 for _ in $(seq 1 12); do
   if dig +short CNAME "${DOMAIN}" @1.1.1.1 | grep -q . || dig +short A "${DOMAIN}" @1.1.1.1 | grep -q .; then
     echo "DNS is resolving."
-    exit 0
+    break
   fi
   sleep 5
 done
 
-echo "Record saved; propagation may take a few more minutes."
+# www has no record today. Point it at the same Pages host.
+WWW="www.${DOMAIN}"
+www_existing="$(api "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?type=CNAME&name=${WWW}")"
+www_id="$(python3 - <<PY
+import json, sys
+data = json.load(sys.stdin)
+for r in data.get("result") or []:
+    print(r["id"])
+    break
+PY
+<<<"$www_existing")"
+
+www_payload="$(cat <<JSON
+{
+  "type": "CNAME",
+  "name": "${WWW}",
+  "content": "${TARGET}",
+  "proxied": true,
+  "ttl": 1
+}
+JSON
+)"
+
+if [[ -n "$www_id" ]]; then
+  echo "Updating existing CNAME for ${WWW}..."
+  www_result="$(api -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${www_id}" -d "$www_payload")"
+else
+  echo "Creating CNAME for ${WWW} -> ${TARGET}..."
+  www_result="$(api -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" -d "$www_payload")"
+fi
+
+python3 - <<'PY'
+import json, sys
+data = json.load(sys.stdin)
+if not data.get("success"):
+    raise SystemExit(f"www DNS update failed: {data.get('errors')}")
+r = data["result"]
+print(f"OK: {r['type']} {r['name']} -> {r['content']} (proxied={r.get('proxied')})")
+PY
+<<<"$www_result"
+
+echo "Add www.${DOMAIN} as a custom domain on the cashforcopper Pages project if it is not listed there yet."

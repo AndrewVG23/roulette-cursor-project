@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-orient="none">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -9,6 +9,7 @@
   <meta name="theme-color" content="#0d1512" />
   <link rel="canonical" href="https://cashforcopper.us/burger" />
   <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
+  <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Cash 4 Copper" />
   <meta property="og:title" content="Night Shift Grill – Free Cooking Browser Game" />
@@ -290,6 +291,25 @@
     @media (max-width: 520px) {
       .controls .btn.ing { min-height: 64px; font-size: 0.65rem; }
       .ing-grid { gap: var(--space-1); }
+    }
+    /* Play upright. The line stays 560:420 instead of stretching, and the
+       slam buttons keep the bottom of the screen. */
+    @media (hover: none), (pointer: coarse) {
+      .canvas-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        bottom: calc(158px + env(safe-area-inset-bottom, 0px));
+      }
+      canvas {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        aspect-ratio: 560 / 420;
+        object-fit: contain;
+      }
+      .controls .btn.ing { min-height: 72px; }
     }
   </style>
 </head>
@@ -3233,8 +3253,9 @@
     canvasDpr = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(W * canvasDpr);
     canvas.height = Math.round(H * canvasDpr);
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
+    const phone = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+    canvas.style.width = phone ? '' : '100%';
+    canvas.style.height = phone ? '' : '100%';
   }
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
