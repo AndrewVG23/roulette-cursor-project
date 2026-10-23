@@ -3,7 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Return to Your Car</title>
+  <title>Return to Your Car – Free Frogger-Style Browser Game | Cash 4 Copper</title>
+  <meta name="description" content="Play Return to Your Car, a free Frogger-style street-crossing and night-driving browser game. Dodge traffic and explore the Cash 4 Copper game world." />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#0d1512" />
+  <link rel="canonical" href="https://cashforcopper.us/frogger" />
+  <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Cash 4 Copper" />
+  <meta property="og:title" content="Return to Your Car – Free Frogger-Style Browser Game" />
+  <meta property="og:description" content="Dodge traffic in a Frogger-style crossing, drive through the city, and discover the Cash 4 Copper game world." />
+  <meta property="og:url" content="https://cashforcopper.us/frogger" />
+  <meta property="og:image" content="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Return to Your Car | Cash 4 Copper" />
+  <meta name="twitter:description" content="A free Frogger-style street-crossing and night-driving game you can play in your browser." />
+  <meta name="twitter:image" content="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Return to Your Car",
+    "url": "https://cashforcopper.us/frogger",
+    "image": "https://cashforcopper.us/assets/cash-4-copper-logo.png",
+    "description": "A free Frogger-style street-crossing and night-driving browser game set in the Cash 4 Copper game world.",
+    "genre": ["Arcade", "Street-crossing", "Driving"],
+    "playMode": "SinglePlayer",
+    "applicationCategory": "Game",
+    "operatingSystem": "Any",
+    "isAccessibleForFree": true,
+    "publisher": {
+      "@type": "Organization",
+      "name": "Cash 4 Copper",
+      "url": "https://cashforcopper.us/"
+    }
+  }
+  </script>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="wallet.css">
   <script src="wallet.js"></script>
@@ -102,7 +137,46 @@
       pointer-events: none;
     }
     .topbar .stats { pointer-events: auto; }
-    .brand { display: none; }
+    .brand {
+      display: block;
+      margin-right: auto;
+      color: #f5edd8;
+      text-shadow: 0 2px 8px rgba(0,0,0,.8);
+    }
+    .brand h1 { margin: 0; font-family: var(--font-display); font-size: var(--text-lg); }
+    .brand p { margin: 2px 0 0; color: #d7c9aa; font-size: var(--text-xs); }
+    .game-guide {
+      position: absolute;
+      z-index: 4;
+      top: 64px;
+      left: max(10px, env(safe-area-inset-left, 0px));
+      width: min(330px, calc(100vw - 20px));
+      color: var(--color-text);
+      font-size: var(--text-xs);
+    }
+    .game-guide summary {
+      width: max-content;
+      padding: 8px 12px;
+      cursor: pointer;
+      list-style: none;
+      border: 1px solid rgba(238,194,97,.3);
+      border-radius: var(--radius-full);
+      background: rgba(12,26,21,.88);
+      box-shadow: var(--shadow-sm);
+    }
+    .game-guide summary::-webkit-details-marker { display: none; }
+    .game-guide-card {
+      margin-top: 8px;
+      padding: 14px;
+      border: 1px solid rgba(238,194,97,.24);
+      border-radius: var(--radius-md);
+      background: rgba(12,26,21,.96);
+      box-shadow: var(--shadow-md);
+    }
+    .game-guide-card h2 { margin: 0 0 6px; font-family: var(--font-display); font-size: var(--text-base); }
+    .game-guide-card p { margin: 0 0 10px; color: var(--color-text-muted); line-height: 1.45; }
+    .game-guide-card nav { display: flex; flex-wrap: wrap; gap: 6px 10px; }
+    .game-guide-card a { color: #efbb49; }
     .stats {
       display: none;
       gap: var(--space-2);
@@ -257,6 +331,10 @@
       height: 44px;
       display: grid;
       place-items: center;
+    }
+    /* Crossing / frogger phases: no phone or help icon */
+    .panel-inner:not(.drive-phase) .phone-ctl {
+      display: none;
     }
     .phone-ctl > *:not(.phone-actions) { grid-area: 1 / 1; }
     .phone-actions {
@@ -883,9 +961,9 @@
     <main id="main" class="panel">
       <div class="panel-inner">
         <div class="topbar">
-          <div class="brand" hidden>
+          <div class="brand">
             <h1 id="brandTitle">Return to Your Car</h1>
-            <p id="brandSub"></p>
+            <p id="brandSub">Cross the city · get to the garage</p>
           </div>
           <div class="stats" aria-live="polite">
             <div class="stat" id="meterStat">
@@ -899,6 +977,24 @@
             </div>
           </div>
         </div>
+
+        <details class="game-guide">
+          <summary>About &amp; games</summary>
+          <div class="game-guide-card">
+            <h2>Return to Your Car</h2>
+            <p>Dodge traffic in an independent Frogger-style crossing, reach your car, and drive through a connected city of free browser games.</p>
+            <nav aria-label="Explore Cash 4 Copper games">
+              <a href="/">Roulette</a>
+              <a href="/craps">Craps</a>
+              <a href="/burger">Night Shift Grill</a>
+              <a href="/liquor">Bottle Run</a>
+              <a href="/gas">Quik-Fill 64</a>
+              <a href="/hospital">Medication Time</a>
+              <a href="/coins">Bullion Desk</a>
+              <a href="/bank">Teller Window</a>
+            </nav>
+          </div>
+        </details>
 
         <div class="canvas-wrap" id="canvasWrap">
           <canvas id="game" width="480" height="600" aria-label="Return to your car"></canvas>
@@ -954,7 +1050,7 @@
               <div class="phone-edge phone-edge--c phone-edge--c-br" style="--a:75deg"></div>
             </div>
           </div>
-          <button class="help-btn" id="helpBtn" type="button" aria-label="Show controls" aria-expanded="false" aria-controls="helpPanel"></button>
+          <button class="help-btn" id="helpBtn" type="button" aria-label="Show phone" aria-expanded="false" aria-controls="mapNav"></button>
         </div>
         <div class="now-playing" id="nowPlaying" aria-live="polite">
           <span class="now-playing-label">Now</span>
@@ -3245,32 +3341,33 @@
   }
 
   function isHelpUiOpen() {
-    return state.phase === 'drive' ? isPhoneOpen() : !helpPanel.hidden;
+    // Crossing no longer has a help icon — only the drive phone can open.
+    return state.phase === 'drive' && isPhoneOpen();
   }
 
   function setHelpOpen(open) {
-    if (state.phase === 'drive') {
-      helpPanel.hidden = true;
-      panelInner?.classList.toggle('phone-open', open);
-      helpBtn.setAttribute('aria-expanded', String(open));
-      helpBtn.setAttribute('aria-label', open ? 'Hide phone' : 'Show phone');
-      if (open && state.drive) syncMapNav(state.drive);
-      else hideMapNav();
+    if (state.phase !== 'drive') {
+      panelInner?.classList.remove('phone-open');
+      if (helpPanel) helpPanel.hidden = true;
+      helpBtn?.setAttribute('aria-expanded', 'false');
+      hideMapNav();
       updateReplayButton();
       updateShareReplayButton();
       return;
     }
-    panelInner?.classList.remove('phone-open');
-    helpPanel.hidden = !open;
-    helpBtn.setAttribute('aria-expanded', String(open));
-    helpBtn.setAttribute('aria-label', open ? 'Hide controls' : 'Show controls');
-    hideMapNav();
+    if (helpPanel) helpPanel.hidden = true;
+    panelInner?.classList.toggle('phone-open', open);
+    helpBtn?.setAttribute('aria-expanded', String(open));
+    helpBtn?.setAttribute('aria-label', open ? 'Hide phone' : 'Show phone');
+    if (open && state.drive) syncMapNav(state.drive);
+    else hideMapNav();
     updateReplayButton();
     updateShareReplayButton();
   }
 
   function toggleHelp() {
-    setHelpOpen(state.phase === 'drive' ? !isPhoneOpen() : helpPanel.hidden);
+    if (state.phase !== 'drive') return;
+    setHelpOpen(!isPhoneOpen());
   }
 
   // Midtown crossing (full board)
@@ -3565,7 +3662,8 @@
   function setPhaseUI() {
     if (state.phase !== 'drive') {
       panelInner?.classList.remove('phone-open');
-      helpBtn.setAttribute('aria-expanded', 'false');
+      helpBtn?.setAttribute('aria-expanded', 'false');
+      stopPhoneRhymeLoop();
     }
     if (state.phase === 'drive') {
       brandTitle.textContent = 'Night Drive';
@@ -3589,7 +3687,6 @@
       hintText.textContent = 'Arrows / WASD · swipe · get inside';
       dpad.classList.remove('drive-mode');
       panelInner?.classList.remove('drive-phase');
-      stopPhoneRhymeLoop();
       hideMapNav();
     } else if (isGrill()) {
       if (meterStat) meterStat.hidden = true;
@@ -3601,7 +3698,6 @@
       hintText.textContent = 'Arrows / WASD · dash across · hoopty is across the street';
       dpad.classList.remove('drive-mode');
       panelInner?.classList.remove('drive-phase');
-      stopPhoneRhymeLoop();
       hideMapNav();
     } else {
       if (meterStat) meterStat.hidden = true;
@@ -3613,7 +3709,6 @@
       hintText.textContent = 'Arrows / WASD · swipe · cross Midtown to your car';
       dpad.classList.remove('drive-mode');
       panelInner?.classList.remove('drive-phase');
-      stopPhoneRhymeLoop();
       hideMapNav();
     }
   }
@@ -11707,7 +11802,7 @@
   };
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+    if ((e.key === '?' || (e.key === '/' && e.shiftKey)) && state.phase === 'drive') {
       e.preventDefault();
       toggleHelp();
       return;
@@ -11843,7 +11938,7 @@
     muteBtn.textContent = state.muted ? 'Muted' : 'Sound';
   });
 
-  helpBtn.addEventListener('click', (e) => {
+  helpBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     toggleHelp();
   });
@@ -11856,14 +11951,9 @@
   });
   document.addEventListener('pointerdown', (e) => {
     if (!isHelpUiOpen()) return;
-    if (helpBtn.contains(e.target)) return;
-    if (state.phase === 'drive') {
-      if (mapNav?.contains(e.target)) return;
-      // Phone chrome + Replay/Share sit in phone-ctl — don't treat as dismiss
-      if (phoneCtlEl?.contains(e.target)) return;
-    } else if (helpPanel.contains(e.target)) {
-      return;
-    }
+    if (helpBtn?.contains(e.target)) return;
+    if (mapNav?.contains(e.target)) return;
+    if (phoneCtlEl?.contains(e.target)) return;
     setHelpOpen(false);
   });
 
