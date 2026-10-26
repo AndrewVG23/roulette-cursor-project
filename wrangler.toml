@@ -1,3 +1,8 @@
 name = "cashforcopper"
 compatibility_date = "2024-07-01"
 pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cashforcopper-board"
+database_id = "29512612-d2b1-47c2-aefa-d9eec39dcd64"
