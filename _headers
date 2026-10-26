@@ -7,3 +7,9 @@
 
 /*.html
   Cache-Control: public, max-age=0, must-revalidate
+
+/wallet.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/wallet.css
+  Cache-Control: public, max-age=0, must-revalidate

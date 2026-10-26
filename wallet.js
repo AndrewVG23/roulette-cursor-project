@@ -780,23 +780,14 @@
       return;
     }
     const rect = anchor.getBoundingClientRect();
-    const width = chip.offsetWidth || 72;
-    let left = rect.right + 8;
-    let top = rect.top;
-    if (left + width > window.innerWidth - 8) {
-      left = rect.left;
-      top = rect.bottom + 6;
+    chip.style.left = `${Math.round(rect.left)}px`;
+    chip.style.top = `${Math.round(rect.bottom + 6)}px`;
+    const menu = anchor.closest('details');
+    chip.hidden = !!(menu && menu.open);
+    if (menu && !menu.dataset.boardToggle) {
+      menu.dataset.boardToggle = '1';
+      menu.addEventListener('toggle', placeBoardChip);
     }
-    const purse = document.getElementById('purseHudCluster');
-    if (purse) {
-      const purseRect = purse.getBoundingClientRect();
-      if (top < purseRect.bottom && left + width > purseRect.left - 8) {
-        left = rect.left;
-        top = Math.max(rect.bottom, purseRect.bottom) + 6;
-      }
-    }
-    chip.style.top = `${Math.round(top)}px`;
-    chip.style.left = `${Math.round(left)}px`;
   }
 
   function paintSession() {
@@ -808,11 +799,11 @@
       form.hidden = true;
       signed.hidden = false;
       document.getElementById('boardSignedAs').textContent = `Signed in as ${boardPlayer.name}`;
-      chip.textContent = boardPlayer.name;
+      chip.textContent = 'Leaderboard';
     } else {
       form.hidden = false;
       signed.hidden = true;
-      chip.textContent = 'Board';
+      chip.textContent = 'Leaderboard';
     }
     placeBoardChip();
   }
@@ -968,7 +959,8 @@
     chip.type = 'button';
     chip.className = 'board-chip';
     chip.id = 'boardChip';
-    chip.textContent = 'Board';
+    chip.textContent = 'Leaderboard';
+    chip.setAttribute('aria-label', 'Leaderboard');
     const sheet = document.createElement('div');
     sheet.className = 'board-sheet';
     sheet.id = 'boardSheet';

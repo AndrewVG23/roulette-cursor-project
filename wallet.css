@@ -634,20 +634,18 @@ body.has-game-logo > .app > .controls {
   z-index: 10002;
   top: calc(var(--game-logo-top) + var(--game-logo-height) + 8px);
   left: var(--game-logo-left);
-  max-width: 132px;
-  padding: 6px 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 6px 12px;
   white-space: nowrap;
-  border: 1px solid rgba(238, 194, 97, 0.35);
+  border: 1px solid #f4dfa0;
   border-radius: 999px;
-  background: rgba(12, 26, 21, 0.9);
-  color: #f5edd8;
+  background: #e8c878;
+  color: #1a1206;
   font-family: "General Sans", "Nunito", system-ui, sans-serif;
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.85rem;
+  font-weight: 700;
   line-height: 1.2;
   cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 .board-sheet {
   position: fixed;
