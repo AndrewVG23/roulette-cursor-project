@@ -285,7 +285,7 @@
     "applicationCategory": "Game",
     "operatingSystem": "Web browser",
     "isAccessibleForFree": true,
-    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/frogger" }
+    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/" }
   }
   </script>
 </head>
@@ -296,7 +296,7 @@
     <h2>Medication Time</h2>
     <p>Play a round of pill soccer at County General, then return to the street. Part of the free Cash 4 Copper browser game world.</p>
     <nav aria-label="Cash 4 Copper games">
-      <a href="/frogger">Night Drive</a>
+      <a href="/">Night Drive</a>
       <a href="/roulette">Roulette</a>
       <a href="/craps">Craps</a>
       <a href="/burger">Night Shift Grill</a>
@@ -952,7 +952,7 @@
         sessionStorage.setItem('drive-resume', JSON.stringify(data));
       }
     } catch (_) { /* ignore */ }
-    location.href = 'frogger.html?resumeDrive=1';
+    location.href = '/?resumeDrive=1';
   }
 
   function returnToCross() {
@@ -965,13 +965,13 @@
           level: cp.level ?? 1,
           score: cp.score ?? 0
         }));
-        const base = cp.returnTo || 'frogger.html';
+        const base = cp.returnTo || '/';
         const join = base.includes('?') ? '&' : '?';
         location.href = `${base}${join}resumeCross=1`;
         return;
       }
     } catch (_) { /* ignore */ }
-    location.href = 'frogger.html?resumeCross=1';
+    location.href = '/?resumeCross=1';
   }
 
   function leaveHospital() {
@@ -987,7 +987,7 @@
       sessionStorage.setItem('passed-entry-grill', '1');
       sessionStorage.setItem('grill-resume', JSON.stringify({ health: state.patientHp }));
     } catch (e) {}
-    location.href = 'burger.html';
+    location.href = '/burger';
   }
 
   function discharge() {

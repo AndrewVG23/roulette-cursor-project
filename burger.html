@@ -328,7 +328,7 @@
     "applicationCategory": "Game",
     "operatingSystem": "Web browser",
     "isAccessibleForFree": true,
-    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/frogger" }
+    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/" }
   }
   </script>
 </head>
@@ -339,7 +339,7 @@
     <h2>Night Shift Grill</h2>
     <p>Build the ticket on the line, then get back out to the night drive. Part of the free Cash 4 Copper browser game world.</p>
     <nav aria-label="Cash 4 Copper games">
-      <a href="/frogger">Night Drive</a>
+      <a href="/">Night Drive</a>
       <a href="/roulette">Roulette</a>
       <a href="/craps">Craps</a>
       <a href="/burger">Night Shift Grill</a>
@@ -361,7 +361,7 @@
         return;
       }
     } catch (e) {}
-    location.replace('frogger.html?enter=' + id);
+    location.replace('/?enter=' + id);
   })();
   </script>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -384,7 +384,7 @@
         <div class="controls" aria-label="Game controls">
           <div class="control-row">
             <button class="btn primary" id="tossBtn" type="button" title="Trash this burger">Toss</button>
-            <a class="btn subtle" href="frogger.html?from=grill">Leave</a>
+            <a class="btn subtle" href="/?from=grill">Leave</a>
           </div>
           <div class="ing-grid" id="ingGrid" aria-label="Slam ingredients"></div>
         </div>
@@ -1509,7 +1509,7 @@
       );
       startBtn.disabled = true;
       setTimeout(() => {
-        location.href = 'hospital.html';
+        location.href = '/hospital';
       }, 1100);
     }
   }
