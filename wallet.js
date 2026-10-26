@@ -66,6 +66,10 @@
   let pulseTimer = null;
   let deltaTimer = null;
   let resizeObserver = null;
+  let boardPlayer = null;
+  let scorePostTimer = null;
+  let scorePostChain = Promise.resolve();
+  let boardOffline = false;
 
   function clampFuel(gallons) {
     return Math.max(0, Math.min(GAS_TANK_GAL, Number(gallons) || 0));
@@ -148,6 +152,7 @@
     listeners.forEach((fn) => {
       try { fn(getState()); } catch (_) { /* ignore listener errors */ }
     });
+    scheduleScorePost();
   }
 
   function getState() {
@@ -602,6 +607,7 @@
 
   function mountHud() {
     mountLogo();
+    mountBoard();
     if (hudDisabled()) return;
     if (document.getElementById('purseHud')) {
       document.body.classList.add('has-purse-hud');
@@ -704,6 +710,323 @@
   function subscribe(fn) {
     listeners.add(fn);
     return () => listeners.delete(fn);
+  }
+
+  const BOARD_ERRORS = {
+    taken: 'That name is taken.',
+    credentials: 'That name and password do not match.',
+    name: 'Use 2–16 letters, numbers, or spaces.',
+    password: 'Password needs at least 4 characters.',
+    offline: 'The board is offline.',
+    score: 'That score could not be posted.'
+  };
+
+  function dateFromWeeks(weeks) {
+    const ms = GAME_START_MS + (Number(weeks) || 0) * MS_PER_WEEK;
+    const d = new Date(ms);
+    return `${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+  }
+
+  function boardError(code) {
+    return BOARD_ERRORS[code] || BOARD_ERRORS.offline;
+  }
+
+  function scheduleScorePost() {
+    if (!boardPlayer || boardOffline) return;
+    clearTimeout(scorePostTimer);
+    scorePostTimer = setTimeout(() => {
+      scorePostChain = scorePostChain.then(postScore).catch(() => {});
+    }, 800);
+  }
+
+  async function postScore() {
+    if (!boardPlayer || boardOffline) return;
+    const worth = netWorth();
+    const weeks = totalWeeks();
+    if (boardPlayer.best != null && worth <= boardPlayer.best) return;
+    let response;
+    try {
+      response = await fetch('/api/best', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ netWorth: worth, weeks })
+      });
+    } catch (_) {
+      boardOffline = true;
+      return;
+    }
+    if (response.status === 503) {
+      boardOffline = true;
+      return;
+    }
+    if (!response.ok) return;
+    const data = await response.json();
+    if (!boardPlayer || data.best == null) return;
+    boardPlayer.best = data.best;
+    boardPlayer.weeks = data.weeks;
+    const sheet = document.getElementById('boardSheet');
+    if (data.improved && sheet && !sheet.hidden) loadBoard();
+    if (netWorth() > data.best) scheduleScorePost();
+  }
+
+  function placeBoardChip() {
+    const chip = document.getElementById('boardChip');
+    if (!chip) return;
+    const anchor = document.querySelector('.world-nav summary, .game-guide summary');
+    if (!anchor) {
+      chip.style.top = '';
+      chip.style.left = '';
+      return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const width = chip.offsetWidth || 72;
+    let left = rect.right + 8;
+    let top = rect.top;
+    if (left + width > window.innerWidth - 8) {
+      left = rect.left;
+      top = rect.bottom + 6;
+    }
+    const purse = document.getElementById('purseHudCluster');
+    if (purse) {
+      const purseRect = purse.getBoundingClientRect();
+      if (top < purseRect.bottom && left + width > purseRect.left - 8) {
+        left = rect.left;
+        top = Math.max(rect.bottom, purseRect.bottom) + 6;
+      }
+    }
+    chip.style.top = `${Math.round(top)}px`;
+    chip.style.left = `${Math.round(left)}px`;
+  }
+
+  function paintSession() {
+    const form = document.getElementById('boardForm');
+    const signed = document.getElementById('boardSigned');
+    const chip = document.getElementById('boardChip');
+    if (!form || !signed || !chip) return;
+    if (boardPlayer) {
+      form.hidden = true;
+      signed.hidden = false;
+      document.getElementById('boardSignedAs').textContent = `Signed in as ${boardPlayer.name}`;
+      chip.textContent = boardPlayer.name;
+    } else {
+      form.hidden = false;
+      signed.hidden = true;
+      chip.textContent = 'Board';
+    }
+    placeBoardChip();
+  }
+
+  function paintBoard(data) {
+    const list = document.getElementById('boardList');
+    const youEl = document.getElementById('boardYou');
+    if (!list) return;
+    list.replaceChildren();
+    const leaders = (data && data.leaders) || [];
+    if (!leaders.length) {
+      const empty = document.createElement('li');
+      empty.className = 'board-empty';
+      empty.textContent = 'No scores yet.';
+      list.appendChild(empty);
+    } else {
+      leaders.forEach((row) => {
+        const li = document.createElement('li');
+        li.className = 'board-row' + (row.you ? ' is-you' : '');
+        const rank = document.createElement('span');
+        rank.className = 'board-rank';
+        rank.textContent = String(row.rank);
+        const who = document.createElement('span');
+        who.className = 'board-who';
+        const name = document.createElement('span');
+        name.className = 'board-name';
+        name.textContent = row.name;
+        const date = document.createElement('span');
+        date.className = 'board-date';
+        date.textContent = dateFromWeeks(row.weeks);
+        who.append(name, date);
+        const worth = document.createElement('span');
+        worth.className = 'board-worth';
+        worth.textContent = fmt.format(row.netWorth);
+        li.append(rank, who, worth);
+        list.appendChild(li);
+      });
+    }
+    const you = data && data.you;
+    const onBoard = leaders.some((row) => row.you);
+    if (you && you.rank && !onBoard) {
+      youEl.hidden = false;
+      youEl.textContent = `You are ${you.rank} · ${fmt.format(you.netWorth)}`;
+    } else if (you && you.netWorth == null) {
+      youEl.hidden = false;
+      youEl.textContent = 'Your best net worth posts from this phone.';
+    } else if (youEl) {
+      youEl.hidden = true;
+    }
+  }
+
+  async function loadBoard() {
+    const list = document.getElementById('boardList');
+    if (!list) return;
+    let response;
+    try {
+      response = await fetch('/api/board', { credentials: 'same-origin' });
+    } catch (_) {
+      boardOffline = true;
+      paintBoard({ leaders: [] });
+      list.firstChild.textContent = boardError('offline');
+      return;
+    }
+    if (response.status === 503) {
+      boardOffline = true;
+      paintBoard({ leaders: [] });
+      list.firstChild.textContent = boardError('offline');
+      return;
+    }
+    boardOffline = false;
+    const data = await response.json();
+    paintBoard(data);
+  }
+
+  function setBoardOpen(open) {
+    const sheet = document.getElementById('boardSheet');
+    if (!sheet) return;
+    sheet.hidden = !open;
+    if (open) {
+      boardOffline = false;
+      loadBoard();
+      const field = boardPlayer
+        ? document.getElementById('boardLogout')
+        : document.querySelector('#boardForm input[name="name"]');
+      field?.focus();
+    }
+  }
+
+  async function sendAuth(route) {
+    const form = document.getElementById('boardForm');
+    const error = document.getElementById('boardError');
+    const name = form.querySelector('[name="name"]').value;
+    const password = form.querySelector('[name="password"]').value;
+    const named = normalizeBoardName(name);
+    const secret = String(password || '');
+    if (!named.ok) {
+      error.textContent = boardError('name');
+      return;
+    }
+    if (secret.length < 4 || secret.length > 64) {
+      error.textContent = boardError('password');
+      return;
+    }
+    error.textContent = '';
+    const buttons = form.querySelectorAll('button');
+    buttons.forEach((button) => { button.disabled = true; });
+    try {
+      const response = await fetch('/api/' + route, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: named.name, password: secret })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        error.textContent = boardError(data.error || (response.status === 503 ? 'offline' : 'credentials'));
+        return;
+      }
+      boardPlayer = { name: data.name, best: data.best, weeks: data.weeks };
+      boardOffline = false;
+      paintSession();
+      postScore().then(loadBoard);
+    } catch (_) {
+      error.textContent = boardError('offline');
+    } finally {
+      buttons.forEach((button) => { button.disabled = false; });
+    }
+  }
+
+  function normalizeBoardName(raw) {
+    const name = String(raw || '').trim().replace(/\s+/g, ' ');
+    const chars = Array.from(name);
+    if (chars.length < 2 || chars.length > 16 || !/^[\p{L}\p{N} ]+$/u.test(name)) return { ok: false };
+    return { ok: true, name };
+  }
+
+  async function loadSession() {
+    try {
+      const response = await fetch('/api/me', { credentials: 'same-origin' });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data && data.name) {
+        boardPlayer = { name: data.name, best: data.best, weeks: data.weeks };
+        paintSession();
+        scheduleScorePost();
+      }
+    } catch (_) { /* the board can wait until it is opened */ }
+  }
+
+  function mountBoard() {
+    if (document.getElementById('boardChip')) return;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'board-chip';
+    chip.id = 'boardChip';
+    chip.textContent = 'Board';
+    const sheet = document.createElement('div');
+    sheet.className = 'board-sheet';
+    sheet.id = 'boardSheet';
+    sheet.hidden = true;
+    sheet.innerHTML = [
+      '<div class="board-card" role="dialog" aria-modal="true" aria-labelledby="boardTitle">',
+      '<div class="board-card-head">',
+      '<h2 id="boardTitle">Leaderboard</h2>',
+      '<button type="button" class="board-close" id="boardClose" aria-label="Close">×</button>',
+      '</div>',
+      '<p class="board-lead">Best net worth. Your purse stays on this phone.</p>',
+      '<ol class="board-list" id="boardList"></ol>',
+      '<p class="board-you" id="boardYou" hidden></p>',
+      '<form class="board-form" id="boardForm">',
+      '<label>Name <input name="name" autocomplete="username" maxlength="16" required></label>',
+      '<label>Password <input name="password" type="password" autocomplete="current-password" maxlength="64" required></label>',
+      '<p class="board-error" id="boardError" role="alert"></p>',
+      '<div class="board-actions">',
+      '<button type="submit">Sign in</button>',
+      '<button type="button" id="boardCreate">Create account</button>',
+      '</div>',
+      '</form>',
+      '<div class="board-signed" id="boardSigned" hidden>',
+      '<p id="boardSignedAs"></p>',
+      '<button type="button" id="boardLogout">Sign out</button>',
+      '</div>',
+      '</div>'
+    ].join('');
+    const nav = document.querySelector('.world-nav');
+    if (nav) nav.insertAdjacentElement('afterend', chip);
+    else document.body.appendChild(chip);
+    document.body.appendChild(sheet);
+    chip.addEventListener('click', () => setBoardOpen(true));
+    sheet.addEventListener('click', (event) => {
+      if (event.target === sheet) setBoardOpen(false);
+    });
+    sheet.querySelector('.board-card').addEventListener('click', (event) => event.stopPropagation());
+    document.getElementById('boardClose').addEventListener('click', () => setBoardOpen(false));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !sheet.hidden) setBoardOpen(false);
+    });
+    document.getElementById('boardForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      sendAuth('login');
+    });
+    document.getElementById('boardCreate').addEventListener('click', () => sendAuth('register'));
+    document.getElementById('boardLogout').addEventListener('click', async () => {
+      try {
+        await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
+      } catch (_) { /* still sign out on this phone */ }
+      boardPlayer = null;
+      paintSession();
+      loadBoard();
+    });
+    window.addEventListener('resize', placeBoardChip);
+    window.addEventListener('load', placeBoardChip);
+    placeBoardChip();
+    loadSession();
   }
 
   migrateTips();
