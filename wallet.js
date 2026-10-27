@@ -714,7 +714,7 @@
 
   const BOARD_ERRORS = {
     taken: 'That name is taken.',
-    credentials: 'That name and password do not match.',
+    credentials: 'No account uses that name and password.',
     name: 'Use 2–16 letters, numbers, or spaces.',
     password: 'Password needs at least 4 characters.',
     offline: 'The board is offline.',
@@ -1061,8 +1061,9 @@
       '<form class="board-form" id="boardForm">',
       '<div class="board-google" id="boardGoogle" hidden></div>',
       '<p class="board-or" id="boardOr" hidden>or</p>',
-      '<label>Name <input name="name" autocomplete="username" maxlength="16" required></label>',
-      '<label>Password <input name="password" type="password" autocomplete="current-password" maxlength="64" required></label>',
+      '<label>Name <input name="name" autocomplete="off" maxlength="16" required></label>',
+      '<label>Password <input name="password" type="password" autocomplete="new-password" maxlength="64" required></label>',
+      '<p class="board-hint">Any password. It does not have to match your name.</p>',
       '<p class="board-error" id="boardError" role="alert"></p>',
       '<div class="board-actions">',
       '<button type="submit">Sign in</button>',

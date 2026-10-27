@@ -69,8 +69,8 @@
   }
   </script>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700,900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="wallet.css?v=3">
-  <script src="wallet.js?v=3"></script>
+  <link rel="stylesheet" href="wallet.css?v=4">
+  <script src="wallet.js?v=4"></script>
   <script src="orientation.js"></script>
   <script src="music.js"></script>
   <style>
@@ -291,6 +291,25 @@
       font-size: var(--text-sm);
       line-height: 1.45;
     }
+    .run-purse {
+      margin: 0 0 var(--space-4);
+    }
+    .run-purse[hidden] { display: none; }
+    .run-purse-now {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: var(--text-lg);
+      color: #f7ead0;
+      letter-spacing: 0.02em;
+    }
+    .run-purse-delta {
+      margin: 4px 0 0;
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+    }
+    .run-purse-delta.is-up { color: #8fd9a4; }
+    .run-purse-delta.is-down { color: #f0a0a8; }
+    #overlayShareBtn[hidden] { display: none; }
     .controls {
       position: absolute;
       left: 0; right: 0; bottom: 0;

@@ -735,6 +735,7 @@ body.has-game-logo > .app > .controls {
   color: #d7c9aa;
   font-size: 0.75rem;
 }
+.board-hint { margin: 0; color: #d7c9aa; font-size: 0.75rem; }
 .board-form { display: grid; gap: 8px; margin-top: 14px; }
 .board-form label { display: grid; gap: 4px; font-size: 0.78rem; color: #d7c9aa; }
 .board-form input {

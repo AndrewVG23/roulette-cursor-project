@@ -118,6 +118,14 @@ test('google sign-in keeps one player and a readable name', async () => {
   assert.equal(rejected.status, 401);
 });
 
+test('a password can differ from the name', async () => {
+  const api = await board();
+  const created = await api.register('Nora', 'river');
+  assert.equal(created.status, 200);
+  assert.equal((await api.login('Nora', 'Nora')).status, 401);
+  assert.equal((await api.login('Nora', 'river')).status, 200);
+});
+
 test('the richer purse ranks first', async () => {
   const api = await board();
   const ada = await api.register('Ada', 'copper');
