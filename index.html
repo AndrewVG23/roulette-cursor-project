@@ -295,14 +295,14 @@
       margin: 0 0 var(--space-4);
     }
     .run-purse[hidden] { display: none; }
-    .run-purse-now {
+    .overlay-card .run-purse-now {
       margin: 0;
       font-family: var(--font-display);
       font-size: var(--text-lg);
       color: #f7ead0;
       letter-spacing: 0.02em;
     }
-    .run-purse-delta {
+    .overlay-card .run-purse-delta {
       margin: 4px 0 0;
       font-size: var(--text-sm);
       color: var(--color-text-muted);
@@ -1176,7 +1176,12 @@
             <div class="overlay-card">
               <h2 id="overlayTitle"></h2>
               <p id="overlayText"></p>
+              <div class="run-purse" id="runPurse" hidden>
+                <p class="run-purse-now" id="runPurseNow"></p>
+                <p class="run-purse-delta" id="runPurseDelta"></p>
+              </div>
               <div class="control-row">
+                <button class="btn" id="overlayShareBtn" type="button" hidden>Share</button>
                 <button class="btn primary" id="startBtn" type="button">Continue</button>
               </div>
             </div>
@@ -2023,6 +2028,10 @@
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
+  const runPurse = document.getElementById('runPurse');
+  const runPurseNow = document.getElementById('runPurseNow');
+  const runPurseDelta = document.getElementById('runPurseDelta');
+  const overlayShareBtn = document.getElementById('overlayShareBtn');
   const startBtn = document.getElementById('startBtn');
   const pauseBtn = document.getElementById('pauseBtn');
   const replayBtn = document.getElementById('replayBtn');
@@ -3634,6 +3643,7 @@
     phase: 'cross', // cross | drive
     mode: 'title', // title | play | pause | dead | win | gameover | drive | arrived
     score: 0, // session tally for crossing high scores only
+    runWorth: null, // net worth when this run started
     high: Number(localStorage.getItem(SCENARIO === 'grill' ? 'grillLeaveHigh' : 'returnToCarHigh') || 0),
     level: 1,
     lives: 3,
@@ -4071,6 +4081,7 @@
 
   function startGame() {
     state.score = 0;
+    markRunStart();
     Wallet.updateDisplay();
     state.lives = 3;
     state.combo = 0;
@@ -4619,6 +4630,14 @@
           ? 'Saving…'
           : 'Share';
     }
+    if (overlayShareBtn && !overlayShareBtn.hidden && !overlayShareBtn.classList.contains('is-shared')) {
+      overlayShareBtn.disabled = state.replay.sharing || state.replay.exporting || !canShare;
+      overlayShareBtn.textContent = state.replay.sharing
+        ? 'Sharing…'
+        : state.replay.exporting
+          ? 'Saving…'
+          : 'Share';
+    }
   }
 
   function canShareReplayVideo() {
@@ -4901,12 +4920,46 @@
     updateShareReplayButton();
   }
 
+  function markRunStart() {
+    state.runWorth = Wallet.netWorth();
+  }
+
+  function hideRunPurse() {
+    if (runPurse) runPurse.hidden = true;
+    if (overlayShareBtn) {
+      overlayShareBtn.hidden = true;
+      overlayShareBtn.classList.remove('is-shared');
+      overlayShareBtn.textContent = 'Share';
+    }
+  }
+
   function showOverlay(title, text, btnLabel) {
     overlayTitle.textContent = title;
     overlayText.textContent = text || '';
     overlayText.hidden = !text;
     startBtn.textContent = btnLabel;
+    hideRunPurse();
     overlay.hidden = false;
+  }
+
+  function showRunEnd(title, text, btnLabel, share) {
+    const after = Wallet.netWorth();
+    const before = Number.isFinite(state.runWorth) ? state.runWorth : after;
+    const delta = after - before;
+    showOverlay(title, text, btnLabel);
+    if (!runPurse || !runPurseNow || !runPurseDelta) return;
+    runPurseNow.textContent = Wallet.format(after);
+    runPurseDelta.textContent = delta === 0
+      ? 'Same as when this run started'
+      : `${delta > 0 ? 'Up' : 'Down'} ${Wallet.format(Math.abs(delta))} this run`;
+    runPurseDelta.classList.toggle('is-up', delta > 0);
+    runPurseDelta.classList.toggle('is-down', delta < 0);
+    runPurse.hidden = false;
+    const canShare = !!share && !!getShareableClip() && canShareReplayVideo();
+    if (overlayShareBtn) {
+      overlayShareBtn.hidden = !canShare;
+      overlayShareBtn.disabled = !canShare;
+    }
   }
 
   function crossHospitalWho() {
@@ -4983,13 +5036,10 @@
         state.high = state.score;
         localStorage.setItem(highKey(), String(state.high));
       }
-      showOverlay(
-        state.phase === 'drive' ? 'Wrecked' : isEnter()
-          ? 'Never made it inside'
-          : (isGrill() ? 'Never left the block' : 'Never made it to the car'),
-        `${reason} Purse ${Wallet.format(Wallet.read())}. Best run ${Wallet.format(state.high)}.`,
-        'Try Again'
-      );
+      const endTitle = state.phase === 'drive' ? 'Wrecked' : isEnter()
+        ? 'Never made it inside'
+        : (isGrill() ? 'Never left the block' : 'Never made it to the car');
+      showRunEnd(endTitle, reason, 'Try Again', state.phase === 'drive');
       syncPauseBtn(true);
       return;
     }
@@ -5329,6 +5379,7 @@
     }
 
     overlay.hidden = true;
+    markRunStart();
     syncPauseBtn(false, 'Pause');
     setPhaseUI();
     updateHUD();
@@ -12140,6 +12191,7 @@
   pauseBtn?.addEventListener('click', togglePause);
   replayBtn?.addEventListener('click', startInstantReplay);
   shareReplayBtn?.addEventListener('click', () => shareDriveReplay(shareReplayBtn));
+  overlayShareBtn?.addEventListener('click', () => shareDriveReplay(overlayShareBtn));
   if (typeof BGM !== 'undefined') {
     state.muted = BGM.isMuted();
     if (muteBtn) {
@@ -12179,6 +12231,7 @@
     if (typeof BGM !== 'undefined') BGM.play();
     if (state.phase === 'drive' && state.mode === 'title') {
       state.mode = 'drive';
+      markRunStart();
       overlay.hidden = true;
       syncPauseBtn(false, 'Pause');
       flashNowPlaying();
