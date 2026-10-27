@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="light" data-orient="none">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Return to Your Car – Free Frogger-Style Browser Game | Cash 4 Copper</title>
-  <meta name="description" content="Play Return to Your Car, a free Frogger-style street-crossing and night-driving browser game. Dodge traffic and explore the Cash 4 Copper game world." />
+  <title>Night Drive – Free Car Game in the Browser | Cash 4 Copper</title>
+  <meta name="description" content="Play Night Drive, a free car game in your browser. Steer through night traffic on a lake road, get paid for a clean minute, and try again right away. No account and no download." />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#0d1512" />
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
@@ -13,8 +13,8 @@
   <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Cash 4 Copper" />
-  <meta property="og:title" content="Return to Your Car – Free Frogger-Style Browser Game" />
-  <meta property="og:description" content="Dodge traffic in a Frogger-style crossing, drive through the city, and discover the Cash 4 Copper game world." />
+  <meta property="og:title" content="Night Drive – Free Car Game" />
+  <meta property="og:description" content="A free browser car game. Steer the lake road at night, get paid for a clean minute, and go again." />
   <meta property="og:url" content="https://cashforcopper.us/" />
   <meta property="og:image" content="https://cashforcopper.us/assets/night-drive-preview.jpg" />
   <meta property="og:image:type" content="image/jpeg" />
@@ -22,8 +22,8 @@
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="Night drive along the lake, traffic ahead and the speedometer at the wheel." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Return to Your Car | Cash 4 Copper" />
-  <meta name="twitter:description" content="A free Frogger-style street-crossing and night-driving game you can play in your browser." />
+  <meta name="twitter:title" content="Night Drive – Free Car Game | Cash 4 Copper" />
+  <meta name="twitter:description" content="A free browser car game. Steer the lake road at night, get paid for a clean minute, and go again." />
   <meta name="twitter:image" content="https://cashforcopper.us/assets/night-drive-preview.jpg" />
   <meta name="twitter:image:alt" content="Night drive along the lake, traffic ahead and the speedometer at the wheel." />
   <script type="application/ld+json">
@@ -38,11 +38,11 @@
       },
       {
         "@type": "VideoGame",
-        "name": "Return to Your Car",
+        "name": "Night Drive",
         "url": "https://cashforcopper.us/",
         "image": "https://cashforcopper.us/assets/night-drive-preview.jpg",
-        "description": "A free Frogger-style street-crossing and night-driving browser game set in the Cash 4 Copper game world.",
-        "genre": ["Arcade", "Street-crossing", "Driving"],
+        "description": "A free browser car game. Steer through night traffic on a lake road, get paid for a clean minute, and try again right away.",
+        "genre": ["Car game", "Driving", "Arcade"],
         "playMode": "SinglePlayer",
         "applicationCategory": "Game",
         "operatingSystem": "Web browser",
@@ -54,7 +54,7 @@
         "@type": "ItemList",
         "name": "Cash 4 Copper games",
         "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Return to Your Car", "url": "https://cashforcopper.us/" },
+          { "@type": "ListItem", "position": 1, "name": "Night Drive", "url": "https://cashforcopper.us/" },
           { "@type": "ListItem", "position": 2, "name": "American Roulette", "url": "https://cashforcopper.us/roulette" },
           { "@type": "ListItem", "position": 3, "name": "Craps", "url": "https://cashforcopper.us/craps" },
           { "@type": "ListItem", "position": 4, "name": "Night Shift Grill", "url": "https://cashforcopper.us/burger" },
@@ -62,7 +62,8 @@
           { "@type": "ListItem", "position": 6, "name": "Quik-Fill 64", "url": "https://cashforcopper.us/gas" },
           { "@type": "ListItem", "position": 7, "name": "Medication Time", "url": "https://cashforcopper.us/hospital" },
           { "@type": "ListItem", "position": 8, "name": "Bullion Desk", "url": "https://cashforcopper.us/coins" },
-          { "@type": "ListItem", "position": 9, "name": "Teller Window", "url": "https://cashforcopper.us/bank" }
+          { "@type": "ListItem", "position": 9, "name": "Teller Window", "url": "https://cashforcopper.us/bank" },
+          { "@type": "ListItem", "position": 10, "name": "Sheepshead", "url": "https://cashforcopper.us/sheepshead" }
         ]
       }
     ]
@@ -212,6 +213,7 @@
       flex-wrap: wrap;
       justify-content: flex-end;
     }
+    .stats.is-live { display: flex; }
     .stat {
       min-width: 64px;
       padding: 6px 10px;
@@ -309,7 +311,38 @@
     }
     .run-purse-delta.is-up { color: #8fd9a4; }
     .run-purse-delta.is-down { color: #f0a0a8; }
-    #overlayShareBtn[hidden] { display: none; }
+    .overlay-card .run-purse-today {
+      margin: 6px 0 0;
+      font-size: var(--text-xs);
+      color: #d7c9aa;
+    }
+    .controls .btn,
+    .overlay-card .btn {
+      min-height: 52px;
+      min-width: 72px;
+      padding: var(--space-2) var(--space-4);
+      border-radius: 3px;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #f7ead0;
+      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
+      border: 1px solid rgba(255,238,198,.22);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.24);
+      transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay-card .btn.primary,
+    .controls .btn.primary {
+      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
+      color: #fff6e3;
+      border-color: rgba(255,210,200,.28);
+    }
+    .overlay-card .btn[hidden] { display: none; }
     .controls {
       position: absolute;
       left: 0; right: 0; bottom: 0;
@@ -332,43 +365,23 @@
       align-items: center;
       justify-content: center;
     }
-    .controls .btn {
-      min-height: 52px;
-      min-width: 72px;
-      padding: var(--space-2) var(--space-4);
-      border-radius: 3px;
-      font-size: var(--text-sm);
-      font-weight: 700;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      color: #f7ead0;
-      background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
-      border: 1px solid rgba(255,238,198,.22);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), inset 0 -1px 0 rgba(0,0,0,.18), 0 2px 5px rgba(0,0,0,.24);
-      transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .controls .btn.primary {
-      background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.03)), linear-gradient(180deg, #d44a45, #8f2420);
-      color: #fff6e3;
-      border-color: rgba(255,210,200,.28);
-    }
     .controls .btn.subtle {
       background: linear-gradient(180deg, rgba(255,255,255,.11), rgba(255,255,255,.03)), linear-gradient(180deg, #1f5d39, #143528);
     }
-    .controls .btn:hover {
+    .controls .btn:hover,
+    .overlay-card .btn:hover {
       transform: translateY(-1px);
       border-color: rgba(239,187,73,.42);
     }
-    .controls .btn:active { transform: translateY(0); }
-    .controls .btn.is-shared {
+    .controls .btn:active,
+    .overlay-card .btn:active { transform: translateY(0); }
+    .controls .btn.is-shared,
+    .overlay-card .btn.is-shared {
       border-color: rgba(143,217,164,.45);
       color: #eafff0;
     }
-    .controls .btn:disabled { opacity: 0.45; cursor: default; transform: none; }
+    .controls .btn:disabled,
+    .overlay-card .btn:disabled { opacity: 0.45; cursor: default; transform: none; }
     /* Phone lives OUTSIDE the <button> — buttons flatten preserve-3d in WebKit/Blink. */
     .phone-ctl {
       position: absolute;
@@ -1135,8 +1148,8 @@
       <div class="panel-inner">
         <div class="topbar">
           <div class="brand">
-            <h1 id="brandTitle">Return to Your Car</h1>
-            <p id="brandSub">Cross the city · get to the garage</p>
+            <h1 id="brandTitle">Night Drive</h1>
+            <p id="brandSub">Free car game · a minute pays</p>
           </div>
           <div class="stats" aria-live="polite">
             <div class="stat" id="meterStat">
@@ -1154,11 +1167,12 @@
         <details class="game-guide">
           <summary>About &amp; games</summary>
           <div class="game-guide-card">
-            <h2>Return to Your Car</h2>
-            <p>Dodge traffic in an independent Frogger-style crossing, reach your car, and drive through a connected city of free browser games.</p>
+            <h2>Night Drive</h2>
+            <p>A free car game in the browser. Steer the lake road at night. A clean minute pays, then you go again. No account and no download.</p>
             <nav aria-label="Explore Cash 4 Copper games">
               <a href="/roulette">Roulette</a>
               <a href="/craps">Craps</a>
+              <a href="/sheepshead">Sheepshead</a>
               <a href="/burger">Night Shift Grill</a>
               <a href="/liquor">Bottle Run</a>
               <a href="/gas">Quik-Fill 64</a>
@@ -1170,7 +1184,7 @@
         </details>
 
         <div class="canvas-wrap" id="canvasWrap">
-          <canvas id="game" width="480" height="600" aria-label="Return to your car"></canvas>
+          <canvas id="game" width="480" height="600" aria-label="Night drive"></canvas>
           <div class="map-nav" id="mapNav" hidden aria-label="Destinations"></div>
           <div class="overlay" id="overlay" hidden>
             <div class="overlay-card">
@@ -1179,8 +1193,12 @@
               <div class="run-purse" id="runPurse" hidden>
                 <p class="run-purse-now" id="runPurseNow"></p>
                 <p class="run-purse-delta" id="runPurseDelta"></p>
+                <p class="run-purse-today" id="runPurseToday" hidden></p>
               </div>
               <div class="control-row">
+                <button class="btn" id="overlayReviveBtn" type="button" hidden>Revive</button>
+                <button class="btn" id="overlayDoubleBtn" type="button" hidden>Double</button>
+                <button class="btn" id="overlayPaintBtn" type="button" hidden>Unlock paint</button>
                 <button class="btn" id="overlayShareBtn" type="button" hidden>Share</button>
                 <button class="btn primary" id="startBtn" type="button">Continue</button>
               </div>
@@ -1282,13 +1300,15 @@
   const DESTINATIONS = [
     { id: 'casino', name: 'CASINO', href: '/roulette', blurb: 'Back to the tables.' },
     { id: 'grill', name: 'GRILL', href: '/burger', blurb: 'Late-night burgers on the line.' },
-    { id: 'craps', name: 'CRAPS', href: '/craps', blurb: 'The craps pit.' }
+    { id: 'craps', name: 'CRAPS', href: '/craps', blurb: 'The craps pit.' },
+    { id: 'sheepshead', name: 'SHEEPSHEAD', href: '/sheepshead', blurb: 'Five-handed sheepshead.' }
   ];
 
   const ESTABLISHMENTS = {
     grill: { id: 'grill', name: 'GRILL', href: '/burger', sign: 'NIGHT SHIFT GRILL', signBg: '#c8102e', signFg: '#fff7ef' },
     casino: { id: 'casino', name: 'CASINO', href: '/roulette', sign: 'CASINO FLOOR', signBg: '#d0a23a', signFg: '#1a1307' },
     craps: { id: 'craps', name: 'CRAPS', href: '/craps', sign: 'CRAPS PIT', signBg: '#2f8f4e', signFg: '#f5edd8' },
+    sheepshead: { id: 'sheepshead', name: 'SHEEPSHEAD', href: '/sheepshead', sign: 'SHEEPSHEAD', signBg: '#6e2430', signFg: '#f5edd8' },
     liquor: { id: 'liquor', name: 'LIQUOR', href: '/liquor', sign: 'LIQUOR • COLD BEER', signBg: '#16213e', signFg: '#ffd23f' },
     gas: { id: 'gas', name: 'GAS', href: '/gas', sign: 'QUIK-FILL 64', signBg: '#e85c2a', signFg: '#fff7ef' },
     coins: { id: 'coins', name: 'COINS', href: '/coins', sign: 'LAKE SHORE COIN', signBg: '#c9a24a', signFg: '#1a1208' },
@@ -1300,6 +1320,7 @@
     { id: 'grill', name: 'GRILL', href: '/burger', blurb: 'Night Shift Grill — back on the line.' },
     { id: 'casino', name: 'CASINO', href: '/roulette', blurb: 'The casino — back to the tables.' },
     { id: 'craps', name: 'CRAPS', href: '/craps', blurb: 'The craps pit.' },
+    { id: 'sheepshead', name: 'SHEEPSHEAD', href: '/sheepshead', blurb: 'Five-handed sheepshead.' },
     { id: 'hospital', name: 'ER', href: '/hospital', blurb: 'County General — patch up and get back out there.' },
     { id: 'liquor', name: 'LIQUOR', href: '/liquor', blurb: 'Corner liquor — night shift bottle run.' },
     { id: 'gas', name: 'GAS', href: '/gas', blurb: 'Quik-Fill 64 — top off the tank.' },
@@ -1400,6 +1421,7 @@
     ],
     exits: [
       { n: 900, e: 2.30, side: -1, id: 'casino', name: 'CASINO', mapLabel: 'Casino', href: '/roulette', blurb: 'The casino — back to the tables.' },
+      { n: 780, e: 2.18, side: -1, id: 'sheepshead', name: 'SHEEPSHEAD', mapLabel: 'Sheepshead', href: '/sheepshead', blurb: 'Five-handed sheepshead.' },
       { n: 1000, e: -2.10, side: -1, id: 'hospital', name: 'ER', mapLabel: 'Hospital', href: '/hospital', blurb: 'County General — patch up and get back out there.' },
       { n: 1200, e: 0.25, side: -1, id: 'grill', name: 'GRILL', mapLabel: 'Burgers', href: '/burger', blurb: 'Night Shift Grill — back on the line.' },
       { n: 820, e: -2.10, side: -1, id: 'liquor', name: 'LIQUOR', mapLabel: 'Liquor', href: '/liquor', blurb: 'Corner liquor — night shift bottle run.' },
@@ -2020,6 +2042,7 @@
     { fx: 0.143, fy: 0.904 },
     { fx: 0.862, fy: 0.900 }
   ];
+  const paintScratch = document.createElement('canvas');
   // Chase / traffic — pixel Crown Vic Police Interceptor
   const POLICE_CAR_IMG = new Image();
   POLICE_CAR_IMG.src = 'police_car.png';
@@ -2031,7 +2054,11 @@
   const runPurse = document.getElementById('runPurse');
   const runPurseNow = document.getElementById('runPurseNow');
   const runPurseDelta = document.getElementById('runPurseDelta');
+  const runPurseToday = document.getElementById('runPurseToday');
   const overlayShareBtn = document.getElementById('overlayShareBtn');
+  const overlayReviveBtn = document.getElementById('overlayReviveBtn');
+  const overlayDoubleBtn = document.getElementById('overlayDoubleBtn');
+  const overlayPaintBtn = document.getElementById('overlayPaintBtn');
   const startBtn = document.getElementById('startBtn');
   const pauseBtn = document.getElementById('pauseBtn');
   const replayBtn = document.getElementById('replayBtn');
@@ -3439,6 +3466,7 @@
   const livesVal = document.getElementById('livesVal');
   const livesStat = document.getElementById('livesStat');
   const meterStat = document.getElementById('meterStat');
+  const statsEl = document.querySelector('.stats');
   const livesPips = document.getElementById('livesPips');
   const brandTitle = document.getElementById('brandTitle');
   const brandSub = document.getElementById('brandSub');
@@ -3455,6 +3483,12 @@
   const CRASH_FINE_SOFT = 10;
   const EXIT_BONUS_BASE = 180;
   const EXIT_BONUS_PER_LEVEL = 30;
+  const SHIFT_SEC = 60;
+  const SHIFT_PAY_BASE = 80;
+  const PAINT_KEY = 'c4c-car-paint';
+  const DAILY_KEY = 'c4c-shift-daily';
+  let carPaint = false;
+  try { carPaint = localStorage.getItem(PAINT_KEY) === '1'; } catch (_) { /* private mode */ }
   const COP_BOUNTY_CHASER = 150;
   const COP_BOUNTY_POLICE = 50;
   const COP_BOUNTY_PILEUP = 100;
@@ -3610,7 +3644,7 @@
   };
 
   const params = new URLSearchParams(location.search);
-  const ENTER_IDS = ['grill', 'casino', 'craps', 'liquor'];
+  const ENTER_IDS = ['grill', 'casino', 'craps', 'sheepshead', 'liquor'];
   const ENTER_PARAM = params.get('enter');
   const ENTER_ID = ENTER_IDS.includes(ENTER_PARAM) ? ENTER_PARAM : null;
   const RESUME_DRIVE = params.get('resumeDrive') === '1';
@@ -3641,9 +3675,12 @@
   const state = {
     scenario: SCENARIO,
     phase: 'cross', // cross | drive
-    mode: 'title', // title | play | pause | dead | win | gameover | drive | arrived
+    mode: 'title', // title | play | pause | dead | win | gameover | drive | shift | arrived
     score: 0, // session tally for crossing high scores only
     runWorth: null, // net worth when this run started
+    driveRevived: false,
+    shiftPay: 0,
+    shiftDoubled: false,
     high: Number(localStorage.getItem(SCENARIO === 'grill' ? 'grillLeaveHigh' : 'returnToCarHigh') || 0),
     level: 1,
     lives: 3,
@@ -3876,16 +3913,19 @@
     }
     if (state.phase === 'drive') {
       brandTitle.textContent = 'Night Drive';
-      brandSub.textContent = 'Copper on copper pays out';
-      if (meterStat) meterStat.hidden = true;
+      brandSub.textContent = 'Free car game · a minute pays';
+      if (statsEl) statsEl.classList.add('is-live');
+      if (meterStat) meterStat.hidden = false;
+      meterLabel.textContent = 'Shift';
       if (livesStat) livesStat.hidden = true;
-      hintText.textContent = 'Tap a destination to route there (~15s) · stop at red when cruising · R replay';
+      hintText.textContent = 'Steer and gas. A minute on the road pays.';
       dpad.classList.add('drive-mode');
       panelInner?.classList.add('drive-phase');
       pickPhoneRhyme();
       startPhoneRhymeLoop();
       setHelpOpen(false);
     } else if (isEnter()) {
+      statsEl?.classList.remove('is-live');
       if (meterStat) meterStat.hidden = true;
       if (livesStat) livesStat.hidden = true;
       const dest = state.entryDest;
@@ -3898,6 +3938,7 @@
       panelInner?.classList.remove('drive-phase');
       hideMapNav();
     } else if (isGrill()) {
+      statsEl?.classList.remove('is-live');
       if (meterStat) meterStat.hidden = true;
       if (livesStat) livesStat.hidden = true;
       brandTitle.textContent = 'Leave the Grill';
@@ -3909,6 +3950,7 @@
       panelInner?.classList.remove('drive-phase');
       hideMapNav();
     } else {
+      statsEl?.classList.remove('is-live');
       if (meterStat) meterStat.hidden = true;
       if (livesStat) livesStat.hidden = true;
       brandTitle.textContent = 'Return to Your Car';
@@ -4313,7 +4355,8 @@
       skipExitId: null,
       chaser: null,
       chaserSpawnT: 4,
-      replayClock: 0
+      replayClock: 0,
+      shiftLeft: SHIFT_SEC
     };
     state.replay.buffer = [];
     state.replay.playing = false;
@@ -4328,10 +4371,17 @@
     state.replay.mp4Encoder = null;
     seedFullRouteEnvironment(state.drive, route);
     for (let i = 0; i < 4; i++) spawnTraffic(state.drive, 180 + i * 160);
+    state.lives = 3;
+    state.driveRevived = false;
+    state.shiftPay = 0;
+    state.shiftDoubled = false;
+    markRunStart();
     setPhaseUI();
-    state.mode = 'title';
-    showOverlay('Copper on copper pays out', 'Gold Coast · stop at red · steer to turn', 'Drive');
-    syncPauseBtn(true);
+    state.mode = 'drive';
+    overlay.hidden = true;
+    hideRunPurse();
+    syncPauseBtn(false, 'Pause');
+    paintShiftClock();
     updateHUD();
     updateReplayButton();
     updateShareReplayButton();
@@ -4720,8 +4770,8 @@
   }
 
   async function shareOrDownloadReplayVideo(file) {
-    const title = 'Night drive replay';
-    const text = `Last ${REPLAY_SECONDS} seconds · ${Wallet.format(Wallet.read())}`;
+    const title = 'Night drive · cashforcopper.us';
+    const text = `Last ${REPLAY_SECONDS} seconds · ${Wallet.format(Wallet.read())} · https://cashforcopper.us`;
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], title, text });
@@ -4924,13 +4974,77 @@
     state.runWorth = Wallet.netWorth();
   }
 
+  function hideRewardButtons() {
+    for (const btn of [overlayReviveBtn, overlayDoubleBtn, overlayPaintBtn]) {
+      if (!btn) continue;
+      btn.hidden = true;
+      btn.disabled = false;
+    }
+  }
+
   function hideRunPurse() {
     if (runPurse) runPurse.hidden = true;
+    if (runPurseToday) runPurseToday.hidden = true;
     if (overlayShareBtn) {
       overlayShareBtn.hidden = true;
       overlayShareBtn.classList.remove('is-shared');
       overlayShareBtn.textContent = 'Share';
     }
+    hideRewardButtons();
+  }
+
+  function todayStamp() {
+    const d = new Date();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
+
+  function rememberDaily(delta) {
+    const day = todayStamp();
+    let best = delta;
+    try {
+      const prev = JSON.parse(localStorage.getItem(DAILY_KEY) || 'null');
+      if (prev && prev.day === day && Number.isFinite(prev.best)) best = Math.max(prev.best, delta);
+      localStorage.setItem(DAILY_KEY, JSON.stringify({ day, best }));
+    } catch (_) { /* private mode */ }
+    return best;
+  }
+
+  function paintShiftClock() {
+    if (!levelVal || !state.drive) return;
+    levelVal.textContent = String(Math.max(0, Math.ceil(state.drive.shiftLeft ?? SHIFT_SEC)));
+  }
+
+  function carPaintOn() {
+    return carPaint;
+  }
+
+  // Portal SDKs (CrazyGames, Poki) show a rewarded ad when the page is embedded.
+  // On cashforcopper.us there is no ad script, so the reward is granted directly.
+  function requestRewarded(placement) {
+    const custom = window.CashForCopperAds;
+    if (custom && typeof custom.requestRewarded === 'function') {
+      return Promise.resolve(custom.requestRewarded(placement)).then(ok => ok !== false).catch(() => false);
+    }
+    const cg = window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.ad;
+    if (cg && typeof cg.requestAd === 'function') {
+      return new Promise((resolve) => {
+        try {
+          cg.requestAd('rewarded', {
+            adFinished: () => resolve(true),
+            adError: () => resolve(false)
+          });
+        } catch (_) {
+          resolve(false);
+        }
+      });
+    }
+    const poki = window.PokiSDK;
+    if (poki && typeof poki.rewardedBreak === 'function') {
+      return Promise.resolve(poki.rewardedBreak()).then(ok => !!ok).catch(() => false);
+    }
+    return Promise.resolve(true);
   }
 
   function showOverlay(title, text, btnLabel) {
@@ -4942,12 +5056,11 @@
     overlay.hidden = false;
   }
 
-  function showRunEnd(title, text, btnLabel, share) {
+  function fillRunPurse() {
     const after = Wallet.netWorth();
     const before = Number.isFinite(state.runWorth) ? state.runWorth : after;
     const delta = after - before;
-    showOverlay(title, text, btnLabel);
-    if (!runPurse || !runPurseNow || !runPurseDelta) return;
+    if (!runPurse || !runPurseNow || !runPurseDelta) return delta;
     runPurseNow.textContent = Wallet.format(after);
     runPurseDelta.textContent = delta === 0
       ? 'Same as when this run started'
@@ -4955,11 +5068,99 @@
     runPurseDelta.classList.toggle('is-up', delta > 0);
     runPurseDelta.classList.toggle('is-down', delta < 0);
     runPurse.hidden = false;
+    const today = rememberDaily(delta);
+    if (runPurseToday) {
+      runPurseToday.hidden = false;
+      runPurseToday.textContent = `Today's best ${Wallet.format(today)}`;
+    }
+    return delta;
+  }
+
+  function showRunEnd(title, text, btnLabel, share) {
+    showOverlay(title, text, btnLabel);
+    fillRunPurse();
     const canShare = !!share && !!getShareableClip() && canShareReplayVideo();
     if (overlayShareBtn) {
       overlayShareBtn.hidden = !canShare;
       overlayShareBtn.disabled = !canShare;
     }
+    if (overlayReviveBtn) {
+      const wrecked = state.mode === 'gameover' && state.phase === 'drive' && state.drive && !state.driveRevived;
+      overlayReviveBtn.hidden = !wrecked;
+      overlayReviveBtn.disabled = false;
+    }
+  }
+
+  function showShiftClear() {
+    if (state.mode !== 'drive' || !state.drive) return;
+    state.mode = 'shift';
+    state.drive.shiftLeft = 0;
+    const pay = drivePayout(SHIFT_PAY_BASE);
+    Wallet.add(pay);
+    state.shiftPay = pay;
+    state.shiftDoubled = false;
+    showRunEnd('Minute clear', 'A clean minute on the road pays.', 'Keep driving', true);
+    if (overlayDoubleBtn) {
+      overlayDoubleBtn.hidden = false;
+      overlayDoubleBtn.disabled = false;
+      overlayDoubleBtn.textContent = 'Double';
+    }
+    if (overlayPaintBtn && !carPaintOn()) {
+      overlayPaintBtn.hidden = false;
+      overlayPaintBtn.disabled = false;
+    }
+    syncPauseBtn(true);
+    paintShiftClock();
+    beep(523, 0.08);
+    beep(784, 0.12);
+  }
+
+  async function reviveDrive() {
+    if (state.driveRevived || !state.drive || state.mode !== 'gameover') return;
+    if (overlayReviveBtn) overlayReviveBtn.disabled = true;
+    const ok = await requestRewarded('revive');
+    if (!ok) {
+      if (overlayReviveBtn) overlayReviveBtn.disabled = false;
+      return;
+    }
+    state.driveRevived = true;
+    state.lives = 1;
+    state.mode = 'drive';
+    state.drive.hp = Math.max(35, Math.floor(state.drive.maxHp * 0.45));
+    state.drive.invuln = 2.2;
+    state.drive.speed = Math.min(state.drive.speed, 28);
+    overlay.hidden = true;
+    hideRunPurse();
+    syncPauseBtn(false, 'Pause');
+    updateHUD();
+  }
+
+  async function doubleShiftPay() {
+    if (state.shiftDoubled || !state.shiftPay || state.mode !== 'shift') return;
+    if (overlayDoubleBtn) overlayDoubleBtn.disabled = true;
+    const ok = await requestRewarded('double');
+    if (!ok) {
+      if (overlayDoubleBtn) overlayDoubleBtn.disabled = false;
+      return;
+    }
+    Wallet.add(state.shiftPay);
+    state.shiftDoubled = true;
+    if (overlayDoubleBtn) overlayDoubleBtn.hidden = true;
+    fillRunPurse();
+    updateHUD();
+  }
+
+  async function unlockCarPaint() {
+    if (carPaintOn()) return;
+    if (overlayPaintBtn) overlayPaintBtn.disabled = true;
+    const ok = await requestRewarded('paint');
+    if (!ok) {
+      if (overlayPaintBtn) overlayPaintBtn.disabled = false;
+      return;
+    }
+    carPaint = true;
+    try { localStorage.setItem(PAINT_KEY, '1'); } catch (_) { /* private mode */ }
+    if (overlayPaintBtn) overlayPaintBtn.hidden = true;
   }
 
   function crossHospitalWho() {
@@ -5362,6 +5563,7 @@
       zoomPunch: 0
     };
     replayApplyDrive(state.drive, data.drive);
+    state.drive.shiftLeft = SHIFT_SEC;
     normalizeDriveFuel(state.drive);
     state.drive.fuel = Wallet.fuel();
     seedFullRouteEnvironment(state.drive, route);
@@ -6502,6 +6704,12 @@
     }
     d.replayClock = (d.replayClock || 0) + dt;
     d.zoomPunch = (d.zoomPunch || 0) * Math.exp(-4.5 * dt);
+    d.shiftLeft = (d.shiftLeft ?? SHIFT_SEC) - dt;
+    paintShiftClock();
+    if (d.shiftLeft <= 0) {
+      showShiftClear();
+      return;
+    }
 
     const gas = state.keys.up ? 1 : 0;
     const brake = state.keys.down ? 1 : 0;
@@ -8114,14 +8322,30 @@
 
     const dx = ENTRY.DOOR_COL * TILE;
     const sign = dest?.sign || 'OPEN';
-    ctx.fillStyle = dest?.signBg || '#c8102e';
-    ctx.fillRect(dx - TILE * 0.55, y + 6, TILE * 2.1, TILE - 10);
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    ctx.strokeRect(dx - TILE * 0.55 + 0.5, y + 6.5, TILE * 2.1 - 1, TILE - 11);
-    ctx.fillStyle = dest?.signFg || '#fff7ef';
+    const narrow = W <= 360;
     ctx.font = '700 8px "General Sans", sans-serif';
+    const textW = Math.ceil(ctx.measureText(sign).width);
+    let signW = Math.max(TILE * 2.1, textW + 12);
+    let signX = dx - signW / 2;
+    let signY = y + 6;
+    let signH = TILE - 10;
+    if (narrow) {
+      // The logo and purse cover the top corners, so a long name sits beside the door.
+      signH = 22;
+      signY = TILE + 12;
+      signW = Math.min(W - 8, Math.max(textW + 14, TILE * 2.4));
+      signX = Math.min(dx + TILE + 4, W - signW - 4);
+    }
+    signX = Math.max(4, Math.min(signX, W - signW - 4));
+    ctx.fillStyle = dest?.signBg || '#c8102e';
+    ctx.fillRect(signX, signY, signW, signH);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.strokeRect(signX + 0.5, signY + 0.5, signW - 1, signH - 1);
+    ctx.fillStyle = dest?.signFg || '#fff7ef';
     ctx.textAlign = 'center';
-    ctx.fillText(sign, dx + TILE / 2, y + TILE * 0.55);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(sign, signX + signW / 2, signY + signH / 2);
+    ctx.textBaseline = 'alphabetic';
 
     const doorY = ENTRY.DOOR * TILE;
     ctx.fillStyle = '#2a2420';
@@ -8751,7 +8975,7 @@
         player: true,
         yaw, pitch, roll,
         wheelSpin: opts.wheelSpin || 0,
-        color: '#8a4a32',
+        color: carPaintOn() ? '#c47a3a' : '#8a4a32',
         trim: '#3a2018'
       });
       return;
@@ -8768,11 +8992,33 @@
     ctx.fill();
 
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(
-      PLAYER_CAR_IMG,
-      PLAYER_CAR_SRC.x, PLAYER_CAR_SRC.y, PLAYER_CAR_SRC.w, PLAYER_CAR_SRC.h,
-      -drawW / 2, -drawH + 2 * s, drawW, drawH
-    );
+    if (carPaintOn()) {
+      const pw = Math.max(1, Math.ceil(drawW));
+      const ph = Math.max(1, Math.ceil(drawH));
+      if (paintScratch.width !== pw || paintScratch.height !== ph) {
+        paintScratch.width = pw;
+        paintScratch.height = ph;
+      }
+      const g = paintScratch.getContext('2d');
+      g.clearRect(0, 0, pw, ph);
+      g.imageSmoothingEnabled = false;
+      g.drawImage(
+        PLAYER_CAR_IMG,
+        PLAYER_CAR_SRC.x, PLAYER_CAR_SRC.y, PLAYER_CAR_SRC.w, PLAYER_CAR_SRC.h,
+        0, 0, pw, ph
+      );
+      g.globalCompositeOperation = 'source-atop';
+      g.fillStyle = 'rgba(196, 122, 58, 0.45)';
+      g.fillRect(0, 0, pw, ph);
+      g.globalCompositeOperation = 'source-over';
+      ctx.drawImage(paintScratch, -drawW / 2, -drawH + 2 * s, drawW, drawH);
+    } else {
+      ctx.drawImage(
+        PLAYER_CAR_IMG,
+        PLAYER_CAR_SRC.x, PLAYER_CAR_SRC.y, PLAYER_CAR_SRC.w, PLAYER_CAR_SRC.h,
+        -drawW / 2, -drawH + 2 * s, drawW, drawH
+      );
+    }
     if (flames > 0) drawPlayerExhaustFlames(drawW, drawH, s, flames);
     ctx.restore();
   }
@@ -12192,6 +12438,9 @@
   replayBtn?.addEventListener('click', startInstantReplay);
   shareReplayBtn?.addEventListener('click', () => shareDriveReplay(shareReplayBtn));
   overlayShareBtn?.addEventListener('click', () => shareDriveReplay(overlayShareBtn));
+  overlayReviveBtn?.addEventListener('click', () => { reviveDrive(); });
+  overlayDoubleBtn?.addEventListener('click', () => { doubleShiftPay(); });
+  overlayPaintBtn?.addEventListener('click', () => { unlockCarPaint(); });
   if (typeof BGM !== 'undefined') {
     state.muted = BGM.isMuted();
     if (muteBtn) {
@@ -12254,8 +12503,23 @@
       syncPauseBtn(false, 'Pause');
       return;
     }
+    if (state.mode === 'shift') {
+      state.mode = 'drive';
+      if (state.drive) state.drive.shiftLeft = SHIFT_SEC;
+      markRunStart();
+      overlay.hidden = true;
+      hideRunPurse();
+      syncPauseBtn(false, 'Pause');
+      paintShiftClock();
+      beep(523, 0.06);
+      return;
+    }
     if (state.mode === 'gameover' && isEnter() && state.entryDest) {
       startEntryCross(state.entryDest);
+      return;
+    }
+    if (state.mode === 'gameover' && state.phase === 'drive') {
+      beginDrive();
       return;
     }
     startGame();
@@ -12298,8 +12562,7 @@
   } else if (ENTER_ID && ESTABLISHMENTS[ENTER_ID]) {
     startEntryCross(ESTABLISHMENTS[ENTER_ID]);
   } else {
-    state.lanes = buildLanes(1);
-    startGame();
+    beginDrive();
   }
   requestAnimationFrame(frame);
 })();

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Free Sheepshead Card Game | Cash 4 Copper</title>
+  <meta name="description" content="Play five-handed Wisconsin sheepshead in the browser. Call an ace, bury two cards, and take 61 points against the table." />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#0d1512" />
+  <link rel="canonical" href="https://cashforcopper.us/sheepshead" />
+  <link rel="icon" type="image/png" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
+  <link rel="apple-touch-icon" href="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Cash 4 Copper" />
+  <meta property="og:title" content="Free Sheepshead Card Game" />
+  <meta property="og:description" content="Call an ace and play five-handed sheepshead for the purse." />
+  <meta property="og:url" content="https://cashforcopper.us/sheepshead" />
+  <meta property="og:image" content="https://cashforcopper.us/assets/cash-4-copper-logo.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="wallet.css?v=4">
+  <script src="wallet.js?v=4"></script>
+  <script src="music.js"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Game",
+    "name": "Sheepshead",
+    "url": "https://cashforcopper.us/sheepshead",
+    "description": "Five-handed Wisconsin sheepshead. Call an ace, or go alone, and take 61 points.",
+    "genre": ["Card game", "Casino"],
+    "playMode": "SinglePlayer",
+    "isAccessibleForFree": true,
+    "isPartOf": { "@type": "WebSite", "name": "Cash 4 Copper", "url": "https://cashforcopper.us/" }
+  }
+  </script>
+  <style>
+    :root {
+      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+      --font-display: 'Zodiak', Georgia, serif;
+      --font-body: 'General Sans', 'Inter', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      font-family: var(--font-body);
+      color: #f5edd8;
+      background: #0a1210;
+    }
+    button, a.btn { font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+    .app {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      background: linear-gradient(180deg, rgba(20,53,40,.92), rgba(12,26,21,.96));
+      border-bottom: 1px solid rgba(238,194,97,.18);
+    }
+    .controls .spacer { flex: 1; }
+    .chip-row { display: flex; flex-wrap: nowrap; gap: 0.35rem; align-items: center; }
+    .btn {
+      min-height: 44px;
+      padding: 0 0.9rem;
+      border-radius: 3px;
+      font-size: var(--text-sm);
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      color: #f7ead0;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #1f5d39, #143528);
+      border: 1px solid rgba(255,238,198,.22);
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.primary { background: linear-gradient(180deg, #8f2430, #5c1520); border-color: rgba(255,210,200,.28); }
+    .btn.chip { min-width: 52px; border-radius: 999px; }
+    .btn.chip.active { background: linear-gradient(180deg, #d0a23a, #8a6a22); color: #1a1307; }
+    .chip-label { color: #d0a23a; font-size: var(--text-xs); letter-spacing: .12em; font-weight: 700; }
+    .felt {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background:
+        radial-gradient(ellipse at 50% 30%, rgba(232,200,120,.08), transparent 55%),
+        linear-gradient(180deg, #1a4a32, #0e2a1e 70%);
+    }
+    .seats { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .seat {
+      flex: 1 1 7rem;
+      padding: 0.4rem 0.55rem;
+      border-radius: 8px;
+      background: rgba(0,0,0,.28);
+      border: 1px solid rgba(232,200,120,.18);
+      font-size: var(--text-xs);
+    }
+    .seat.you { border-color: #e8c878; }
+    .seat strong { display: block; font-size: 0.95rem; }
+    .trick {
+      min-height: 92px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      align-items: center;
+      justify-content: center;
+    }
+    .play { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; font-size: 0.72rem; color: #d7c9aa; }
+    .status { margin: 0; text-align: center; line-height: 1.4; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; }
+    .hand { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center; margin-top: auto; }
+    @media (max-width: 640px) {
+      body.has-game-logo > .app > .controls,
+      body.has-purse-hud > .app > .controls {
+        padding: 9.25rem 0.45rem 0.4rem;
+      }
+      .btn { min-height: 40px; padding: 0 0.65rem; }
+      .btn.chip { min-width: 44px; padding: 0 0.45rem; }
+      .card { width: 52px; height: 74px; }
+    }
+    .card {
+      width: 58px;
+      height: 82px;
+      border-radius: 8px;
+      border: 1px solid #1a1208;
+      background: #f7f1e4;
+      color: #1a1208;
+      font-weight: 800;
+      font-size: 1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card.red { color: #9d1c2b; }
+    .card.trump { box-shadow: inset 0 0 0 2px #c6a15a; }
+    .card.on { outline: 3px solid #e8c878; }
+    .card:disabled { opacity: .38; }
+    .card.back {
+      background: repeating-linear-gradient(45deg, #6e2430, #6e2430 6px, #4a1822 6px, #4a1822 12px);
+      color: transparent;
+    }
+    .rules {
+      margin: 0 0.75rem 0.75rem;
+      color: #d7c9aa;
+      font-size: var(--text-xs);
+      line-height: 1.45;
+    }
+    .rules summary { cursor: pointer; color: #e8c878; }
+  </style>
+</head>
+<body>
+<details class="world-nav">
+  <summary>Games</summary>
+  <div class="world-nav-card">
+    <h2>Sheepshead</h2>
+    <p>Five-handed Wisconsin sheepshead. Call an ace, or go alone, and take 61 points. Part of the free Cash 4 Copper browser game world.</p>
+    <nav aria-label="Cash 4 Copper games">
+      <a href="/">Night Drive</a>
+      <a href="/roulette">Roulette</a>
+      <a href="/craps">Craps</a>
+      <a href="/sheepshead">Sheepshead</a>
+      <a href="/burger">Night Shift Grill</a>
+      <a href="/liquor">Bottle Run</a>
+      <a href="/gas">Quik-Fill 64</a>
+      <a href="/hospital">Medication Time</a>
+      <a href="/coins">Bullion Desk</a>
+      <a href="/bank">Teller Window</a>
+    </nav>
+  </div>
+</details>
+<script>
+(function () {
+  var id = 'sheepshead';
+  try {
+    if (sessionStorage.getItem('passed-entry-' + id)) {
+      sessionStorage.removeItem('passed-entry-' + id);
+      return;
+    }
+  } catch (e) {}
+  location.replace('/?enter=' + id);
+})();
+</script>
+<div class="app">
+  <div class="controls" aria-label="Sheepshead controls">
+    <div class="chip-row" aria-label="Point value">
+      <span class="chip-label">Point</span>
+      <button class="btn chip" type="button" data-stake="1">$1</button>
+      <button class="btn chip active" type="button" data-stake="5">$5</button>
+      <button class="btn chip" type="button" data-stake="25">$25</button>
+      <button class="btn chip" type="button" data-stake="100">$100</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="helpBtn" type="button">Help</button>
+    <a class="btn" href="/">Night drive</a>
+  </div>
+  <div class="felt">
+    <div class="seats" id="seats"></div>
+    <div class="trick" id="trick" aria-label="Current trick"></div>
+    <p class="status" id="status">Deal a hand. Queens and jacks are trump, then diamonds.</p>
+    <div class="actions" id="actions">
+      <button class="btn primary" type="button" data-act="deal">Deal</button>
+    </div>
+    <div class="hand" id="hand" aria-label="Your hand"></div>
+  </div>
+  <details class="rules" id="rules">
+    <summary>How the hand pays</summary>
+    <p>Five players, 32 cards. Trump, high to low: queen of clubs, spades, hearts, diamonds, then the jacks in that same suit order, then the diamond ace, ten, king, nine, eight, seven. In a fail suit the ace beats the ten, and the ten beats the king. Follow suit. Trump is its own suit.</p>
+    <p>The picker buries two cards, then calls a fail ace or goes alone. The picker and the called ace need 61 points. Under 31 for the losers is a schneider. No tricks is schwarz. The hand is worth 2, plus 1 for each of those. Each loser pays each winner that many points. If everyone passes, the fewest points wins a leaster.</p>
+  </details>
+</div>
+<script type="module">
+import * as S from './sheepshead.js';
+
+const NAMES = ['You', 'Greta', 'Otto', 'Helen', 'Frank'];
+const SUIT_NAME = { c: 'clubs', s: 'spades', h: 'hearts' };
+const GLYPH = { c: '♣', s: '♠', h: '♥', d: '♦' };
+const YOU = 0;
+
+const seatsEl = document.getElementById('seats');
+const trickEl = document.getElementById('trick');
+const statusEl = document.getElementById('status');
+const actionsEl = document.getElementById('actions');
+const handEl = document.getElementById('hand');
+const rulesEl = document.getElementById('rules');
+
+let stake = 5;
+let dealer = 2;
+let hands = [[], [], [], [], []];
+let blind = [];
+let blindDown = false;
+let buried = [];
+let picker = null;
+let partner = null;
+let calledAce = null;
+let alone = false;
+let leaster = false;
+let aceSeen = false;
+let taken = [[], [], [], [], []];
+let trick = [];
+let busy = false;
+let waiter = null;
+let buryPick = new Set();
+let note = 'Deal a hand. Queens and jacks are trump, then diamonds.';
+
+function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+function money(n) {
+  const abs = Math.abs(n);
+  const body = window.Wallet ? Wallet.format(abs) : `$${abs}`;
+  if (n > 0) return `+${body}`;
+  if (n < 0) return `−${body}`;
+  return body;
+}
+function pay(n) {
+  if (window.Wallet) Wallet.addCash(n);
+}
+
+function cardFace(card) {
+  const red = card.suit === 'h' || card.suit === 'd';
+  return `<span class="card ${red ? 'red' : 'blk'} ${S.isTrump(card) ? 'trump' : ''}">${card.rank}${GLYPH[card.suit]}</span>`;
+}
+
+function render() {
+  seatsEl.innerHTML = NAMES.map((name, seat) => {
+    const tags = [];
+    if (seat === dealer) tags.push('deals');
+    if (picker === seat) tags.push(alone ? 'alone' : 'picker');
+    if (aceSeen && partner === seat && partner !== picker) tags.push('partner');
+    return `<div class="seat${seat === YOU ? ' you' : ''}"><strong>${name}</strong>${tags.join(' · ') || 'waiting'}</div>`;
+  }).join('');
+  if (trick.length) {
+    trickEl.innerHTML = trick.map((play) => (
+      `<div class="play">${cardFace(play.card)}<span>${NAMES[play.seat]}</span></div>`
+    )).join('');
+  } else if (blindDown) {
+    trickEl.innerHTML = '<div class="play"><span class="card back"></span><span>Blind</span></div><div class="play"><span class="card back"></span><span>Blind</span></div>';
+  } else {
+    trickEl.innerHTML = '';
+  }
+  statusEl.textContent = note;
+  const yours = S.sortHand(hands[YOU]);
+  const led = trick[0] && trick[0].card;
+  const legal = waiter && waiter.kind === 'play' ? S.legalPlays(yours, led) : yours;
+  const legalCodes = new Set(legal.map(S.cardCode));
+  handEl.innerHTML = yours.map((card) => {
+    const code = S.cardCode(card);
+    const red = card.suit === 'h' || card.suit === 'd';
+    const on = buryPick.has(code) ? ' on' : '';
+    const disabled = waiter && waiter.kind === 'play' && !legalCodes.has(code);
+    return `<button type="button" class="card ${red ? 'red' : 'blk'} ${S.isTrump(card) ? 'trump' : ''}${on}" data-act="card" data-code="${code}" ${disabled ? 'disabled' : ''}>${card.rank}${GLYPH[card.suit]}</button>`;
+  }).join('');
+}
+
+function setActions(html) { actionsEl.innerHTML = html; }
+function ask(kind) {
+  return new Promise((resolve) => { waiter = { kind, resolve }; render(); });
+}
+function answer(value) {
+  const current = waiter;
+  waiter = null;
+  if (current) current.resolve(value);
+}
+
+document.body.addEventListener('click', (event) => {
+  const stakeBtn = event.target.closest('[data-stake]');
+  if (stakeBtn && !busy) {
+    stake = Number(stakeBtn.dataset.stake);
+    document.querySelectorAll('[data-stake]').forEach((btn) => {
+      btn.classList.toggle('active', Number(btn.dataset.stake) === stake);
+    });
+    return;
+  }
+  const btn = event.target.closest('[data-act]');
+  if (btn && btn.dataset.act === 'deal' && !busy) {
+    startHand();
+    return;
+  }
+  if (!btn || !waiter) return;
+  const act = btn.dataset.act;
+  if (waiter.kind === 'bid' && (act === 'pass' || act === 'pick')) answer(act);
+  else if (waiter.kind === 'bury' && act === 'card') {
+    const code = btn.dataset.code;
+    if (buryPick.has(code)) buryPick.delete(code);
+    else if (buryPick.size < 2) buryPick.add(code);
+    const buryBtn = document.querySelector('[data-act="bury"]');
+    if (buryBtn) buryBtn.disabled = buryPick.size !== 2;
+    render();
+  } else if (waiter.kind === 'bury' && act === 'bury' && buryPick.size === 2) {
+    answer([...buryPick]);
+  } else if (waiter.kind === 'call' && act === 'alone') answer({ alone: true, ace: null });
+  else if (waiter.kind === 'call' && act === 'ace') answer({ alone: false, ace: btn.dataset.ace });
+  else if (waiter.kind === 'play' && act === 'card') {
+    const card = S.cardFromCode(btn.dataset.code);
+    const legal = S.legalPlays(hands[YOU], trick[0] && trick[0].card);
+    if (legal.some((item) => S.cardCode(item) === S.cardCode(card))) answer(card);
+  } else if (waiter.kind === 'next' && act === 'next') answer();
+  else if (act === 'deal' && !busy) startHand();
+});
+
+document.getElementById('helpBtn').addEventListener('click', () => {
+  rulesEl.open = !rulesEl.open;
+});
+
+function holdsAce(cards, suit) {
+  return cards.some((card) => card.rank === 'A' && card.suit === suit);
+}
+
+function callForSeat(seat) {
+  const call = S.chooseCall(hands[seat]);
+  if (call.alone) return call;
+  const buriedAce = buried.some((card) => card.rank === 'A' && card.suit === call.ace);
+  if (!buriedAce) return call;
+  const held = new Set(S.failAcesHeld(hands[seat].concat(buried)));
+  const open = ['c', 's', 'h'].filter((suit) => !held.has(suit));
+  return open.length ? { alone: false, ace: open[0] } : { alone: true, ace: null };
+}
+
+function removeCard(seat, card) {
+  const code = S.cardCode(card);
+  hands[seat] = hands[seat].filter((item) => S.cardCode(item) !== code);
+}
+
+async function bidAround() {
+  for (let step = 1; step <= 5; step += 1) {
+    const seat = (dealer + step) % 5;
+    note = `${NAMES[seat]} to speak. Pass, or pick up the blind.`;
+    render();
+    let choice = 'pass';
+    if (seat === YOU) {
+      setActions('<button class="btn" type="button" data-act="pass">Pass</button><button class="btn primary" type="button" data-act="pick">Pick</button>');
+      choice = await ask('bid');
+    } else {
+      await sleep(450);
+      choice = S.shouldPick(hands[seat], seat, dealer) ? 'pick' : 'pass';
+    }
+    if (choice === 'pick') return seat;
+  }
+  return null;
+}
+
+async function humanBury() {
+  buryPick = new Set();
+  note = 'The blind is in your hand. Bury two cards. Their points count for you.';
+  setActions('<button class="btn primary" type="button" data-act="bury" disabled>Bury two</button>');
+  const codes = await ask('bury');
+  buried = hands[YOU].filter((card) => codes.includes(S.cardCode(card)));
+  hands[YOU] = hands[YOU].filter((card) => !codes.includes(S.cardCode(card)));
+  buryPick = new Set();
+}
+
+async function humanCall() {
+  const held = new Set(S.failAcesHeld(hands[YOU].concat(buried)));
+  const buttons = ['c', 's', 'h'].filter((suit) => !held.has(suit)).map((suit) => (
+    `<button class="btn" type="button" data-act="ace" data-ace="${suit}">Ace of ${SUIT_NAME[suit]}</button>`
+  ));
+  buttons.push('<button class="btn primary" type="button" data-act="alone">Go alone</button>');
+  note = held.size === 3
+    ? 'You hold every fail ace. Go alone.'
+    : 'Call a fail ace you do not hold, or go alone.';
+  setActions(buttons.join(''));
+  return ask('call');
+}
+
+async function playTrick(leader) {
+  let seat = leader;
+  trick = [];
+  for (let i = 0; i < 5; i += 1) {
+    let card;
+    if (seat === YOU) {
+      note = trick.length ? 'Follow suit. Trump is its own suit.' : 'Your lead.';
+      setActions('');
+      card = await ask('play');
+    } else {
+      note = `${NAMES[seat]} plays.`;
+      render();
+      await sleep(380);
+      const ctx = { seat, picker, partner: aceSeen ? partner : null };
+      card = leaster
+        ? S.chooseLeasterPlay(hands[seat], trick)
+        : S.choosePlay(hands[seat], trick, ctx);
+    }
+    removeCard(seat, card);
+    trick.push({ seat, card });
+    if (calledAce && card.rank === 'A' && card.suit === calledAce) {
+      partner = seat;
+      aceSeen = true;
+    }
+    render();
+    seat = (seat + 1) % 5;
+  }
+  await sleep(520);
+  const winner = S.trickWinner(trick);
+  taken[winner.seat].push(...trick.map((play) => play.card));
+  note = `${NAMES[winner.seat]} takes the trick.`;
+  trick = [];
+  render();
+  await sleep(280);
+  return winner.seat;
+}
+
+function settleMakers() {
+  let who = partner;
+  if (who == null) {
+    for (let seat = 0; seat < 5; seat += 1) {
+      const pile = taken[seat].concat(seat === picker ? buried : []);
+      if (holdsAce(pile, calledAce)) who = seat;
+    }
+  }
+  if (alone || who == null || who === picker) who = null;
+  const makers = who == null ? [picker] : [picker, who];
+  const makerCards = taken[picker].concat(buried);
+  if (who != null) makerCards.push(...taken[who]);
+  const makerTricks = makers.reduce((sum, seat) => sum + taken[seat].length, 0) / 5;
+  const result = S.makerResult(S.handPoints(makerCards), makerTricks);
+  const dollars = S.seatPayout(YOU, makers, result, stake);
+  pay(dollars);
+  const verb = result > 0 ? 'made' : 'failed';
+  const side = makers.includes(YOU) ? 'Your side' : 'The pickers';
+  note = `${side} ${verb} it with ${S.handPoints(makerCards)} points. ${money(dollars)} for you.`;
+}
+
+function settleLeaster() {
+  const winner = S.leasterWinner(taken);
+  if (winner == null) {
+    note = 'Leaster tied. The pot stays put.';
+    return;
+  }
+  const dollars = winner === YOU ? stake * 4 : -stake;
+  pay(dollars);
+  note = `${NAMES[winner]} takes the leaster with ${S.handPoints(taken[winner])} points. ${money(dollars)} for you.`;
+}
+
+async function startHand() {
+  if (busy) return;
+  busy = true;
+  hands = [[], [], [], [], []];
+  buried = [];
+  blindDown = true;
+  picker = null;
+  partner = null;
+  calledAce = null;
+  alone = false;
+  leaster = false;
+  aceSeen = false;
+  taken = [[], [], [], [], []];
+  trick = [];
+  const dealt = S.deal(dealer);
+  hands = dealt.hands;
+  blind = dealt.blind;
+  note = `${NAMES[dealer]} deals.`;
+  setActions('');
+  render();
+  await sleep(350);
+  picker = await bidAround();
+  if (picker == null) {
+    leaster = true;
+    blindDown = false;
+    note = 'Everyone passed. Leaster: fewest points, and you must take a trick.';
+    render();
+  } else {
+    note = `${NAMES[picker]} picks up the blind.`;
+    blindDown = false;
+    render();
+    if (picker === YOU) {
+      hands[YOU] = hands[YOU].concat(blind);
+      await humanBury();
+      const call = await humanCall();
+      alone = call.alone;
+      calledAce = call.ace;
+    } else {
+      const eight = hands[picker].concat(blind);
+      buried = S.chooseBury(eight);
+      const buriedCodes = new Set(buried.map(S.cardCode));
+      hands[picker] = eight.filter((card) => !buriedCodes.has(S.cardCode(card)));
+      const call = callForSeat(picker);
+      alone = call.alone;
+      calledAce = call.ace;
+      await sleep(400);
+    }
+    if (!alone && holdsAce(hands[YOU], calledAce)) {
+      partner = YOU;
+      note = `Called the ace of ${SUIT_NAME[calledAce]}. You hold it, so you are the partner.`;
+    } else if (alone) {
+      note = `${NAMES[picker]} goes alone.`;
+    } else {
+      note = `${NAMES[picker]} called the ace of ${SUIT_NAME[calledAce]}.`;
+    }
+    render();
+  }
+  let leader = (dealer + 1) % 5;
+  for (let n = 0; n < 6; n += 1) leader = await playTrick(leader);
+  if (leaster) settleLeaster();
+  else settleMakers();
+  dealer = (dealer + 1) % 5;
+  busy = false;
+  setActions('<button class="btn primary" type="button" data-act="next">Next hand</button>');
+  render();
+  await ask('next');
+  startHand();
+}
+
+render();
+</script>
+</body>
+</html>
