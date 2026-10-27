@@ -21,5 +21,5 @@ export async function onRequest(context) {
     });
   }
   await schemaReady;
-  return handleRequest(context.request, db);
+  return handleRequest(context.request, db, context.env || {});
 }

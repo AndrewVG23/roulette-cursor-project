@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createBoard, ensureSchema, normalizeName } from '../functions/_board.mjs';
+import { createBoard, ensureSchema, googleBoardName, normalizeName } from '../functions/_board.mjs';
+import { handleRequest } from '../functions/http.mjs';
 import { openBoardDb } from '../scripts/sqlite-d1.mjs';
 
 async function board() {
@@ -48,6 +49,73 @@ test('an account keeps its best net worth', async () => {
   await api.logout(again.token);
   const me = await api.me(again.token);
   assert.equal(me.body.name, null);
+});
+
+test('google sign-in keeps one player and a readable name', async () => {
+  assert.equal(googleBoardName({ name: 'Andrew Van Gilder', given_name: 'Andrew' }), 'Andrew');
+  assert.equal(googleBoardName({ name: 'Ada Lovelace' }), 'Ada Lovelace');
+  assert.equal(googleBoardName({ email: 'a.b@example.com' }), 'a b');
+  assert.equal(googleBoardName({}), 'Player');
+
+  const db = openBoardDb();
+  await ensureSchema(db);
+  await ensureSchema(db);
+  const api = createBoard(db);
+  await api.register('Andrew', 'copper');
+
+  const created = await api.signInGoogle({ sub: '1001', name: 'Andrew Van Gilder', given_name: 'Andrew' });
+  assert.equal(created.status, 200);
+  assert.equal(created.body.name, 'Andrew 2');
+  const posted = await api.postBest(created.token, { netWorth: 1200, weeks: 3 });
+  assert.equal(posted.body.improved, true);
+
+  const again = await api.signInGoogle({ sub: '1001', name: 'Andrew Van Gilder' });
+  assert.equal(again.body.name, 'Andrew 2');
+  assert.equal(again.body.best, 1200);
+
+  const password = await api.login('Andrew 2', 'copper');
+  assert.equal(password.status, 401);
+
+  const clientId = '1000000000-cash.apps.googleusercontent.com';
+  const missing = await handleRequest(
+    new Request('https://cashforcopper.us/api/google-config'),
+    db,
+    {}
+  );
+  assert.deepEqual(await missing.json(), { clientId: null });
+
+  const config = await handleRequest(
+    new Request('https://cashforcopper.us/api/google-config'),
+    db,
+    { GOOGLE_CLIENT_ID: clientId }
+  );
+  assert.deepEqual(await config.json(), { clientId });
+
+  const signed = await handleRequest(
+    new Request('https://cashforcopper.us/api/google', {
+      method: 'POST',
+      headers: { origin: 'https://cashforcopper.us', 'content-type': 'application/json' },
+      body: JSON.stringify({ credential: 'token' })
+    }),
+    db,
+    { GOOGLE_CLIENT_ID: clientId },
+    { verifyGoogleIdToken: async () => ({ sub: '2002', name: 'Bea' }) }
+  );
+  assert.equal(signed.status, 200);
+  assert.equal((await signed.json()).name, 'Bea');
+  assert.match(signed.headers.get('set-cookie'), /c4c_session=/);
+
+  const rejected = await handleRequest(
+    new Request('https://cashforcopper.us/api/google', {
+      method: 'POST',
+      headers: { origin: 'https://cashforcopper.us', 'content-type': 'application/json' },
+      body: JSON.stringify({ credential: 'nope' })
+    }),
+    db,
+    { GOOGLE_CLIENT_ID: clientId },
+    { verifyGoogleIdToken: async () => null }
+  );
+  assert.equal(rejected.status, 401);
 });
 
 test('the richer purse ranks first', async () => {

@@ -718,7 +718,8 @@
     name: 'Use 2–16 letters, numbers, or spaces.',
     password: 'Password needs at least 4 characters.',
     offline: 'The board is offline.',
-    score: 'That score could not be posted.'
+    score: 'That score could not be posted.',
+    google: 'Google sign-in did not finish. Try again.'
   };
 
   function dateFromWeeks(weeks) {
@@ -885,11 +886,94 @@
     if (open) {
       boardOffline = false;
       loadBoard();
+      ensureGoogleButton();
       const field = boardPlayer
         ? document.getElementById('boardLogout')
         : document.querySelector('#boardForm input[name="name"]');
       field?.focus();
     }
+  }
+
+  function loadGsi() {
+    if (window.google && window.google.accounts && window.google.accounts.id) return Promise.resolve();
+    if (loadGsi.pending) return loadGsi.pending;
+    loadGsi.pending = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('gsi'));
+      document.head.appendChild(script);
+    });
+    return loadGsi.pending;
+  }
+
+  async function onGoogleCredential(response) {
+    const error = document.getElementById('boardError');
+    if (error) error.textContent = '';
+    try {
+      const res = await fetch('/api/google', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ credential: response && response.credential })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (error) error.textContent = boardError(data.error || 'google');
+        return;
+      }
+      boardPlayer = { name: data.name, best: data.best, weeks: data.weeks };
+      boardOffline = false;
+      paintSession();
+      postScore().then(loadBoard);
+    } catch (_) {
+      if (error) error.textContent = boardError('offline');
+    }
+  }
+
+  function ensureGoogleButton() {
+    const form = document.getElementById('boardForm');
+    const slot = document.getElementById('boardGoogle');
+    if (!form || form.hidden || !slot || slot.dataset.ready === '1' || slot.dataset.loading === '1') return;
+    slot.dataset.loading = '1';
+    const task = slot.dataset.config
+      ? Promise.resolve(JSON.parse(slot.dataset.config))
+      : fetch('/api/google-config', { credentials: 'same-origin' })
+        .then((res) => (res.ok ? res.json() : null))
+        .catch(() => null);
+    task.then(async (config) => {
+      if (!config || !config.clientId) return;
+      slot.dataset.config = JSON.stringify({ clientId: config.clientId });
+      await loadGsi();
+      if (!window.google || !window.google.accounts || !window.google.accounts.id) return;
+      const divider = document.getElementById('boardOr');
+      slot.hidden = false;
+      if (divider) divider.hidden = false;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      window.google.accounts.id.initialize({
+        client_id: config.clientId,
+        callback: onGoogleCredential,
+        auto_select: false,
+        cancel_on_tap_outside: true
+      });
+      if (window.google.accounts.id.disableAutoSelect) window.google.accounts.id.disableAutoSelect();
+      slot.replaceChildren();
+      const card = slot.closest('.board-card');
+      const width = Math.max(200, Math.min(280, (card ? card.clientWidth : 320) - 32));
+      window.google.accounts.id.renderButton(slot, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'pill',
+        logo_alignment: 'left',
+        width
+      });
+      slot.dataset.ready = '1';
+    }).catch(() => {}).finally(() => {
+      delete slot.dataset.loading;
+    });
   }
 
   async function sendAuth(route) {
@@ -975,6 +1059,8 @@
       '<ol class="board-list" id="boardList"></ol>',
       '<p class="board-you" id="boardYou" hidden></p>',
       '<form class="board-form" id="boardForm">',
+      '<div class="board-google" id="boardGoogle" hidden></div>',
+      '<p class="board-or" id="boardOr" hidden>or</p>',
       '<label>Name <input name="name" autocomplete="username" maxlength="16" required></label>',
       '<label>Password <input name="password" type="password" autocomplete="current-password" maxlength="64" required></label>',
       '<p class="board-error" id="boardError" role="alert"></p>',
@@ -1014,6 +1100,7 @@
       boardPlayer = null;
       paintSession();
       loadBoard();
+      ensureGoogleButton();
     });
     window.addEventListener('resize', placeBoardChip);
     window.addEventListener('load', placeBoardChip);

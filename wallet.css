@@ -659,7 +659,9 @@ body.has-game-logo > .app > .controls {
 .board-sheet[hidden],
 .board-form[hidden],
 .board-signed[hidden],
-.board-you[hidden] { display: none !important; }
+.board-you[hidden],
+.board-google[hidden],
+.board-or[hidden] { display: none !important; }
 .board-card {
   width: min(420px, 100%);
   max-height: min(82vh, 640px);
@@ -726,6 +728,13 @@ body.has-game-logo > .app > .controls {
 .board-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .board-date { color: #d7c9aa; font-size: 0.72rem; }
 .board-you { margin: 8px 0 0; color: #f4dfa0; font-size: 0.86rem; }
+.board-google { display: flex; justify-content: center; min-height: 44px; }
+.board-or {
+  margin: 2px 0 0;
+  text-align: center;
+  color: #d7c9aa;
+  font-size: 0.75rem;
+}
 .board-form { display: grid; gap: 8px; margin-top: 14px; }
 .board-form label { display: grid; gap: 4px; font-size: 0.78rem; color: #d7c9aa; }
 .board-form input {

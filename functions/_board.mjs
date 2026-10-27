@@ -75,6 +75,13 @@ function newToken() {
   return bytesToHex(bytes);
 }
 
+async function addColumn(db, table, column, type) {
+  const info = await db.prepare(`PRAGMA table_info(${table})`).all();
+  const rows = info.results || [];
+  if (rows.some((row) => row.name === column)) return;
+  await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
+}
+
 export async function ensureSchema(db) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS players (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,6 +91,8 @@ export async function ensureSchema(db) {
     pass_salt TEXT NOT NULL,
     created_at INTEGER NOT NULL
   )`).run();
+  await addColumn(db, 'players', 'google_sub', 'TEXT');
+  await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS players_google_sub ON players (google_sub)').run();
   await db.prepare(`CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY,
     player_id INTEGER NOT NULL,
@@ -95,6 +104,36 @@ export async function ensureSchema(db) {
     weeks INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`).run();
+}
+
+export function googleBoardName(profile) {
+  const clean = (value) => String(value || '')
+    .normalize('NFKC')
+    .replace(/[^\p{L}\p{N} ]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const full = clean(profile && profile.name);
+  const given = clean(profile && profile.given_name);
+  const emailName = clean(String((profile && profile.email) || '').split('@')[0]);
+  const preferred = [full, given, full.split(' ')[0], emailName].filter(Boolean);
+  for (const option of preferred) {
+    if (Array.from(option).length > 16) continue;
+    const named = normalizeName(option);
+    if (named.ok) return named.name;
+  }
+  for (const option of preferred) {
+    const named = normalizeName(Array.from(option).slice(0, 16).join('').trim());
+    if (named.ok) return named.name;
+  }
+  return 'Player';
+}
+
+function nameWithSuffix(base, n) {
+  const suffix = ` ${n}`;
+  const room = 16 - Array.from(suffix).length;
+  const chars = Array.from(base).slice(0, Math.max(1, room));
+  while (chars.length && chars[chars.length - 1] === ' ') chars.pop();
+  return `${chars.join('') || 'P'}${suffix}`;
 }
 
 async function playerFromToken(db, token) {
@@ -163,12 +202,56 @@ export function createBoard(db) {
       const player = await db.prepare(
         'SELECT id, name, name_key, pass_hash, pass_salt FROM players WHERE name_key = ?'
       ).bind(name.key).first();
-      if (!player) return { status: 401, body: { error: 'credentials' } };
+      if (!player || !player.pass_hash || !player.pass_salt) {
+        return { status: 401, body: { error: 'credentials' } };
+      }
       const hash = await hashPassword(password.password, b64ToBytes(player.pass_salt));
       if (!safeEqual(hash, player.pass_hash)) return { status: 401, body: { error: 'credentials' } };
       const token = await openSession(db, player.id);
       const best = await bestFor(db, player.id);
       return { status: 200, token, body: publicPlayer(player, best) };
+    },
+
+    async signInGoogle(profile) {
+      const sub = String(profile && profile.sub || '');
+      if (!/^[A-Za-z0-9_-]{1,255}$/.test(sub)) return { status: 401, body: { error: 'google' } };
+      const existing = await db.prepare('SELECT id, name, name_key FROM players WHERE google_sub = ?')
+        .bind(sub).first();
+      if (existing) {
+        const token = await openSession(db, existing.id);
+        const best = await bestFor(db, existing.id);
+        return { status: 200, token, body: publicPlayer(existing, best) };
+      }
+      const base = googleBoardName(profile);
+      for (let n = 1; n <= 40; n += 1) {
+        const candidate = n === 1 ? base : nameWithSuffix(base, n);
+        const named = normalizeName(candidate);
+        if (!named.ok) continue;
+        const taken = await db.prepare('SELECT id FROM players WHERE name_key = ?').bind(named.key).first();
+        if (taken) continue;
+        try {
+          await db.prepare(
+            `INSERT INTO players (name, name_key, pass_hash, pass_salt, created_at, google_sub)
+             VALUES (?, ?, '', '', ?, ?)`
+          ).bind(named.name, named.key, Date.now(), sub).run();
+        } catch (err) {
+          const message = String(err && err.message || err).toLowerCase();
+          if (!message.includes('unique')) throw err;
+          const raced = await db.prepare('SELECT id, name, name_key FROM players WHERE google_sub = ?')
+            .bind(sub).first();
+          if (raced) {
+            const token = await openSession(db, raced.id);
+            const best = await bestFor(db, raced.id);
+            return { status: 200, token, body: publicPlayer(raced, best) };
+          }
+          continue;
+        }
+        const player = await db.prepare('SELECT id, name, name_key FROM players WHERE google_sub = ?')
+          .bind(sub).first();
+        const token = await openSession(db, player.id);
+        return { status: 200, token, body: publicPlayer(player, null) };
+      }
+      return { status: 409, body: { error: 'taken' } };
     },
 
     async logout(token) {

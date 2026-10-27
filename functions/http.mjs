@@ -1,4 +1,5 @@
 import { createBoard } from './_board.mjs';
+import { validClientId, verifyGoogleIdToken } from './google.mjs';
 
 const COOKIE = 'c4c_session';
 
@@ -37,12 +38,14 @@ function sameOrigin(request) {
   }
 }
 
-export async function handleRequest(request, db) {
+export async function handleRequest(request, db, env = {}, deps = {}) {
   if (!db) return json({ error: 'offline' }, 503);
   const url = new URL(request.url);
   const route = url.pathname.split('/').filter(Boolean)[1] || '';
   const board = createBoard(db);
   const token = readCookie(request);
+  const rawClientId = String(env.GOOGLE_CLIENT_ID || '').trim();
+  const clientId = validClientId(rawClientId) ? rawClientId : '';
 
   if (request.method === 'GET' && route === 'me') {
     const result = await board.me(token);
@@ -52,7 +55,10 @@ export async function handleRequest(request, db) {
     const result = await board.board(token);
     return json(result.body, result.status);
   }
-  if (request.method !== 'POST' || !['register', 'login', 'logout', 'best'].includes(route)) {
+  if (request.method === 'GET' && route === 'google-config') {
+    return json({ clientId: clientId || null });
+  }
+  if (request.method !== 'POST' || !['register', 'login', 'logout', 'best', 'google'].includes(route)) {
     return json({ error: 'bad' }, 404);
   }
   if (!sameOrigin(request)) return json({ error: 'bad' }, 403);
@@ -60,7 +66,7 @@ export async function handleRequest(request, db) {
   let payload = {};
   if (route !== 'logout') {
     const text = await request.text();
-    if (text.length > 4000) return json({ error: 'bad' }, 400);
+    if (text.length > 12000) return json({ error: 'bad' }, 400);
     try {
       payload = text ? JSON.parse(text) : {};
     } catch (_) {
@@ -72,7 +78,13 @@ export async function handleRequest(request, db) {
   if (route === 'register') result = await board.register(payload.name, payload.password);
   else if (route === 'login') result = await board.login(payload.name, payload.password);
   else if (route === 'logout') result = await board.logout(token);
-  else result = await board.postBest(token, payload);
+  else if (route === 'google') {
+    if (!clientId) return json({ error: 'google' }, 503);
+    const verify = deps.verifyGoogleIdToken || verifyGoogleIdToken;
+    const profile = await verify(payload.credential, clientId);
+    if (!profile) return json({ error: 'google' }, 401);
+    result = await board.signInGoogle(profile);
+  } else result = await board.postBest(token, payload);
 
   const cookie = result.token
     ? cookieHeader(result.token, request, false)
