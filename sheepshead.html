@@ -310,13 +310,13 @@
     <div class="middle">
       <div class="score" id="score" aria-live="polite">
         <div class="score-idle">
-          <span class="score-kicker">Make</span>
+          <span class="score-kicker">Need</span>
           <strong class="score-num">61</strong>
           <span class="score-sub">points</span>
         </div>
       </div>
       <div class="trick" id="trick" aria-label="Current trick"></div>
-      <p class="status" id="status">Deal a hand. Queens and jacks are trump, then diamonds.</p>
+      <p class="status" id="status">Deal. You get six cards, and two more sit face down.</p>
       <div class="actions" id="actions">
         <button class="btn primary" type="button" data-act="deal">Deal</button>
       </div>
@@ -328,8 +328,9 @@
   </div>
   <details class="rules" id="rules">
     <summary>How the hand pays</summary>
-    <p>Five players, 32 cards. Trump, high to low: queen of clubs, spades, hearts, diamonds, then the jacks in that same suit order, then the diamond ace, ten, king, nine, eight, seven. In a fail suit the ace beats the ten, and the ten beats the king. Follow suit. Trump is its own suit.</p>
-    <p>The picker buries two cards, then calls a fail ace or goes alone. The picker and the called ace need 61 points. Under 31 for the losers is a schneider. No tricks is schwarz. The hand is worth 2, plus 1 for each of those. Each loser pays each winner that many points. If everyone passes, the fewest points wins a leaster.</p>
+    <p>Five players, 32 cards. Queens, jacks, and diamonds are all the same suit, called trump. Highest first: queen of clubs, spades, hearts, diamonds, then the jacks in that order, then the diamond ace, ten, king, nine, eight, and seven. In clubs, spades, or hearts, the ace beats the ten, and the ten beats the king. Play a card of the suit that was led. A queen or a jack is never a club, a spade, or a heart.</p>
+    <p>Someone can pick up the two face-down cards. They set two cards aside, and those points still count for them. Then they name an ace of clubs, spades, or hearts they do not hold. The player with that ace scores with them. Together they need 61 of the 120 points. Or they name no one and need 61 alone.</p>
+    <p>The hand pays 2 times the stake. It pays 3 if the losing side has fewer than 31 points, and 4 if the losing side takes no tricks. Each loser pays each winner that amount. If nobody picks up the two cards, the player with the fewest points who took at least one trick wins the stake from each other player.</p>
   </details>
 </div>
 <script type="module">
@@ -366,7 +367,7 @@ let trick = [];
 let busy = false;
 let waiter = null;
 let buryPick = new Set();
-let note = 'Deal a hand. Queens and jacks are trump, then diamonds.';
+let note = 'Deal. You get six cards, and two more sit face down.';
 
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 function money(n) {
@@ -394,9 +395,9 @@ function knownPartner() {
 
 function seatTags(seat) {
   const tags = [];
-  if (seat === dealer) tags.push('deals');
-  if (picker === seat) tags.push(alone ? 'alone' : 'picker');
-  if ((aceSeen || seat === YOU) && partner === seat && partner !== picker) tags.push('partner');
+  if (seat === dealer) tags.push('dealing');
+  if (picker === seat) tags.push(alone ? 'no partner' : 'picked up');
+  if ((aceSeen || seat === YOU) && partner === seat && partner !== picker) tags.push('scoring together');
   return tags.join(' · ');
 }
 
@@ -414,10 +415,10 @@ function seatMarkup(seat) {
 function scoreMarkup() {
   if (leaster) {
     const rows = taken.map((pile, seat) => `<span><b>${S.handPoints(pile)}</b> ${NAMES[seat]}</span>`).join('');
-    return `<div class="score-leaster"><span class="score-kicker">Leaster · fewest points</span><div class="leaster-row">${rows}</div></div>`;
+    return `<div class="score-leaster"><span class="score-kicker">Fewest points wins</span><div class="leaster-row">${rows}</div></div>`;
   }
   if (picker == null) {
-    return '<div class="score-idle"><span class="score-kicker">Make</span><strong class="score-num">61</strong><span class="score-sub">points</span></div>';
+    return '<div class="score-idle"><span class="score-kicker">Need</span><strong class="score-num">61</strong><span class="score-sub">points</span></div>';
   }
   const friend = knownPartner();
   const makers = friend == null ? [picker] : [picker, friend];
@@ -429,8 +430,8 @@ function scoreMarkup() {
   }
   const buryPoints = S.handPoints(buried);
   const pickClass = pickerPoints >= 61 ? ' is-made' : (tablePoints >= 60 ? ' is-set' : '');
-  const buryNote = buryPoints ? `<span class="score-sub">bury ${buryPoints}</span>` : '<span class="score-sub">in tricks</span>';
-  return `<div class="score-side is-pick${pickClass}"><span class="score-kicker">Pickers</span><strong class="score-num">${pickerPoints}</strong>${buryNote}</div><div class="score-goal"><strong>61</strong><span>to make</span></div><div class="score-side"><span class="score-kicker">Table</span><strong class="score-num">${tablePoints}</strong><span class="score-sub">in tricks</span></div>`;
+  const buryNote = buryPoints ? `<span class="score-sub">${buryPoints} set aside</span>` : '<span class="score-sub">from tricks</span>';
+    return `<div class="score-side is-pick${pickClass}"><span class="score-kicker">Pickers</span><strong class="score-num">${pickerPoints}</strong>${buryNote}</div><div class="score-goal"><strong>61</strong><span>needed</span></div><div class="score-side"><span class="score-kicker">Everyone else</span><strong class="score-num">${tablePoints}</strong><span class="score-sub">from tricks</span></div>`;
 }
 
 function render() {
@@ -533,11 +534,13 @@ function removeCard(seat, card) {
 async function bidAround() {
   for (let step = 1; step <= 5; step += 1) {
     const seat = (dealer + step) % 5;
-    note = `${NAMES[seat]} to speak. Pass, or pick up the blind.`;
+    note = seat === YOU
+      ? 'Your turn. Pick up the two face-down cards, or pass.'
+      : `${NAMES[seat]} may pick up the two face-down cards, or pass.`;
     render();
     let choice = 'pass';
     if (seat === YOU) {
-      setActions('<button class="btn" type="button" data-act="pass">Pass</button><button class="btn primary" type="button" data-act="pick">Pick</button>');
+      setActions('<button class="btn" type="button" data-act="pass">Pass</button><button class="btn primary" type="button" data-act="pick">Pick up</button>');
       choice = await ask('bid');
     } else {
       await sleep(450);
@@ -550,8 +553,8 @@ async function bidAround() {
 
 async function humanBury() {
   buryPick = new Set();
-  note = 'The blind is in your hand. Bury two cards. Their points count for you.';
-  setActions('<button class="btn primary" type="button" data-act="bury" disabled>Bury two</button>');
+  note = 'The two face-down cards are in your hand. Choose two cards to set aside. You still score their points, and you cannot play them.';
+  setActions('<button class="btn primary" type="button" data-act="bury" disabled>Set two aside</button>');
   const codes = await ask('bury');
   buried = hands[YOU].filter((card) => codes.includes(S.cardCode(card)));
   hands[YOU] = hands[YOU].filter((card) => !codes.includes(S.cardCode(card)));
@@ -563,12 +566,28 @@ async function humanCall() {
   const buttons = ['c', 's', 'h'].filter((suit) => !held.has(suit)).map((suit) => (
     `<button class="btn" type="button" data-act="ace" data-ace="${suit}">Ace of ${SUIT_NAME[suit]}</button>`
   ));
-  buttons.push('<button class="btn primary" type="button" data-act="alone">Go alone</button>');
+  buttons.push('<button class="btn primary" type="button" data-act="alone">No partner</button>');
   note = held.size === 3
-    ? 'You hold every fail ace. Go alone.'
-    : 'Call a fail ace you do not hold, or go alone.';
+    ? 'You already have the ace of clubs, spades, and hearts. Play with no partner.'
+    : 'Name an ace of clubs, spades, or hearts you do not have. That player scores with you. Or play with no partner.';
   setActions(buttons.join(''));
   return ask('call');
+}
+
+function playNote() {
+  if (!trick.length) return 'You lead. Play any card.';
+  const led = trick[0].card;
+  const who = NAMES[trick[0].seat];
+  const has = hands[YOU].some((card) => S.suitKey(card) === S.suitKey(led));
+  if (S.isTrump(led)) {
+    return has
+      ? `${who} led trump. Play a queen, a jack, or a diamond.`
+      : `${who} led trump. You have none, so play any card.`;
+  }
+  const suit = SUIT_NAME[led.suit];
+  return has
+    ? `${who} led ${suit}. Play a ${suit.slice(0, -1)}. Queens and jacks are trump, not ${suit}.`
+    : `${who} led ${suit}. You have no ${suit.slice(0, -1)}, so play any card.`;
 }
 
 async function playTrick(leader) {
@@ -577,11 +596,11 @@ async function playTrick(leader) {
   for (let i = 0; i < 5; i += 1) {
     let card;
     if (seat === YOU) {
-      note = trick.length ? 'Follow suit. Trump is its own suit.' : 'Your lead.';
+      note = playNote();
       setActions('');
       card = await ask('play');
     } else {
-      note = `${NAMES[seat]} plays.`;
+      note = `Waiting on ${NAMES[seat]}.`;
       render();
       await sleep(380);
       const ctx = { seat, picker, partner: aceSeen ? partner : null };
@@ -601,7 +620,8 @@ async function playTrick(leader) {
   await sleep(520);
   const winner = S.trickWinner(trick);
   taken[winner.seat].push(...trick.map((play) => play.card));
-  note = `${NAMES[winner.seat]} takes the trick.`;
+  const won = S.handPoints(trick.map((play) => play.card));
+  note = `${NAMES[winner.seat]} wins this trick, ${won} points.`;
   trick = [];
   render();
   await sleep(280);
@@ -624,20 +644,28 @@ function settleMakers() {
   const result = S.makerResult(S.handPoints(makerCards), makerTricks);
   const dollars = S.seatPayout(YOU, makers, result, stake);
   pay(dollars);
-  const verb = result > 0 ? 'made' : 'failed';
-  const side = makers.includes(YOU) ? 'Your side' : 'The pickers';
-  note = `${side} ${verb} it with ${S.handPoints(makerCards)} points. ${money(dollars)} for you.`;
+  const pts = S.handPoints(makerCards);
+  const enough = pts >= 61 ? 'That is enough.' : 'That is short of 61.';
+  let side = 'The picking side has';
+  if (makers.length === 1 && makers[0] === YOU) side = 'You have';
+  else if (makers.includes(YOU)) side = 'You and your partner have';
+  else if (makers.length === 1) side = `${NAMES[makers[0]]} has`;
+  else side = `${NAMES[picker]} and partner have`;
+  note = `${side} ${pts} points. ${enough} ${money(dollars)} for you.`;
 }
 
 function settleLeaster() {
   const winner = S.leasterWinner(taken);
   if (winner == null) {
-    note = 'Leaster tied. The pot stays put.';
+    note = 'Two players tied for the fewest points. Nobody pays.';
     return;
   }
   const dollars = winner === YOU ? stake * 4 : -stake;
   pay(dollars);
-  note = `${NAMES[winner]} takes the leaster with ${S.handPoints(taken[winner])} points. ${money(dollars)} for you.`;
+  const low = S.handPoints(taken[winner]);
+  note = winner === YOU
+    ? `You have the fewest points, ${low}, and you took a trick. ${money(dollars)} for you.`
+    : `${NAMES[winner]} has the fewest points, ${low}, and took a trick. ${money(dollars)} for you.`;
 }
 
 async function startHand() {
@@ -657,7 +685,7 @@ async function startHand() {
   const dealt = S.deal(dealer);
   hands = dealt.hands;
   blind = dealt.blind;
-  note = `${NAMES[dealer]} deals.`;
+  note = `${NAMES[dealer]} deals six cards each, plus two face down.`;
   setActions('');
   render();
   await sleep(350);
@@ -665,10 +693,10 @@ async function startHand() {
   if (picker == null) {
     leaster = true;
     blindDown = false;
-    note = 'Everyone passed. Leaster: fewest points, and you must take a trick.';
+    note = 'Nobody picked up the two face-down cards. Fewest points wins. Take at least one trick or you cannot win.';
     render();
   } else {
-    note = `${NAMES[picker]} picks up the blind.`;
+    note = `${NAMES[picker] === 'You' ? 'You pick' : `${NAMES[picker]} picks`} up the two face-down cards.`;
     blindDown = false;
     render();
     if (picker === YOU) {
@@ -689,11 +717,14 @@ async function startHand() {
     }
     if (!alone && holdsAce(hands[YOU], calledAce)) {
       partner = YOU;
-      note = `Called the ace of ${SUIT_NAME[calledAce]}. You hold it, so you are the partner.`;
+      note = `The named ace is the ace of ${SUIT_NAME[calledAce]}. You have it, so your points and the picker's count together.`;
     } else if (alone) {
-      note = `${NAMES[picker]} goes alone.`;
+      note = picker === YOU
+        ? 'You are playing with no partner. You need 61 points by yourself.'
+        : `${NAMES[picker]} is playing with no partner and needs 61 points alone.`;
     } else {
-      note = `${NAMES[picker]} called the ace of ${SUIT_NAME[calledAce]}.`;
+      const withWhom = picker === YOU ? 'you' : NAMES[picker];
+      note = `${picker === YOU ? 'You' : NAMES[picker]} named the ace of ${SUIT_NAME[calledAce]}. The player who has it scores with ${withWhom}. You see who when that ace is played.`;
     }
     render();
   }
