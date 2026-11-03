@@ -2129,6 +2129,12 @@
     { fx: 0.143, fy: 0.904 },
     { fx: 0.862, fy: 0.900 }
   ];
+  // Hub centers on the cropped copper X5 sprite (fractions of drawW / drawH).
+  const PLAYER_CAR_WHEELS = [
+    { fx: 0.115, fy: 0.928, rx: 0.108, ry: 0.042 },
+    { fx: 0.888, fy: 0.928, rx: 0.108, ry: 0.042 }
+  ];
+  let rimUnlockPulse = 0;
   // Chase / traffic — pixel Crown Vic Police Interceptor
   const POLICE_CAR_IMG = new Image();
   POLICE_CAR_IMG.src = 'police_car.png';
@@ -3582,7 +3588,7 @@
   const CAR_LOOKS = [
     { id: 'paint', label: 'Unlock paint', line: 'Copper paint is on the car.' },
     { id: 'glow', label: 'Unlock underglow', line: 'Green underglow is on the car.' },
-    { id: 'rims', label: 'Unlock gold rims', line: 'Gold rims are on the car.' },
+    { id: 'rims', label: 'Unlock gold rims', line: 'Gold rims on — they spin and catch every streetlight.' },
     { id: 'plume', label: 'Unlock exhaust', line: 'The exhaust stays lit.' },
     { id: 'plate', label: 'Unlock the plate', line: 'A lit plate is on the back.' }
   ];
@@ -4325,6 +4331,7 @@
   ];
   const BILLBOARD_TEX_W = 960;
   const BILLBOARD_TEX_H = 540;
+  const BILLBOARD_TILT_DEG = 30; // face leans toward the road from the hinge at the posts
   const billboardTexCache = new Map();
 
   function getBillboardTexture(ad) {
@@ -4337,13 +4344,19 @@
     c.width = BILLBOARD_TEX_W;
     c.height = BILLBOARD_TEX_H;
     const g = c.getContext('2d');
-    g.fillStyle = '#101b16';
+    const bg = g.createLinearGradient(0, 0, 0, c.height);
+    bg.addColorStop(0, '#243830');
+    bg.addColorStop(1, '#121c18');
+    g.fillStyle = bg;
     g.fillRect(0, 0, c.width, c.height);
-    g.fillStyle = '#0d1512';
-    g.fillRect(18, 18, c.width - 36, c.height - 36);
-    g.strokeStyle = 'rgba(208,162,58,0.28)';
-    g.lineWidth = 4;
-    g.strokeRect(28, 28, c.width - 56, c.height - 56);
+    g.fillStyle = '#182820';
+    g.fillRect(14, 14, c.width - 28, c.height - 28);
+    g.strokeStyle = 'rgba(255, 210, 90, 0.55)';
+    g.lineWidth = 6;
+    g.strokeRect(22, 22, c.width - 44, c.height - 44);
+    g.strokeStyle = 'rgba(208,162,58,0.35)';
+    g.lineWidth = 3;
+    g.strokeRect(32, 32, c.width - 64, c.height - 64);
     const n = lines.length;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
@@ -4351,7 +4364,7 @@
       const t = (i + 0.5) / n;
       const y = c.height * (0.2 + t * 0.6);
       const head = i === accent;
-      g.fillStyle = head ? '#d0a23a' : '#bdb39b';
+      g.fillStyle = head ? '#ffd060' : '#e8dcc8';
       const size = head
         ? (n > 2 ? 58 : 72)
         : (n > 2 ? 40 : 48);
@@ -4572,6 +4585,18 @@
     const lot = 56;
     const len = d.route.length;
     const endZ = Math.min(toZ, len);
+    function seedBillboard(routeZ, bbSide, adPick) {
+      const zOff = 22 + (Math.abs((routeZ / lot) | 0) % 3) * 6;
+      if (landmarkClearance(d, routeZ + zOff, bbSide, 'building')) return;
+      const ad = BILLBOARD_ADS[adPick % BILLBOARD_ADS.length];
+      d.props.push({
+        z: routeZ + zOff,
+        side: bbSide,
+        kind: 'billboard',
+        lines: ad.lines,
+        accent: ad.accent
+      });
+    }
     for (let routeZ = Math.ceil(fromZ / lot) * lot; routeZ < endZ; routeZ += lot) {
       const env = routeEnvAt(d, routeZ);
       const zi = (routeZ / lot) | 0;
@@ -4618,20 +4643,17 @@
         if (zi % 3 === 0) d.props.push({ z: routeZ + 28, side: Math.sin(routeZ) > 0 ? -1 : 1, kind: 'dumpster' });
         if (zi % 4 === 0) d.props.push({ z: routeZ + 40, side: Math.cos(routeZ) > 0 ? 1 : -1, kind: 'hydrant' });
         if (zi % 5 === 0) d.props.push({ z: routeZ + 16, side: -1, kind: 'bus_shelter' });
-        // Occasional debt-economy billboards — rarer, inland only
-        if (zi % 37 === 19) {
-          const bbSide = Math.sin(routeZ * 0.07) > 0 ? 1 : -1;
-          if (!landmarkClearance(d, routeZ + 24, bbSide, 'building')) {
-            const ad = BILLBOARD_ADS[((zi / 37) | 0) % BILLBOARD_ADS.length];
-            d.props.push({
-              z: routeZ + 24,
-              side: bbSide,
-              kind: 'billboard',
-              lines: ad.lines,
-              accent: ad.accent
-            });
-          }
-        }
+      }
+      // Debt-economy billboards — frequent along the route (both sides when inland)
+      const bbPick = ((zi / 11) | 0) + (routeZ % 5);
+      if (zi % 11 === 3) {
+        seedBillboard(routeZ, Math.sin(routeZ * 0.07) > 0 ? 1 : -1, bbPick);
+      }
+      if (!env.onLakefront && zi % 11 === 8) {
+        seedBillboard(routeZ + lot * 0.42, Math.sin(routeZ * 0.11) > 0 ? -1 : 1, bbPick + 1);
+      }
+      if (env.onLakefront && zi % 9 === 4) {
+        seedBillboard(routeZ, env.citySide, bbPick);
       }
     }
     d.nextBuildZ = Math.min(toZ, len);
@@ -5341,6 +5363,7 @@
     }
     ownedLooks.add(look.id);
     saveLooks();
+    if (look.id === 'rims') rimUnlockPulse = performance.now() + 2800;
     if (overlayPaintBtn) overlayPaintBtn.hidden = true;
     if (overlayText) {
       overlayText.hidden = false;
@@ -8789,7 +8812,128 @@
     return g;
   }
 
-  function drawCarWheel(cx, cy, r, spin, crush) {
+  function drawGoldWheelFace(cx, cy, rx, ry, spin) {
+    const t = performance.now() * 0.001;
+    const glint = 0.78 + Math.sin((spin || 0) * 2.8 + t * 5.1) * 0.22;
+    const hubX = rx * 0.66;
+    const hubY = ry * 0.66;
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 2);
+    ctx.clip();
+    const face = ctx.createRadialGradient(cx - rx * 0.32, cy - ry * 0.38, rx * 0.02, cx, cy, rx * 1.05);
+    face.addColorStop(0, '#fff8dc');
+    face.addColorStop(0.22, '#ffd54a');
+    face.addColorStop(0.55, '#e8a020');
+    face.addColorStop(0.82, '#9a6010');
+    face.addColorStop(1, '#3a2206');
+    ctx.fillStyle = face;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, hubX, hubY, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const segs = 10;
+    for (let i = 0; i < segs; i++) {
+      const a0 = (spin || 0) + i * (Math.PI * 2 / segs);
+      const a1 = a0 + (Math.PI * 2 / segs) * 0.82;
+      const bright = i % 2 === 0;
+      ctx.fillStyle = bright ? `rgba(255, 244, 200, ${0.42 + glint * 0.28})` : 'rgba(60, 38, 10, 0.55)';
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a0) * hubX * 0.55, cy + Math.sin(a0) * hubY * 0.55);
+      ctx.lineTo(cx + Math.cos(a0) * hubX * 0.98, cy + Math.sin(a0) * hubY * 0.98);
+      ctx.lineTo(cx + Math.cos(a1) * hubX * 0.98, cy + Math.sin(a1) * hubY * 0.98);
+      ctx.lineTo(cx + Math.cos(a1) * hubX * 0.55, cy + Math.sin(a1) * hubY * 0.55);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#ffe8a0';
+    ctx.lineWidth = Math.max(1.1, rx * 0.14);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx * 0.94, ry * 0.94, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#5a3808';
+    ctx.lineWidth = Math.max(0.85, rx * 0.1);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const a = (spin || 0) + i * (Math.PI * 2 / 5);
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * hubX * 0.18, cy + Math.sin(a) * hubY * 0.18);
+      ctx.lineTo(cx + Math.cos(a) * hubX * 0.96, cy + Math.sin(a) * hubY * 0.96);
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = `rgba(255, 248, 210, ${0.62 * glint})`;
+    ctx.lineWidth = Math.max(0.65, rx * 0.06);
+    const sweep = (spin || 0) + t * 2.2;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, hubX * 0.9, hubY * 0.9, sweep * 0.2, sweep, sweep + Math.PI * 0.38);
+    ctx.stroke();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#1a1008';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, hubX * 0.22, hubY * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const cap = ctx.createRadialGradient(cx - hubX * 0.1, cy - hubY * 0.12, 0, cx, cy, hubX * 0.18);
+    cap.addColorStop(0, '#fff6c0');
+    cap.addColorStop(1, '#c88618');
+    ctx.fillStyle = cap;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, hubX * 0.15, hubY * 0.15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPlayerWheelGold(wx, y, rx, ry, spin, burst) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(wx, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = '#121218';
+    ctx.beginPath();
+    ctx.ellipse(wx, y, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#2a2a34';
+    ctx.beginPath();
+    ctx.ellipse(wx, y, rx * 0.94, ry * 0.94, 0, 0, Math.PI * 2);
+    ctx.fill();
+    drawGoldWheelFace(wx, y, rx * 0.76, ry * 0.76, spin);
+    ctx.strokeStyle = '#08080c';
+    ctx.lineWidth = Math.max(0.8, rx * 0.1);
+    ctx.beginPath();
+    ctx.ellipse(wx, y, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    if (burst > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(wx, y, rx * 0.2, wx, y, rx * (1.35 + burst * 0.5));
+      g.addColorStop(0, `rgba(255, 230, 140, ${0.75 * burst})`);
+      g.addColorStop(0.35, `rgba(255, 190, 60, ${0.35 * burst})`);
+      g.addColorStop(1, 'rgba(255, 160, 40, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(wx, y, rx * (1.2 + burst * 0.25), ry * (1.2 + burst * 0.25), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const halo = ctx.createRadialGradient(wx - rx * 0.15, y - ry * 0.2, 1, wx, y, rx * 1.12);
+    halo.addColorStop(0, 'rgba(255, 220, 120, 0.42)');
+    halo.addColorStop(0.5, 'rgba(255, 180, 60, 0.16)');
+    halo.addColorStop(1, 'rgba(255, 160, 40, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.ellipse(wx, y, rx * 1.08, ry * 1.08, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 236, 180, 0.55)';
+    ctx.lineWidth = Math.max(0.65, rx * 0.07);
+    ctx.beginPath();
+    ctx.ellipse(wx, y, rx * 1.02, ry * 1.02, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawCarWheel(cx, cy, r, spin, crush, gold) {
     const sq = 1 - crush * 0.35;
     const rx = r * 1.12 * sq;
     const ry = r * sq;
@@ -8797,6 +8941,10 @@
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
+    if (gold) {
+      drawGoldWheelFace(cx, cy, rx * 0.78, ry * 0.78, spin);
+      return;
+    }
     ctx.fillStyle = '#2a3038';
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx * 0.78, ry * 0.72, 0, 0, Math.PI * 2);
@@ -9183,37 +9331,14 @@
   }
 
   function drawPlayerRims(drawW, drawH, s, spin) {
-    const tireX = drawW * 0.085;
-    const tireY = tireX * 0.48;
-    for (const fx of [0.0, 1.0]) {
-      const [wx, y] = spritePoint(drawW, drawH, s, fx, 1.02);
-      ctx.fillStyle = '#0c0c10';
-      ctx.beginPath();
-      ctx.ellipse(wx, y, tireX, tireY, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#3a3428';
-      ctx.lineWidth = Math.max(1, tireX * 0.16);
-      ctx.stroke();
-      const faceX = tireX * 0.7;
-      const faceY = tireY * 0.7;
-      ctx.fillStyle = '#e2b44a';
-      ctx.beginPath();
-      ctx.ellipse(wx, y, faceX, faceY, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#e6c56a';
-      ctx.lineWidth = Math.max(1, faceX * 0.16);
-      ctx.lineCap = 'round';
-      for (let i = 0; i < 5; i++) {
-        const a = (spin || 0) + i * (Math.PI * 2 / 5);
-        ctx.beginPath();
-        ctx.moveTo(wx + Math.cos(a) * faceX * 0.28, y + Math.sin(a) * faceY * 0.28);
-        ctx.lineTo(wx + Math.cos(a) * faceX * 0.92, y + Math.sin(a) * faceY * 0.92);
-        ctx.stroke();
-      }
-      ctx.fillStyle = '#2a2418';
-      ctx.beginPath();
-      ctx.ellipse(wx, y, faceX * 0.28, faceY * 0.28, 0, 0, Math.PI * 2);
-      ctx.fill();
+    const burst = rimUnlockPulse > performance.now()
+      ? Math.max(0, (rimUnlockPulse - performance.now()) / 2800)
+      : 0;
+    for (const wheel of PLAYER_CAR_WHEELS) {
+      const [wx, y] = spritePoint(drawW, drawH, s, wheel.fx, wheel.fy);
+      const rx = drawW * wheel.rx;
+      const ry = Math.max(2.5 * s, drawH * wheel.ry);
+      drawPlayerWheelGold(wx, y, rx, ry, spin, burst);
     }
   }
 
@@ -9269,16 +9394,13 @@
     return [clamp(rp), clamp(gp), clamp(bp)];
   }
 
-  const PANEL_PAINT = {
-    bare: { h: 210, s: 0.08, lift: 0.02 },
-    paint: { h: 22, s: 0.62, lift: 0.05 }
-  };
-  const panelSheets = { bare: null, paint: null };
+  const PANEL_PAINT = { h: 22, s: 0.62, lift: 0.05 };
+  let paintSheet = null;
 
-  function panelSheet(kind) {
-    if (panelSheets[kind]) return panelSheets[kind];
+  function panelSheet() {
+    if (paintSheet) return paintSheet;
     if (!PLAYER_CAR_IMG.complete || !PLAYER_CAR_IMG.naturalWidth) return null;
-    const tone = PANEL_PAINT[kind] || PANEL_PAINT.bare;
+    const tone = PANEL_PAINT;
     const sheet = document.createElement('canvas');
     sheet.width = PLAYER_CAR_SRC.w;
     sheet.height = PLAYER_CAR_SRC.h;
@@ -9301,7 +9423,7 @@
       d[i + 2] = nb;
     }
     g.putImageData(img, 0, 0);
-    panelSheets[kind] = sheet;
+    paintSheet = sheet;
     return sheet;
   }
 
@@ -9327,7 +9449,7 @@
         player: true,
         yaw, pitch, roll,
         wheelSpin: opts.wheelSpin || 0,
-        color: carPaintOn() ? '#c47a3a' : '#6e737a',
+        color: '#c47a3a',
         trim: '#3a2018'
       });
       ctx.save();
@@ -9352,7 +9474,7 @@
     ctx.fill();
 
     ctx.imageSmoothingEnabled = false;
-    const sheet = panelSheet(carPaintOn() ? 'paint' : 'bare');
+    const sheet = carPaintOn() ? panelSheet() : null;
     if (sheet) {
       ctx.drawImage(sheet, -drawW / 2, -drawH + 2 * s, drawW, drawH);
     } else {
@@ -9501,11 +9623,12 @@
 
     // Wheels — rear pair visible from chase cam
     const wheelR = h * (kind === 'bus' ? 0.16 : kind === 'sports' ? 0.13 : 0.15) * (1 - crush * 0.2);
-    drawCarWheel(-rearW * 0.72, rearY + h * 0.16, wheelR, wheelSpin, crush);
-    drawCarWheel(rearW * 0.72, rearY + h * 0.16, wheelR, wheelSpin + 0.4, crush);
+    const goldRims = opts.player && lookOn('rims');
+    drawCarWheel(-rearW * 0.72, rearY + h * 0.16, wheelR, wheelSpin, crush, goldRims);
+    drawCarWheel(rearW * 0.72, rearY + h * 0.16, wheelR, wheelSpin + 0.4, crush, goldRims);
     if (kind === 'bus') {
-      drawCarWheel(-rearW * 0.72, rearY + h * 0.28, wheelR * 0.92, wheelSpin + 0.2, crush);
-      drawCarWheel(rearW * 0.72, rearY + h * 0.28, wheelR * 0.92, wheelSpin + 0.6, crush);
+      drawCarWheel(-rearW * 0.72, rearY + h * 0.28, wheelR * 0.92, wheelSpin + 0.2, crush, goldRims);
+      drawCarWheel(rearW * 0.72, rearY + h * 0.28, wheelR * 0.92, wheelSpin + 0.6, crush, goldRims);
     }
 
     // Lower body / rocker panels
@@ -11434,16 +11557,18 @@
       return;
     }
     if (pr.kind === 'billboard') {
-      // Large world-fixed face in the Y–Z plane (faces the road). Copy is baked
-      // into a texture so lettering stays painted on the board as you drive past.
-      const bx = pr.side * (DW.WALK + 0.35);
+      // Roadside face hinged at the posts; top edge swings toward the asphalt (~30°).
+      // Copy is baked into a texture so lettering stays painted on as you drive past.
+      const bx = pr.side * (DW.BUILD + 0.12);
       const z0 = pr.z;
-      const halfW = 26;       // world half-width along the road
-      const yBot = 34;
-      const yTop = 98;
+      const halfW = 34;       // world half-width along the road
+      const yBot = 28;
+      const yTop = 112;
+      const boardH = yTop - yBot;
+      const xTop = bx - pr.side * boardH * Math.tan(BILLBOARD_TILT_DEG * Math.PI / 180);
       const base = projectWorld(bx, 0, z0, d);
-      if (base.relZ < 100 || base.relZ > 1600) return;
-      const nearFade = facadeProximityFade(base, d, { minZ: 100, fadeZ: 280 });
+      if (base.relZ < 72 || base.relZ > 1900) return;
+      const nearFade = facadeProximityFade(base, d, { minZ: 72, fadeZ: 240, minScale: 0.038 });
       if (nearFade <= 0) return;
 
       // Order along the road so the near edge is always "left" in texture space
@@ -11452,15 +11577,15 @@
       const zB = z0 + halfW;
       const bl = projectWorld(bx, yBot, zA, d);
       const br = projectWorld(bx, yBot, zB, d);
-      const tl = projectWorld(bx, yTop, zA, d);
-      const tr = projectWorld(bx, yTop, zB, d);
+      const tl = projectWorld(xTop, yTop, zA, d);
+      const tr = projectWorld(xTop, yTop, zB, d);
       // From the road, +side boards read mirrored — flip U by swapping ends.
       let TL = tl, TR = tr, BR = br, BL = bl;
       if (pr.side > 0) {
         TL = tr; TR = tl; BR = bl; BL = br;
       }
       const faceSpan = Math.hypot(TR.x - TL.x, TR.y - TL.y);
-      if (faceSpan < 6) return; // edge-on / too small
+      if (faceSpan < 4) return; // edge-on / too small
 
       const postL = projectWorld(bx, 0, z0 - halfW * 0.72, d);
       const postR = projectWorld(bx, 0, z0 + halfW * 0.72, d);
@@ -11470,7 +11595,10 @@
       const tex = getBillboardTexture(pr);
 
       ctx.save();
-      ctx.globalAlpha = Math.max(0, Math.min(1, (1600 - base.relZ) / 320)) * nearFade;
+      const distAlpha = base.relZ < 420
+        ? Math.max(0.72, Math.min(1, (1900 - base.relZ) / 380))
+        : Math.max(0, Math.min(1, (1900 - base.relZ) / 380));
+      ctx.globalAlpha = distAlpha * nearFade;
       // Twin posts
       ctx.strokeStyle = '#3a3a40';
       ctx.lineWidth = Math.max(2, 4.5 * s);
@@ -11498,6 +11626,18 @@
       ctx.closePath();
       ctx.fill();
       drawTexturedQuad(tex, TL, TR, BR, BL, 22);
+      ctx.globalCompositeOperation = 'lighter';
+      const lampX = (BL.x + BR.x) * 0.5;
+      const lampY = (BL.y + BR.y) * 0.5;
+      const glowR = Math.max(faceSpan * 0.55, 28 * s);
+      const spot = ctx.createRadialGradient(lampX, lampY, 2, lampX, lampY - glowR * 0.35, glowR);
+      spot.addColorStop(0, `rgba(255, 220, 130, ${0.38 * ctx.globalAlpha})`);
+      spot.addColorStop(0.45, `rgba(255, 180, 70, ${0.14 * ctx.globalAlpha})`);
+      spot.addColorStop(1, 'rgba(255, 160, 40, 0)');
+      ctx.fillStyle = spot;
+      ctx.beginPath();
+      ctx.ellipse(lampX, lampY - glowR * 0.2, glowR * 0.9, glowR * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
       return;
     }
