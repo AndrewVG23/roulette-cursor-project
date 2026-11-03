@@ -104,6 +104,19 @@ export async function ensureSchema(db) {
     weeks INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS presence (
+    visitor_id TEXT PRIMARY KEY,
+    player_id INTEGER,
+    seen_at INTEGER NOT NULL
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_id INTEGER,
+    visitor_id TEXT,
+    body TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL
+  )`).run();
 }
 
 export function googleBoardName(profile) {
@@ -335,6 +348,70 @@ export function createBoard(db) {
         }
       }
       return { status: 200, body: { leaders, you } };
+    },
+
+    async here(token, visitorId) {
+      if (!/^[a-f0-9]{32}$/.test(String(visitorId || ''))) {
+        return { status: 400, body: { error: 'bad' } };
+      }
+      const now = Date.now();
+      const player = await playerFromToken(db, token);
+      const playerId = player ? player.id : null;
+      await db.prepare(`INSERT INTO presence (visitor_id, player_id, seen_at) VALUES (?, ?, ?)
+        ON CONFLICT(visitor_id) DO UPDATE SET
+          player_id = excluded.player_id,
+          seen_at = excluded.seen_at`)
+        .bind(visitorId, playerId, now).run();
+      await db.prepare('DELETE FROM presence WHERE seen_at < ?').bind(now - 10 * 60 * 1000).run();
+      await db.prepare('DELETE FROM notes WHERE expires_at < ?').bind(now).run();
+      const counted = await db.prepare('SELECT COUNT(*) AS n FROM presence WHERE seen_at > ?')
+        .bind(now - 60 * 1000).first();
+      const note = await db.prepare(`SELECT id, body FROM notes
+        WHERE expires_at > ?
+          AND ((? IS NOT NULL AND player_id = ?) OR visitor_id = ?)
+        ORDER BY id DESC LIMIT 1`)
+        .bind(now, playerId, playerId, visitorId).first();
+      return {
+        status: 200,
+        body: {
+          online: Number(counted && counted.n || 0),
+          note: note ? { id: note.id, text: note.body } : null
+        }
+      };
+    },
+
+    async leaveNote(input) {
+      const source = input || {};
+      const text = String(source.text ?? '').replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!Array.from(text).length || Array.from(text).length > 240) {
+        return { status: 400, body: { error: 'text' } };
+      }
+      const hasName = source.name != null && String(source.name).trim() !== '';
+      const hasVisitor = source.visitor != null && String(source.visitor).trim() !== '';
+      if (hasName === hasVisitor) return { status: 400, body: { error: 'who' } };
+      let playerId = null;
+      let visitorId = null;
+      if (hasName) {
+        const named = normalizeName(source.name);
+        if (!named.ok) return { status: 400, body: { error: 'name' } };
+        const player = await db.prepare('SELECT id FROM players WHERE name_key = ?').bind(named.key).first();
+        if (!player) return { status: 404, body: { error: 'who' } };
+        playerId = player.id;
+      } else {
+        visitorId = String(source.visitor).trim();
+        if (!/^[a-f0-9]{32}$/.test(visitorId)) return { status: 400, body: { error: 'visitor' } };
+      }
+      let span = Number(source.minutes);
+      if (!Number.isFinite(span)) span = 1440;
+      span = Math.max(5, Math.min(10080, Math.round(span)));
+      const now = Date.now();
+      const until = now + span * 60 * 1000;
+      await db.prepare(
+        'INSERT INTO notes (player_id, visitor_id, body, created_at, expires_at) VALUES (?, ?, ?, ?, ?)'
+      ).bind(playerId, visitorId, text, now, until).run();
+      const row = await db.prepare('SELECT id FROM notes WHERE created_at = ? ORDER BY id DESC LIMIT 1')
+        .bind(now).first();
+      return { status: 200, body: { ok: true, id: row ? row.id : null, until } };
     }
   };
 }

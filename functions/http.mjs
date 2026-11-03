@@ -28,6 +28,23 @@ function cookieHeader(token, request, clear) {
   return `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function readJson(request) {
+  const text = await request.text();
+  if (text.length > 12000) return null;
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch (_) {
+    return null;
+  }
+}
+
 function sameOrigin(request) {
   const origin = request.headers.get('origin');
   if (!origin) return true;
@@ -57,6 +74,22 @@ export async function handleRequest(request, db, env = {}, deps = {}) {
   }
   if (request.method === 'GET' && route === 'google-config') {
     return json({ clientId: clientId || null });
+  }
+  if (request.method === 'POST' && (route === 'here' || route === 'note')) {
+    if (!sameOrigin(request)) return json({ error: 'bad' }, 403);
+    const payload = await readJson(request);
+    if (!payload || typeof payload !== 'object') return json({ error: 'bad' }, 400);
+    if (route === 'here') {
+      const result = await board.here(token, payload.visitor);
+      return json(result.body, result.status);
+    }
+    const expected = String(env.C4C_NOTE_KEY || '');
+    if (!expected) return json({ error: 'offline' }, 503);
+    if (!safeEqual(request.headers.get('x-c4c-note-key') || '', expected)) {
+      return json({ error: 'bad' }, 401);
+    }
+    const result = await board.leaveNote(payload);
+    return json(result.body, result.status);
   }
   if (request.method !== 'POST' || !['register', 'login', 'logout', 'best', 'google'].includes(route)) {
     return json({ error: 'bad' }, 404);
