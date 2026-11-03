@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light" data-orient="none">
+<html lang="en" data-theme="light" data-orient="landscape">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -249,12 +249,13 @@
       box-shadow: none;
     }
     canvas {
+      position: absolute;
+      left: 50%;
+      top: 50%;
       display: block;
-      width: 100%;
-      height: 100%;
-      max-width: none;
-      max-height: none;
-      object-fit: fill;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
       image-rendering: pixelated;
       image-rendering: crisp-edges;
       touch-action: none;
@@ -985,6 +986,78 @@
       background: var(--color-primary);
       box-shadow: 0 0 6px rgba(208,162,58,.45);
     }
+    .double-stash { min-width: 0; }
+    .double-stash[hidden] { display: none; }
+    .double-coins {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      align-items: flex-end;
+    }
+    .double-coins[hidden] { display: none; }
+    .double-coins--card {
+      gap: 10px;
+      margin: 0 0 var(--space-4);
+    }
+    .double-coin {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: #4a2a08;
+      background:
+        radial-gradient(circle at 32% 28%, #fff1c2, #f0b84a 46%, #b87420 78%);
+      border: 1px solid #f6e0a4;
+      box-shadow: inset 0 0 0 2px rgba(122, 72, 16, 0.35), 0 2px 0 #6d4010;
+    }
+    .double-coins--card .double-coin {
+      width: 38px;
+      height: 38px;
+      font-size: 13px;
+      border-width: 2px;
+      box-shadow:
+        inset 0 0 0 3px rgba(122, 72, 16, 0.35),
+        0 4px 0 #6d4010,
+        0 0 14px rgba(224, 162, 58, 0.35);
+    }
+    .double-coin.is-on {
+      animation: coin-bob 1.35s ease-in-out infinite;
+    }
+    .double-coin.is-on:nth-child(2) { animation-delay: .12s; }
+    .double-coin.is-on:nth-child(3) { animation-delay: .24s; }
+    .double-coin.is-off {
+      color: transparent;
+      background: rgba(8, 16, 13, 0.45);
+      border: 1px dashed rgba(238, 194, 97, 0.4);
+      box-shadow: none;
+      animation: none;
+    }
+    .double-coins--card .double-coin.is-off { border-width: 2px; }
+    .double-coin.is-pop {
+      animation: coin-spend .6s ease forwards;
+    }
+    @keyframes coin-bob {
+      0%, 100% { transform: translateY(0) rotate(-8deg); }
+      50% { transform: translateY(-4px) rotate(8deg); }
+    }
+    .double-coins--card .double-coin.is-on {
+      animation-name: coin-bob-card;
+    }
+    @keyframes coin-bob-card {
+      0%, 100% { transform: translateY(0) rotate(-7deg); }
+      50% { transform: translateY(-7px) rotate(7deg); }
+    }
+    @keyframes coin-spend {
+      0% { transform: translateY(0) scale(1) rotate(0); filter: none; }
+      45% { transform: translateY(-18px) scale(1.2) rotate(200deg); }
+      100% { transform: translateY(4px) scale(0.82) rotate(400deg); filter: grayscale(1) brightness(0.7); opacity: 0.45; }
+    }
     @media (max-width: 520px) {
       .brand h1 { font-size: var(--text-base); }
       .brand p { display: none; }
@@ -1161,6 +1234,10 @@
               <span class="value" id="livesVal">3</span>
               <div class="lives-pips" id="livesPips" aria-hidden="true"></div>
             </div>
+            <div class="stat double-stash" id="doubleStash" hidden>
+              <span class="label">Doubles</span>
+              <span class="double-coins double-coins--hud" id="doubleCoinsHud" role="img" aria-label="3 doubles left"></span>
+            </div>
           </div>
         </div>
 
@@ -1184,7 +1261,7 @@
         </details>
 
         <div class="canvas-wrap" id="canvasWrap">
-          <canvas id="game" width="480" height="600" aria-label="Night drive"></canvas>
+          <canvas id="game" width="960" height="540" aria-label="Night drive"></canvas>
           <div class="map-nav" id="mapNav" hidden aria-label="Destinations"></div>
           <div class="overlay" id="overlay" hidden>
             <div class="overlay-card">
@@ -1195,6 +1272,7 @@
                 <p class="run-purse-delta" id="runPurseDelta"></p>
                 <p class="run-purse-today" id="runPurseToday" hidden></p>
               </div>
+              <div class="double-coins double-coins--card" id="doubleCoinsCard" hidden aria-hidden="true"></div>
               <div class="control-row">
                 <button class="btn" id="overlayReviveBtn" type="button" hidden>Revive</button>
                 <button class="btn" id="overlayDoubleBtn" type="button" hidden>Double</button>
@@ -1277,19 +1355,28 @@
 (() => {
   // The board is a fixed number of rows tall and tracks the window aspect
   // sideways, so tiles stay 40px everywhere and a wide screen just sees more
-  // street. COLS 12 is the reference layout every column constant derives from.
+  // street. Phones use a standard 16:9 frame instead of stretching into a
+  // tall slice. COLS 12 is the reference layout every column constant derives from.
   const ROWS = 14;
   const TILE = 40;
-  const MIN_COLS = 8;  // tall phones get a narrow street rather than a stretched one
+  const MIN_COLS = 8;
   const MAX_COLS = 26;
+  const PHONE_ASPECT = 16 / 9;
   let COLS = 12;
   let W = COLS * TILE;
   const H = ROWS * TILE;
 
+  function phoneStage() {
+    const short = Math.min(window.innerWidth || 0, window.innerHeight || 0);
+    if (short > 820) return false;
+    return window.matchMedia('(pointer: coarse), (hover: none)').matches;
+  }
+
   function aspectCols() {
     const vw = window.innerWidth || W;
     const vh = window.innerHeight || H;
-    return Math.max(MIN_COLS, Math.min(MAX_COLS, Math.round(ROWS * (vw / vh))));
+    const aspect = phoneStage() ? PHONE_ASPECT : (vw / Math.max(1, vh));
+    return Math.max(MIN_COLS, Math.min(MAX_COLS, Math.round(ROWS * aspect)));
   }
 
   // Board centre, in column units — the frog and every door line up on it.
@@ -2058,6 +2145,9 @@
   const overlayShareBtn = document.getElementById('overlayShareBtn');
   const overlayReviveBtn = document.getElementById('overlayReviveBtn');
   const overlayDoubleBtn = document.getElementById('overlayDoubleBtn');
+  const doubleStash = document.getElementById('doubleStash');
+  const doubleCoinsHud = document.getElementById('doubleCoinsHud');
+  const doubleCoinsCard = document.getElementById('doubleCoinsCard');
   const overlayPaintBtn = document.getElementById('overlayPaintBtn');
   const startBtn = document.getElementById('startBtn');
   const pauseBtn = document.getElementById('pauseBtn');
@@ -3486,9 +3576,33 @@
   const SHIFT_SEC = 60;
   const SHIFT_PAY_BASE = 80;
   const PAINT_KEY = 'c4c-car-paint';
+  const LOOKS_KEY = 'c4c-car-looks';
   const DAILY_KEY = 'c4c-shift-daily';
-  let carPaint = false;
-  try { carPaint = localStorage.getItem(PAINT_KEY) === '1'; } catch (_) { /* private mode */ }
+  const DOUBLES_KEY = 'c4c-doubles-left';
+  const DOUBLES_MAX = 3;
+  const CAR_LOOKS = [
+    { id: 'paint', label: 'Unlock paint', line: 'Copper paint is on the car.' },
+    { id: 'glow', label: 'Unlock underglow', line: 'Green underglow is on the car.' },
+    { id: 'rims', label: 'Unlock gold rims', line: 'Gold rims are on the car.' },
+    { id: 'plume', label: 'Unlock exhaust', line: 'The exhaust stays lit.' },
+    { id: 'plate', label: 'Unlock the plate', line: 'A lit plate is on the back.' }
+  ];
+  const ownedLooks = new Set();
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOOKS_KEY) || '[]');
+    if (Array.isArray(saved)) saved.forEach((id) => ownedLooks.add(id));
+    if (localStorage.getItem(PAINT_KEY) === '1') ownedLooks.add('paint');
+  } catch (_) { /* private mode */ }
+  function lookOn(id) { return ownedLooks.has(id); }
+  function saveLooks() {
+    try { localStorage.setItem(LOOKS_KEY, JSON.stringify([...ownedLooks])); } catch (_) { /* private mode */ }
+    if (ownedLooks.has('paint')) {
+      try { localStorage.setItem(PAINT_KEY, '1'); } catch (_) { /* private mode */ }
+    }
+  }
+  function nextLook() {
+    return CAR_LOOKS.find((look) => !ownedLooks.has(look.id)) || null;
+  }
   const COP_BOUNTY_CHASER = 150;
   const COP_BOUNTY_POLICE = 50;
   const COP_BOUNTY_PILEUP = 100;
@@ -3675,7 +3789,7 @@
   const state = {
     scenario: SCENARIO,
     phase: 'cross', // cross | drive
-    mode: 'title', // title | play | pause | dead | win | gameover | drive | shift | arrived
+    mode: 'title', // title | play | pause | dead | win | gameover | drive | shift | arrived | gas
     score: 0, // session tally for crossing high scores only
     runWorth: null, // net worth when this run started
     driveRevived: false,
@@ -3962,8 +4076,9 @@
       panelInner?.classList.remove('drive-phase');
       hideMapNav();
     }
-    labelThumbPad();
+      labelThumbPad();
     syncThumbPad();
+    paintDoubleCoins();
   }
 
   function makeJankyCar(dir, level) {
@@ -4980,6 +5095,7 @@
       btn.hidden = true;
       btn.disabled = false;
     }
+    if (doubleCoinsCard) doubleCoinsCard.hidden = true;
   }
 
   function hideRunPurse() {
@@ -5017,7 +5133,19 @@
   }
 
   function carPaintOn() {
-    return carPaint;
+    return lookOn('paint');
+  }
+
+  function offerNextLook() {
+    const look = nextLook();
+    if (!overlayPaintBtn) return;
+    if (!look) {
+      overlayPaintBtn.hidden = true;
+      return;
+    }
+    overlayPaintBtn.hidden = false;
+    overlayPaintBtn.disabled = false;
+    overlayPaintBtn.textContent = look.label;
   }
 
   // Portal SDKs (CrazyGames, Poki) show a rewarded ad when the page is embedded.
@@ -5089,6 +5217,65 @@
       overlayReviveBtn.hidden = !wrecked;
       overlayReviveBtn.disabled = false;
     }
+    if (state.phase === 'drive') offerNextLook();
+  }
+
+  function doublesLeft() {
+    try {
+      const raw = localStorage.getItem(DOUBLES_KEY);
+      if (raw == null || raw === '') return DOUBLES_MAX;
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return DOUBLES_MAX;
+      return Math.max(0, Math.min(DOUBLES_MAX, Math.floor(n)));
+    } catch (_) {
+      return DOUBLES_MAX;
+    }
+  }
+
+  function saveDoublesLeft(n) {
+    try { localStorage.setItem(DOUBLES_KEY, String(Math.max(0, Math.floor(n)))); } catch (_) { /* private mode */ }
+  }
+
+  function fillDoubleCoins(root, left, popIndex) {
+    if (!root) return;
+    root.replaceChildren(...Array.from({ length: DOUBLES_MAX }, (_, i) => {
+      const coin = document.createElement('span');
+      coin.className = 'double-coin';
+      coin.textContent = '2×';
+      if (i === popIndex) coin.classList.add('is-pop');
+      else if (i < left) coin.classList.add('is-on');
+      else coin.classList.add('is-off');
+      return coin;
+    }));
+    const label = left === 1 ? '1 double left' : `${left} doubles left`;
+    root.setAttribute('aria-label', label);
+  }
+
+  function paintDoubleCoins(popIndex) {
+    const left = doublesLeft();
+    const driving = state.phase === 'drive';
+    if (doubleStash) doubleStash.hidden = !driving;
+    fillDoubleCoins(doubleCoinsHud, left, popIndex);
+    const onCard = driving && state.mode === 'shift';
+    if (doubleCoinsCard) {
+      doubleCoinsCard.hidden = !onCard;
+      doubleCoinsCard.setAttribute('aria-hidden', onCard ? 'false' : 'true');
+      if (onCard) fillDoubleCoins(doubleCoinsCard, left, popIndex);
+    }
+  }
+
+  function paintDoubleBtn(popIndex) {
+    paintDoubleCoins(popIndex);
+    if (!overlayDoubleBtn) return;
+    const left = doublesLeft();
+    if (left <= 0 || state.shiftDoubled || state.mode !== 'shift') {
+      overlayDoubleBtn.hidden = true;
+      return;
+    }
+    overlayDoubleBtn.hidden = false;
+    overlayDoubleBtn.disabled = false;
+    overlayDoubleBtn.textContent = 'Double';
+    overlayDoubleBtn.setAttribute('aria-label', left === 1 ? 'Double, 1 left' : `Double, ${left} left`);
   }
 
   function showShiftClear() {
@@ -5100,15 +5287,7 @@
     state.shiftPay = pay;
     state.shiftDoubled = false;
     showRunEnd('Minute clear', 'A clean minute on the road pays.', 'Keep driving', true);
-    if (overlayDoubleBtn) {
-      overlayDoubleBtn.hidden = false;
-      overlayDoubleBtn.disabled = false;
-      overlayDoubleBtn.textContent = 'Double';
-    }
-    if (overlayPaintBtn && !carPaintOn()) {
-      overlayPaintBtn.hidden = false;
-      overlayPaintBtn.disabled = false;
-    }
+    paintDoubleBtn();
     syncPauseBtn(true);
     paintShiftClock();
     beep(523, 0.08);
@@ -5136,31 +5315,38 @@
   }
 
   async function doubleShiftPay() {
-    if (state.shiftDoubled || !state.shiftPay || state.mode !== 'shift') return;
+    if (state.shiftDoubled || !state.shiftPay || state.mode !== 'shift' || doublesLeft() <= 0) return;
     if (overlayDoubleBtn) overlayDoubleBtn.disabled = true;
     const ok = await requestRewarded('double');
     if (!ok) {
-      if (overlayDoubleBtn) overlayDoubleBtn.disabled = false;
+      paintDoubleBtn();
       return;
     }
     Wallet.add(state.shiftPay);
     state.shiftDoubled = true;
-    if (overlayDoubleBtn) overlayDoubleBtn.hidden = true;
+    const left = doublesLeft() - 1;
+    saveDoublesLeft(left);
+    paintDoubleBtn(left);
     fillRunPurse();
     updateHUD();
   }
 
-  async function unlockCarPaint() {
-    if (carPaintOn()) return;
+  async function unlockNextLook() {
+    const look = nextLook();
+    if (!look) return;
     if (overlayPaintBtn) overlayPaintBtn.disabled = true;
-    const ok = await requestRewarded('paint');
+    const ok = await requestRewarded(look.id);
     if (!ok) {
       if (overlayPaintBtn) overlayPaintBtn.disabled = false;
       return;
     }
-    carPaint = true;
-    try { localStorage.setItem(PAINT_KEY, '1'); } catch (_) { /* private mode */ }
+    ownedLooks.add(look.id);
+    saveLooks();
     if (overlayPaintBtn) overlayPaintBtn.hidden = true;
+    if (overlayText) {
+      overlayText.hidden = false;
+      overlayText.textContent = look.line;
+    }
   }
 
   function crossHospitalWho() {
@@ -5370,9 +5556,12 @@
     const d = state.drive;
     d.speed = Math.max(10, d.speed * 0.55);
     saveDriveCheckpoint(d, exit.id);
+    state.mode = 'gas';
     beep(440, 0.08);
     beep(554, 0.1);
-    window.location.href = '/gas';
+    showRunEnd('This run', 'Quik-Fill 64 is next.', 'Fill up', true);
+    if (startBtn) startBtn.disabled = false;
+    syncPauseBtn(true);
   }
 
   function takeCoinsExit(exit) {
@@ -6383,7 +6572,7 @@
 
     // Two-tone siren — faster and louder while he's lining up the hit
     cop.sirenT += dt;
-    const hot = cop.ai === 'windup' || cop.ai === 'ram';
+    const hot = copAlertLevel(cop) === 'high';
     if (cop.sirenT >= (hot ? 0.22 : 0.48)) {
       cop.sirenT = 0;
       cop.sirenHi = !cop.sirenHi;
@@ -8909,9 +9098,11 @@
       const tx = -drawW / 2 + tip.fx * drawW;
       const ty = -drawH + 2 * s + tip.fy * drawH;
       const flicker = 0.88 + Math.sin(t * 42 + i * 5.1) * 0.08 + Math.sin(t * 90 + i) * 0.04;
-      const len = (4 + intensity * 38) * s * flicker;
-      const tipW = (0.45 + intensity * 0.35) * s;          // narrow at the pipe
-      const endW = (2.2 + intensity * 7.5) * s * flicker;   // expands away from the car
+      const plume = lookOn('plume');
+      const reach = plume ? 62 : 38;
+      const len = (4 + intensity * reach) * s * flicker;
+      const tipW = (0.45 + intensity * (plume ? 0.7 : 0.35)) * s;
+      const endW = (2.2 + intensity * (plume ? 12 : 7.5)) * s * flicker;
       ctx.save();
       ctx.translate(tx, ty);
       ctx.globalCompositeOperation = 'lighter';
@@ -8928,6 +9119,20 @@
       ctx.lineTo(tipW * 1.6, 0);
       ctx.closePath();
       ctx.fill();
+      if (plume) {
+        const gold = ctx.createLinearGradient(0, 0, 0, len);
+        gold.addColorStop(0, 'rgba(255,220,140,0.85)');
+        gold.addColorStop(0.35, 'rgba(255,140,40,0.45)');
+        gold.addColorStop(1, 'rgba(255,80,20,0)');
+        ctx.fillStyle = gold;
+        ctx.beginPath();
+        ctx.moveTo(-tipW * 1.1, 0);
+        ctx.lineTo(-endW * 0.85, len * 0.72);
+        ctx.lineTo(endW * 0.85, len * 0.72);
+        ctx.lineTo(tipW * 1.1, 0);
+        ctx.closePath();
+        ctx.fill();
+      }
       // Hard blue cone
       const g = ctx.createLinearGradient(0, 0, 0, len);
       g.addColorStop(0, `rgba(220,245,255,${0.98})`);
@@ -8959,6 +9164,82 @@
     }
   }
 
+  function drawPlayerGlow(drawW, drawH, s) {
+    const pulse = 0.78 + Math.sin(performance.now() / 160) * 0.22;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(0, 6 * s, drawW * 0.04, 0, 8 * s, drawW * 0.7);
+    g.addColorStop(0, `rgba(190, 255, 220, ${0.85 * pulse})`);
+    g.addColorStop(0.4, `rgba(40, 220, 130, ${0.35 * pulse})`);
+    g.addColorStop(1, 'rgba(20, 120, 70, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(0, 8 * s, drawW * 0.78, Math.max(7 * s, drawH * 0.1), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function spritePoint(drawW, drawH, s, fx, fy) {
+    return [-drawW / 2 + fx * drawW, -drawH + 2 * s + fy * drawH];
+  }
+
+  function drawPlayerRims(drawW, drawH, s, spin) {
+    const tireX = drawW * 0.085;
+    const tireY = tireX * 0.48;
+    for (const fx of [0.0, 1.0]) {
+      const [wx, y] = spritePoint(drawW, drawH, s, fx, 1.02);
+      ctx.fillStyle = '#0c0c10';
+      ctx.beginPath();
+      ctx.ellipse(wx, y, tireX, tireY, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3a3428';
+      ctx.lineWidth = Math.max(1, tireX * 0.16);
+      ctx.stroke();
+      const faceX = tireX * 0.7;
+      const faceY = tireY * 0.7;
+      ctx.fillStyle = '#e2b44a';
+      ctx.beginPath();
+      ctx.ellipse(wx, y, faceX, faceY, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#e6c56a';
+      ctx.lineWidth = Math.max(1, faceX * 0.16);
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const a = (spin || 0) + i * (Math.PI * 2 / 5);
+        ctx.beginPath();
+        ctx.moveTo(wx + Math.cos(a) * faceX * 0.28, y + Math.sin(a) * faceY * 0.28);
+        ctx.lineTo(wx + Math.cos(a) * faceX * 0.92, y + Math.sin(a) * faceY * 0.92);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#2a2418';
+      ctx.beginPath();
+      ctx.ellipse(wx, y, faceX * 0.28, faceY * 0.28, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawPlayerPlate(drawW, drawH, s) {
+    const pw = drawW * 0.18;
+    const ph = Math.max(7 * s, drawH * 0.05);
+    const [, y] = spritePoint(drawW, drawH, s, 0.5, 0.7);
+    const plateY = y - ph / 2;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = 'rgba(255, 214, 120, 0.4)';
+    ctx.fillRect(-pw * 0.55, plateY - ph * 0.2, pw * 1.1, ph * 1.35);
+    ctx.restore();
+    ctx.fillStyle = '#f6f1e4';
+    ctx.fillRect(-pw / 2, plateY, pw, ph);
+    ctx.strokeStyle = '#1a1307';
+    ctx.lineWidth = Math.max(1, s);
+    ctx.strokeRect(-pw / 2, plateY, pw, ph);
+    ctx.fillStyle = '#1a1307';
+    ctx.font = `700 ${Math.max(9, ph * 0.62)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('C4C', 0, plateY + ph / 2);
+  }
+
   // Player car — copper X5 sprite with chase-cam lean / suspension.
   function drawPlayerCar(x, y, scale, opts = {}) {
     const yaw = opts.yaw || 0;
@@ -8971,6 +9252,12 @@
     const flames = Math.max(0, Math.min(1, opts.flames || 0));
 
     if (!ready) {
+      if (lookOn('glow')) {
+        ctx.save();
+        ctx.translate(x, y);
+        drawPlayerGlow(drawW, drawH, s);
+        ctx.restore();
+      }
       drawLowPolyCar(x, y, scale, 'suv', {
         player: true,
         yaw, pitch, roll,
@@ -8978,6 +9265,13 @@
         color: carPaintOn() ? '#c47a3a' : '#8a4a32',
         trim: '#3a2018'
       });
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(roll + yaw * 0.38);
+      if (lookOn('plate')) drawPlayerPlate(drawW, drawH, s);
+      if (flames > 0) drawPlayerExhaustFlames(drawW, drawH, s, flames);
+      if (lookOn('rims')) drawPlayerRims(drawW, drawH, s, opts.wheelSpin || 0);
+      ctx.restore();
       return;
     }
 
@@ -8985,6 +9279,7 @@
     ctx.translate(x, y);
     ctx.rotate(roll + yaw * 0.38);
     ctx.transform(1, pitch * 0.12, 0, 1, 0, 0);
+    if (lookOn('glow')) drawPlayerGlow(drawW, drawH, s);
 
     ctx.fillStyle = 'rgba(0,0,0,0.34)';
     ctx.beginPath();
@@ -9008,8 +9303,10 @@
         0, 0, pw, ph
       );
       g.globalCompositeOperation = 'source-atop';
-      g.fillStyle = 'rgba(196, 122, 58, 0.45)';
+      g.fillStyle = 'rgba(214, 112, 36, 0.7)';
       g.fillRect(0, 0, pw, ph);
+      g.fillStyle = 'rgba(255, 214, 150, 0.28)';
+      g.fillRect(0, 0, pw, ph * 0.38);
       g.globalCompositeOperation = 'source-over';
       ctx.drawImage(paintScratch, -drawW / 2, -drawH + 2 * s, drawW, drawH);
     } else {
@@ -9019,7 +9316,9 @@
         -drawW / 2, -drawH + 2 * s, drawW, drawH
       );
     }
+    if (lookOn('plate')) drawPlayerPlate(drawW, drawH, s);
     if (flames > 0) drawPlayerExhaustFlames(drawW, drawH, s, flames);
+    if (lookOn('rims')) drawPlayerRims(drawW, drawH, s, opts.wheelSpin || 0);
     ctx.restore();
   }
 
@@ -9032,6 +9331,38 @@
   // kept growing when they filled the frame.
   function policeCarScale(p) {
     return Math.max(0.12, p.scale * 0.58);
+  }
+
+  function copAlertLevel(cop) {
+    if (!cop) return 'low';
+    return (cop.ai === 'windup' || cop.ai === 'ram' || cop.ai === 'exposed') ? 'high' : 'low';
+  }
+
+  function drawCopLightBar(drawW, drawH, s, alert) {
+    const high = alert === 'high';
+    const period = high ? 80 : 560;
+    const phase = Math.floor(performance.now() / period) % 2;
+    const pods = [
+      { fx: 0.28, on: phase === 0, color: high ? '255,48,40' : '150,60,54' },
+      { fx: 0.72, on: phase === 1, color: high ? '70,130,255' : '60,84,140' }
+    ];
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const pod of pods) {
+      const [x, y] = spritePoint(drawW, drawH, s, pod.fx, 0.035);
+      const lit = pod.on ? (high ? 0.95 : 0.4) : (high ? 0.12 : 0);
+      if (lit <= 0) continue;
+      const r = drawW * (high ? 0.2 : 0.07);
+      const g = ctx.createRadialGradient(x, y, 1, x, y, r);
+      g.addColorStop(0, `rgba(255,255,255,${lit})`);
+      g.addColorStop(0.4, `rgba(${pod.color},${lit * 0.75})`);
+      g.addColorStop(1, `rgba(${pod.color},0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   // Police Interceptor sprite — chaser + traffic cops (low-poly fallback if not loaded / smashed).
@@ -9070,6 +9401,7 @@
       POLICE_CAR_SRC.x, POLICE_CAR_SRC.y, POLICE_CAR_SRC.w, POLICE_CAR_SRC.h,
       -drawW / 2, -drawH + 2 * s, drawW, drawH
     );
+    drawCopLightBar(drawW, drawH, s, opts.alert || 'low');
     ctx.restore();
   }
 
@@ -11890,15 +12222,17 @@
     const p = projectWorld(cop.x, 0, cop.z, d);
     if (p.relZ < 10 || p.relZ > 1250 || p.scale < 0.05) return;
     const fade = Math.max(0, Math.min(1, (1250 - p.relZ) / 280));
-    const blink = Math.floor(performance.now() / 120) % 2;
+    const high = copAlertLevel(cop) === 'high';
+    const blink = Math.floor(performance.now() / (high ? 80 : 520)) % 2;
     const col = blink ? '231,76,60' : '58,124,255';
+    const wash = high ? 0.62 : 0.14;
     ctx.save();
     ctx.globalAlpha = fade;
     // Strobe wash thrown onto the road around the light bar
-    const gw = 70 * Math.min(1.4, p.scale);
-    const cy = p.y - 18 * p.scale;
+    const gw = (high ? 120 : 42) * Math.min(1.4, p.scale);
+    const cy = p.y - (high ? 22 : 14) * p.scale;
     const glow = ctx.createRadialGradient(p.x, cy, 2, p.x, cy, gw);
-    glow.addColorStop(0, `rgba(${col},0.4)`);
+    glow.addColorStop(0, `rgba(${col},${wash})`);
     glow.addColorStop(1, `rgba(${col},0)`);
     ctx.fillStyle = glow;
     ctx.fillRect(p.x - gw, cy - gw, gw * 2, gw * 2);
@@ -11909,7 +12243,8 @@
       bodyScale: cop.bodyScale || 1,
       roof: cop.roof || 1,
       wheelSpin: cop.wheelSpin || 0,
-      trim: cop.trim
+      trim: cop.trim,
+      alert: high ? 'high' : 'low'
     });
     // Headlight glare when he's on your bumper
     if (cop.z < d.z + 14) {
@@ -11927,6 +12262,117 @@
     ctx.restore();
   }
 
+  // Fixed field so stars stay put and only their brightness twinkles.
+  const NIGHT_STARS = (() => {
+    const stars = [];
+    let seed = 20220101;
+    const rnd = () => {
+      seed = (seed * 16807) % 2147483647;
+      return (seed - 1) / 2147483646;
+    };
+    for (let i = 0; i < 96; i++) {
+      const bright = rnd();
+      stars.push({
+        x: rnd(),
+        y: rnd() * 0.36,
+        r: bright > 0.92 ? 2.1 : bright > 0.7 ? 1.35 : 0.75,
+        phase: rnd() * Math.PI * 2,
+        speed: 0.7 + rnd() * 2.4,
+        tint: rnd() < 0.12 ? '#c9d6ff' : rnd() < 0.2 ? '#ffe6c2' : '#f4f7ff',
+        flare: bright > 0.9
+      });
+    }
+    return stars;
+  })();
+
+  function drawMoon(x, y, radius) {
+    const halo = ctx.createRadialGradient(x, y, radius * 0.4, x, y, radius * 5.2);
+    halo.addColorStop(0, 'rgba(255,248,230,0.72)');
+    halo.addColorStop(0.28, 'rgba(214,224,255,0.22)');
+    halo.addColorStop(0.6, 'rgba(120,140,210,0.08)');
+    halo.addColorStop(1, 'rgba(80,100,180,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 5.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    const disc = ctx.createRadialGradient(x - radius * 0.28, y - radius * 0.34, radius * 0.15, x, y, radius);
+    disc.addColorStop(0, '#fffdf6');
+    disc.addColorStop(0.45, '#f3ead0');
+    disc.addColorStop(1, '#c8bfa2');
+    ctx.fillStyle = disc;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(138,128,102,0.42)';
+    const craters = [[-0.28, 0.12, 0.22], [0.34, -0.22, 0.14], [0.12, 0.38, 0.1], [-0.08, -0.32, 0.08]];
+    for (const [cx, cy, cr] of craters) {
+      ctx.beginPath();
+      ctx.arc(x + cx * radius, y + cy * radius, cr * radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(255,252,240,0.8)';
+    ctx.lineWidth = Math.max(1, radius * 0.08);
+    ctx.beginPath();
+    ctx.arc(x, y, radius * 0.96, -1.05, 0.35);
+    ctx.stroke();
+  }
+
+  function drawNightSky(d, st) {
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.52);
+    sky.addColorStop(0, '#070b18');
+    sky.addColorStop(0.28, '#12182e');
+    sky.addColorStop(0.55, '#2c334c');
+    sky.addColorStop(0.8, '#5c564e');
+    sky.addColorStop(1, '#807a6e');
+    ctx.fillStyle = sky;
+    ctx.fillRect(-30, -30, W + 60, H * 0.55);
+
+    ctx.save();
+    ctx.translate(W * 0.42, H * 0.1);
+    ctx.rotate(-0.42);
+    const band = ctx.createLinearGradient(0, -26, 0, 26);
+    band.addColorStop(0, 'rgba(186,198,240,0)');
+    band.addColorStop(0.5, 'rgba(198,208,245,0.1)');
+    band.addColorStop(1, 'rgba(186,198,240,0)');
+    ctx.fillStyle = band;
+    ctx.fillRect(-W * 0.28, -26, W * 0.72, 52);
+    ctx.restore();
+
+    const sway = (d.curve || 0) * 18;
+    const moonX = W * 0.72 + sway * 0.35;
+    const moonY = H * 0.12;
+    const moonR = Math.max(12, Math.min(18, W * 0.03));
+    ctx.save();
+    for (const star of NIGHT_STARS) {
+      const x = star.x * W + sway;
+      const y = star.y * H;
+      if (Math.hypot(x - moonX, y - moonY) < moonR * 2.4) continue;
+      const tw = 0.28 + 0.72 * (0.5 + 0.5 * Math.sin(st * star.speed + star.phase));
+      const horizonFade = 1 - Math.max(0, (y - H * 0.18) / (H * 0.2));
+      ctx.globalAlpha = tw * Math.max(0, horizonFade);
+      ctx.fillStyle = star.tint;
+      ctx.beginPath();
+      ctx.arc(x, y, star.r * (0.75 + tw * 0.45), 0, Math.PI * 2);
+      ctx.fill();
+      if (star.flare && tw > 0.78) {
+        const arm = star.r * 3.4;
+        ctx.strokeStyle = star.tint;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x - arm, y);
+        ctx.lineTo(x + arm, y);
+        ctx.moveTo(x, y - arm);
+        ctx.lineTo(x, y + arm);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+
+    drawMoon(moonX, moonY, moonR);
+  }
+
   function drawDrive() {
     const d = state.drive;
     ctx.clearRect(0, 0, W, H);
@@ -11940,22 +12386,7 @@
     ctx.translate(shakeX, shakeY);
     ctx.rotate(d.roll * 0.05);
 
-    // Smoggy dusk sky, brightest at the horizon
-    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.5);
-    sky.addColorStop(0, '#232830');
-    sky.addColorStop(0.5, '#4c525c');
-    sky.addColorStop(0.85, '#6e6a62');
-    sky.addColorStop(1, '#807a6e');
-    ctx.fillStyle = sky;
-    ctx.fillRect(-30, -30, W + 60, H * 0.55);
-
-    // Hazy moon
-    const moonGlow = ctx.createRadialGradient(W * 0.72, H * 0.13, 4, W * 0.72, H * 0.13, 60);
-    moonGlow.addColorStop(0, 'rgba(235,230,210,0.5)');
-    moonGlow.addColorStop(0.25, 'rgba(220,215,195,0.12)');
-    moonGlow.addColorStop(1, 'rgba(220,215,195,0)');
-    ctx.fillStyle = moonGlow;
-    ctx.fillRect(W * 0.72 - 60, H * 0.13 - 60, 120, 120);
+    drawNightSky(d, st);
 
     // Location-aware Chicago skyline (LSD, Mag Mile, Clark, etc.)
     drawLocationSkyline(d);
@@ -12124,7 +12555,7 @@
         trim: car.trim
       };
       if (car.kind === 'police') {
-        drawPoliceCar(p.x, p.y + (car.bob || 0) * p.scale, policeCarScale(p), carOpts);
+        drawPoliceCar(p.x, p.y + (car.bob || 0) * p.scale, policeCarScale(p), { ...carOpts, alert: 'low' });
       } else {
         const carScale = Math.min(1.35, p.scale * 0.55);
         drawLowPolyCar(p.x, p.y + (car.bob || 0) * p.scale, carScale, car.kind, carOpts);
@@ -12158,7 +12589,10 @@
       pitch: d.pitch,
       roll: d.roll + (d.crashT > 0 ? Math.sin(d.crashT * 40) * 0.2 : 0),
       wheelSpin: d.wheelSpin || 0,
-      flames: d.speed > 70 ? Math.min(1, Math.pow((d.speed - 70) / 50, 1.35)) : 0
+      flames: Math.max(
+        lookOn('plume') ? 0.55 : 0,
+        d.speed > 70 ? Math.min(1, Math.pow((d.speed - 70) / 50, 1.35)) : 0
+      )
     });
 
     // Cruiser on your bumper draws over the player (closer to camera)
@@ -12208,6 +12642,23 @@
       ctx.fillText('OPEN ROAD', 10, 22);
     }
 
+    if (d.chaser) {
+      const high = copAlertLevel(d.chaser) === 'high';
+      const label = high ? 'HIGH ALERT' : 'LOW ALERT';
+      const chipY = Math.max(86, H * 0.14);
+      ctx.save();
+      ctx.font = '700 13px "General Sans", sans-serif';
+      const tw = ctx.measureText(label).width;
+      const padX = 12;
+      ctx.fillStyle = high ? 'rgba(120, 28, 22, 0.88)' : 'rgba(24, 32, 44, 0.78)';
+      ctx.fillRect(W / 2 - tw / 2 - padX, chipY - 15, tw + padX * 2, 24);
+      ctx.fillStyle = high ? '#ffd2cb' : '#d7e4f2';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, W / 2, chipY - 3);
+      ctx.restore();
+    }
+
     if (isPhoneOpen()) drawReferenceMap(d);
     drawDriveGauges(d);
 
@@ -12217,9 +12668,9 @@
     }
 
     // Red/blue strobe wash while the cruiser is winding up or mid-lunge
-    if (d.chaser && (d.chaser.ai === 'windup' || d.chaser.ai === 'ram')) {
-      const strobe = Math.floor(performance.now() / 120) % 2;
-      ctx.fillStyle = strobe ? 'rgba(231,76,60,0.07)' : 'rgba(58,124,255,0.07)';
+    if (d.chaser && copAlertLevel(d.chaser) === 'high') {
+      const strobe = Math.floor(performance.now() / 80) % 2;
+      ctx.fillStyle = strobe ? 'rgba(231,76,60,0.12)' : 'rgba(58,124,255,0.12)';
       ctx.fillRect(0, 0, W, H);
     }
 
@@ -12440,7 +12891,7 @@
   overlayShareBtn?.addEventListener('click', () => shareDriveReplay(overlayShareBtn));
   overlayReviveBtn?.addEventListener('click', () => { reviveDrive(); });
   overlayDoubleBtn?.addEventListener('click', () => { doubleShiftPay(); });
-  overlayPaintBtn?.addEventListener('click', () => { unlockCarPaint(); });
+  overlayPaintBtn?.addEventListener('click', () => { unlockNextLook(); });
   if (typeof BGM !== 'undefined') {
     state.muted = BGM.isMuted();
     if (muteBtn) {
@@ -12503,6 +12954,11 @@
       syncPauseBtn(false, 'Pause');
       return;
     }
+    if (state.mode === 'gas') {
+      startBtn.disabled = true;
+      window.location.href = '/gas';
+      return;
+    }
     if (state.mode === 'shift') {
       state.mode = 'drive';
       if (state.drive) state.drive.shiftLeft = SHIFT_SEC;
@@ -12526,10 +12982,8 @@
   });
 
   function fitCanvas() {
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    // Widen or narrow the board so its shape matches the window; object-fit
-    // then has almost nothing left to stretch.
+    // Widen or narrow the board, then show it at that exact shape. Phones
+    // stay 16:9 and letterbox; a desktop window fills edge to edge.
     const next = aspectCols();
     if (next !== COLS || canvas.width !== W || canvas.height !== H) {
       COLS = next;
@@ -12540,6 +12994,24 @@
       const f = state.frog;
       if (f) f.col = Math.max(0, Math.min(COLS - 1, f.col));
     }
+    const vw = window.innerWidth || W;
+    const vh = window.innerHeight || H;
+    if (!phoneStage()) {
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.transform = 'translate(-50%, -50%)';
+      return;
+    }
+    const board = W / H;
+    let dispW = vw;
+    let dispH = dispW / board;
+    if (dispH > vh) {
+      dispH = vh;
+      dispW = dispH * board;
+    }
+    canvas.style.width = `${dispW}px`;
+    canvas.style.height = `${dispH}px`;
+    canvas.style.transform = 'translate(-50%, -50%)';
   }
   window.addEventListener('resize', fitCanvas);
   fitCanvas();
