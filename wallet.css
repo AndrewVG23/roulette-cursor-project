@@ -629,6 +629,70 @@ body.has-game-logo > .app > .controls {
 .world-nav-card nav { display: flex; flex-wrap: wrap; gap: 6px 10px; }
 .world-nav-card a { color: #efbb49; }
 
+.online-count {
+  position: fixed;
+  z-index: 10002;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 9px 4px 7px;
+  border-radius: 999px;
+  background: rgba(10, 14, 12, 0.42);
+  color: rgba(255, 246, 223, 0.92);
+  font: 600 11px "General Sans", "Nunito", system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 0 rgba(255, 236, 196, 0.16) inset, 0 6px 16px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+.online-dot {
+  width: 6px;
+  height: 6px;
+  align-self: center;
+  border-radius: 50%;
+  background: #f0c56a;
+  box-shadow: 0 0 0 3px rgba(240, 197, 106, 0.16), 0 0 10px rgba(240, 197, 106, 0.85);
+  animation: online-breathe 2.8s ease-in-out infinite;
+}
+.online-num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: #fff6df;
+}
+.online-word { opacity: 0.72; }
+@keyframes online-breathe {
+  0%, 100% { opacity: 0.55; transform: scale(0.86); }
+  50% { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .online-dot { animation: none; }
+}
+.player-note {
+  position: fixed;
+  z-index: 10004;
+  width: min(240px, calc(100vw - 24px));
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  background: #f4ead2;
+  color: #1a1206;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  font: 600 14px "General Sans", "Nunito", system-ui, sans-serif;
+}
+.player-note p { margin: 0 0 8px; line-height: 1.35; }
+.player-note button {
+  border: 0;
+  border-radius: 999px;
+  background: #1a1206;
+  color: #f4ead2;
+  font: 700 12px "General Sans", "Nunito", system-ui, sans-serif;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.player-note[hidden],
+.online-count[hidden] { display: none !important; }
+
 .board-chip {
   position: fixed;
   z-index: 10002;

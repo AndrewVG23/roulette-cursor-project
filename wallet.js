@@ -778,6 +778,7 @@
     if (!anchor) {
       chip.style.top = '';
       chip.style.left = '';
+      placePresence();
       return;
     }
     const rect = anchor.getBoundingClientRect();
@@ -785,6 +786,7 @@
     chip.style.top = `${Math.round(rect.bottom + 6)}px`;
     const menu = anchor.closest('details');
     chip.hidden = !!(menu && menu.open);
+    placePresence();
     if (menu && !menu.dataset.boardToggle) {
       menu.dataset.boardToggle = '1';
       menu.addEventListener('toggle', placeBoardChip);
@@ -1107,6 +1109,117 @@
     window.addEventListener('load', placeBoardChip);
     placeBoardChip();
     loadSession();
+    mountPresence();
+    watchHere();
+  }
+
+  const VISITOR_KEY = 'c4c-visitor';
+  const NOTE_SEEN_KEY = 'c4c-note-seen';
+
+  function visitorId() {
+    try {
+      const saved = localStorage.getItem(VISITOR_KEY);
+      if (/^[a-f0-9]{32}$/.test(saved || '')) return saved;
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      const id = [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem(VISITOR_KEY, id);
+      return id;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function mountPresence() {
+    if (document.getElementById('onlineCount')) return;
+    const online = document.createElement('p');
+    online.id = 'onlineCount';
+    online.className = 'online-count';
+    online.hidden = true;
+    online.setAttribute('aria-live', 'polite');
+    online.innerHTML = '<span class="online-dot" aria-hidden="true"></span><span class="online-num">1</span><span class="online-word">playing</span>';
+    const note = document.createElement('div');
+    note.id = 'playerNote';
+    note.className = 'player-note';
+    note.hidden = true;
+    note.innerHTML = '<p id="playerNoteText"></p><button type="button" id="playerNoteClose">Got it</button>';
+    document.body.appendChild(online);
+    document.body.appendChild(note);
+    document.getElementById('playerNoteClose').addEventListener('click', () => {
+      const id = note.dataset.id;
+      if (id) {
+        try { localStorage.setItem(NOTE_SEEN_KEY, id); } catch (_) { /* private mode */ }
+      }
+      note.hidden = true;
+    });
+  }
+
+  function placePresence() {
+    const chip = document.getElementById('boardChip');
+    const online = document.getElementById('onlineCount');
+    const note = document.getElementById('playerNote');
+    if (!chip || !online) return;
+    if (chip.hidden || online.dataset.live !== '1') {
+      online.hidden = true;
+    } else {
+      const rect = chip.getBoundingClientRect();
+      online.hidden = false;
+      online.style.left = `${Math.round(rect.left)}px`;
+      online.style.top = `${Math.round(rect.bottom + 8)}px`;
+    }
+    if (!note || note.hidden || online.hidden) return;
+    const rect = online.getBoundingClientRect();
+    note.style.left = `${Math.round(rect.left)}px`;
+    note.style.top = `${Math.round(rect.bottom + 8)}px`;
+  }
+
+  function paintHere(data) {
+    const online = document.getElementById('onlineCount');
+    if (online && data && Number.isFinite(Number(data.online))) {
+      const count = Math.max(0, Math.floor(Number(data.online)));
+      const label = count === 1 ? '1 playing' : `${count} playing`;
+      const num = online.querySelector('.online-num');
+      if (num && num.textContent !== String(count)) num.textContent = String(count);
+      if (online.getAttribute('aria-label') !== label) online.setAttribute('aria-label', label);
+      online.dataset.live = '1';
+    }
+    const noteEl = document.getElementById('playerNote');
+    const note = data && data.note;
+    if (noteEl && note && note.id && note.text) {
+      let seen = '';
+      try { seen = localStorage.getItem(NOTE_SEEN_KEY) || ''; } catch (_) { /* private mode */ }
+      if (String(note.id) !== seen) {
+        noteEl.dataset.id = String(note.id);
+        const text = document.getElementById('playerNoteText');
+        if (text) text.textContent = String(note.text);
+        noteEl.hidden = false;
+      }
+    }
+    placePresence();
+  }
+
+  async function sendHere() {
+    const visitor = visitorId();
+    if (!visitor || document.hidden) return;
+    try {
+      const response = await fetch('/api/here', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ visitor })
+      });
+      if (!response.ok) return;
+      paintHere(await response.json());
+    } catch (_) { /* the count can wait */ }
+  }
+
+  function watchHere() {
+    sendHere();
+    setInterval(sendHere, 30000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) sendHere();
+    });
+    window.addEventListener('resize', placePresence);
   }
 
   migrateTips();

@@ -70,8 +70,8 @@
   }
   </script>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700,900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="wallet.css?v=4">
-  <script src="wallet.js?v=4"></script>
+  <link rel="stylesheet" href="wallet.css?v=6">
+  <script src="wallet.js?v=6"></script>
   <script src="orientation.js"></script>
   <script src="music.js"></script>
   <style>
@@ -2129,12 +2129,6 @@
     { fx: 0.143, fy: 0.904 },
     { fx: 0.862, fy: 0.900 }
   ];
-  // Hub centers on the cropped copper X5 sprite (fractions of drawW / drawH).
-  const PLAYER_CAR_WHEELS = [
-    { fx: 0.115, fy: 0.928, rx: 0.108, ry: 0.042 },
-    { fx: 0.888, fy: 0.928, rx: 0.108, ry: 0.042 }
-  ];
-  let rimUnlockPulse = 0;
   // Chase / traffic — pixel Crown Vic Police Interceptor
   const POLICE_CAR_IMG = new Image();
   POLICE_CAR_IMG.src = 'police_car.png';
@@ -3588,14 +3582,19 @@
   const CAR_LOOKS = [
     { id: 'paint', label: 'Unlock paint', line: 'Copper paint is on the car.' },
     { id: 'glow', label: 'Unlock underglow', line: 'Green underglow is on the car.' },
-    { id: 'rims', label: 'Unlock gold rims', line: 'Gold rims on — they spin and catch every streetlight.' },
-    { id: 'plume', label: 'Unlock exhaust', line: 'The exhaust stays lit.' },
-    { id: 'plate', label: 'Unlock the plate', line: 'A lit plate is on the back.' }
+    { id: 'plume', label: 'Unlock exhaust', line: 'Both tailpipes stay lit — soot when you gas it, blue fire past 70.' },
+    { id: 'plate', label: 'Unlock the plate', line: 'A lit plate is on the back.' },
+    { id: 'taillights', label: 'Unlock tail glow', line: 'The rear lamps burn red through the dark.' },
+    { id: 'beacon', label: 'Unlock roof strobe', line: 'An amber strobe flashes on the roof.' },
+    { id: 'rack', label: 'Unlock roof copper', line: 'Scrap copper is strapped to the roof.' },
+    { id: 'hitch', label: 'Unlock tow chain', line: 'A copper chain swings under the bumper.' }
   ];
   const ownedLooks = new Set();
+  let offeredLook = null;
   try {
     const saved = JSON.parse(localStorage.getItem(LOOKS_KEY) || '[]');
     if (Array.isArray(saved)) saved.forEach((id) => ownedLooks.add(id));
+    ownedLooks.delete('rims');
     if (localStorage.getItem(PAINT_KEY) === '1') ownedLooks.add('paint');
   } catch (_) { /* private mode */ }
   function lookOn(id) { return ownedLooks.has(id); }
@@ -3605,8 +3604,14 @@
       try { localStorage.setItem(PAINT_KEY, '1'); } catch (_) { /* private mode */ }
     }
   }
-  function nextLook() {
-    return CAR_LOOKS.find((look) => !ownedLooks.has(look.id)) || null;
+  function pickRandomLook() {
+    const pool = CAR_LOOKS.filter((look) => !ownedLooks.has(look.id));
+    if (!pool.length) return null;
+    if (pool.length > 1 && offeredLook) {
+      const others = pool.filter((look) => look.id !== offeredLook.id);
+      if (others.length) return others[(Math.random() * others.length) | 0];
+    }
+    return pool[(Math.random() * pool.length) | 0];
   }
   const COP_BOUNTY_CHASER = 150;
   const COP_BOUNTY_POLICE = 50;
@@ -4331,7 +4336,7 @@
   ];
   const BILLBOARD_TEX_W = 960;
   const BILLBOARD_TEX_H = 540;
-  const BILLBOARD_TILT_DEG = 30; // face leans toward the road from the hinge at the posts
+  const BILLBOARD_TILT_DEG = 48; // face leans toward the road from the hinge at the posts
   // projectWorld scales lateral wx×100 vs vertical wy×1 — convert height lean to wx units
   const BILLBOARD_LEAN_X_PER_Y = 0.01;
   const billboardTexCache = new Map();
@@ -5160,7 +5165,8 @@
   }
 
   function offerNextLook() {
-    const look = nextLook();
+    const look = pickRandomLook();
+    offeredLook = look;
     if (!overlayPaintBtn) return;
     if (!look) {
       overlayPaintBtn.hidden = true;
@@ -5355,7 +5361,7 @@
   }
 
   async function unlockNextLook() {
-    const look = nextLook();
+    const look = (offeredLook && !ownedLooks.has(offeredLook.id)) ? offeredLook : pickRandomLook();
     if (!look) return;
     if (overlayPaintBtn) overlayPaintBtn.disabled = true;
     const ok = await requestRewarded(look.id);
@@ -5364,8 +5370,8 @@
       return;
     }
     ownedLooks.add(look.id);
+    offeredLook = null;
     saveLooks();
-    if (look.id === 'rims') rimUnlockPulse = performance.now() + 2800;
     if (overlayPaintBtn) overlayPaintBtn.hidden = true;
     if (overlayText) {
       overlayText.hidden = false;
@@ -7400,63 +7406,63 @@
       });
     }
 
-    // Dual-pipe exhaust — soot under throttle; blue flames from 70 mph, growing with speed
+    // Dual-pipe exhaust — both tips; soot under throttle; blue flames from 70 mph
     {
       const gas = !!state.keys.up && !state.keys.down;
       const pulling = gas && (d.accel || 0) > 6;
       const lit = d.speed > 70;
-      if (pulling || lit) {
+      const plume = lookOn('plume');
+      const tips = playerExhaustTipPoints(d);
+      if (tips && (pulling || lit || (plume && d.speed > 10))) {
         const throttle = pulling ? Math.min(1, (d.accel || 0) / 40) : 0;
-        // Ease in so jets start tiny at 70 and swell toward ~120
         const over = lit ? Math.min(1, Math.pow((d.speed - 70) / 50, 1.35)) : 0;
-        const smokeRate = pulling ? 6 + throttle * 16 + Math.min(5, d.speed * 0.04) : 0;
-        const flameRate = lit ? 18 + over * 40 : 0;
+        const smokeRate = pulling ? 8 + throttle * 18 + Math.min(6, d.speed * 0.05) : 0;
+        const flameRate = lit ? 22 + over * 44 : (plume && d.speed > 10 ? 4 + d.speed * 0.04 : 0);
         if (Math.random() < dt * Math.max(smokeRate, flameRate)) {
-          const carZ = d.z + 14;
-          const ground = projectWorld(d.playerX, 0, carZ, d);
-          const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
-          const s = playerCarScale(ground);
-          const drawW = PLAYER_CAR_BASE_W * s;
-          const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
-          const ang = (d.yaw || 0) * 0.38 + (d.roll || 0);
-          const cos = Math.cos(ang);
-          const sin = Math.sin(ang);
-          const ox = ground.x;
-          const oy = ground.y + bob;
-          const tipCount = lit && Math.random() < 0.55 + over * 0.35 ? 2 : 1;
-          for (let ti = 0; ti < tipCount; ti++) {
-            const tip = PLAYER_CAR_TIPS[tipCount === 2 ? ti : (Math.random() < 0.5 ? 0 : 1)];
-            const lx = -drawW / 2 + tip.fx * drawW + (Math.random() - 0.5) * 2 * s;
-            const ly = -drawH + 2 * s + tip.fy * drawH;
-            const tipX = ox + lx * cos - ly * sin;
-            const tipY = oy + lx * sin + ly * cos;
-            if (lit && Math.random() < 0.75) {
+          for (let ti = 0; ti < tips.length; ti++) {
+            const { x: tipX, y: tipY, s, spread } = tips[ti];
+            const jitterX = (Math.random() - 0.5) * 1.4 * s;
+            const jitterY = (Math.random() - 0.5) * 0.8 * s;
+            if (lit && Math.random() < (plume ? 0.88 : 0.75)) {
+              const aim = spread * 18;
               state.particles.push({
                 type: 'exhaustFlame',
-                x: tipX + (Math.random() - 0.5) * 1.2 * s,
-                y: tipY + (Math.random() - 0.5) * s,
-                // Tight forward spray — stays on the beam axis
-                vx: -d.velX * 4 + (Math.random() - 0.5) * (4 + over * 6) + (d.yaw || 0) * 10,
-                vy: 90 + Math.random() * (50 + over * 70),
+                x: tipX + jitterX,
+                y: tipY + jitterY,
+                vx: -d.velX * 4 + aim + (Math.random() - 0.5) * (3 + over * 5) + (d.yaw || 0) * 10,
+                vy: 92 + Math.random() * (48 + over * 68) + spread * 8,
                 life: 0.05 + Math.random() * 0.08 + over * 0.05,
                 maxLife: 0.16,
-                size: (0.7 + Math.random() * 0.6 + over * 0.8) * Math.min(1.3, 0.55 + s),
+                size: (0.65 + Math.random() * 0.55 + over * 0.85) * Math.min(1.3, 0.55 + s),
                 heat: 0.9 + Math.random() * 0.1
               });
             }
-            if (pulling && (!lit || Math.random() < 0.35)) {
+            if (pulling && (!lit || Math.random() < 0.42)) {
               const soot = Math.random();
               state.particles.push({
                 type: 'smoke',
                 exhaust: true,
-                x: tipX + (Math.random() - 0.5) * 4,
-                y: tipY + (Math.random() - 0.5) * 3,
-                vx: -d.velX * 10 + (Math.random() - 0.5) * (10 + throttle * 14) + (d.yaw || 0) * 28,
-                vy: -4 - Math.random() * (12 + throttle * 16),
-                life: 0.4 + Math.random() * 0.55 + throttle * 0.15,
+                x: tipX + (Math.random() - 0.5) * 3.5 * s,
+                y: tipY + (Math.random() - 0.5) * 2.5 * s,
+                vx: -d.velX * 10 + spread * 22 + (Math.random() - 0.5) * (8 + throttle * 12) + (d.yaw || 0) * 28,
+                vy: -2 - Math.random() * (10 + throttle * 14),
+                life: 0.35 + Math.random() * 0.5 + throttle * 0.18,
                 maxLife: 0.95,
-                size: (2.5 + Math.random() * 4 + throttle * 4) * Math.min(1.35, 0.55 + s),
+                size: (2.2 + Math.random() * 3.5 + throttle * 4) * Math.min(1.35, 0.55 + s),
                 color: soot > 0.6 ? '#12100e' : soot > 0.3 ? '#0a0a0c' : '#1c1814'
+              });
+            }
+            if (plume && !pulling && !lit && d.speed > 10 && Math.random() < 0.35) {
+              state.particles.push({
+                type: 'exhaustFlame',
+                x: tipX + jitterX,
+                y: tipY + jitterY,
+                vx: -d.velX * 3 + spread * 10 + (Math.random() - 0.5) * 3,
+                vy: 38 + Math.random() * 22,
+                life: 0.04 + Math.random() * 0.05,
+                maxLife: 0.11,
+                size: (0.45 + Math.random() * 0.35) * Math.min(1.1, 0.5 + s),
+                heat: 0.55 + Math.random() * 0.25
               });
             }
           }
@@ -8814,128 +8820,7 @@
     return g;
   }
 
-  function drawGoldWheelFace(cx, cy, rx, ry, spin) {
-    const t = performance.now() * 0.001;
-    const glint = 0.78 + Math.sin((spin || 0) * 2.8 + t * 5.1) * 0.22;
-    const hubX = rx * 0.66;
-    const hubY = ry * 0.66;
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 2);
-    ctx.clip();
-    const face = ctx.createRadialGradient(cx - rx * 0.32, cy - ry * 0.38, rx * 0.02, cx, cy, rx * 1.05);
-    face.addColorStop(0, '#fff8dc');
-    face.addColorStop(0.22, '#ffd54a');
-    face.addColorStop(0.55, '#e8a020');
-    face.addColorStop(0.82, '#9a6010');
-    face.addColorStop(1, '#3a2206');
-    ctx.fillStyle = face;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, hubX, hubY, 0, 0, Math.PI * 2);
-    ctx.fill();
-    const segs = 10;
-    for (let i = 0; i < segs; i++) {
-      const a0 = (spin || 0) + i * (Math.PI * 2 / segs);
-      const a1 = a0 + (Math.PI * 2 / segs) * 0.82;
-      const bright = i % 2 === 0;
-      ctx.fillStyle = bright ? `rgba(255, 244, 200, ${0.42 + glint * 0.28})` : 'rgba(60, 38, 10, 0.55)';
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(a0) * hubX * 0.55, cy + Math.sin(a0) * hubY * 0.55);
-      ctx.lineTo(cx + Math.cos(a0) * hubX * 0.98, cy + Math.sin(a0) * hubY * 0.98);
-      ctx.lineTo(cx + Math.cos(a1) * hubX * 0.98, cy + Math.sin(a1) * hubY * 0.98);
-      ctx.lineTo(cx + Math.cos(a1) * hubX * 0.55, cy + Math.sin(a1) * hubY * 0.55);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.strokeStyle = '#ffe8a0';
-    ctx.lineWidth = Math.max(1.1, rx * 0.14);
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, rx * 0.94, ry * 0.94, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = '#5a3808';
-    ctx.lineWidth = Math.max(0.85, rx * 0.1);
-    ctx.lineCap = 'round';
-    for (let i = 0; i < 5; i++) {
-      const a = (spin || 0) + i * (Math.PI * 2 / 5);
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(a) * hubX * 0.18, cy + Math.sin(a) * hubY * 0.18);
-      ctx.lineTo(cx + Math.cos(a) * hubX * 0.96, cy + Math.sin(a) * hubY * 0.96);
-      ctx.stroke();
-    }
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = `rgba(255, 248, 210, ${0.62 * glint})`;
-    ctx.lineWidth = Math.max(0.65, rx * 0.06);
-    const sweep = (spin || 0) + t * 2.2;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, hubX * 0.9, hubY * 0.9, sweep * 0.2, sweep, sweep + Math.PI * 0.38);
-    ctx.stroke();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = '#1a1008';
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, hubX * 0.22, hubY * 0.22, 0, 0, Math.PI * 2);
-    ctx.fill();
-    const cap = ctx.createRadialGradient(cx - hubX * 0.1, cy - hubY * 0.12, 0, cx, cy, hubX * 0.18);
-    cap.addColorStop(0, '#fff6c0');
-    cap.addColorStop(1, '#c88618');
-    ctx.fillStyle = cap;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, hubX * 0.15, hubY * 0.15, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawPlayerWheelGold(wx, y, rx, ry, spin, burst) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(wx, y, rx, ry, 0, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.fillStyle = '#121218';
-    ctx.beginPath();
-    ctx.ellipse(wx, y, rx, ry, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#2a2a34';
-    ctx.beginPath();
-    ctx.ellipse(wx, y, rx * 0.94, ry * 0.94, 0, 0, Math.PI * 2);
-    ctx.fill();
-    drawGoldWheelFace(wx, y, rx * 0.76, ry * 0.76, spin);
-    ctx.strokeStyle = '#08080c';
-    ctx.lineWidth = Math.max(0.8, rx * 0.1);
-    ctx.beginPath();
-    ctx.ellipse(wx, y, rx * 0.98, ry * 0.98, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-    if (burst > 0) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const g = ctx.createRadialGradient(wx, y, rx * 0.2, wx, y, rx * (1.35 + burst * 0.5));
-      g.addColorStop(0, `rgba(255, 230, 140, ${0.75 * burst})`);
-      g.addColorStop(0.35, `rgba(255, 190, 60, ${0.35 * burst})`);
-      g.addColorStop(1, 'rgba(255, 160, 40, 0)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.ellipse(wx, y, rx * (1.2 + burst * 0.25), ry * (1.2 + burst * 0.25), 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    const halo = ctx.createRadialGradient(wx - rx * 0.15, y - ry * 0.2, 1, wx, y, rx * 1.12);
-    halo.addColorStop(0, 'rgba(255, 220, 120, 0.42)');
-    halo.addColorStop(0.5, 'rgba(255, 180, 60, 0.16)');
-    halo.addColorStop(1, 'rgba(255, 160, 40, 0)');
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.ellipse(wx, y, rx * 1.08, ry * 1.08, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 236, 180, 0.55)';
-    ctx.lineWidth = Math.max(0.65, rx * 0.07);
-    ctx.beginPath();
-    ctx.ellipse(wx, y, rx * 1.02, ry * 1.02, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  function drawCarWheel(cx, cy, r, spin, crush, gold) {
+  function drawCarWheel(cx, cy, r, spin, crush) {
     const sq = 1 - crush * 0.35;
     const rx = r * 1.12 * sq;
     const ry = r * sq;
@@ -8943,10 +8828,6 @@
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
-    if (gold) {
-      drawGoldWheelFace(cx, cy, rx * 0.78, ry * 0.78, spin);
-      return;
-    }
     ctx.fillStyle = '#2a3038';
     ctx.beginPath();
     ctx.ellipse(cx, cy, rx * 0.78, ry * 0.72, 0, 0, Math.PI * 2);
@@ -9238,75 +9119,80 @@
     }
   }
 
-  // Blue jets from the dual tips — pin-thin at the tip, flaring wider as they shoot out.
+  // Blue jets from each bumper tip — narrow at the pipe, flaring down the beam.
   function drawPlayerExhaustFlames(drawW, drawH, s, intensity) {
     if (intensity <= 0.02) return;
     const t = performance.now() / 1000;
+    const plume = lookOn('plume');
+    const hot = intensity > 0.45;
     for (let i = 0; i < PLAYER_CAR_TIPS.length; i++) {
       const tip = PLAYER_CAR_TIPS[i];
       const tx = -drawW / 2 + tip.fx * drawW;
       const ty = -drawH + 2 * s + tip.fy * drawH;
+      const spread = i === 0 ? -1 : 1;
       const flicker = 0.88 + Math.sin(t * 42 + i * 5.1) * 0.08 + Math.sin(t * 90 + i) * 0.04;
-      const plume = lookOn('plume');
-      const reach = plume ? 62 : 38;
-      const len = (4 + intensity * reach) * s * flicker;
-      const tipW = (0.45 + intensity * (plume ? 0.7 : 0.35)) * s;
-      const endW = (2.2 + intensity * (plume ? 12 : 7.5)) * s * flicker;
+      const reach = plume ? 52 : 38;
+      const len = (3 + intensity * reach) * s * flicker;
+      const pipeR = Math.max(1.1, 1.35 * s);
+      const tipW = (0.35 + intensity * (plume ? 0.55 : 0.32)) * s;
+      const endW = (1.6 + intensity * (plume ? 10 : 6.5)) * s * flicker;
       ctx.save();
       ctx.translate(tx, ty);
+      ctx.rotate(spread * 0.11);
+      ctx.fillStyle = '#1a1a1e';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, pipeR * 1.15, pipeR * 0.85, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#3a3a42';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, pipeR * 0.72, pipeR * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (!hot && plume) {
+        const cherry = ctx.createRadialGradient(0, 0, 0, 0, 0, pipeR * 1.4);
+        cherry.addColorStop(0, `rgba(255, 120, 40, ${0.35 + intensity * 0.4})`);
+        cherry.addColorStop(0.55, `rgba(255, 70, 20, ${0.12 + intensity * 0.15})`);
+        cherry.addColorStop(1, 'rgba(255, 40, 10, 0)');
+        ctx.fillStyle = cherry;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, pipeR * 1.1, pipeR * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.globalCompositeOperation = 'lighter';
-      // Soft expanding halo
       const halo = ctx.createLinearGradient(0, 0, 0, len);
-      halo.addColorStop(0, `rgba(100,190,255,${0.4 * Math.min(1, intensity + 0.2)})`);
-      halo.addColorStop(0.5, `rgba(40,120,255,${0.22 * intensity})`);
+      halo.addColorStop(0, `rgba(100,190,255,${0.38 * Math.min(1, intensity + 0.15)})`);
+      halo.addColorStop(0.5, `rgba(40,120,255,${0.2 * intensity})`);
       halo.addColorStop(1, 'rgba(20,60,200,0)');
       ctx.fillStyle = halo;
       ctx.beginPath();
-      ctx.moveTo(-tipW * 1.6, 0);
-      ctx.lineTo(-endW * 1.35, len);
-      ctx.lineTo(endW * 1.35, len);
-      ctx.lineTo(tipW * 1.6, 0);
+      ctx.moveTo(-tipW * 1.5, 0);
+      ctx.lineTo(-endW * 1.25, len);
+      ctx.lineTo(endW * 1.25, len);
+      ctx.lineTo(tipW * 1.5, 0);
       ctx.closePath();
       ctx.fill();
-      if (plume) {
-        const gold = ctx.createLinearGradient(0, 0, 0, len);
-        gold.addColorStop(0, 'rgba(255,220,140,0.85)');
-        gold.addColorStop(0.35, 'rgba(255,140,40,0.45)');
-        gold.addColorStop(1, 'rgba(255,80,20,0)');
-        ctx.fillStyle = gold;
-        ctx.beginPath();
-        ctx.moveTo(-tipW * 1.1, 0);
-        ctx.lineTo(-endW * 0.85, len * 0.72);
-        ctx.lineTo(endW * 0.85, len * 0.72);
-        ctx.lineTo(tipW * 1.1, 0);
-        ctx.closePath();
-        ctx.fill();
-      }
-      // Hard blue cone
       const g = ctx.createLinearGradient(0, 0, 0, len);
-      g.addColorStop(0, `rgba(220,245,255,${0.98})`);
-      g.addColorStop(0.15, `rgba(120,210,255,${0.92})`);
+      g.addColorStop(0, `rgba(220,245,255,${hot ? 0.98 : 0.55 + intensity * 0.35})`);
+      g.addColorStop(0.15, `rgba(120,210,255,${hot ? 0.92 : 0.35 + intensity * 0.45})`);
       g.addColorStop(0.65, `rgba(50,140,255,${0.5 * intensity})`);
       g.addColorStop(1, 'rgba(30,80,220,0)');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.moveTo(-tipW * 0.5, 0);
-      ctx.lineTo(-endW * 0.5, len);
-      ctx.lineTo(endW * 0.5, len);
-      ctx.lineTo(tipW * 0.5, 0);
+      ctx.moveTo(-tipW * 0.48, 0);
+      ctx.lineTo(-endW * 0.48, len);
+      ctx.lineTo(endW * 0.48, len);
+      ctx.lineTo(tipW * 0.48, 0);
       ctx.closePath();
       ctx.fill();
-      // Hot white core — also flares, but stays tighter
-      const core = ctx.createLinearGradient(0, 0, 0, len * 0.8);
-      core.addColorStop(0, `rgba(255,255,255,${0.95})`);
-      core.addColorStop(0.4, `rgba(200,235,255,${0.7})`);
+      const core = ctx.createLinearGradient(0, 0, 0, len * 0.82);
+      core.addColorStop(0, `rgba(255,255,255,${hot ? 0.95 : 0.5 + intensity * 0.35})`);
+      core.addColorStop(0.4, `rgba(200,235,255,${hot ? 0.7 : 0.25 + intensity * 0.35})`);
       core.addColorStop(1, 'rgba(140,200,255,0)');
       ctx.fillStyle = core;
       ctx.beginPath();
-      ctx.moveTo(-tipW * 0.22, 0);
-      ctx.lineTo(-endW * 0.18, len * 0.8);
-      ctx.lineTo(endW * 0.18, len * 0.8);
-      ctx.lineTo(tipW * 0.22, 0);
+      ctx.moveTo(-tipW * 0.2, 0);
+      ctx.lineTo(-endW * 0.16, len * 0.82);
+      ctx.lineTo(endW * 0.16, len * 0.82);
+      ctx.lineTo(tipW * 0.2, 0);
       ctx.closePath();
       ctx.fill();
       ctx.restore();
@@ -9332,18 +9218,6 @@
     return [-drawW / 2 + fx * drawW, -drawH + 2 * s + fy * drawH];
   }
 
-  function drawPlayerRims(drawW, drawH, s, spin) {
-    const burst = rimUnlockPulse > performance.now()
-      ? Math.max(0, (rimUnlockPulse - performance.now()) / 2800)
-      : 0;
-    for (const wheel of PLAYER_CAR_WHEELS) {
-      const [wx, y] = spritePoint(drawW, drawH, s, wheel.fx, wheel.fy);
-      const rx = drawW * wheel.rx;
-      const ry = Math.max(2.5 * s, drawH * wheel.ry);
-      drawPlayerWheelGold(wx, y, rx, ry, spin, burst);
-    }
-  }
-
   function drawPlayerPlate(drawW, drawH, s) {
     const pw = drawW * 0.18;
     const ph = Math.max(7 * s, drawH * 0.05);
@@ -9364,6 +9238,167 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('C4C', 0, plateY + ph / 2);
+  }
+
+  function drawPlayerTaillights(drawW, drawH, s) {
+    const pulse = 0.88 + Math.sin(performance.now() * 0.009) * 0.12;
+    const lamps = [
+      { fx: 0.145, fy: 0.56 },
+      { fx: 0.855, fy: 0.56 }
+    ];
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < lamps.length; i++) {
+      const [lx, ly] = spritePoint(drawW, drawH, s, lamps[i].fx, lamps[i].fy);
+      const r = drawW * 0.22;
+      const g = ctx.createRadialGradient(lx, ly, 1, lx, ly, r);
+      g.addColorStop(0, `rgba(255, 220, 210, ${0.92 * pulse})`);
+      g.addColorStop(0.28, `rgba(255, 55, 38, ${0.72 * pulse})`);
+      g.addColorStop(0.62, `rgba(220, 24, 18, ${0.28 * pulse})`);
+      g.addColorStop(1, 'rgba(180, 10, 10, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, r * 0.95, r * 0.62, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const [rx, ry] = spritePoint(drawW, drawH, s, lamps[i].fx, 0.96);
+      const spill = ctx.createRadialGradient(rx, ry, 1, rx, ry + 8 * s, drawW * 0.26);
+      spill.addColorStop(0, `rgba(255, 45, 30, ${0.32 * pulse})`);
+      spill.addColorStop(1, 'rgba(200, 20, 15, 0)');
+      ctx.fillStyle = spill;
+      ctx.beginPath();
+      ctx.ellipse(rx, ry + 4 * s, drawW * 0.24, Math.max(4 * s, drawH * 0.07), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const [bx, by] = spritePoint(drawW, drawH, s, 0.5, 0.19);
+    const barW = drawW * 0.24;
+    const barH = Math.max(1.6, 2.2 * s);
+    const bg = ctx.createRadialGradient(bx, by, 1, bx, by, barW * 0.9);
+    bg.addColorStop(0, `rgba(255, 80, 60, ${0.65 * pulse})`);
+    bg.addColorStop(1, 'rgba(220, 20, 15, 0)');
+    ctx.fillStyle = bg;
+    ctx.fillRect(bx - barW * 0.85, by - barH * 2.2, barW * 1.7, barH * 4.4);
+    ctx.fillStyle = `rgba(255, 210, 200, ${0.88 * pulse})`;
+    ctx.fillRect(bx - barW * 0.5, by - barH * 0.45, barW, barH * 0.9);
+    ctx.restore();
+  }
+
+  function drawPlayerBeacon(drawW, drawH, s) {
+    const t = performance.now();
+    const sweep = (t * 0.009) % (Math.PI * 2);
+    const flash = Math.pow(Math.max(0, Math.cos(sweep)), 3);
+    const [bx, by] = spritePoint(drawW, drawH, s, 0.5, 0.085);
+    const bw = Math.max(4, drawW * 0.11);
+    const bh = Math.max(2.5, drawH * 0.032);
+    ctx.save();
+    ctx.fillStyle = '#1b1814';
+    ctx.fillRect(bx - bw * 0.58, by, bw * 1.16, bh * 0.45);
+    const dome = ctx.createLinearGradient(bx, by - bh, bx, by);
+    dome.addColorStop(0, flash > 0.35 ? '#fff0b8' : '#e08a18');
+    dome.addColorStop(1, '#7a3e06');
+    ctx.fillStyle = dome;
+    ctx.beginPath();
+    ctx.ellipse(bx, by, bw * 0.5, bh * 0.85, 0, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    const r = drawW * (0.16 + flash * 0.28);
+    const g = ctx.createRadialGradient(bx, by - bh * 0.35, 1, bx, by - bh * 0.35, r);
+    g.addColorStop(0, `rgba(255, 245, 200, ${0.42 + flash * 0.55})`);
+    g.addColorStop(0.32, `rgba(255, 175, 40, ${0.28 + flash * 0.48})`);
+    g.addColorStop(1, 'rgba(255, 120, 10, 0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(bx, by - bh * 0.35, r, 0, Math.PI * 2);
+    ctx.fill();
+    if (flash > 0.25) {
+      const beamLen = drawW * (0.42 + flash * 0.35);
+      const dir = Math.sin(sweep) >= 0 ? 1 : -1;
+      const beam = ctx.createLinearGradient(bx, by, bx + dir * beamLen, by);
+      beam.addColorStop(0, `rgba(255, 210, 110, ${0.45 * flash})`);
+      beam.addColorStop(1, 'rgba(255, 150, 30, 0)');
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.moveTo(bx, by - bh * 0.65);
+      ctx.lineTo(bx + dir * beamLen, by - bh * 2.6);
+      ctx.lineTo(bx + dir * beamLen, by + bh * 1.4);
+      ctx.lineTo(bx, by + bh * 0.1);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawPlayerRoofRack(drawW, drawH, s) {
+    const [, ry] = spritePoint(drawW, drawH, s, 0.5, 0.135);
+    const rw = drawW * 0.46;
+    const pipeH = Math.max(1.8, 2.2 * s);
+    ctx.save();
+    ctx.fillStyle = '#181a1e';
+    ctx.fillRect(-rw * 0.54, ry + pipeH * 0.7, rw * 1.08, Math.max(1.2, 1.4 * s));
+    const pipes = [-0.34, -0.18, -0.02, 0.14, 0.3];
+    for (let i = 0; i < pipes.length; i++) {
+      const px = pipes[i] * rw;
+      const py = ry - (i % 2) * pipeH * 0.65;
+      const pw = rw * 0.16;
+      const grad = ctx.createLinearGradient(px - pw / 2, py - pipeH, px + pw / 2, py + pipeH);
+      grad.addColorStop(0, '#ffd29a');
+      grad.addColorStop(0.45, '#c97435');
+      grad.addColorStop(1, '#5a2d12');
+      ctx.fillStyle = grad;
+      ctx.fillRect(px - pw * 0.5, py - pipeH * 0.5, pw, pipeH);
+      ctx.fillStyle = '#2b1608';
+      ctx.beginPath();
+      ctx.arc(px - pw * 0.22, py, pipeH * 0.32, 0, Math.PI * 2);
+      ctx.arc(px + pw * 0.22, py, pipeH * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = '#d8a23a';
+    ctx.lineWidth = Math.max(1, 1.15 * s);
+    ctx.beginPath();
+    ctx.moveTo(-rw * 0.42, ry - pipeH * 1.1);
+    ctx.lineTo(-rw * 0.42, ry + pipeH * 1.1);
+    ctx.moveTo(rw * 0.42, ry - pipeH * 1.1);
+    ctx.lineTo(rw * 0.42, ry + pipeH * 1.1);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawPlayerTowChain(drawW, drawH, s, sway = 0) {
+    const [hx, hy] = spritePoint(drawW, drawH, s, 0.5, 0.895);
+    const swing = Math.sin(performance.now() * 0.008) * 1.4 * s + sway * 10 * s;
+    const drop = Math.max(4 * s, drawH * 0.065);
+    const span = drawW * 0.13;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#3b200c';
+    ctx.lineWidth = Math.max(2, 2.8 * s);
+    ctx.beginPath();
+    ctx.moveTo(hx - span, hy);
+    ctx.quadraticCurveTo(hx + swing, hy + drop, hx + span, hy);
+    ctx.stroke();
+    ctx.strokeStyle = '#e09348';
+    ctx.lineWidth = Math.max(1.2, 1.7 * s);
+    ctx.setLineDash([Math.max(1.8, 2.2 * s), Math.max(1.3, 1.6 * s)]);
+    ctx.beginPath();
+    ctx.moveTo(hx - span, hy);
+    ctx.quadraticCurveTo(hx + swing, hy + drop, hx + span, hy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const kx = hx + swing * 0.55;
+    const ky = hy + drop * 0.58;
+    ctx.fillStyle = '#f2b866';
+    ctx.beginPath();
+    ctx.arc(kx, ky, Math.max(1.5, 1.9 * s), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPlayerLookExtras(drawW, drawH, s, sway = 0) {
+    if (lookOn('taillights')) drawPlayerTaillights(drawW, drawH, s);
+    if (lookOn('rack')) drawPlayerRoofRack(drawW, drawH, s);
+    if (lookOn('beacon')) drawPlayerBeacon(drawW, drawH, s);
+    if (lookOn('plate')) drawPlayerPlate(drawW, drawH, s);
+    if (lookOn('hitch')) drawPlayerTowChain(drawW, drawH, s, sway);
   }
 
   // Body metal only. Glass, lamps, badge, plate, and tires stay as drawn.
@@ -9457,9 +9492,8 @@
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(roll + yaw * 0.38);
-      if (lookOn('plate')) drawPlayerPlate(drawW, drawH, s);
+      drawPlayerLookExtras(drawW, drawH, s, yaw + roll);
       if (flames > 0) drawPlayerExhaustFlames(drawW, drawH, s, flames);
-      if (lookOn('rims')) drawPlayerRims(drawW, drawH, s, opts.wheelSpin || 0);
       ctx.restore();
       return;
     }
@@ -9486,10 +9520,49 @@
         -drawW / 2, -drawH + 2 * s, drawW, drawH
       );
     }
-    if (lookOn('plate')) drawPlayerPlate(drawW, drawH, s);
+    drawPlayerLookExtras(drawW, drawH, s, yaw + roll);
     if (flames > 0) drawPlayerExhaustFlames(drawW, drawH, s, flames);
-    if (lookOn('rims')) drawPlayerRims(drawW, drawH, s, opts.wheelSpin || 0);
     ctx.restore();
+  }
+
+  function playerExhaustIntensity(d) {
+    const speedFlame = d.speed > 70
+      ? Math.min(1, Math.pow((d.speed - 70) / 50, 1.35))
+      : 0;
+    const gas = !!state.keys.up && !state.keys.down;
+    const throttle = gas && (d.accel || 0) > 4
+      ? Math.min(1, (d.accel || 0) / 38)
+      : 0;
+    let out = Math.max(speedFlame, throttle * 0.42);
+    if (lookOn('plume') && d.speed > 14) {
+      out = Math.max(out, 0.1 + Math.min(0.28, (d.speed - 14) / 220));
+    }
+    return out;
+  }
+
+  function playerExhaustTipPoints(d) {
+    const carZ = d.z + 14;
+    const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
+    const ground = projectWorld(d.playerX, 0, carZ, d);
+    const s = playerCarScale(ground);
+    const drawW = PLAYER_CAR_BASE_W * s;
+    const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
+    const ang = (d.yaw || 0) * 0.38 + (d.roll || 0);
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const ox = ground.x;
+    const oy = ground.y + bob;
+    return PLAYER_CAR_TIPS.map((tip, i) => {
+      const lx = -drawW / 2 + tip.fx * drawW;
+      const ly = -drawH + 2 * s + tip.fy * drawH;
+      const spread = i === 0 ? -1 : 1;
+      return {
+        x: ox + lx * cos - ly * sin,
+        y: oy + lx * sin + ly * cos,
+        s,
+        spread
+      };
+    });
   }
 
   // Perspective scales — keep highway size, but allow growth when the cam pulls in.
@@ -9625,12 +9698,11 @@
 
     // Wheels — rear pair visible from chase cam
     const wheelR = h * (kind === 'bus' ? 0.16 : kind === 'sports' ? 0.13 : 0.15) * (1 - crush * 0.2);
-    const goldRims = opts.player && lookOn('rims');
-    drawCarWheel(-rearW * 0.72, rearY + h * 0.16, wheelR, wheelSpin, crush, goldRims);
-    drawCarWheel(rearW * 0.72, rearY + h * 0.16, wheelR, wheelSpin + 0.4, crush, goldRims);
+    drawCarWheel(-rearW * 0.72, rearY + h * 0.16, wheelR, wheelSpin, crush);
+    drawCarWheel(rearW * 0.72, rearY + h * 0.16, wheelR, wheelSpin + 0.4, crush);
     if (kind === 'bus') {
-      drawCarWheel(-rearW * 0.72, rearY + h * 0.28, wheelR * 0.92, wheelSpin + 0.2, crush, goldRims);
-      drawCarWheel(rearW * 0.72, rearY + h * 0.28, wheelR * 0.92, wheelSpin + 0.6, crush, goldRims);
+      drawCarWheel(-rearW * 0.72, rearY + h * 0.28, wheelR * 0.92, wheelSpin + 0.2, crush);
+      drawCarWheel(rearW * 0.72, rearY + h * 0.28, wheelR * 0.92, wheelSpin + 0.6, crush);
     }
 
     // Lower body / rocker panels
@@ -12778,10 +12850,7 @@
       pitch: d.pitch,
       roll: d.roll + (d.crashT > 0 ? Math.sin(d.crashT * 40) * 0.2 : 0),
       wheelSpin: d.wheelSpin || 0,
-      flames: Math.max(
-        lookOn('plume') ? 0.55 : 0,
-        d.speed > 70 ? Math.min(1, Math.pow((d.speed - 70) / 50, 1.35)) : 0
-      )
+      flames: playerExhaustIntensity(d)
     });
 
     // Cruiser on your bumper draws over the player (closer to camera)
