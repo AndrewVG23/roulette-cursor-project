@@ -2237,6 +2237,7 @@
   function seedFullRouteEnvironment(d, route) {
     seedChicagoLandmarks(d);
     seedCityBlocks(d, 0, route.length + 56);
+    seedShowcaseBillboards(d);
     d.routeEnvSeeded = true;
     seedMapExits(d, route);
   }
@@ -4887,13 +4888,13 @@
         if (zi % 4 === 0) d.props.push({ z: routeZ + 40, side: Math.cos(routeZ) > 0 ? 1 : -1, kind: 'hydrant' });
         if (zi % 5 === 0) d.props.push({ z: routeZ + 16, side: -1, kind: 'bus_shelter' });
       }
-      // Debt-economy billboards — spaced out along the route
-      const bbPick = ((zi / 22) | 0) + (routeZ % 5);
-      if (zi % 22 === 7) {
+      // Debt-economy billboards — spaced along the route
+      const bbPick = ((zi / 16) | 0) + (routeZ % 5);
+      if (zi % 16 === 5) {
         const bbSide = env.onLakefront ? env.citySide : (Math.sin(routeZ * 0.07) > 0 ? 1 : -1);
         seedBillboard(routeZ, bbSide, bbPick);
       }
-      if (zi % 22 === 15 && !env.onLakefront) {
+      if (zi % 16 === 11 && !env.onLakefront) {
         seedBillboard(
           routeZ + lot * 0.38,
           Math.sin(routeZ * 0.11) > 0 ? -1 : 1,
@@ -4903,6 +4904,28 @@
     }
     d.nextBuildZ = Math.min(toZ, len);
     d.nextPropZ = toZ;
+  }
+
+  // First stretch of every drive — one board per ad so new copy is easy to spot
+  function seedShowcaseBillboards(d) {
+    const spots = [
+      { z: 130, side: 1, ad: 0 },
+      { z: 200, side: -1, ad: 1 },
+      { z: 270, side: 1, ad: 2 },
+      { z: 340, side: -1, ad: 3 },
+      { z: 410, side: 1, ad: 4 }
+    ];
+    for (const spot of spots) {
+      const ad = BILLBOARD_ADS[spot.ad];
+      if (!ad) continue;
+      d.props.push({
+        z: spot.z,
+        side: spot.side,
+        kind: 'billboard',
+        lines: ad.lines,
+        accent: ad.accent
+      });
+    }
   }
 
   function updateHUD() {
