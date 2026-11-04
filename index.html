@@ -430,6 +430,26 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
+    .look-row--ride {
+      grid-template-columns: 1fr;
+      padding-bottom: 10px;
+    }
+    .look-ride-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .look-row--ride .ride-pick {
+      display: inline-flex;
+    }
+    .ride-pick.is-on {
+      border-color: #f7ead0;
+      background: rgba(242, 140, 24, 0.22);
+    }
+    .ride-pick:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
     .look-row.is-pinned .look-pin {
       color: #1a1307;
       background: #f0c56a;
@@ -2291,7 +2311,10 @@
   const WRX_NEAR_IMG = new Image();
   WRX_NEAR_IMG.src = 'assets/wrx-near.png';
   const WRX_BASE_W = 62;
-  const WRX_GROUND = 0.995;
+  // Bumper sits above the road so the rear tires can show underneath.
+  const WRX_GROUND = 1.121;
+  const WRX_WHEEL_X = 0.40;
+  const WRX_WHEEL_R = 0.095;
   // Single pipe, left of the plate, on the shared bumper anchor.
   const WRX_TIPS = [{ fx: 0.36, fy: 0.975, spread: 0 }];
   const overlay = document.getElementById('overlay');
@@ -3755,7 +3778,9 @@
   const equippedLooks = new Set();
   const lookColors = {};
   const EQUIP_KEY = 'c4c-car-equipped';
+  const RIDE_KEY = 'c4c-player-ride';
   const LOOK_COLOR_KEY = 'c4c-look-colors';
+  let playerRide = 'wrx';
   const LOOK_SHORT = {
     paint: 'Paint',
     glow: 'Underglow',
@@ -3810,6 +3835,10 @@
       }
     }
   } catch (_) { /* private mode */ }
+  try {
+    const savedRide = localStorage.getItem(RIDE_KEY);
+    if (savedRide === 'bmw' || savedRide === 'wrx') playerRide = savedRide;
+  } catch (_) { /* private mode */ }
   function lookOn(id) { return ownedLooks.has(id) && equippedLooks.has(id); }
   function lookHex(id) {
     return (lookColors[id] || LOOK_DEFAULT_COLOR[id] || '#f4f0e6').toLowerCase();
@@ -3840,6 +3869,9 @@
   }
   function saveLookColors() {
     try { localStorage.setItem(LOOK_COLOR_KEY, JSON.stringify(lookColors)); } catch (_) { /* private mode */ }
+  }
+  function savePlayerRide() {
+    try { localStorage.setItem(RIDE_KEY, playerRide); } catch (_) { /* private mode */ }
   }
   function pickRandomLook() {
     const pool = CAR_LOOKS.filter((look) => !ownedLooks.has(look.id));
@@ -4581,6 +4613,10 @@
     {
       lines: ['Free Gas.', 'With purchase of a low price', '"Fuel package"'],
       accent: 0
+    },
+    {
+      lines: ['liquor = friend.', 'liquor = love'],
+      accent: 0
     }
   ];
   const BILLBOARD_TEX_W = 960;
@@ -4923,7 +4959,8 @@
       { z: 200, side: -1, ad: 1 },
       { z: 270, side: 1, ad: 2 },
       { z: 340, side: -1, ad: 3 },
-      { z: 410, side: 1, ad: 4 }
+      { z: 410, side: 1, ad: 4 },
+      { z: 480, side: -1, ad: 5 }
     ];
     for (const spot of spots) {
       const ad = BILLBOARD_ADS[spot.ad];
@@ -5405,16 +5442,52 @@
     overlay?.classList.remove('is-bay');
   }
 
+  function mountRidePickerRow() {
+    const row = document.createElement('div');
+    row.className = 'look-row look-row--ride';
+    const name = document.createElement('span');
+    name.className = 'look-name';
+    name.textContent = 'Your ride';
+    const btns = document.createElement('div');
+    btns.className = 'look-ride-btns';
+    btns.setAttribute('role', 'group');
+    btns.setAttribute('aria-label', 'Choose BMW or Subaru');
+    for (const opt of [
+      { id: 'bmw', label: 'BMW X5' },
+      { id: 'wrx', label: 'Subaru WRX' }
+    ]) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'look-off ride-pick' + (playerRide === opt.id ? ' is-on' : '');
+      btn.textContent = opt.label;
+      btn.setAttribute('aria-pressed', playerRide === opt.id ? 'true' : 'false');
+      if (opt.id === 'wrx' && !wrxReady()) {
+        btn.disabled = true;
+        btn.title = 'Subaru photos still loading';
+      }
+      btn.addEventListener('click', () => {
+        if (opt.id === 'wrx' && !wrxReady()) return;
+        playerRide = opt.id;
+        savePlayerRide();
+        mountLookBay();
+      });
+      btns.appendChild(btn);
+    }
+    row.append(name, btns);
+    return row;
+  }
+
   function mountLookBay() {
     if (!lookBay || !lookBayList) return;
-    const owned = CAR_LOOKS.filter((look) => ownedLooks.has(look.id));
-    if (!owned.length || state.mode !== 'gas') {
+    if (state.mode !== 'gas') {
       hideLookBay();
       return;
     }
     lookBay.hidden = false;
     overlay?.classList.add('is-bay');
-    lookBayList.replaceChildren(...owned.map((look) => {
+    if (lookBayFloat == null && lookBayPinned.size === 0) lookBayFloat = 'paint';
+    const owned = CAR_LOOKS.filter((look) => ownedLooks.has(look.id) || look.id === 'paint');
+    const rows = [mountRidePickerRow(), ...owned.map((look) => {
       const row = document.createElement('div');
       const pinned = lookBayPinned.has(look.id);
       const floated = lookBayFloat === look.id;
@@ -5465,7 +5538,10 @@
       toggle.addEventListener('click', () => {
         lookBayFloat = look.id;
         if (equippedLooks.has(look.id)) equippedLooks.delete(look.id);
-        else equippedLooks.add(look.id);
+        else {
+          if (look.id === 'paint') ownedLooks.add('paint');
+          equippedLooks.add(look.id);
+        }
         saveLooks();
         mountLookBay();
       });
@@ -5483,6 +5559,7 @@
         btn.addEventListener('click', () => {
           lookBayFloat = look.id;
           lookColors[look.id] = swatch.hex;
+          if (look.id === 'paint') ownedLooks.add('paint');
           if (!equippedLooks.has(look.id)) equippedLooks.add(look.id);
           if (look.id === 'paint') {
             paintSheet = null;
@@ -5512,7 +5589,8 @@
       }
       row.append(head, pin, toggle, swatches);
       return row;
-    }));
+    })];
+    lookBayList.replaceChildren(...rows);
   }
 
   function hideRunPurse() {
@@ -9544,7 +9622,7 @@
     const flame = plume ? lookRgb('plume') : [90, 190, 255];
     const flameHot = mixTowardWhite(flame, 0.78);
     const flameMid = mixTowardWhite(flame, 0.28);
-    const tips = wrxReady() ? WRX_TIPS : PLAYER_CAR_TIPS;
+    const tips = playerUsesWrx() ? WRX_TIPS : PLAYER_CAR_TIPS;
     for (let i = 0; i < tips.length; i++) {
       const tip = tips[i];
       const [tx, ty] = spritePoint(drawW, drawH, s, tip.fx, tip.fy);
@@ -9688,15 +9766,19 @@
     return WRX_FAR_IMG.complete && WRX_FAR_IMG.naturalWidth > 0;
   }
 
+  function playerUsesWrx() {
+    return playerRide === 'wrx' && wrxReady();
+  }
+
   function spritePoint(drawW, drawH, s, fx, fy) {
-    const top = wrxReady() ? -drawH * WRX_GROUND : -drawH + 2 * s;
+    const top = playerUsesWrx() ? -drawH * WRX_GROUND : -drawH + 2 * s;
     return [-drawW / 2 + fx * drawW, top + fy * drawH];
   }
 
   function drawPlayerPlate(drawW, drawH, s) {
     const pw = drawW * 0.18;
     const ph = Math.max(7 * s, drawH * 0.05);
-    const [, y] = spritePoint(drawW, drawH, s, 0.5, wrxReady() ? 0.845 : 0.7);
+    const [, y] = spritePoint(drawW, drawH, s, 0.5, playerUsesWrx() ? 0.845 : 0.7);
     const plateY = y - ph / 2;
     const rgb = lookRgb('plate');
     const ink = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) < 150 ? '#f7ead0' : '#1a1307';
@@ -9721,7 +9803,7 @@
     const pulse = 0.88 + Math.sin(performance.now() * 0.009) * 0.12;
     const rgb = lookRgb('taillights');
     const hot = mixTowardWhite(rgb, 0.72);
-    const lamps = wrxReady()
+    const lamps = playerUsesWrx()
       ? [{ fx: 0.2, fy: 0.58 }, { fx: 0.8, fy: 0.58 }]
       : [{ fx: 0.145, fy: 0.56 }, { fx: 0.855, fy: 0.56 }];
     ctx.save();
@@ -9761,7 +9843,7 @@
   }
 
   function drawPlayerRoofRack(drawW, drawH, s) {
-    const [, ry] = spritePoint(drawW, drawH, s, 0.5, wrxReady() ? 0.2 : 0.135);
+    const [, ry] = spritePoint(drawW, drawH, s, 0.5, playerUsesWrx() ? 0.2 : 0.135);
     const rw = drawW * 0.46;
     const pipeH = Math.max(1.8, 2.2 * s);
     ctx.save();
@@ -9998,7 +10080,7 @@
     const pitch = opts.pitch || 0;
     const roll = opts.roll || 0;
     const s = Math.max(0.12, scale);
-    const ride = wrxReady();
+    const ride = playerUsesWrx();
     const drawW = (ride ? WRX_BASE_W : PLAYER_CAR_BASE_W) * s;
     const drawH = ride
       ? drawW * (WRX_FAR_IMG.naturalHeight / WRX_FAR_IMG.naturalWidth)
@@ -10039,6 +10121,14 @@
     ctx.beginPath();
     ctx.ellipse(0, 3 * s, drawW * (ride ? 0.34 : 0.44), drawH * (ride ? 0.065 : 0.09), 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (ride) {
+      const wheelR = drawW * WRX_WHEEL_R;
+      const wheelX = drawW * WRX_WHEEL_X;
+      const spin = opts.wheelSpin || 0;
+      drawCarWheel(-wheelX, -wheelR, wheelR, spin, 0);
+      drawCarWheel(wheelX, -wheelR, wheelR, spin + 0.4, 0);
+    }
 
     if (ride) {
       const painted = wrxPaintPair();
@@ -10101,7 +10191,7 @@
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const ground = projectWorld(d.playerX, 0, carZ, d);
     const s = playerCarScale(ground);
-    const ride = wrxReady();
+    const ride = playerUsesWrx();
     const drawW = (ride ? WRX_BASE_W : PLAYER_CAR_BASE_W) * s;
     const drawH = ride
       ? drawW * (WRX_FAR_IMG.naturalHeight / WRX_FAR_IMG.naturalWidth)
