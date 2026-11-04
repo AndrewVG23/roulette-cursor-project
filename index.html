@@ -2284,6 +2284,16 @@
   POLICE_CAR_IMG.src = 'police_car.png';
   const POLICE_CAR_SRC = { x: 123, y: 18, w: 791, h: 643 };
   const POLICE_CAR_BASE_W = 55;
+  // Two rear photos of the same WRX, aligned on the bumper. The nearer
+  // shot has a taller wing, so crossfading them reads as perspective.
+  const WRX_FAR_IMG = new Image();
+  WRX_FAR_IMG.src = 'assets/wrx-far.png';
+  const WRX_NEAR_IMG = new Image();
+  WRX_NEAR_IMG.src = 'assets/wrx-near.png';
+  const WRX_BASE_W = 62;
+  const WRX_GROUND = 0.979;
+  // Single pipe, left of the plate, on the shared bumper anchor.
+  const WRX_TIPS = [{ fx: 0.36, fy: 0.975, spread: 0 }];
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
@@ -6650,19 +6660,25 @@
     { model: 'Tesla Model S Plaid', kind: 'sports', weight: 2, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#148f77'], bodyScale: 0.93, roof: 0.72, base: 56 },
     { model: 'Ford Mustang GT', kind: 'sports', weight: 2, cool: true, colors: ['#c0392b', '#1c2833', '#ecf0f1', '#196f3d'], bodyScale: 0.94, roof: 0.74, base: 51 },
     { model: 'Nissan GT-R', kind: 'sports', weight: 1, cool: true, colors: ['#1c2833', '#c0392b', '#ecf0f1', '#5d6d7e'], bodyScale: 0.92, roof: 0.7, base: 54 },
+    { model: 'Subaru WRX STI', kind: 'sports', weight: 0, cool: true, sprite: 'wrx', colors: ['#f4f1ea'], bodyScale: 1, roof: 1, base: 26 },
     { model: 'Lamborghini Countach', kind: 'sports', weight: 0, cool: true, colors: ['#f39c12', '#e67e22', '#d35400', '#ecf0f1'], bodyScale: 0.9, roof: 0.48, base: 62 }
   ];
   const COMMON_CAR_FLEET = REAL_CAR_FLEET.filter(c => !c.cool);
-  const COOL_CAR_FLEET = REAL_CAR_FLEET.filter(c => c.cool && c.model !== 'Lamborghini Countach');
+  const COOL_CAR_FLEET = REAL_CAR_FLEET.filter(c => c.cool && c.model !== 'Lamborghini Countach' && c.sprite !== 'wrx');
   const COUNTACH_CAR = REAL_CAR_FLEET.find(c => c.model === 'Lamborghini Countach');
+  const WRX_CAR = REAL_CAR_FLEET.find(c => c.sprite === 'wrx');
   const POLICE_CAR = REAL_CAR_FLEET.find(c => c.kind === 'police');
   const COMMON_CAR_FLEET_TOTAL = COMMON_CAR_FLEET.reduce((s, c) => s + c.weight, 0);
   const COOL_CAR_SPAWN_CHANCE = 0.035;
   const COUNTACH_SPAWN_CHANCE = 0.014;
+  const WRX_SPAWN_CHANCE = 0.07;
   const POLICE_SPAWN_CHANCE = 0.12;
+  const FORCE_WRX = new URLSearchParams(location.search).get('wrx') === '1';
 
   function pickRealCar() {
+    if (FORCE_WRX && WRX_CAR) return WRX_CAR;
     if (Math.random() < COUNTACH_SPAWN_CHANCE && COUNTACH_CAR) return COUNTACH_CAR;
+    if (Math.random() < WRX_SPAWN_CHANCE && WRX_CAR) return WRX_CAR;
     if (Math.random() < COOL_CAR_SPAWN_CHANCE && COOL_CAR_FLEET.length) {
       return COOL_CAR_FLEET[Math.floor(Math.random() * COOL_CAR_FLEET.length)];
     }
@@ -6727,6 +6743,7 @@
   function spawnTraffic(d, aheadZ) {
     const lane = [-DW.LANE, 0, DW.LANE][Math.floor(Math.random() * 3)];
     const def = pickRealCar();
+    const ahead = FORCE_WRX ? 55 + Math.random() * 140 : (aheadZ != null ? aheadZ : 420 + Math.random() * 640);
     const stats = CAR_KIND_STATS[def.kind] || CAR_KIND_STATS.sedan;
     const rear = resolveRearProfile(def);
     const base = def.base != null ? def.base : stats.base;
@@ -6735,11 +6752,12 @@
     const wMul = rear?.wMul || 1;
     const color = carColorFor(def);
     d.traffic.push({
-      z: d.z + (aheadZ != null ? aheadZ : 420 + Math.random() * 640),
+      z: d.z + ahead,
       x: lane + (Math.random() - 0.5) * 0.04,
       model: def.model,
       kind: def.kind,
       cool: !!def.cool,
+      sprite: def.sprite || '',
       rear,
       color,
       trim: shade(color, -38),
@@ -9529,11 +9547,11 @@
     const flame = plume ? lookRgb('plume') : [90, 190, 255];
     const flameHot = mixTowardWhite(flame, 0.78);
     const flameMid = mixTowardWhite(flame, 0.28);
-    for (let i = 0; i < PLAYER_CAR_TIPS.length; i++) {
-      const tip = PLAYER_CAR_TIPS[i];
-      const tx = -drawW / 2 + tip.fx * drawW;
-      const ty = -drawH + 2 * s + tip.fy * drawH;
-      const spread = i === 0 ? -1 : 1;
+    const tips = wrxReady() ? WRX_TIPS : PLAYER_CAR_TIPS;
+    for (let i = 0; i < tips.length; i++) {
+      const tip = tips[i];
+      const [tx, ty] = spritePoint(drawW, drawH, s, tip.fx, tip.fy);
+      const spread = tip.spread != null ? tip.spread : (i === 0 ? -1 : 1);
       const flicker = 0.88 + Math.sin(t * 42 + i * 5.1) * 0.08 + Math.sin(t * 90 + i) * 0.04;
       const reach = plume ? 52 : 38;
       const len = (3 + intensity * reach) * s * flicker;
@@ -9606,7 +9624,7 @@
   function drawPlayerGlow(drawW, drawH, s) {
     const rgb = lookRgb('glow');
     const t = performance.now() / 1000;
-    const y0 = -drawH + 2 * s + drawH * 0.97;
+    const [, y0] = spritePoint(drawW, drawH, s, 0.5, 0.97);
     const reach = Math.max(16 * s, drawH * 0.18);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -9630,7 +9648,7 @@
     const rgb = lookRgb('glow');
     const hot = mixTowardWhite(rgb, 0.78);
     const t = performance.now() / 1000;
-    const y = -drawH + 2 * s + drawH * 0.965;
+    const [, y] = spritePoint(drawW, drawH, s, 0.5, 0.965);
     const rails = [
       { x0: -drawW * 0.42, x1: -drawW * 0.1 },
       { x0: drawW * 0.1, x1: drawW * 0.42 }
@@ -9669,14 +9687,19 @@
     ctx.restore();
   }
 
+  function wrxReady() {
+    return WRX_FAR_IMG.complete && WRX_FAR_IMG.naturalWidth > 0;
+  }
+
   function spritePoint(drawW, drawH, s, fx, fy) {
-    return [-drawW / 2 + fx * drawW, -drawH + 2 * s + fy * drawH];
+    const top = wrxReady() ? -drawH * WRX_GROUND : -drawH + 2 * s;
+    return [-drawW / 2 + fx * drawW, top + fy * drawH];
   }
 
   function drawPlayerPlate(drawW, drawH, s) {
     const pw = drawW * 0.18;
     const ph = Math.max(7 * s, drawH * 0.05);
-    const [, y] = spritePoint(drawW, drawH, s, 0.5, 0.7);
+    const [, y] = spritePoint(drawW, drawH, s, 0.5, wrxReady() ? 0.845 : 0.7);
     const plateY = y - ph / 2;
     const rgb = lookRgb('plate');
     const ink = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) < 150 ? '#f7ead0' : '#1a1307';
@@ -9701,10 +9724,9 @@
     const pulse = 0.88 + Math.sin(performance.now() * 0.009) * 0.12;
     const rgb = lookRgb('taillights');
     const hot = mixTowardWhite(rgb, 0.72);
-    const lamps = [
-      { fx: 0.145, fy: 0.56 },
-      { fx: 0.855, fy: 0.56 }
-    ];
+    const lamps = wrxReady()
+      ? [{ fx: 0.2, fy: 0.58 }, { fx: 0.8, fy: 0.58 }]
+      : [{ fx: 0.145, fy: 0.56 }, { fx: 0.855, fy: 0.56 }];
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < lamps.length; i++) {
@@ -9742,7 +9764,7 @@
   }
 
   function drawPlayerRoofRack(drawW, drawH, s) {
-    const [, ry] = spritePoint(drawW, drawH, s, 0.5, 0.135);
+    const [, ry] = spritePoint(drawW, drawH, s, 0.5, wrxReady() ? 0.2 : 0.135);
     const rw = drawW * 0.46;
     const pipeH = Math.max(1.8, 2.2 * s);
     ctx.save();
@@ -9917,15 +9939,19 @@
     return sheet;
   }
 
-  // Player car — copper X5 sprite with chase-cam lean / suspension.
+  // Player car — the photo WRX. The chase cam closes in as you slow down,
+  // and the sprite blends toward the nearer photo so the wing grows.
   function drawPlayerCar(x, y, scale, opts = {}) {
     const yaw = opts.yaw || 0;
     const pitch = opts.pitch || 0;
     const roll = opts.roll || 0;
     const s = Math.max(0.12, scale);
-    const drawW = PLAYER_CAR_BASE_W * s;
-    const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
-    const ready = PLAYER_CAR_IMG.complete && PLAYER_CAR_IMG.naturalWidth > 0;
+    const ride = wrxReady();
+    const drawW = (ride ? WRX_BASE_W : PLAYER_CAR_BASE_W) * s;
+    const drawH = ride
+      ? drawW * (WRX_FAR_IMG.naturalHeight / WRX_FAR_IMG.naturalWidth)
+      : drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
+    const ready = ride || (PLAYER_CAR_IMG.complete && PLAYER_CAR_IMG.naturalWidth > 0);
     const flames = Math.max(0, Math.min(1, opts.flames || 0));
 
     if (!ready) {
@@ -9959,19 +9985,39 @@
 
     ctx.fillStyle = 'rgba(0,0,0,0.34)';
     ctx.beginPath();
-    ctx.ellipse(0, 3 * s, drawW * 0.44, drawH * 0.09, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 3 * s, drawW * (ride ? 0.34 : 0.44), drawH * (ride ? 0.065 : 0.09), 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.imageSmoothingEnabled = false;
-    const sheet = carPaintOn() ? panelSheet() : null;
-    if (sheet) {
-      ctx.drawImage(sheet, -drawW / 2, -drawH + 2 * s, drawW, drawH);
+    if (ride) {
+      const nearReady = WRX_NEAR_IMG.complete && WRX_NEAR_IMG.naturalWidth > 0;
+      // Cruise cam sits back (scale ~1.3). Slowing down pulls it in past ~2.2.
+      const tRaw = (s - 1.22) / (2.2 - 1.22);
+      const tClamp = Math.max(0, Math.min(1, tRaw));
+      const t = nearReady ? tClamp * tClamp * (3 - 2 * tClamp) : 0;
+      const baseAlpha = ctx.globalAlpha;
+      ctx.imageSmoothingEnabled = true;
+      const top = -drawH * WRX_GROUND;
+      if (t < 1) {
+        ctx.globalAlpha = baseAlpha * (1 - t);
+        ctx.drawImage(WRX_FAR_IMG, -drawW / 2, top, drawW, drawH);
+      }
+      if (t > 0) {
+        ctx.globalAlpha = baseAlpha * t;
+        ctx.drawImage(WRX_NEAR_IMG, -drawW / 2, top, drawW, drawH);
+      }
+      ctx.globalAlpha = baseAlpha;
     } else {
-      ctx.drawImage(
-        PLAYER_CAR_IMG,
-        PLAYER_CAR_SRC.x, PLAYER_CAR_SRC.y, PLAYER_CAR_SRC.w, PLAYER_CAR_SRC.h,
-        -drawW / 2, -drawH + 2 * s, drawW, drawH
-      );
+      ctx.imageSmoothingEnabled = false;
+      const sheet = carPaintOn() ? panelSheet() : null;
+      if (sheet) {
+        ctx.drawImage(sheet, -drawW / 2, -drawH + 2 * s, drawW, drawH);
+      } else {
+        ctx.drawImage(
+          PLAYER_CAR_IMG,
+          PLAYER_CAR_SRC.x, PLAYER_CAR_SRC.y, PLAYER_CAR_SRC.w, PLAYER_CAR_SRC.h,
+          -drawW / 2, -drawH + 2 * s, drawW, drawH
+        );
+      }
     }
     drawPlayerLookExtras(drawW, drawH, s, yaw + roll);
     if (flames > 0) drawPlayerExhaustFlames(drawW, drawH, s, flames);
@@ -9998,17 +10044,20 @@
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const ground = projectWorld(d.playerX, 0, carZ, d);
     const s = playerCarScale(ground);
-    const drawW = PLAYER_CAR_BASE_W * s;
-    const drawH = drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
+    const ride = wrxReady();
+    const drawW = (ride ? WRX_BASE_W : PLAYER_CAR_BASE_W) * s;
+    const drawH = ride
+      ? drawW * (WRX_FAR_IMG.naturalHeight / WRX_FAR_IMG.naturalWidth)
+      : drawW * (PLAYER_CAR_SRC.h / PLAYER_CAR_SRC.w);
     const ang = (d.yaw || 0) * 0.38 + (d.roll || 0);
     const cos = Math.cos(ang);
     const sin = Math.sin(ang);
     const ox = ground.x;
     const oy = ground.y + bob;
-    return PLAYER_CAR_TIPS.map((tip, i) => {
-      const lx = -drawW / 2 + tip.fx * drawW;
-      const ly = -drawH + 2 * s + tip.fy * drawH;
-      const spread = i === 0 ? -1 : 1;
+    const tips = ride ? WRX_TIPS : PLAYER_CAR_TIPS;
+    return tips.map((tip, i) => {
+      const [lx, ly] = spritePoint(drawW, drawH, s, tip.fx, tip.fy);
+      const spread = tip.spread != null ? tip.spread : (i === 0 ? -1 : 1);
       return {
         x: ox + lx * cos - ly * sin,
         y: oy + lx * sin + ly * cos,
@@ -10099,6 +10148,46 @@
       -drawW / 2, -drawH + 2 * s, drawW, drawH
     );
     drawCopLightBar(drawW, drawH, s, opts.alert || 'low');
+    ctx.restore();
+  }
+
+  // Photo WRX. Far and near plates share a bumper anchor, so the wing
+  // grows as the car fills the frame instead of only scaling one picture.
+  function drawWrxCar(x, y, scale, opts = {}) {
+    const yaw = opts.yaw || 0;
+    const pitch = opts.pitch || 0;
+    const roll = opts.roll || 0;
+    const farReady = WRX_FAR_IMG.complete && WRX_FAR_IMG.naturalWidth > 0;
+    const nearReady = WRX_NEAR_IMG.complete && WRX_NEAR_IMG.naturalWidth > 0;
+    if (opts.smashed || !farReady) {
+      drawLowPolyCar(x, y, Math.min(scale, 1.35), 'sports', opts);
+      return;
+    }
+    const s = Math.max(0.12, scale);
+    const drawW = WRX_BASE_W * s;
+    const drawH = drawW * (WRX_FAR_IMG.naturalHeight / WRX_FAR_IMG.naturalWidth);
+    const tRaw = (s - 0.35) / (1.15 - 0.35);
+    const tClamp = Math.max(0, Math.min(1, tRaw));
+    const t = nearReady ? tClamp * tClamp * (3 - 2 * tClamp) : 0;
+    const baseAlpha = ctx.globalAlpha;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(roll + yaw * 0.38);
+    ctx.transform(1, pitch * 0.12, 0, 1, 0, 0);
+    ctx.fillStyle = 'rgba(0,0,0,0.34)';
+    ctx.beginPath();
+    ctx.ellipse(0, 3 * s, drawW * 0.34, drawH * 0.065, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.imageSmoothingEnabled = true;
+    const top = -drawH * WRX_GROUND;
+    if (t < 1) {
+      ctx.globalAlpha = baseAlpha * (1 - t);
+      ctx.drawImage(WRX_FAR_IMG, -drawW / 2, top, drawW, drawH);
+    }
+    if (t > 0) {
+      ctx.globalAlpha = baseAlpha * t;
+      ctx.drawImage(WRX_NEAR_IMG, -drawW / 2, top, drawW, drawH);
+    }
     ctx.restore();
   }
 
@@ -13658,12 +13747,15 @@
       };
       if (car.kind === 'police') {
         drawPoliceCar(p.x, p.y + (car.bob || 0) * p.scale, policeCarScale(p), { ...carOpts, alert: 'low' });
+      } else if (car.sprite === 'wrx') {
+        const wrxScale = Math.min(3.2, Math.max(0.12, p.scale * 0.52));
+        drawWrxCar(p.x, p.y + (car.bob || 0) * p.scale, wrxScale, carOpts);
       } else {
         const carScale = Math.min(1.35, p.scale * 0.55);
         drawLowPolyCar(p.x, p.y + (car.bob || 0) * p.scale, carScale, car.kind, carOpts);
       }
-      // Taillight glow on live cars ahead
-      if (!car.smashed && car.z > d.z + 40) {
+      // Taillight glow on live cars ahead. The photo WRX already has lamps.
+      if (!car.smashed && car.sprite !== 'wrx' && car.z > d.z + 40) {
         const gw = 18 * p.scale;
         for (const tx of [-11, 11]) {
           const gx = p.x + tx * p.scale;
@@ -13682,7 +13774,7 @@
     // Chase cruiser ahead of the player draws first (farther from camera)
     if (d.chaser && d.chaser.z >= d.z + 14) drawChaserCar(d);
 
-    // Player car — copper X5 on the road plane with suspension compression
+    // Player car — photo WRX on the road plane with suspension compression
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const carZ = d.z + 14;
     const ground = projectWorld(d.playerX, 0, carZ, d);
