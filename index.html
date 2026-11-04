@@ -344,6 +344,91 @@
       border-color: rgba(255,210,200,.28);
     }
     .overlay-card .btn[hidden] { display: none; }
+    .overlay.is-bay {
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 58px 14px 12px;
+      background: rgba(7, 16, 13, 0.28);
+    }
+    .overlay.is-bay .overlay-card {
+      display: flex;
+      flex-direction: column;
+      width: min(100%, 320px);
+      max-height: 100%;
+      overflow: hidden;
+    }
+    .overlay.is-bay .look-bay {
+      overflow: auto;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
+    @media (max-width: 720px) {
+      .overlay.is-bay {
+        justify-content: center;
+        padding: 96px 10px 10px;
+      }
+      .overlay.is-bay .overlay-card {
+        width: min(100%, 420px);
+        max-height: 52%;
+      }
+    }
+    .look-bay {
+      margin: 0 0 var(--space-4);
+      text-align: left;
+    }
+    .look-bay[hidden] { display: none; }
+    .look-bay-title {
+      margin: 0 0 2px;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #d7c9aa;
+      text-align: center;
+    }
+    .look-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 8px;
+      align-items: center;
+      padding: 8px 0 6px;
+      border-top: 1px solid rgba(238, 194, 97, 0.16);
+    }
+    .look-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f7ead0;
+    }
+    .look-off {
+      min-height: 28px;
+      padding: 2px 8px;
+      border-radius: 3px;
+      border: 1px solid rgba(255, 238, 198, 0.22);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f7ead0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .look-swatches {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .look-swatch {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.28);
+      background: var(--swatch);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+    }
+    .look-swatch.is-on {
+      border-color: #f7ead0;
+      box-shadow: 0 0 0 2px rgba(247, 234, 208, 0.35);
+    }
     .controls {
       position: absolute;
       left: 0; right: 0; bottom: 0;
@@ -1273,6 +1358,10 @@
                 <p class="run-purse-today" id="runPurseToday" hidden></p>
               </div>
               <div class="double-coins double-coins--card" id="doubleCoinsCard" hidden aria-hidden="true"></div>
+              <div class="look-bay" id="lookBay" hidden>
+                <p class="look-bay-title">Your car</p>
+                <div id="lookBayList"></div>
+              </div>
               <div class="control-row">
                 <button class="btn" id="overlayReviveBtn" type="button" hidden>Revive</button>
                 <button class="btn" id="overlayDoubleBtn" type="button" hidden>Double</button>
@@ -2118,6 +2207,7 @@
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
   const liteFx = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   ctx.imageSmoothingEnabled = !liteFx;
   // Player ride — pixel copper/patina BMW X5 (transparent cutout)
   const PLAYER_CAR_IMG = new Image();
@@ -2148,6 +2238,8 @@
   const doubleCoinsHud = document.getElementById('doubleCoinsHud');
   const doubleCoinsCard = document.getElementById('doubleCoinsCard');
   const overlayPaintBtn = document.getElementById('overlayPaintBtn');
+  const lookBay = document.getElementById('lookBay');
+  const lookBayList = document.getElementById('lookBayList');
   const startBtn = document.getElementById('startBtn');
   const pauseBtn = document.getElementById('pauseBtn');
   const replayBtn = document.getElementById('replayBtn');
@@ -3581,7 +3673,7 @@
   const DOUBLES_MAX = 3;
   const CAR_LOOKS = [
     { id: 'paint', label: 'Unlock paint', line: 'Copper paint is on the car.' },
-    { id: 'glow', label: 'Unlock underglow', line: 'Green underglow is on the car.' },
+    { id: 'glow', label: 'Unlock underglow', line: 'Underglow is on the car.' },
     { id: 'plume', label: 'Unlock exhaust', line: 'Both tailpipes stay lit — soot when you gas it, blue fire past 70.' },
     { id: 'plate', label: 'Unlock the plate', line: 'A lit plate is on the back.' },
     { id: 'taillights', label: 'Unlock tail glow', line: 'The rear lamps burn red through the dark.' },
@@ -3590,19 +3682,94 @@
     { id: 'hitch', label: 'Unlock tow chain', line: 'A copper chain swings under the bumper.' }
   ];
   const ownedLooks = new Set();
+  const equippedLooks = new Set();
+  const lookColors = {};
+  const EQUIP_KEY = 'c4c-car-equipped';
+  const LOOK_COLOR_KEY = 'c4c-look-colors';
+  const LOOK_SHORT = {
+    paint: 'Paint',
+    glow: 'Underglow',
+    plume: 'Exhaust',
+    plate: 'Plate',
+    taillights: 'Tail lamps',
+    beacon: 'Roof strobe',
+    rack: 'Roof copper',
+    hitch: 'Tow chain'
+  };
+  const LOOK_SWATCHES = [
+    { name: 'copper', hex: '#d47832' },
+    { name: 'gold', hex: '#f0c56a' },
+    { name: 'red', hex: '#e23b32' },
+    { name: 'ivory', hex: '#f4f0e6' },
+    { name: 'green', hex: '#2ee59a' },
+    { name: 'blue', hex: '#4aa3ff' },
+    { name: 'violet', hex: '#9b6bff' },
+    { name: 'pink', hex: '#ff6b9a' }
+  ];
+  const LOOK_DEFAULT_COLOR = {
+    paint: '#d47832',
+    glow: '#2ee59a',
+    plume: '#4aa3ff',
+    plate: '#f4f0e6',
+    taillights: '#e23b32',
+    beacon: '#f0c56a',
+    rack: '#d47832',
+    hitch: '#d47832'
+  };
   let offeredLook = null;
   try {
     const saved = JSON.parse(localStorage.getItem(LOOKS_KEY) || '[]');
     if (Array.isArray(saved)) saved.forEach((id) => ownedLooks.add(id));
     ownedLooks.delete('rims');
     if (localStorage.getItem(PAINT_KEY) === '1') ownedLooks.add('paint');
+    const rawEquip = localStorage.getItem(EQUIP_KEY);
+    if (rawEquip == null) ownedLooks.forEach((id) => equippedLooks.add(id));
+    else {
+      const savedEquip = JSON.parse(rawEquip);
+      if (Array.isArray(savedEquip)) {
+        savedEquip.forEach((id) => {
+          if (ownedLooks.has(id)) equippedLooks.add(id);
+        });
+      }
+    }
+    const savedColors = JSON.parse(localStorage.getItem(LOOK_COLOR_KEY) || '{}');
+    if (savedColors && typeof savedColors === 'object') {
+      for (const look of CAR_LOOKS) {
+        const hex = savedColors[look.id];
+        if (typeof hex === 'string' && /^#[0-9a-fA-F]{6}$/.test(hex)) lookColors[look.id] = hex.toLowerCase();
+      }
+    }
   } catch (_) { /* private mode */ }
-  function lookOn(id) { return ownedLooks.has(id); }
+  function lookOn(id) { return ownedLooks.has(id) && equippedLooks.has(id); }
+  function lookHex(id) {
+    return (lookColors[id] || LOOK_DEFAULT_COLOR[id] || '#f4f0e6').toLowerCase();
+  }
+  function hexToRgb(hex) {
+    const n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function lookRgb(id) { return hexToRgb(lookHex(id)); }
+  function mixTowardWhite(rgb, t) {
+    return [
+      Math.round(rgb[0] + (255 - rgb[0]) * t),
+      Math.round(rgb[1] + (255 - rgb[1]) * t),
+      Math.round(rgb[2] + (255 - rgb[2]) * t)
+    ];
+  }
+  function rgbCss(rgb, a) {
+    return `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+  }
   function saveLooks() {
-    try { localStorage.setItem(LOOKS_KEY, JSON.stringify([...ownedLooks])); } catch (_) { /* private mode */ }
+    try {
+      localStorage.setItem(LOOKS_KEY, JSON.stringify([...ownedLooks]));
+      localStorage.setItem(EQUIP_KEY, JSON.stringify([...equippedLooks]));
+    } catch (_) { /* private mode */ }
     if (ownedLooks.has('paint')) {
       try { localStorage.setItem(PAINT_KEY, '1'); } catch (_) { /* private mode */ }
     }
+  }
+  function saveLookColors() {
+    try { localStorage.setItem(LOOK_COLOR_KEY, JSON.stringify(lookColors)); } catch (_) { /* private mode */ }
   }
   function pickRandomLook() {
     const pool = CAR_LOOKS.filter((look) => !ownedLooks.has(look.id));
@@ -5126,6 +5293,66 @@
     if (doubleCoinsCard) doubleCoinsCard.hidden = true;
   }
 
+  function hideLookBay() {
+    if (lookBay) lookBay.hidden = true;
+    overlay?.classList.remove('is-bay');
+  }
+
+  function mountLookBay() {
+    if (!lookBay || !lookBayList) return;
+    const owned = CAR_LOOKS.filter((look) => ownedLooks.has(look.id));
+    if (!owned.length || state.mode !== 'gas') {
+      hideLookBay();
+      return;
+    }
+    lookBay.hidden = false;
+    overlay?.classList.add('is-bay');
+    lookBayList.replaceChildren(...owned.map((look) => {
+      const row = document.createElement('div');
+      row.className = 'look-row';
+      const on = equippedLooks.has(look.id);
+      const name = document.createElement('span');
+      name.className = 'look-name';
+      name.textContent = LOOK_SHORT[look.id] || look.id;
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'look-off';
+      toggle.textContent = on ? 'Take off' : 'Put on';
+      toggle.setAttribute('aria-label', on ? `Take off ${name.textContent}` : `Put on ${name.textContent}`);
+      toggle.addEventListener('click', () => {
+        if (equippedLooks.has(look.id)) equippedLooks.delete(look.id);
+        else equippedLooks.add(look.id);
+        saveLooks();
+        mountLookBay();
+      });
+      const swatches = document.createElement('div');
+      swatches.className = 'look-swatches';
+      swatches.setAttribute('role', 'group');
+      swatches.setAttribute('aria-label', `${name.textContent} color`);
+      const current = lookHex(look.id);
+      for (const swatch of LOOK_SWATCHES) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'look-swatch' + (swatch.hex === current ? ' is-on' : '');
+        btn.style.setProperty('--swatch', swatch.hex);
+        btn.setAttribute('aria-label', `${name.textContent} ${swatch.name}`);
+        btn.setAttribute('aria-pressed', swatch.hex === current ? 'true' : 'false');
+        btn.addEventListener('click', () => {
+          lookColors[look.id] = swatch.hex;
+          if (look.id === 'paint') {
+            paintSheet = null;
+            paintSheetKey = '';
+          }
+          saveLookColors();
+          mountLookBay();
+        });
+        swatches.appendChild(btn);
+      }
+      row.append(name, toggle, swatches);
+      return row;
+    }));
+  }
+
   function hideRunPurse() {
     if (runPurse) runPurse.hidden = true;
     if (runPurseToday) runPurseToday.hidden = true;
@@ -5135,6 +5362,7 @@
       overlayShareBtn.textContent = 'Share';
     }
     hideRewardButtons();
+    hideLookBay();
   }
 
   function todayStamp() {
@@ -5247,6 +5475,7 @@
       overlayReviveBtn.disabled = false;
     }
     if (state.phase === 'drive') offerNextLook();
+    if (state.mode === 'gas') mountLookBay();
   }
 
   function doublesLeft() {
@@ -5370,9 +5599,11 @@
       return;
     }
     ownedLooks.add(look.id);
+    equippedLooks.add(look.id);
     offeredLook = null;
     saveLooks();
     if (overlayPaintBtn) overlayPaintBtn.hidden = true;
+    if (state.mode === 'gas') mountLookBay();
     if (overlayText) {
       overlayText.hidden = false;
       overlayText.textContent = look.line;
@@ -9125,6 +9356,9 @@
     const t = performance.now() / 1000;
     const plume = lookOn('plume');
     const hot = intensity > 0.45;
+    const flame = plume ? lookRgb('plume') : [90, 190, 255];
+    const flameHot = mixTowardWhite(flame, 0.78);
+    const flameMid = mixTowardWhite(flame, 0.28);
     for (let i = 0; i < PLAYER_CAR_TIPS.length; i++) {
       const tip = PLAYER_CAR_TIPS[i];
       const tx = -drawW / 2 + tip.fx * drawW;
@@ -9149,9 +9383,9 @@
       ctx.fill();
       if (!hot && plume) {
         const cherry = ctx.createRadialGradient(0, 0, 0, 0, 0, pipeR * 1.4);
-        cherry.addColorStop(0, `rgba(255, 120, 40, ${0.35 + intensity * 0.4})`);
-        cherry.addColorStop(0.55, `rgba(255, 70, 20, ${0.12 + intensity * 0.15})`);
-        cherry.addColorStop(1, 'rgba(255, 40, 10, 0)');
+        cherry.addColorStop(0, rgbCss(flameHot, 0.35 + intensity * 0.4));
+        cherry.addColorStop(0.55, rgbCss(flame, 0.12 + intensity * 0.15));
+        cherry.addColorStop(1, rgbCss(flame, 0));
         ctx.fillStyle = cherry;
         ctx.beginPath();
         ctx.ellipse(0, 0, pipeR * 1.1, pipeR * 0.8, 0, 0, Math.PI * 2);
@@ -9159,9 +9393,9 @@
       }
       ctx.globalCompositeOperation = 'lighter';
       const halo = ctx.createLinearGradient(0, 0, 0, len);
-      halo.addColorStop(0, `rgba(100,190,255,${0.38 * Math.min(1, intensity + 0.15)})`);
-      halo.addColorStop(0.5, `rgba(40,120,255,${0.2 * intensity})`);
-      halo.addColorStop(1, 'rgba(20,60,200,0)');
+      halo.addColorStop(0, rgbCss(flameMid, 0.38 * Math.min(1, intensity + 0.15)));
+      halo.addColorStop(0.5, rgbCss(flame, 0.2 * intensity));
+      halo.addColorStop(1, rgbCss(flame, 0));
       ctx.fillStyle = halo;
       ctx.beginPath();
       ctx.moveTo(-tipW * 1.5, 0);
@@ -9171,10 +9405,10 @@
       ctx.closePath();
       ctx.fill();
       const g = ctx.createLinearGradient(0, 0, 0, len);
-      g.addColorStop(0, `rgba(220,245,255,${hot ? 0.98 : 0.55 + intensity * 0.35})`);
-      g.addColorStop(0.15, `rgba(120,210,255,${hot ? 0.92 : 0.35 + intensity * 0.45})`);
-      g.addColorStop(0.65, `rgba(50,140,255,${0.5 * intensity})`);
-      g.addColorStop(1, 'rgba(30,80,220,0)');
+      g.addColorStop(0, rgbCss(flameHot, hot ? 0.98 : 0.55 + intensity * 0.35));
+      g.addColorStop(0.15, rgbCss(flameMid, hot ? 0.92 : 0.35 + intensity * 0.45));
+      g.addColorStop(0.65, rgbCss(flame, 0.5 * intensity));
+      g.addColorStop(1, rgbCss(flame, 0));
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(-tipW * 0.48, 0);
@@ -9200,17 +9434,68 @@
   }
 
   function drawPlayerGlow(drawW, drawH, s) {
-    const pulse = 0.78 + Math.sin(performance.now() / 160) * 0.22;
+    const rgb = lookRgb('glow');
+    const t = performance.now() / 1000;
+    const y0 = -drawH + 2 * s + drawH * 0.97;
+    const reach = Math.max(16 * s, drawH * 0.18);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createRadialGradient(0, 6 * s, drawW * 0.04, 0, 8 * s, drawW * 0.7);
-    g.addColorStop(0, `rgba(190, 255, 220, ${0.85 * pulse})`);
-    g.addColorStop(0.4, `rgba(40, 220, 130, ${0.35 * pulse})`);
-    g.addColorStop(1, 'rgba(20, 120, 70, 0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(0, 8 * s, drawW * 0.78, Math.max(7 * s, drawH * 0.1), 0, 0, Math.PI * 2);
-    ctx.fill();
+    const rails = [-0.34, -0.16, 0.16, 0.34];
+    for (let i = 0; i < rails.length; i++) {
+      const x = drawW * rails[i];
+      const flick = reduceMotion ? 1 : (0.82 + Math.sin(t * 11 + i * 1.7) * 0.12);
+      const streak = ctx.createLinearGradient(x, y0 - 2 * s, x, y0 + reach);
+      streak.addColorStop(0, rgbCss(rgb, 0.42 * flick));
+      streak.addColorStop(0.35, rgbCss(rgb, 0.16 * flick));
+      streak.addColorStop(1, rgbCss(rgb, 0));
+      ctx.fillStyle = streak;
+      ctx.beginPath();
+      ctx.ellipse(x, y0 + reach * 0.4, Math.max(6 * s, drawW * 0.1), reach * 0.48, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawPlayerGlowTubes(drawW, drawH, s) {
+    const rgb = lookRgb('glow');
+    const hot = mixTowardWhite(rgb, 0.78);
+    const t = performance.now() / 1000;
+    const y = -drawH + 2 * s + drawH * 0.965;
+    const rails = [
+      { x0: -drawW * 0.42, x1: -drawW * 0.1 },
+      { x0: drawW * 0.1, x1: drawW * 0.42 }
+    ];
+    const bulbs = 5;
+    ctx.save();
+    for (let n = 0; n < rails.length; n++) {
+      const rail = rails[n];
+      const len = rail.x1 - rail.x0;
+      const railH = Math.max(1.2, 1.5 * s);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#050608';
+      ctx.fillRect(rail.x0, y - railH * 0.2, len, railH);
+      for (let i = 0; i < bulbs; i++) {
+        const flick = reduceMotion ? 1 : (0.62 + Math.sin(t * 14 + i * 1.6 + n * 3) * 0.38);
+        const x = rail.x0 + ((i + 0.5) / bulbs) * len;
+        const core = Math.max(1.15, 1.35 * s);
+        ctx.globalCompositeOperation = 'lighter';
+        const halo = ctx.createRadialGradient(x, y, 0.3, x, y + core, core * 3.1);
+        halo.addColorStop(0, rgbCss(hot, 0.95 * flick));
+        halo.addColorStop(0.35, rgbCss(rgb, 0.45 * flick));
+        halo.addColorStop(1, rgbCss(rgb, 0));
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(x, y + core * 0.2, core * 2.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = `rgb(${hot[0]},${hot[1]},${hot[2]})`;
+        ctx.globalAlpha = 0.55 + flick * 0.45;
+        ctx.beginPath();
+        ctx.arc(x, y, core, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
     ctx.restore();
   }
 
@@ -9223,17 +9508,19 @@
     const ph = Math.max(7 * s, drawH * 0.05);
     const [, y] = spritePoint(drawW, drawH, s, 0.5, 0.7);
     const plateY = y - ph / 2;
+    const rgb = lookRgb('plate');
+    const ink = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) < 150 ? '#f7ead0' : '#1a1307';
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = 'rgba(255, 214, 120, 0.4)';
+    ctx.fillStyle = rgbCss(rgb, 0.45);
     ctx.fillRect(-pw * 0.55, plateY - ph * 0.2, pw * 1.1, ph * 1.35);
     ctx.restore();
-    ctx.fillStyle = '#f6f1e4';
+    ctx.fillStyle = lookHex('plate');
     ctx.fillRect(-pw / 2, plateY, pw, ph);
     ctx.strokeStyle = '#1a1307';
     ctx.lineWidth = Math.max(1, s);
     ctx.strokeRect(-pw / 2, plateY, pw, ph);
-    ctx.fillStyle = '#1a1307';
+    ctx.fillStyle = ink;
     ctx.font = `700 ${Math.max(9, ph * 0.62)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -9242,6 +9529,8 @@
 
   function drawPlayerTaillights(drawW, drawH, s) {
     const pulse = 0.88 + Math.sin(performance.now() * 0.009) * 0.12;
+    const rgb = lookRgb('taillights');
+    const hot = mixTowardWhite(rgb, 0.72);
     const lamps = [
       { fx: 0.145, fy: 0.56 },
       { fx: 0.855, fy: 0.56 }
@@ -9252,18 +9541,18 @@
       const [lx, ly] = spritePoint(drawW, drawH, s, lamps[i].fx, lamps[i].fy);
       const r = drawW * 0.22;
       const g = ctx.createRadialGradient(lx, ly, 1, lx, ly, r);
-      g.addColorStop(0, `rgba(255, 220, 210, ${0.92 * pulse})`);
-      g.addColorStop(0.28, `rgba(255, 55, 38, ${0.72 * pulse})`);
-      g.addColorStop(0.62, `rgba(220, 24, 18, ${0.28 * pulse})`);
-      g.addColorStop(1, 'rgba(180, 10, 10, 0)');
+      g.addColorStop(0, rgbCss(hot, 0.92 * pulse));
+      g.addColorStop(0.28, rgbCss(rgb, 0.72 * pulse));
+      g.addColorStop(0.62, rgbCss(rgb, 0.28 * pulse));
+      g.addColorStop(1, rgbCss(rgb, 0));
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.ellipse(lx, ly, r * 0.95, r * 0.62, 0, 0, Math.PI * 2);
       ctx.fill();
       const [rx, ry] = spritePoint(drawW, drawH, s, lamps[i].fx, 0.96);
       const spill = ctx.createRadialGradient(rx, ry, 1, rx, ry + 8 * s, drawW * 0.26);
-      spill.addColorStop(0, `rgba(255, 45, 30, ${0.32 * pulse})`);
-      spill.addColorStop(1, 'rgba(200, 20, 15, 0)');
+      spill.addColorStop(0, rgbCss(rgb, 0.32 * pulse));
+      spill.addColorStop(1, rgbCss(rgb, 0));
       ctx.fillStyle = spill;
       ctx.beginPath();
       ctx.ellipse(rx, ry + 4 * s, drawW * 0.24, Math.max(4 * s, drawH * 0.07), 0, 0, Math.PI * 2);
@@ -9273,58 +9562,12 @@
     const barW = drawW * 0.24;
     const barH = Math.max(1.6, 2.2 * s);
     const bg = ctx.createRadialGradient(bx, by, 1, bx, by, barW * 0.9);
-    bg.addColorStop(0, `rgba(255, 80, 60, ${0.65 * pulse})`);
-    bg.addColorStop(1, 'rgba(220, 20, 15, 0)');
+    bg.addColorStop(0, rgbCss(rgb, 0.65 * pulse));
+    bg.addColorStop(1, rgbCss(rgb, 0));
     ctx.fillStyle = bg;
     ctx.fillRect(bx - barW * 0.85, by - barH * 2.2, barW * 1.7, barH * 4.4);
-    ctx.fillStyle = `rgba(255, 210, 200, ${0.88 * pulse})`;
+    ctx.fillStyle = rgbCss(hot, 0.88 * pulse);
     ctx.fillRect(bx - barW * 0.5, by - barH * 0.45, barW, barH * 0.9);
-    ctx.restore();
-  }
-
-  function drawPlayerBeacon(drawW, drawH, s) {
-    const t = performance.now();
-    const sweep = (t * 0.009) % (Math.PI * 2);
-    const flash = Math.pow(Math.max(0, Math.cos(sweep)), 3);
-    const [bx, by] = spritePoint(drawW, drawH, s, 0.5, 0.085);
-    const bw = Math.max(4, drawW * 0.11);
-    const bh = Math.max(2.5, drawH * 0.032);
-    ctx.save();
-    ctx.fillStyle = '#1b1814';
-    ctx.fillRect(bx - bw * 0.58, by, bw * 1.16, bh * 0.45);
-    const dome = ctx.createLinearGradient(bx, by - bh, bx, by);
-    dome.addColorStop(0, flash > 0.35 ? '#fff0b8' : '#e08a18');
-    dome.addColorStop(1, '#7a3e06');
-    ctx.fillStyle = dome;
-    ctx.beginPath();
-    ctx.ellipse(bx, by, bw * 0.5, bh * 0.85, 0, Math.PI, 0);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalCompositeOperation = 'lighter';
-    const r = drawW * (0.16 + flash * 0.28);
-    const g = ctx.createRadialGradient(bx, by - bh * 0.35, 1, bx, by - bh * 0.35, r);
-    g.addColorStop(0, `rgba(255, 245, 200, ${0.42 + flash * 0.55})`);
-    g.addColorStop(0.32, `rgba(255, 175, 40, ${0.28 + flash * 0.48})`);
-    g.addColorStop(1, 'rgba(255, 120, 10, 0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(bx, by - bh * 0.35, r, 0, Math.PI * 2);
-    ctx.fill();
-    if (flash > 0.25) {
-      const beamLen = drawW * (0.42 + flash * 0.35);
-      const dir = Math.sin(sweep) >= 0 ? 1 : -1;
-      const beam = ctx.createLinearGradient(bx, by, bx + dir * beamLen, by);
-      beam.addColorStop(0, `rgba(255, 210, 110, ${0.45 * flash})`);
-      beam.addColorStop(1, 'rgba(255, 150, 30, 0)');
-      ctx.fillStyle = beam;
-      ctx.beginPath();
-      ctx.moveTo(bx, by - bh * 0.65);
-      ctx.lineTo(bx + dir * beamLen, by - bh * 2.6);
-      ctx.lineTo(bx + dir * beamLen, by + bh * 1.4);
-      ctx.lineTo(bx, by + bh * 0.1);
-      ctx.closePath();
-      ctx.fill();
-    }
     ctx.restore();
   }
 
@@ -9335,15 +9578,18 @@
     ctx.save();
     ctx.fillStyle = '#181a1e';
     ctx.fillRect(-rw * 0.54, ry + pipeH * 0.7, rw * 1.08, Math.max(1.2, 1.4 * s));
+    const metal = lookRgb('rack');
+    const metalHi = mixTowardWhite(metal, 0.55);
+    const metalLo = metal.map((c) => Math.round(c * 0.32));
     const pipes = [-0.34, -0.18, -0.02, 0.14, 0.3];
     for (let i = 0; i < pipes.length; i++) {
       const px = pipes[i] * rw;
       const py = ry - (i % 2) * pipeH * 0.65;
       const pw = rw * 0.16;
       const grad = ctx.createLinearGradient(px - pw / 2, py - pipeH, px + pw / 2, py + pipeH);
-      grad.addColorStop(0, '#ffd29a');
-      grad.addColorStop(0.45, '#c97435');
-      grad.addColorStop(1, '#5a2d12');
+      grad.addColorStop(0, `rgb(${metalHi[0]},${metalHi[1]},${metalHi[2]})`);
+      grad.addColorStop(0.45, `rgb(${metal[0]},${metal[1]},${metal[2]})`);
+      grad.addColorStop(1, `rgb(${metalLo[0]},${metalLo[1]},${metalLo[2]})`);
       ctx.fillStyle = grad;
       ctx.fillRect(px - pw * 0.5, py - pipeH * 0.5, pw, pipeH);
       ctx.fillStyle = '#2b1608';
@@ -9352,7 +9598,7 @@
       ctx.arc(px + pw * 0.22, py, pipeH * 0.32, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.strokeStyle = '#d8a23a';
+    ctx.strokeStyle = lookHex('rack');
     ctx.lineWidth = Math.max(1, 1.15 * s);
     ctx.beginPath();
     ctx.moveTo(-rw * 0.42, ry - pipeH * 1.1);
@@ -9368,15 +9614,17 @@
     const swing = Math.sin(performance.now() * 0.008) * 1.4 * s + sway * 10 * s;
     const drop = Math.max(4 * s, drawH * 0.065);
     const span = drawW * 0.13;
+    const chain = lookRgb('hitch');
+    const chainHi = mixTowardWhite(chain, 0.35);
     ctx.save();
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#3b200c';
+    ctx.strokeStyle = `rgb(${Math.round(chain[0] * 0.28)},${Math.round(chain[1] * 0.28)},${Math.round(chain[2] * 0.28)})`;
     ctx.lineWidth = Math.max(2, 2.8 * s);
     ctx.beginPath();
     ctx.moveTo(hx - span, hy);
     ctx.quadraticCurveTo(hx + swing, hy + drop, hx + span, hy);
     ctx.stroke();
-    ctx.strokeStyle = '#e09348';
+    ctx.strokeStyle = `rgb(${chainHi[0]},${chainHi[1]},${chainHi[2]})`;
     ctx.lineWidth = Math.max(1.2, 1.7 * s);
     ctx.setLineDash([Math.max(1.8, 2.2 * s), Math.max(1.3, 1.6 * s)]);
     ctx.beginPath();
@@ -9386,7 +9634,7 @@
     ctx.setLineDash([]);
     const kx = hx + swing * 0.55;
     const ky = hy + drop * 0.58;
-    ctx.fillStyle = '#f2b866';
+    ctx.fillStyle = `rgb(${chainHi[0]},${chainHi[1]},${chainHi[2]})`;
     ctx.beginPath();
     ctx.arc(kx, ky, Math.max(1.5, 1.9 * s), 0, Math.PI * 2);
     ctx.fill();
@@ -9394,9 +9642,9 @@
   }
 
   function drawPlayerLookExtras(drawW, drawH, s, sway = 0) {
+    if (lookOn('glow')) drawPlayerGlowTubes(drawW, drawH, s);
     if (lookOn('taillights')) drawPlayerTaillights(drawW, drawH, s);
     if (lookOn('rack')) drawPlayerRoofRack(drawW, drawH, s);
-    if (lookOn('beacon')) drawPlayerBeacon(drawW, drawH, s);
     if (lookOn('plate')) drawPlayerPlate(drawW, drawH, s);
     if (lookOn('hitch')) drawPlayerTowChain(drawW, drawH, s, sway);
   }
@@ -9433,11 +9681,38 @@
 
   const PANEL_PAINT = { h: 22, s: 0.62, lift: 0.05 };
   let paintSheet = null;
+  let paintSheetKey = '';
+
+  function rgbToHsl(r, g, b) {
+    const rn = r / 255;
+    const gn = g / 255;
+    const bn = b / 255;
+    const mx = Math.max(rn, gn, bn);
+    const mn = Math.min(rn, gn, bn);
+    const l = (mx + mn) / 2;
+    if (mx === mn) return { h: 0, s: 0, l };
+    const d = mx - mn;
+    const s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    let h = 0;
+    if (mx === rn) h = (gn - bn) / d + (gn < bn ? 6 : 0);
+    else if (mx === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+    return { h: h * 60, s, l };
+  }
+
+  function paintTone() {
+    const hex = lookHex('paint');
+    if (hex === LOOK_DEFAULT_COLOR.paint) return PANEL_PAINT;
+    const [r, g, b] = hexToRgb(hex);
+    const hsl = rgbToHsl(r, g, b);
+    return { h: hsl.h, s: Math.min(0.78, Math.max(0.04, hsl.s)), lift: 0.05 };
+  }
 
   function panelSheet() {
-    if (paintSheet) return paintSheet;
+    const tone = paintTone();
+    const key = `${tone.h}|${tone.s}|${tone.lift}`;
+    if (paintSheet && paintSheetKey === key) return paintSheet;
     if (!PLAYER_CAR_IMG.complete || !PLAYER_CAR_IMG.naturalWidth) return null;
-    const tone = PANEL_PAINT;
     const sheet = document.createElement('canvas');
     sheet.width = PLAYER_CAR_SRC.w;
     sheet.height = PLAYER_CAR_SRC.h;
@@ -9461,6 +9736,7 @@
     }
     g.putImageData(img, 0, 0);
     paintSheet = sheet;
+    paintSheetKey = key;
     return sheet;
   }
 
@@ -11913,10 +12189,13 @@
         ctx.rotate(Math.atan2(p.vy, p.vx));
         ctx.globalCompositeOperation = 'lighter';
         // Expanding wedge along travel
+        const flame = lookOn('plume') ? lookRgb('plume') : [90, 190, 255];
+        const flameHot = mixTowardWhite(flame, 0.82);
+        const flameMid = mixTowardWhite(flame, 0.28);
         const g = ctx.createLinearGradient(0, 0, len, 0);
-        g.addColorStop(0, `rgba(240,250,255,${0.9 * heat})`);
-        g.addColorStop(0.4, `rgba(100,200,255,${0.65 * heat})`);
-        g.addColorStop(1, 'rgba(40,100,220,0)');
+        g.addColorStop(0, rgbCss(flameHot, 0.9 * heat));
+        g.addColorStop(0.4, rgbCss(flameMid, 0.65 * heat));
+        g.addColorStop(1, rgbCss(flame, 0));
         ctx.fillStyle = g;
         ctx.beginPath();
         ctx.moveTo(0, -tipW);
