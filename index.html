@@ -12063,12 +12063,12 @@
       const nearFade = facadeProximityFade(base, d, { minZ: 72, fadeZ: 240, minScale: 0.038 });
       if (nearFade <= 0) return;
 
-      // Near edge (zA) sits closer to the curb; far edge (zB) swings outward so the
-      // board faces toward the approaching driver.
+      // Far edge (zB) swings toward the curb; near edge (zA) tucks outward so the
+      // board's inward face angles toward oncoming traffic.
       const zA = z0 - dz;
       const zB = z0 + dz;
-      const xA = bx - pr.side * dx;
-      const xB = bx + pr.side * dx;
+      const xA = bx + pr.side * dx;
+      const xB = bx - pr.side * dx;
       const bl = projectWorld(xA, yBot, zA, d);
       const br = projectWorld(xB, yBot, zB, d);
       const tl = projectWorld(xA, yTop, zA, d);
@@ -12081,8 +12081,8 @@
       const faceSpan = Math.hypot(TR.x - TL.x, TR.y - TL.y);
       if (faceSpan < 4) return; // edge-on / too small
 
-      const postX0 = bx - pr.side * dx * 0.72;
-      const postX1 = bx + pr.side * dx * 0.72;
+      const postX0 = bx + pr.side * dx * 0.72;
+      const postX1 = bx - pr.side * dx * 0.72;
       const postL = projectWorld(postX0, 0, z0 - dz * 0.72, d);
       const postR = projectWorld(postX1, 0, z0 + dz * 0.72, d);
       const railL = projectWorld(postX0, yBot, z0 - dz * 0.72, d);
