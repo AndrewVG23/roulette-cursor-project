@@ -4558,6 +4558,18 @@
     {
       lines: ['Cheap Credit Card Debt', 'is not a problem', 'for a citizen like you.'],
       accent: 0
+    },
+    {
+      lines: ['Risk it all to Win Big.', 'Only at Casino.'],
+      accent: 0
+    },
+    {
+      lines: ['Best Doctors. Everytime.', 'Trust me, bro.'],
+      accent: 0
+    },
+    {
+      lines: ['Free Gas.', 'With purchase of a low price', '"Fuel package"'],
+      accent: 0
     }
   ];
   const BILLBOARD_TEX_W = 960;
@@ -4880,6 +4892,13 @@
       if (zi % 22 === 7) {
         const bbSide = env.onLakefront ? env.citySide : (Math.sin(routeZ * 0.07) > 0 ? 1 : -1);
         seedBillboard(routeZ, bbSide, bbPick);
+      }
+      if (zi % 22 === 15 && !env.onLakefront) {
+        seedBillboard(
+          routeZ + lot * 0.38,
+          Math.sin(routeZ * 0.11) > 0 ? -1 : 1,
+          bbPick + 1
+        );
       }
     }
     d.nextBuildZ = Math.min(toZ, len);
