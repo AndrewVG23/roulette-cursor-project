@@ -4562,7 +4562,7 @@
   ];
   const BILLBOARD_TEX_W = 960;
   const BILLBOARD_TEX_H = 540;
-  const BILLBOARD_YAW_DEG = 30; // yaw around vertical (Y) axis so face angles toward oncoming driver
+  const BILLBOARD_YAW_DEG = 52; // yaw around vertical (Y) axis so face angles toward oncoming driver
   const billboardTexCache = new Map();
 
   function getBillboardTexture(ad) {
@@ -4875,16 +4875,11 @@
         if (zi % 4 === 0) d.props.push({ z: routeZ + 40, side: Math.cos(routeZ) > 0 ? 1 : -1, kind: 'hydrant' });
         if (zi % 5 === 0) d.props.push({ z: routeZ + 16, side: -1, kind: 'bus_shelter' });
       }
-      // Debt-economy billboards — frequent along the route (both sides when inland)
-      const bbPick = ((zi / 11) | 0) + (routeZ % 5);
-      if (zi % 11 === 3) {
-        seedBillboard(routeZ, Math.sin(routeZ * 0.07) > 0 ? 1 : -1, bbPick);
-      }
-      if (!env.onLakefront && zi % 11 === 8) {
-        seedBillboard(routeZ + lot * 0.42, Math.sin(routeZ * 0.11) > 0 ? -1 : 1, bbPick + 1);
-      }
-      if (env.onLakefront && zi % 9 === 4) {
-        seedBillboard(routeZ, env.citySide, bbPick);
+      // Debt-economy billboards — spaced out along the route
+      const bbPick = ((zi / 22) | 0) + (routeZ % 5);
+      if (zi % 22 === 7) {
+        const bbSide = env.onLakefront ? env.citySide : (Math.sin(routeZ * 0.07) > 0 ? 1 : -1);
+        seedBillboard(routeZ, bbSide, bbPick);
       }
     }
     d.nextBuildZ = Math.min(toZ, len);
@@ -12050,16 +12045,14 @@
     if (pr.kind === 'billboard') {
       // Upright board yawed ~30° around the vertical (Y) axis so the face angles
       // toward oncoming traffic instead of running parallel to the curb.
-      const bx = pr.side * (DW.BUILD + 0.18);
+      const bx = pr.side * (DW.BUILD + 0.24);
       const z0 = pr.z;
       const halfW = 34;       // board half-width
       const yBot = 28;
       const yTop = 112;
       const yaw = BILLBOARD_YAW_DEG * Math.PI / 180;
       const dz = halfW * Math.cos(yaw);
-      // In projectWorld, lateral wx=1.0 is the full half-road width (~34 world Z units visually),
-      // so a 30° yaw across halfW spans sin(30°)*0.85 ≈ 0.425 in wx units.
-      const dx = Math.sin(yaw) * 0.85;
+      const dx = Math.sin(yaw) * 1.15;
       const base = projectWorld(bx, 0, z0, d);
       if (base.relZ < 72 || base.relZ > 1900) return;
       const nearFade = facadeProximityFade(base, d, { minZ: 72, fadeZ: 240, minScale: 0.038 });
