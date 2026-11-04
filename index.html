@@ -4503,9 +4503,8 @@
   ];
   const BILLBOARD_TEX_W = 960;
   const BILLBOARD_TEX_H = 540;
-  const BILLBOARD_TILT_DEG = 48; // face leans toward the road from the hinge at the posts
-  // projectWorld scales lateral wx×100 vs vertical wy×1 — convert height lean to wx units
-  const BILLBOARD_LEAN_X_PER_Y = 0.01;
+  const BILLBOARD_YAW_DEG = 30; // yaw around vertical (Y) axis so face angles toward oncoming driver
+  const BILLBOARD_WX_PER_Z = 0.01; // projectWorld scales lateral wx×100 vs forward wz×1
   const billboardTexCache = new Map();
 
   function getBillboardTexture(ad) {
@@ -11907,29 +11906,31 @@
       return;
     }
     if (pr.kind === 'billboard') {
-      // Roadside face hinged at the posts; top edge swings toward the asphalt (~30°).
-      // Copy is baked into a texture so lettering stays painted on as you drive past.
+      // Upright board yawed ~30° around the vertical (Y) axis so the face angles
+      // toward oncoming traffic instead of running parallel to the curb.
       const bx = pr.side * (DW.BUILD + 0.12);
       const z0 = pr.z;
-      const halfW = 34;       // world half-width along the road
+      const halfW = 34;       // board half-width
       const yBot = 28;
       const yTop = 112;
-      const boardH = yTop - yBot;
-      const leanX = boardH * Math.tan(BILLBOARD_TILT_DEG * Math.PI / 180) * BILLBOARD_LEAN_X_PER_Y;
-      const xTop = bx - pr.side * leanX;
+      const yaw = BILLBOARD_YAW_DEG * Math.PI / 180;
+      const dz = halfW * Math.cos(yaw);
+      const dx = halfW * Math.sin(yaw) * BILLBOARD_WX_PER_Z;
       const base = projectWorld(bx, 0, z0, d);
       if (base.relZ < 72 || base.relZ > 1900) return;
       const nearFade = facadeProximityFade(base, d, { minZ: 72, fadeZ: 240, minScale: 0.038 });
       if (nearFade <= 0) return;
 
-      // Order along the road so the near edge is always "left" in texture space
-      // when facing the board from the asphalt.
-      const zA = z0 - halfW;
-      const zB = z0 + halfW;
-      const bl = projectWorld(bx, yBot, zA, d);
-      const br = projectWorld(bx, yBot, zB, d);
-      const tl = projectWorld(xTop, yTop, zA, d);
-      const tr = projectWorld(xTop, yTop, zB, d);
+      // Near edge (zA) sits closer to the curb; far edge (zB) swings outward so the
+      // board faces toward the approaching driver.
+      const zA = z0 - dz;
+      const zB = z0 + dz;
+      const xA = bx - pr.side * dx;
+      const xB = bx + pr.side * dx;
+      const bl = projectWorld(xA, yBot, zA, d);
+      const br = projectWorld(xB, yBot, zB, d);
+      const tl = projectWorld(xA, yTop, zA, d);
+      const tr = projectWorld(xB, yTop, zB, d);
       // From the road, +side boards read mirrored — flip U by swapping ends.
       let TL = tl, TR = tr, BR = br, BL = bl;
       if (pr.side > 0) {
@@ -11938,10 +11939,12 @@
       const faceSpan = Math.hypot(TR.x - TL.x, TR.y - TL.y);
       if (faceSpan < 4) return; // edge-on / too small
 
-      const postL = projectWorld(bx, 0, z0 - halfW * 0.72, d);
-      const postR = projectWorld(bx, 0, z0 + halfW * 0.72, d);
-      const railL = projectWorld(bx, yBot, z0 - halfW * 0.72, d);
-      const railR = projectWorld(bx, yBot, z0 + halfW * 0.72, d);
+      const postX0 = bx - pr.side * dx * 0.72;
+      const postX1 = bx + pr.side * dx * 0.72;
+      const postL = projectWorld(postX0, 0, z0 - dz * 0.72, d);
+      const postR = projectWorld(postX1, 0, z0 + dz * 0.72, d);
+      const railL = projectWorld(postX0, yBot, z0 - dz * 0.72, d);
+      const railR = projectWorld(postX1, yBot, z0 + dz * 0.72, d);
       const s = base.scale;
       const tex = getBillboardTexture(pr);
 
