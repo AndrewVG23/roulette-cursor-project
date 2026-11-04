@@ -5338,11 +5338,13 @@
         btn.setAttribute('aria-pressed', swatch.hex === current ? 'true' : 'false');
         btn.addEventListener('click', () => {
           lookColors[look.id] = swatch.hex;
+          if (!equippedLooks.has(look.id)) equippedLooks.add(look.id);
           if (look.id === 'paint') {
             paintSheet = null;
             paintSheetKey = '';
           }
           saveLookColors();
+          saveLooks();
           mountLookBay();
         });
         swatches.appendChild(btn);
@@ -5816,12 +5818,33 @@
     const d = state.drive;
     d.speed = Math.max(10, d.speed * 0.55);
     saveDriveCheckpoint(d, exit.id);
+    parkForLookBay(d);
     state.mode = 'gas';
     beep(440, 0.08);
     beep(554, 0.1);
     showRunEnd('This run', 'Quik-Fill 64 is next.', 'Fill up', true);
     if (startBtn) startBtn.disabled = false;
     syncPauseBtn(true);
+  }
+
+  function parkForLookBay(d) {
+    if (!d) return;
+    d.speed = 0;
+    d.accel = 0;
+    d.velX = 0;
+    d.steer = 0;
+    d.yaw = 0;
+    d.yawVel = 0;
+    d.roll = 0;
+    d.pitch = 0;
+    d.playerX = 0;
+    d.camX = 0;
+    d.susp = 0;
+    d.suspVel = 0;
+    d.skid = 0;
+    d.camShake = 0;
+    d.camBack = 30;
+    d.camY = phoneStage() ? 34 : 18;
   }
 
   function takeCoinsExit(exit) {
@@ -9678,7 +9701,6 @@
     return [clamp(rp), clamp(gp), clamp(bp)];
   }
 
-  const PANEL_PAINT = { h: 22, s: 0.62, lift: 0.05 };
   let paintSheet = null;
   let paintSheetKey = '';
 
@@ -9700,16 +9722,20 @@
   }
 
   function paintTone() {
-    const hex = lookHex('paint');
-    if (hex === LOOK_DEFAULT_COLOR.paint) return PANEL_PAINT;
-    const [r, g, b] = hexToRgb(hex);
+    const [r, g, b] = hexToRgb(lookHex('paint'));
     const hsl = rgbToHsl(r, g, b);
-    return { h: hsl.h, s: Math.min(0.78, Math.max(0.04, hsl.s)), lift: 0.05 };
+    const pale = hsl.s < 0.22;
+    return {
+      h: hsl.h,
+      s: pale ? hsl.s : Math.min(0.92, Math.max(0.74, hsl.s)),
+      target: [r, g, b],
+      pull: pale ? 0.62 : 0.4
+    };
   }
 
   function panelSheet() {
     const tone = paintTone();
-    const key = `${tone.h}|${tone.s}|${tone.lift}`;
+    const key = `${tone.h}|${tone.s}|${tone.pull}|${tone.target.join(',')}`;
     if (paintSheet && paintSheetKey === key) return paintSheet;
     if (!PLAYER_CAR_IMG.complete || !PLAYER_CAR_IMG.naturalWidth) return null;
     const sheet = document.createElement('canvas');
@@ -9727,8 +9753,12 @@
     for (let i = 0; i < d.length; i += 4) {
       if (!isBodyPanel(d[i], d[i + 1], d[i + 2], d[i + 3])) continue;
       const luma = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
-      const light = Math.min(0.74, Math.max(0.14, luma * 0.9 + tone.lift));
-      const [nr, ng, nb] = hslToRgb(tone.h, tone.s, light);
+      const light = Math.min(0.82, Math.max(0.2, luma * 0.62 + 0.16));
+      let [nr, ng, nb] = hslToRgb(tone.h, tone.s, light);
+      const pull = tone.pull;
+      nr = Math.round(nr + (tone.target[0] - nr) * pull);
+      ng = Math.round(ng + (tone.target[1] - ng) * pull);
+      nb = Math.round(nb + (tone.target[2] - nb) * pull);
       d[i] = nr;
       d[i + 1] = ng;
       d[i + 2] = nb;
@@ -9843,7 +9873,8 @@
   // Perspective scales — keep highway size, but allow growth when the cam pulls in.
   // Old player cap of 1.4 froze the copper X5 even as camBack shrank.
   function playerCarScale(p) {
-    return Math.min(2.45, Math.max(0.12, p.scale * 0.58));
+    const cap = state.mode === 'gas' ? 4.4 : 2.45;
+    return Math.min(cap, Math.max(0.12, p.scale * 0.58));
   }
   // No upper cap — a hard max made cops freeze then look smaller as the road
   // kept growing when they filled the frame.
