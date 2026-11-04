@@ -1498,6 +1498,7 @@
     }
   }
   </script>
+  <script src="assets/gold-coast-map.js"></script>
   <script>
 (() => {
   // The board is a fixed number of rows tall and tracks the window aspect
@@ -4562,7 +4563,6 @@
   const BILLBOARD_TEX_W = 960;
   const BILLBOARD_TEX_H = 540;
   const BILLBOARD_YAW_DEG = 30; // yaw around vertical (Y) axis so face angles toward oncoming driver
-  const BILLBOARD_WX_PER_Z = 0.01; // projectWorld scales lateral wx×100 vs forward wz×1
   const billboardTexCache = new Map();
 
   function getBillboardTexture(ad) {
@@ -12050,21 +12050,23 @@
     if (pr.kind === 'billboard') {
       // Upright board yawed ~30° around the vertical (Y) axis so the face angles
       // toward oncoming traffic instead of running parallel to the curb.
-      const bx = pr.side * (DW.BUILD + 0.12);
+      const bx = pr.side * (DW.BUILD + 0.18);
       const z0 = pr.z;
       const halfW = 34;       // board half-width
       const yBot = 28;
       const yTop = 112;
       const yaw = BILLBOARD_YAW_DEG * Math.PI / 180;
       const dz = halfW * Math.cos(yaw);
-      const dx = halfW * Math.sin(yaw) * BILLBOARD_WX_PER_Z;
+      // In projectWorld, lateral wx=1.0 is the full half-road width (~34 world Z units visually),
+      // so a 30° yaw across halfW spans sin(30°)*0.85 ≈ 0.425 in wx units.
+      const dx = Math.sin(yaw) * 0.85;
       const base = projectWorld(bx, 0, z0, d);
       if (base.relZ < 72 || base.relZ > 1900) return;
       const nearFade = facadeProximityFade(base, d, { minZ: 72, fadeZ: 240, minScale: 0.038 });
       if (nearFade <= 0) return;
 
-      // Far edge (zB) swings toward the curb; near edge (zA) tucks outward so the
-      // board's inward face angles toward oncoming traffic.
+      // Near edge (zA) sits further back from the street; far edge (zB) reaches out
+      // toward the curb so the front face angles toward oncoming traffic.
       const zA = z0 - dz;
       const zB = z0 + dz;
       const xA = bx + pr.side * dx;
@@ -12454,9 +12456,389 @@
     ctx.globalAlpha = 1;
   }
 
+  function drawGpsReferenceMap(d) {
+    const map = window.GOLD_COAST_MAP;
+    const route = d.route;
+    if (!map || !route || !map.route || !map.route.length) return;
+    if (!map.ready) {
+      const lat0 = (map.bounds.s + map.bounds.n) / 2;
+      map.mLat = 110540;
+      map.mLon = 111320 * Math.cos(lat0 * Math.PI / 180);
+      for (const seg of map.route) {
+        const lens = [];
+        let total = 0;
+        for (let i = 1; i < seg.pts.length; i++) {
+          const a = seg.pts[i - 1];
+          const b = seg.pts[i];
+          const len = Math.hypot((b[1] - a[1]) * map.mLon, (b[0] - a[0]) * map.mLat);
+          lens.push(len);
+          total += len;
+        }
+        seg.lens = lens;
+        seg.len = total || 1;
+      }
+      map.ready = true;
+    }
+
+    const { innerX, innerY, titleH } = MAP_LAYOUT;
+    const { mx, my, mapW, mapH } = getMapRect();
+    const innerW = mapW - innerX * 2;
+    const innerH = mapH - titleH - 8;
+    const b = map.bounds;
+    const scale = Math.min(innerW / ((b.e - b.w) * map.mLon), innerH / ((b.n - b.s) * map.mLat));
+    const ox = mx + innerX + (innerW - (b.e - b.w) * map.mLon * scale) / 2;
+    const oy = my + innerY + (innerH - (b.n - b.s) * map.mLat * scale) / 2;
+
+    function project(lat, lon) {
+      return {
+        px: ox + (lon - b.w) * map.mLon * scale,
+        py: oy + (b.n - lat) * map.mLat * scale
+      };
+    }
+
+    function lonAt(pts, lat) {
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = pts[i];
+        const c = pts[i + 1];
+        const lo = Math.min(a[0], c[0]);
+        const hi = Math.max(a[0], c[0]);
+        if (lat < lo || lat > hi || a[0] === c[0]) continue;
+        const t = (lat - a[0]) / (c[0] - a[0]);
+        return a[1] + (c[1] - a[1]) * t;
+      }
+      return null;
+    }
+
+    function pointOnSeg(seg, t) {
+      const target = Math.max(0, Math.min(1, t)) * seg.len;
+      let acc = 0;
+      for (let i = 0; i < seg.lens.length; i++) {
+        const span = seg.lens[i];
+        if (acc + span >= target || i === seg.lens.length - 1) {
+          const k = span ? Math.max(0, Math.min(1, (target - acc) / span)) : 0;
+          const a = seg.pts[i];
+          const c = seg.pts[i + 1];
+          return [a[0] + (c[0] - a[0]) * k, a[1] + (c[1] - a[1]) * k];
+        }
+        acc += span;
+      }
+      return seg.pts[0];
+    }
+
+    function gpsAt(z) {
+      const segs = map.route;
+      const total = segs[segs.length - 1].z1 || route.length;
+      z = wrapRouteZ(z, total);
+      for (let i = 0; i < segs.length; i++) {
+        const seg = segs[i];
+        if (z <= seg.z1 || i === segs.length - 1) {
+          return pointOnSeg(seg, (z - seg.z0) / ((seg.z1 - seg.z0) || 1));
+        }
+      }
+      return segs[0].pts[0];
+    }
+
+    function trace(pts) {
+      let started = false;
+      for (const p of pts) {
+        const q = project(p[0], p[1]);
+        if (!started) {
+          ctx.moveTo(q.px, q.py);
+          started = true;
+        } else ctx.lineTo(q.px, q.py);
+      }
+    }
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(12,14,18,0.92)';
+    ctx.strokeStyle = 'rgba(208,162,58,0.35)';
+    ctx.lineWidth = 1;
+    ctx.fillRect(mx, my, mapW, mapH);
+    ctx.strokeRect(mx + 0.5, my + 0.5, mapW - 1, mapH - 1);
+
+    ctx.beginPath();
+    ctx.rect(mx + 1, my + innerY - 1, mapW - 2, mapH - innerY);
+    ctx.clip();
+    ctx.fillStyle = '#141a16';
+    ctx.fillRect(mx, my, mapW, mapH);
+
+    if (map.shore && map.shore.length > 1) {
+      const south = project(b.s, map.shore[0][1]);
+      const north = project(b.n, map.shore[map.shore.length - 1][1]);
+      const se = project(b.s, b.e);
+      const ne = project(b.n, b.e);
+      ctx.beginPath();
+      ctx.moveTo(south.px, south.py);
+      for (const p of map.shore) {
+        const q = project(p[0], p[1]);
+        ctx.lineTo(q.px, q.py);
+      }
+      ctx.lineTo(north.px, north.py);
+      ctx.lineTo(ne.px, ne.py);
+      ctx.lineTo(se.px, se.py);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(38, 96, 132, 0.82)';
+      ctx.fill();
+
+      const lsd = (map.streets || []).find(s => s.name === 'Lake Shore');
+      if (lsd) {
+        const west = [];
+        const east = [];
+        for (let lat = 41.8922; lat <= 41.9152; lat += 0.00045) {
+          const lw = lonAt(lsd.pts, lat);
+          const le = lonAt(map.shore, lat);
+          if (lw == null || le == null || le <= lw) continue;
+          west.push(project(lat, lw));
+          east.push(project(lat, le));
+        }
+        if (west.length > 2) {
+          ctx.beginPath();
+          ctx.moveTo(west[0].px, west[0].py);
+          for (const q of west) ctx.lineTo(q.px, q.py);
+          for (let i = east.length - 1; i >= 0; i--) ctx.lineTo(east[i].px, east[i].py);
+          ctx.closePath();
+          ctx.fillStyle = 'rgba(22, 54, 40, 0.96)';
+          ctx.fill();
+        }
+      }
+
+      const shoreLon = lonAt(map.shore, 41.907);
+      if (shoreLon != null) {
+        const lp = project(41.907, (shoreLon + b.e) / 2);
+        ctx.fillStyle = 'rgba(150, 196, 220, 0.6)';
+        ctx.font = '700 8px "General Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('LAKE', lp.px, lp.py);
+      }
+    }
+
+    if (map.river && map.river.length > 1) {
+      ctx.beginPath();
+      trace(map.river);
+      ctx.strokeStyle = 'rgba(48, 112, 148, 0.95)';
+      ctx.lineWidth = 2.5;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    if (map.pier && map.pier.length > 2) {
+      ctx.beginPath();
+      const tip = project(map.pier[0][0], map.pier[0][1]);
+      ctx.moveTo(tip.px, tip.py);
+      for (let i = 1; i < map.pier.length; i++) {
+        const q = project(map.pier[i][0], map.pier[i][1]);
+        ctx.lineTo(q.px, q.py);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(186, 176, 156, 0.92)';
+      ctx.fill();
+    }
+
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    for (const st of map.streets || []) {
+      ctx.beginPath();
+      trace(st.pts);
+      ctx.strokeStyle = st.major ? 'rgba(220, 224, 228, 0.8)' : 'rgba(168, 174, 184, 0.34)';
+      ctx.lineWidth = st.name === 'Lake Shore' ? 1.7 : st.major ? 1.15 : 0.7;
+      ctx.stroke();
+    }
+
+    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.fillStyle = 'rgba(232, 226, 210, 0.9)';
+    function tag(text, lat, lon, align, dx, dy) {
+      if (lat == null || lon == null) return;
+      const q = project(lat, lon);
+      if (q.py < my + innerY + 1 || q.py > my + mapH - 3) return;
+      ctx.textAlign = align;
+      ctx.fillText(text, q.px + dx, q.py + dy);
+    }
+    const lsdLat = 41.907;
+    tag('LSD', lsdLat, lonAt((map.streets.find(s => s.name === 'Lake Shore') || {}).pts || [], lsdLat), 'right', -4, -2);
+    const clarkLine = (map.streets.find(s => s.name === 'Clark') || {}).pts || [];
+    tag('Clark', 41.9136, lonAt(clarkLine, 41.9136), 'left', 4, 0);
+    const mich = (map.streets.find(s => s.name === 'Michigan') || {}).pts || [];
+    tag('Michigan', 41.8892, lonAt(mich, 41.8892), 'right', -3, -2);
+    for (const name of ['North', 'Division', 'Oak', 'Chicago', 'Grand']) {
+      const st = (map.streets || []).find(s => s.name === name);
+      if (!st) continue;
+      const lat = st.pts.reduce((sum, p) => sum + p[0], 0) / st.pts.length;
+      tag(name, lat, lonAt(clarkLine, lat), 'right', -4, -2);
+    }
+
+    for (const lm of map.landmarks || []) {
+      const pt = project(lm.lat, lm.lon);
+      const lake = lm.kind === 'pier' || lm.kind === 'beach' || lm.kind === 'oakbeach';
+      const tall = lm.kind === 'hancock';
+      ctx.fillStyle = 'rgba(208,162,58,0.4)';
+      ctx.beginPath();
+      if (lake) ctx.rect(pt.px - 4, pt.py - 3, 8, 6);
+      else if (tall) {
+        ctx.moveTo(pt.px, pt.py - 5);
+        ctx.lineTo(pt.px + 4, pt.py + 3);
+        ctx.lineTo(pt.px - 4, pt.py + 3);
+        ctx.closePath();
+      } else ctx.arc(pt.px, pt.py, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(230,200,120,0.95)';
+      ctx.beginPath();
+      ctx.arc(pt.px, pt.py, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = 'rgba(212, 168, 64, 0.95)';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (const seg of map.route) trace(seg.pts);
+    ctx.stroke();
+
+    const routeZ = wrapRouteZ(d.z, route.length);
+    if (routeZ > 8) {
+      ctx.strokeStyle = 'rgba(245, 236, 214, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      let drawing = false;
+      for (const seg of map.route) {
+        if (seg.z0 >= routeZ) break;
+        if (seg.z1 <= routeZ) {
+          trace(seg.pts);
+          drawing = true;
+        } else {
+          const t = (routeZ - seg.z0) / ((seg.z1 - seg.z0) || 1);
+          const steps = Math.max(2, Math.ceil(t * seg.pts.length));
+          const partial = [];
+          for (let i = 0; i <= steps; i++) partial.push(pointOnSeg(seg, t * (i / steps)));
+          trace(partial);
+          drawing = true;
+        }
+      }
+      if (drawing) ctx.stroke();
+    }
+
+    const sigTime = performance.now() / 1000;
+    for (const sig of route.signals || []) {
+      const g = gpsAt(sig.z);
+      const pt = project(g[0], g[1]);
+      const ph = signalPhase(sig, sigTime);
+      ctx.fillStyle = ph === 'red' ? '#e74c3c' : ph === 'yellow' ? '#f1c40f' : '#2ecc71';
+      ctx.fillRect(pt.px - 2, pt.py - 2, 4, 4);
+    }
+
+    if (d.navTarget) {
+      const navEx = (route.exits || []).find(e => e.id === d.navTarget);
+      const navMeta = MAP_DEST_ICONS[d.navTarget];
+      if (navEx && navMeta) {
+        const pathLen = route.length;
+        const fromZ = wrapRouteZ(d.z, pathLen);
+        const toZ = wrapRouteZ(navEx.z, pathLen);
+        const ahead = routeAheadDist(fromZ, toZ, pathLen);
+        ctx.strokeStyle = navMeta.color;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([4, 3]);
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        let started = false;
+        let prevZ = fromZ;
+        const steps = Math.max(8, Math.ceil(ahead / 28));
+        for (let i = 0; i <= steps; i++) {
+          const z = wrapRouteZ(fromZ + (ahead * i) / steps, pathLen);
+          if (started && z < prevZ) {
+            ctx.stroke();
+            ctx.beginPath();
+            started = false;
+          }
+          const g = gpsAt(z);
+          const pt = project(g[0], g[1]);
+          if (!started) {
+            ctx.moveTo(pt.px, pt.py);
+            started = true;
+          } else ctx.lineTo(pt.px, pt.py);
+          prevZ = z;
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    for (const ex of route.exits || []) {
+      const live = (d.exits || []).find(e => e.id === ex.id);
+      if (live?.taken) continue;
+      const meta = MAP_DEST_ICONS[ex.id];
+      if (!meta) continue;
+      const g = gpsAt(ex.z);
+      const pt = project(g[0], g[1]);
+      const isNav = d.navTarget === ex.id;
+      const r = isNav ? 6 : 3.5;
+      if (isNav) {
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.beginPath();
+        ctx.arc(pt.px, pt.py, r + 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = meta.color;
+      ctx.strokeStyle = isNav ? 'rgba(245,237,216,0.95)' : 'rgba(12,14,18,0.95)';
+      ctx.lineWidth = isNav ? 2 : 1.5;
+      ctx.beginPath();
+      ctx.arc(pt.px, pt.py, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    const here = gpsAt(routeZ);
+    const playerPt = project(here[0], here[1]);
+    playerPt.px += (d.playerX || 0) * 4;
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath();
+    ctx.arc(playerPt.px, playerPt.py, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f0ece0';
+    ctx.beginPath();
+    ctx.arc(playerPt.px, playerPt.py, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(208,162,58,0.9)';
+    ctx.font = '700 10px "General Sans", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(route.name, mx + 8, my + 14);
+
+    const pos = sampleRouteAt(route, d.z, d);
+    if (pos.label) {
+      ctx.fillStyle = 'rgba(232,220,192,0.7)';
+      ctx.font = '600 8px "General Sans", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(pos.label, mx + mapW - 8, my + 14);
+    }
+
+    ctx.strokeStyle = 'rgba(208,162,58,0.5)';
+    ctx.fillStyle = 'rgba(208,162,58,0.65)';
+    ctx.lineWidth = 1;
+    const ax = mx + mapW - 14;
+    const ay = my + innerY + 6;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay + 10);
+    ctx.lineTo(ax, ay);
+    ctx.lineTo(ax - 3, ay + 4);
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax + 3, ay + 4);
+    ctx.stroke();
+    ctx.font = '700 8px "General Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', ax, ay - 2);
+    ctx.restore();
+  }
+
   function drawReferenceMap(d) {
     const route = d.route;
     if (!route || !route.samples) return;
+    if (window.GOLD_COAST_MAP) {
+      drawGpsReferenceMap(d);
+      return;
+    }
 
     const { innerX, innerY, titleH } = MAP_LAYOUT;
     const { mx, my, mapW, mapH } = getMapRect();
