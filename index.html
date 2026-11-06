@@ -2733,9 +2733,9 @@
   const WRX_NEAR_IMG = new Image();
   WRX_NEAR_IMG.src = 'assets/wrx-near.png';
   const WRX_BASE_W = 62;
-  // Bumper sits above the road so the rear tires can show underneath.
-  const WRX_GROUND = 1.121;
-  const WRX_WHEEL_X = 0.40;
+  // Bumper lip sits on the road. Tires are inset so the body covers them.
+  const WRX_GROUND = 1.0;
+  const WRX_WHEEL_X = 0.26;
   const WRX_WHEEL_R = 0.095;
   // Single pipe, left of the plate, on the shared bumper anchor.
   const WRX_TIPS = [{ fx: 0.36, fy: 0.975, spread: 0 }];
@@ -9837,7 +9837,7 @@
 
   // Rear chase view: the tire's axle runs across the car, so we see a tall slab of rubber.
   function drawWrxRearTire(cx, cy, r, side) {
-    const drop = r * 0.62;
+    const drop = r * 1.15;
     const h = r * 2 + drop;
     const w = r * 1.62;
     const x = cx - w / 2;
@@ -10770,8 +10770,10 @@
       const baseAlpha = ctx.globalAlpha;
       ctx.imageSmoothingEnabled = true;
       const top = -drawH * WRX_GROUND;
+      // Far stays fully opaque and the near photo fades in over it, so the
+      // two opacities add to 100% or more and the body never goes see-through.
       if (t < 1) {
-        ctx.globalAlpha = baseAlpha * (1 - t);
+        ctx.globalAlpha = baseAlpha;
         ctx.drawImage(farImg, -drawW / 2, top, drawW, drawH);
       }
       if (t > 0) {
@@ -11048,7 +11050,7 @@
     ctx.imageSmoothingEnabled = true;
     const top = -drawH * WRX_GROUND;
     if (t < 1) {
-      ctx.globalAlpha = baseAlpha * (1 - t);
+      ctx.globalAlpha = baseAlpha;
       ctx.drawImage(WRX_FAR_IMG, -drawW / 2, top, drawW, drawH);
     }
     if (t > 0) {
