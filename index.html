@@ -1653,26 +1653,29 @@
       { kind: 'ew', n: 1600, label: 'North' },
       { kind: 'ew', n: 620, label: 'Grand' }
     ],
+    // lat/lon is the truth; n/e is the fallback when the GPS map is not loaded.
+    // Everything here really stands on or beside this loop.
     landmarks: [
-      { n: 700, e: 2.40, label: 'Navy Pier', kind: 'pier', side: 1 },
-      { n: 815, e: 0.18, label: 'Wrigley Building', kind: 'wrigley', side: -1 },
-      { n: 820, e: -1.12, label: 'Water Tower', kind: 'watertower', side: -1 },
-      { n: 835, e: 0.30, label: 'Tribune Tower', kind: 'tribune', side: -1 },
-      { n: 860, e: 0.28, label: 'Water Tower Place', kind: 'wtplace', side: -1 },
-      { n: 875, e: 0.22, label: '900 N Michigan', kind: 'ninems', side: -1 },
-      { n: 900, e: 2.55, label: '875 N Michigan', kind: 'hancock', side: -1 },
-      { n: 1000, e: 2.48, label: 'Oak St Beach', kind: 'oakbeach', side: 1 },
-      { n: 1120, e: 2.65, label: 'Drake Hotel', kind: 'drake', side: -1 },
-      { n: 1130, e: -0.55, label: 'Palmolive Bldg', kind: 'palmolive', side: -1 },
-      { n: 1200, e: 0.35, label: 'One Mag Mile', kind: 'onemag', side: -1 },
-      { n: 1240, e: -0.78, label: 'Park Tower', kind: 'parktower', side: -1 },
-      { n: 638, e: -1.35, label: 'Marina City', kind: 'marina', side: -1 },
-      { n: 802, e: 0.08, label: 'London Guarantee', kind: 'london', side: -1 },
-      { n: 848, e: 0.14, label: 'Aon Center', kind: 'aon', side: -1 },
-      { n: 1285, e: -2.05, label: 'Biograph Theater', kind: 'biograph', side: -1 },
-      { n: 1360, e: -2.02, label: 'Lincoln Park Zoo', kind: 'zoo', side: -1 },
-      { n: 1480, e: -2.05, label: 'St Josaphat', kind: 'church', side: -1 },
-      { n: 1600, e: 2.55, label: 'North Ave Beach', kind: 'beach', side: 1 }
+      { n: 700, e: 2.40, lat: 41.8916, lon: -87.6055, label: 'Navy Pier', kind: 'pier', side: 1 },
+      { n: 815, e: 0.18, lat: 41.8900, lon: -87.6244, label: 'Wrigley Building', kind: 'wrigley', side: -1 },
+      { n: 820, e: -1.12, lat: 41.8972, lon: -87.6244, label: 'Water Tower', kind: 'watertower', side: -1 },
+      { n: 835, e: 0.30, lat: 41.8903, lon: -87.6235, label: 'Tribune Tower', kind: 'tribune', side: -1 },
+      { n: 860, e: 0.28, lat: 41.8979, lon: -87.6235, label: 'Water Tower Place', kind: 'wtplace', side: -1 },
+      { n: 875, e: 0.22, lat: 41.8995, lon: -87.6247, label: '900 N Michigan', kind: 'ninems', side: -1 },
+      { n: 900, e: 2.55, lat: 41.8988, lon: -87.6226, label: '875 N Michigan', kind: 'hancock', side: -1 },
+      { n: 1000, e: 2.48, lat: 41.9027, lon: -87.6230, label: 'Oak St Beach', kind: 'oakbeach', side: 1 },
+      { n: 1120, e: 2.65, lat: 41.9009, lon: -87.6218, label: 'Drake Hotel', kind: 'drake', side: -1 },
+      { n: 1130, e: -0.55, lat: 41.9009, lon: -87.6236, label: 'Palmolive Bldg', kind: 'palmolive', side: -1 },
+      { n: 1200, e: 0.35, lat: 41.9005, lon: -87.6246, label: 'One Mag Mile', kind: 'onemag', side: -1 },
+      { n: 1240, e: -0.78, lat: 41.8990, lon: -87.6252, label: 'Park Tower', kind: 'parktower', side: -1 },
+      { n: 638, e: -1.35, lat: 41.8884, lon: -87.6284, label: 'Marina City', kind: 'marina', side: 1 },
+      { n: 802, e: 0.08, lat: 41.8882, lon: -87.6248, label: 'London Guarantee', kind: 'london', side: 1 },
+      { n: 848, e: 0.14, lat: 41.8856, lon: -87.6215, label: 'Aon Center', kind: 'aon', side: 1 },
+      { n: 1600, e: -2.35, lat: 41.9115, lon: -87.6346, label: 'Second City', kind: 'biograph', side: 1 },
+      { n: 1600, e: -1.40, lat: 41.9118, lon: -87.6290, label: 'Lincoln Park', kind: 'zoo', side: 1 },
+      { n: 1590, e: -2.20, lat: 41.9113, lon: -87.6331, label: 'Moody Church', kind: 'church', side: 1 },
+      { n: 740, e: -1.60, lat: 41.8960, lon: -87.6281, label: 'Holy Name Cathedral', kind: 'church', side: -1 },
+      { n: 1600, e: 2.55, lat: 41.9140, lon: -87.6254, label: 'North Ave Beach', kind: 'beach', side: 1 }
     ],
     exits: [
       { n: 900, e: 2.30, side: -1, id: 'casino', name: 'CASINO', mapLabel: 'Casino', href: '/roulette', blurb: 'The casino — back to the tables.' },
@@ -2597,19 +2600,60 @@
     return env;
   }
 
+  // Nearest point on the GPS route to a lat/lon: route z, metres off the
+  // road, and which side of travel it sits on (1 = right, -1 = left).
+  function gpsNearestRouteZ(map, route, lat, lon) {
+    gpsPrepare(map);
+    let best = { z: 0, dist: Infinity, side: -1 };
+    for (const seg of map.route) {
+      const span = seg.z1 - seg.z0;
+      const steps = Math.max(2, Math.ceil(span / 24));
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const p = gpsPointOnSeg(seg, t);
+        const de = (lon - p[1]) * map.mLon;
+        const dn = (lat - p[0]) * map.mLat;
+        const dist = Math.hypot(de, dn);
+        if (dist < best.dist) {
+          const q = gpsPointOnSeg(seg, Math.min(1, t + 0.02));
+          const r = gpsPointOnSeg(seg, Math.max(0, t - 0.02));
+          const he = (q[1] - r[1]) * map.mLon;
+          const hn = (q[0] - r[0]) * map.mLat;
+          const cross = he * dn - hn * de;
+          best = { z: seg.z0 + span * t, dist, side: cross < 0 ? 1 : -1 };
+        }
+      }
+    }
+    return best;
+  }
+
   function seedChicagoLandmarks(d) {
     const route = d.route;
     if (!route || d.landmarksSeeded) return;
     d.landmarks = [];
     const wps = activeRouteWaypoints(d);
+    const map = window.GOLD_COAST_MAP;
+    const useGps = !!(map && map.route && map.route.length);
     for (const lm of route.landmarks || []) {
+      let z = nearestRouteZ(wps, lm.n, lm.e);
+      let side = lm.side != null ? lm.side : (lm.e > 1.5 ? 1 : -1);
+      let setback = 0;
+      if (useGps && lm.lat != null && lm.lon != null) {
+        const hit = gpsNearestRouteZ(map, route, lm.lat, lm.lon);
+        z = hit.z;
+        side = hit.side;
+        setback = hit.dist;
+      }
       d.landmarks.push({
-        z: nearestRouteZ(wps, lm.n, lm.e),
+        z,
         n: lm.n,
         e: lm.e,
+        lat: lm.lat,
+        lon: lm.lon,
         label: lm.label,
         kind: lm.kind || 'generic',
-        side: lm.side != null ? lm.side : (lm.e > 1.5 ? 1 : -1)
+        side,
+        setback
       });
     }
     d.landmarksSeeded = true;
@@ -10778,7 +10822,7 @@
     const flameMid = mixTowardWhite(flame, 0.28);
     const hot = intensity > 0.45;
     const now = performance.now() / 1000;
-    const reach = 6 + intensity * (plume ? 30 : 22);
+    const reach = 16 + intensity * (plume ? 78 : 58);
     const steps = 8;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -10789,15 +10833,17 @@
       const widths = [];
       for (let i = 0; i <= steps; i++) {
         const u = i / steps;
-        const lift = Math.sin(u * Math.PI) * (0.12 + intensity * 0.35) * flicker;
-        const wx = pipe.wx + pipe.spread * u * 0.06;
-        const wy = pipe.wy * (1 - u * 0.75) + lift;
+        const lift = Math.sin(u * Math.PI) * (0.04 + intensity * 0.12) * flicker;
+        const wx = pipe.wx + pipe.spread * u * 0.05;
+        const wy = Math.max(0.08, pipe.wy * (1 - u * 0.82) + lift);
         const wz = pipe.wz - u * reach * flicker;
         const proj = projectWorld(wx, wy, wz, d);
+        if (proj.relZ < 18) break;
         centers.push(proj);
-        const worldHalf = (0.016 + u * (0.04 + intensity * 0.07)) * flicker;
+        const worldHalf = (0.006 + u * u * (0.04 + intensity * 0.07)) * flicker;
         widths.push(Math.max(1.2, worldHalf * proj.scale * 100));
       }
+      if (centers.length < 2) continue;
       const left = [];
       const right = [];
       for (let i = 0; i < centers.length; i++) {
@@ -10814,9 +10860,10 @@
       const mouth = centers[0];
       const tail = centers[centers.length - 1];
       const jet = ctx.createLinearGradient(mouth.x, mouth.y, tail.x, tail.y);
-      jet.addColorStop(0, rgbCss(flameHot, hot ? 0.95 : 0.5 + intensity * 0.35));
-      jet.addColorStop(0.18, rgbCss(flameMid, hot ? 0.85 : 0.32 + intensity * 0.4));
-      jet.addColorStop(0.62, rgbCss(flame, 0.28 * intensity));
+      jet.addColorStop(0, rgbCss(flameHot, hot ? 0.95 : 0.6 + intensity * 0.25));
+      jet.addColorStop(0.2, rgbCss(flameMid, 0.7));
+      jet.addColorStop(0.55, rgbCss(flame, 0.5));
+      jet.addColorStop(0.85, rgbCss(flame, 0.28));
       jet.addColorStop(1, rgbCss(flame, 0));
       ctx.fillStyle = jet;
       ctx.beginPath();
@@ -11315,7 +11362,10 @@
   function drawLandmark(lm, d) {
     const side = lm.side != null ? lm.side : (lm.e > 1.5 ? 1 : -1);
     const lakeKinds = ['pier', 'beach', 'oakbeach'];
-    const inset = lakeKinds.includes(lm.kind) ? 0.38 : (lm.kind === 'hancock' ? 0.22 : 0.12);
+    let inset = lakeKinds.includes(lm.kind) ? 0.38 : (lm.kind === 'hancock' ? 0.22 : 0.12);
+    // Landmarks off the road sit back behind the lot line in proportion to
+    // their real distance, so the Mag Mile towers fan out instead of stacking.
+    if (lm.setback > 60) inset += Math.min(2.6, (lm.setback - 60) / 160);
     const xWorld = side * (DW.BUILD + inset);
     const ground = projectWorld(xWorld, 0, lm.z, d);
     if (ground.relZ > 2400) return;
@@ -13588,10 +13638,14 @@
       tag(name, lat, lonAt(clarkLine, lat), 'right', -4, -2);
     }
 
-    for (const lm of map.landmarks || []) {
+    const mapLandmarks = (route.landmarks || []).some((l) => l.lat != null)
+      ? route.landmarks.filter((l) => l.lat != null)
+      : (map.landmarks || []);
+    for (const lm of mapLandmarks) {
       const pt = project(lm.lat, lm.lon);
+      if (pt.px < mx + 2 || pt.px > mx + mapW - 2 || pt.py < my + innerY || pt.py > my + mapH - 2) continue;
       const lake = lm.kind === 'pier' || lm.kind === 'beach' || lm.kind === 'oakbeach';
-      const tall = lm.kind === 'hancock';
+      const tall = ['hancock', 'aon', 'wtplace', 'ninems', 'parktower', 'onemag', 'marina'].includes(lm.kind);
       ctx.fillStyle = 'rgba(208,162,58,0.4)';
       ctx.beginPath();
       if (lake) ctx.rect(pt.px - 4, pt.py - 3, 8, 6);
@@ -14361,6 +14415,39 @@
     drawMoon(moonX, moonY, moonR);
   }
 
+  function drawCenterStripes(d, zNear, zFar, fogFar) {
+    const FOG = [126, 120, 108];
+    const YELLOW = [214, 168, 46];
+    const stripes = [[-0.042, -0.020], [0.020, 0.042]];
+    const span = zFar - zNear;
+    const n = Math.max(2, Math.ceil(span / 5));
+    const samples = new Array(n + 1);
+    for (let i = 0; i <= n; i++) {
+      const z = zNear + (i / n) * span;
+      samples[i] = stripes.map((edge) => [
+        projectWorld(edge[0], 0, z, d),
+        projectWorld(edge[1], 0, z, d)
+      ]);
+    }
+    for (let s = 0; s < stripes.length; s++) {
+      for (let i = n - 1; i >= 0; i--) {
+        const farE = samples[i + 1][s];
+        const nearE = samples[i][s];
+        const rel = nearE[0].relZ;
+        if (rel < 14) continue;
+        const fogT = Math.pow(Math.max(0, Math.min(1, rel / fogFar)), 1.35) * 0.82;
+        ctx.fillStyle = hazeMix(YELLOW, FOG, fogT);
+        ctx.beginPath();
+        ctx.moveTo(farE[0].x, farE[0].y);
+        ctx.lineTo(farE[1].x, farE[1].y);
+        ctx.lineTo(nearE[1].x, nearE[1].y);
+        ctx.lineTo(nearE[0].x, nearE[0].y);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
   function drawDrive() {
     const d = state.drive;
     ctx.clearRect(0, 0, W, H);
@@ -14466,17 +14553,6 @@
       ctx.lineTo(qR.x, qR.y);
       ctx.stroke();
 
-      const m0 = projectWorld(0, 0, z0, d);
-      const m1 = projectWorld(0, 0, z1, d);
-      ctx.strokeStyle = `rgba(196,160,53,${0.4 * paintA})`;
-      ctx.lineWidth = Math.max(1, 1.8 * pL.scale);
-      ctx.beginPath();
-      ctx.moveTo(m0.x - 3 * pL.scale, m0.y);
-      ctx.lineTo(m1.x - 3 * pL.scale, m1.y);
-      ctx.moveTo(m0.x + 3 * pL.scale, m0.y);
-      ctx.lineTo(m1.x + 3 * pL.scale, m1.y);
-      ctx.stroke();
-
       // Dashed lane marks — fade at dash boundaries so stripes don't pop
       const dashPhase = (z0 % dashPeriod) / dashPeriod;
       const dashAlpha = dashPhase < 0.12 ? dashPhase / 0.12
@@ -14495,6 +14571,11 @@
         }
       }
     }
+
+    // Double yellow as road-space ribbons. Width comes from the projected
+    // edges, so the pair tapers and bends with the lane instead of stepping
+    // in screen-pixel strokes.
+    drawCenterStripes(d, zStart - 3 * segLen, zStart + (segs + 1) * segLen, fogFar);
 
     // Intersections — cross streets + crosswalks at 90° turns
     const pathLen = d.route.length;
