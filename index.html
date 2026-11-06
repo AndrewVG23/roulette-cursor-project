@@ -1943,7 +1943,380 @@
     ctx.restore();
   }
 
+  // Real Chicago towers placed by GPS. The skyline is projected from the
+  // player's true position and heading, so it swings through the corners and
+  // grows as you close in. h = roof height (m), w = width across (m).
+  const SKY_TOWERS = [
+    { id: 'willis', lat: 41.8789, lon: -87.6359, h: 442, w: 68, style: 'willis', color: '#1c2026', antenna: 85 },
+    { id: 'trump', lat: 41.8886, lon: -87.6265, h: 357, w: 52, style: 'spire', spire: 66, color: '#4a5a6a', lit: 0.5 },
+    { id: 'aon', lat: 41.8856, lon: -87.6215, h: 346, w: 58, style: 'box', color: '#d6d2c9', lit: 0.2 },
+    { id: 'stregis', lat: 41.8870, lon: -87.6186, h: 363, w: 60, style: 'stregis', color: '#4c5e6e', lit: 0.4 },
+    { id: 'franklin', lat: 41.8803, lon: -87.6346, h: 307, w: 55, style: 'spires', color: '#2a2e36', lit: 0.3 },
+    { id: 'twopru', lat: 41.8851, lon: -87.6228, h: 275, w: 45, style: 'spire', spire: 28, color: '#4a4e58', lit: 0.3 },
+    { id: 'wacker311', lat: 41.8776, lon: -87.6362, h: 293, w: 52, style: 'crown', color: '#3a3e48', lit: 0.3 },
+    { id: 'chase', lat: 41.8817, lon: -87.6302, h: 259, w: 72, style: 'flare', color: '#3e4650', lit: 0.3 },
+    { id: 'aqua', lat: 41.8866, lon: -87.6200, h: 262, w: 48, style: 'box', color: '#5a6672', lit: 0.35 },
+    { id: 'bcbs', lat: 41.8847, lon: -87.6199, h: 243, w: 55, style: 'box', color: '#3f4a56', lit: 0.35 },
+    { id: 'crain', lat: 41.8835, lon: -87.6240, h: 177, w: 40, style: 'diamond', color: '#3a4048', lit: 0.25 },
+    { id: 'hancock', lat: 41.8988, lon: -87.6226, h: 344, w: 50, style: 'hancock', color: '#141820', antenna: 110 },
+    { id: 'ninehundred', lat: 41.8995, lon: -87.6247, h: 265, w: 46, style: 'lanterns', color: '#cfc8bc', lit: 0.25 },
+    { id: 'wtplace', lat: 41.8979, lon: -87.6235, h: 262, w: 44, style: 'box', color: '#c8c2b7', lit: 0.3 },
+    { id: 'parktower', lat: 41.8990, lon: -87.6252, h: 257, w: 36, style: 'box', color: '#c4b7a3', lit: 0.3 },
+    { id: 'onemag', lat: 41.9005, lon: -87.6246, h: 205, w: 42, style: 'steps', color: '#cfc3ae', lit: 0.25 },
+    { id: 'palmolive', lat: 41.9009, lon: -87.6236, h: 172, w: 34, style: 'beacon', color: '#4a4540', lit: 0.3 },
+    { id: 'onechicago', lat: 41.8963, lon: -87.6288, h: 296, w: 46, style: 'box', color: '#4a5058', lit: 0.4 },
+    { id: 'marina', lat: 41.8884, lon: -87.6284, h: 179, w: 36, style: 'marina', color: '#8a8378' },
+    { id: 'wrigley', lat: 41.8900, lon: -87.6243, h: 130, w: 40, style: 'clock', color: '#e8e4dc' },
+    { id: 'tribune', lat: 41.8903, lon: -87.6235, h: 141, w: 34, style: 'gothic', color: '#4a4540' },
+    { id: 'nbc', lat: 41.8900, lon: -87.6207, h: 191, w: 40, style: 'gothic', color: '#5a5048', lit: 0.3 },
+    { id: 'lakepoint', lat: 41.8918, lon: -87.6134, h: 197, w: 44, style: 'box', color: '#3a4450', lit: 0.35 },
+    { id: 'lsd1000', lat: 41.9032, lon: -87.6243, h: 112, w: 50, style: 'box', color: '#5c5248', lit: 0.3 },
+    { id: 'lsd1350', lat: 41.9084, lon: -87.6262, h: 93, w: 60, style: 'box', color: '#4f4a44', lit: 0.25 },
+    { id: 'lsd1550', lat: 41.9112, lon: -87.6270, h: 115, w: 48, style: 'box', color: '#56514a', lit: 0.3 },
+    { id: 'lpw1960', lat: 41.9166, lon: -87.6349, h: 110, w: 46, style: 'box', color: '#4e4a44', lit: 0.3 },
+    { id: 'lakeview2400', lat: 41.9256, lon: -87.6392, h: 122, w: 44, style: 'box', color: '#4a4c50', lit: 0.3 },
+    { id: 'lsd2800', lat: 41.9330, lon: -87.6395, h: 135, w: 50, style: 'box', color: '#45474c', lit: 0.3 },
+    { id: 'belmont3150', lat: 41.9395, lon: -87.6398, h: 128, w: 48, style: 'box', color: '#4a4846', lit: 0.25 }
+  ];
+
+  // Anonymous mid-rises per district, seeded so they sit still between frames.
+  const SKY_FILL_DISTRICTS = [
+    { s: 41.8760, n: 41.8890, w: -87.6400, e: -87.6180, count: 26, hMin: 70, hMax: 190, color: '#2e333c' },
+    { s: 41.8890, n: 41.9000, w: -87.6330, e: -87.6150, count: 18, hMin: 55, hMax: 150, color: '#353a44' },
+    { s: 41.9000, n: 41.9125, w: -87.6320, e: -87.6240, count: 12, hMin: 45, hMax: 110, color: '#4a443c' },
+    { s: 41.9125, n: 41.9260, w: -87.6450, e: -87.6300, count: 8, hMin: 25, hMax: 55, color: '#3a4038' }
+  ];
+  let skyFillCache = null;
+  function skyFillBuildings() {
+    if (skyFillCache) return skyFillCache;
+    let seed = 1337;
+    const rnd = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    const out = [];
+    for (const dz of SKY_FILL_DISTRICTS) {
+      for (let i = 0; i < dz.count; i++) {
+        out.push({
+          id: `fill${out.length}`,
+          lat: dz.s + (dz.n - dz.s) * rnd(),
+          lon: dz.w + (dz.e - dz.w) * rnd(),
+          h: dz.hMin + (dz.hMax - dz.hMin) * rnd(),
+          w: 28 + rnd() * 26,
+          style: 'box',
+          color: shade(dz.color, Math.round((rnd() - 0.5) * 16)),
+          lit: rnd() < 0.6 ? 0.15 + rnd() * 0.25 : 0,
+          fill: true
+        });
+      }
+    }
+    skyFillCache = out;
+    return out;
+  }
+
+  function normAngle(a) {
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
+  }
+
+  // Horizontal field of view used to spread the skyline across the frame.
+  const SKY_HFOV = 84 * Math.PI / 180;
+  const SKY_PX_PER_RAD = 1.15;
+
+  // Accepts '#rrggbb' or 'rgb(r,g,b)'.
+  function parseRgb(c) {
+    if (c[0] === '#') return hexToRgb(c);
+    const m = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(c);
+    return m ? [+m[1], +m[2], +m[3]] : [80, 88, 100];
+  }
+
+  function mixHex(color, towardRgb, t) {
+    const [r, g, b] = parseRgb(color);
+    return `rgb(${Math.round(r + (towardRgb[0] - r) * t)},${Math.round(g + (towardRgb[1] - g) * t)},${Math.round(b + (towardRgb[2] - b) * t)})`;
+  }
+
+  function drawSkyTower(t, p, horizonY) {
+    const { x, w, h, alpha, haze } = p;
+    const bw = Math.max(1.6, w);
+    const bh = h;
+    const bx = x - bw / 2;
+    const by = horizonY - bh;
+    // Night haze pulls far towers toward the dusk blue, never toward white.
+    const base = mixHex(t.color, [54, 62, 80], haze * 0.75);
+    const darker = mixHex(shade(t.color, -18), [46, 54, 70], haze * 0.75);
+    const lighter = mixHex(t.color, [150, 158, 172], 0.14 + haze * 0.3);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = base;
+    switch (t.style) {
+      case 'willis': {
+        // Bundled tubes: three setbacks, two antennas.
+        const tiers = [[1, 0.5], [0.72, 0.78], [0.42, 1]];
+        for (const [tw, th] of tiers) {
+          const ww = bw * tw;
+          ctx.fillRect(x - ww / 2, horizonY - bh * th, ww, bh * th);
+        }
+        ctx.fillStyle = darker;
+        ctx.fillRect(x - bw * 0.21, horizonY - bh, bw * 0.06, bh);
+        if (t.antenna) {
+          const ah = bh * (t.antenna / t.h);
+          ctx.fillStyle = '#9aa2ad';
+          ctx.fillRect(x - bw * 0.12, by - ah, Math.max(1, bw * 0.035), ah);
+          ctx.fillRect(x + bw * 0.1, by - ah * 0.92, Math.max(1, bw * 0.035), ah * 0.92);
+        }
+        break;
+      }
+      case 'hancock': {
+        // Tapered trunk, X-braces, two antennas.
+        ctx.beginPath();
+        ctx.moveTo(bx, horizonY);
+        ctx.lineTo(bx + bw, horizonY);
+        ctx.lineTo(x + bw * 0.3, by);
+        ctx.lineTo(x - bw * 0.3, by);
+        ctx.closePath();
+        ctx.fill();
+        if (bw > 7) {
+          ctx.strokeStyle = 'rgba(120,130,142,0.5)';
+          ctx.lineWidth = Math.max(0.6, bw * 0.03);
+          const tiers = 5;
+          for (let i = 0; i < tiers; i++) {
+            const y0 = horizonY - (bh * i) / tiers;
+            const y1 = horizonY - (bh * (i + 1)) / tiers;
+            const hw0 = bw * (0.5 - 0.2 * (i / tiers));
+            const hw1 = bw * (0.5 - 0.2 * ((i + 1) / tiers));
+            ctx.beginPath();
+            ctx.moveTo(x - hw0, y0); ctx.lineTo(x + hw1, y1);
+            ctx.moveTo(x + hw0, y0); ctx.lineTo(x - hw1, y1);
+            ctx.stroke();
+          }
+        }
+        if (t.antenna) {
+          const ah = bh * (t.antenna / t.h);
+          ctx.fillStyle = '#9aa2ad';
+          ctx.fillRect(x - bw * 0.16, by - ah, Math.max(1, bw * 0.04), ah);
+          ctx.fillRect(x + bw * 0.12, by - ah, Math.max(1, bw * 0.04), ah);
+          const blink = Math.floor(performance.now() / 700) % 2 === 0;
+          if (blink) {
+            ctx.fillStyle = 'rgba(255,70,60,0.9)';
+            ctx.fillRect(x - bw * 0.16 - 0.5, by - ah - 1.5, Math.max(1.5, bw * 0.06), 1.5);
+          }
+        }
+        break;
+      }
+      case 'spire': {
+        ctx.fillRect(bx, by, bw, bh);
+        const sh = bh * ((t.spire || 30) / t.h);
+        ctx.fillStyle = mixHex('#aab2bc', [92, 104, 124], haze * 0.7);
+        ctx.fillRect(x - Math.max(0.6, bw * 0.03), by - sh, Math.max(1.2, bw * 0.06), sh);
+        break;
+      }
+      case 'spires': {
+        ctx.fillRect(bx, by, bw, bh);
+        const sh = bh * 0.12;
+        ctx.fillStyle = darker;
+        ctx.fillRect(x - bw * 0.3, by - sh, Math.max(1, bw * 0.06), sh);
+        ctx.fillRect(x + bw * 0.24, by - sh, Math.max(1, bw * 0.06), sh);
+        break;
+      }
+      case 'stregis': {
+        // Three undulating stems.
+        const stems = [[-0.33, 0.86], [0, 1], [0.33, 0.78]];
+        for (const [ox, th] of stems) {
+          ctx.fillStyle = ox === 0 ? base : darker;
+          ctx.fillRect(x + ox * bw - bw * 0.17, horizonY - bh * th, bw * 0.34, bh * th);
+        }
+        break;
+      }
+      case 'crown': {
+        ctx.fillRect(bx, by + bh * 0.08, bw, bh * 0.92);
+        ctx.beginPath();
+        ctx.moveTo(bx, by + bh * 0.08);
+        ctx.lineTo(x - bw * 0.18, by);
+        ctx.lineTo(x + bw * 0.18, by);
+        ctx.lineTo(bx + bw, by + bh * 0.08);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
+      case 'flare': {
+        ctx.beginPath();
+        ctx.moveTo(bx - bw * 0.18, horizonY);
+        ctx.lineTo(bx + bw * 1.18, horizonY);
+        ctx.lineTo(bx + bw, by);
+        ctx.lineTo(bx, by);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
+      case 'diamond': {
+        ctx.beginPath();
+        ctx.moveTo(bx, horizonY);
+        ctx.lineTo(bx + bw, horizonY);
+        ctx.lineTo(bx + bw, by + bh * 0.22);
+        ctx.lineTo(bx, by);
+        ctx.closePath();
+        ctx.fill();
+        break;
+      }
+      case 'lanterns': {
+        ctx.fillRect(bx, by, bw, bh);
+        ctx.fillStyle = 'rgba(255,214,150,0.7)';
+        for (let i = 0; i < 4; i++) {
+          const lx = bx + bw * (0.14 + i * 0.24);
+          ctx.fillRect(lx, by - bh * 0.03, Math.max(1, bw * 0.07), bh * 0.03);
+        }
+        break;
+      }
+      case 'steps': {
+        const tiers = [[1, 0.6], [0.7, 0.82], [0.42, 1]];
+        for (const [tw, th] of tiers) {
+          ctx.fillRect(x - bw * tw * 0.5, horizonY - bh * th, bw * tw, bh * th);
+        }
+        break;
+      }
+      case 'beacon': {
+        ctx.beginPath();
+        ctx.moveTo(bx, horizonY);
+        ctx.lineTo(bx + bw, horizonY);
+        ctx.lineTo(x + bw * 0.28, by);
+        ctx.lineTo(x - bw * 0.28, by);
+        ctx.closePath();
+        ctx.fill();
+        const sweep = (performance.now() / 1800) % 1;
+        if (sweep < 0.12 && bh > 10) {
+          ctx.fillStyle = 'rgba(255,245,200,0.75)';
+          ctx.beginPath();
+          ctx.arc(x, by - 1.5, Math.max(1, bw * 0.08), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+      case 'marina': {
+        const tw = bw * 0.44;
+        for (const ox of [-0.28, 0.28]) {
+          ctx.fillStyle = base;
+          ctx.fillRect(x + ox * bw - tw / 2, by, tw, bh);
+          if (bh > 14) {
+            ctx.fillStyle = 'rgba(20,22,26,0.4)';
+            const n = Math.min(14, Math.floor(bh / 4));
+            for (let i = 1; i < n; i++) ctx.fillRect(x + ox * bw - tw / 2, by + (bh * i) / n, tw, 0.8);
+          }
+        }
+        break;
+      }
+      case 'clock': {
+        ctx.fillRect(bx, by + bh * 0.1, bw, bh * 0.9);
+        ctx.fillRect(x - bw * 0.22, by, bw * 0.44, bh * 0.12);
+        if (bw > 6) {
+          ctx.fillStyle = '#2a3038';
+          ctx.beginPath();
+          ctx.arc(x, by + bh * 0.07, bw * 0.1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+      case 'gothic': {
+        ctx.fillRect(bx, by + bh * 0.12, bw, bh * 0.88);
+        ctx.fillStyle = lighter;
+        ctx.beginPath();
+        ctx.moveTo(bx, by + bh * 0.14);
+        ctx.lineTo(x, by);
+        ctx.lineTo(bx + bw, by + bh * 0.14);
+        ctx.closePath();
+        ctx.fill();
+        for (let i = 0; i < 3; i++) {
+          ctx.fillRect(bx + bw * (0.15 + i * 0.33), by + bh * 0.04, Math.max(0.8, bw * 0.06), bh * 0.1);
+        }
+        break;
+      }
+      default:
+        ctx.fillRect(bx, by, bw, bh);
+    }
+
+    if (t.lit && bw >= 5 && bh >= 12 && haze < 0.85 && !(t.fill && liteFx)) {
+      ctx.fillStyle = `rgba(214,186,118,${(0.18 + t.lit * 0.35) * (1 - haze * 0.6)})`;
+      const cols = Math.max(1, Math.floor(bw / 5));
+      const rows = Math.max(2, Math.floor(bh / 7));
+      const seed = Math.floor(t.lat * 10000 + t.lon * 1000);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if ((r * 7 + c * 3 + seed) % 5 < 2) continue;
+          ctx.fillRect(bx + 1.5 + c * ((bw - 3) / cols), by + 2 + r * ((bh - 4) / rows), 1.4, 2);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawGpsSkyline(d, map) {
+    const route = d.route;
+    gpsPrepare(map);
+    const here = gpsAtZ(map, route, d.z);
+    const target = gpsHeadingAt(map, route, d.z);
+    const now = performance.now();
+    if (d.skyHeading == null) {
+      d.skyHeading = target;
+      d.skyHeadingT = now;
+    } else {
+      const dt = Math.min(0.1, (now - (d.skyHeadingT || now)) / 1000);
+      d.skyHeadingT = now;
+      d.skyHeading = normAngle(d.skyHeading + normAngle(target - d.skyHeading) * Math.min(1, dt * 2.6));
+    }
+    const heading = d.skyHeading;
+
+    const horizonY = H * 0.42 - (d.hills || 0) * 0.08;
+    const sway = -d.curve * 36 - (d.camX || 0) * 3.5;
+    const focal = (W / 2) / Math.tan(SKY_HFOV / 2);
+    const pxPerRad = H * SKY_PX_PER_RAD;
+    const maxRel = SKY_HFOV / 2 + 0.35;
+
+    // Lake Michigan: east of the shore. Paint it where east actually is.
+    const env = routeEnvAt(d, d.z);
+    const lakeOpen = env.onLakefront || (Math.abs(normAngle(Math.PI / 2 - heading)) < 0.6 && env.e > -0.5);
+    if (lakeOpen) {
+      const r0 = normAngle((35 * Math.PI) / 180 - heading);
+      const r1 = normAngle((150 * Math.PI) / 180 - heading);
+      if (r0 < r1 && r1 > -maxRel && r0 < maxRel) {
+        const x0 = W / 2 + Math.tan(Math.max(-maxRel, r0)) * focal + sway;
+        const x1 = W / 2 + Math.tan(Math.min(maxRel, r1)) * focal + sway;
+        const lakeGrad = ctx.createLinearGradient(x0, horizonY - 100, x1, horizonY + 20);
+        lakeGrad.addColorStop(0, 'rgba(48,118,128,0.08)');
+        lakeGrad.addColorStop(0.5, 'rgba(32,85,118,0.22)');
+        lakeGrad.addColorStop(1, 'rgba(22,58,96,0.3)');
+        ctx.fillStyle = lakeGrad;
+        ctx.fillRect(x0, horizonY - 110, x1 - x0, 140);
+      }
+    }
+
+    const towers = SKY_TOWERS.concat(skyFillBuildings());
+    const list = [];
+    for (const t of towers) {
+      const de = (t.lon - here[1]) * map.mLon;
+      const dn = (t.lat - here[0]) * map.mLat;
+      const dist = Math.hypot(de, dn);
+      if (dist < 120 || dist > 9000) continue;
+      const rel = normAngle(Math.atan2(de, dn) - heading);
+      if (Math.abs(rel) > maxRel) continue;
+      // Close towers are drawn as 3D landmarks beside the road; fade these out.
+      const nearFade = Math.max(0, Math.min(1, (dist - 260) / 260));
+      if (nearFade <= 0) continue;
+      const haze = Math.max(0, Math.min(1, (dist - 600) / 6500));
+      const x = W / 2 + Math.tan(rel) * focal + sway;
+      const h = Math.min(H * 0.52, pxPerRad * Math.atan(t.h / dist));
+      const w = Math.max(1.6, (focal * t.w) / dist);
+      list.push({ t, p: { x, w, h, dist, haze, alpha: nearFade * (1 - haze * 0.45) * (t.fill ? 0.9 : 1) } });
+    }
+    list.sort((a, b) => b.p.dist - a.p.dist);
+    for (const it of list) drawSkyTower(it.t, it.p, horizonY);
+  }
+
   function drawLocationSkyline(d) {
+    const gpsMap = window.GOLD_COAST_MAP;
+    if (gpsMap && gpsMap.route && gpsMap.route.length && d.route) {
+      drawGpsSkyline(d, gpsMap);
+      return;
+    }
     const env = routeEnvAt(d, d.z);
     const zone = env.skylineZone || skylineZoneForEnv(env);
     const profile = SKYLINE_PROFILES[zone] || SKYLINE_PROFILES.default;
@@ -7952,17 +8325,28 @@
             const { x: tipX, y: tipY, s, spread } = tips[ti];
             const jitterX = (Math.random() - 0.5) * 1.4 * s;
             const jitterY = (Math.random() - 0.5) * 0.8 * s;
+            const pipe = pipeWorldFromTip(d, tips[ti]);
+            const carVz = d.speed * DRIVE_MPH_Z;
+            const back = projectWorld(pipe.wx, pipe.wy, pipe.wz - 1.2, d);
+            const alongX = back.x - tipX;
+            const alongY = back.y - tipY;
             if (lit && Math.random() < (plume ? 0.88 : 0.75)) {
-              const aim = spread * 18;
               state.particles.push({
                 type: 'exhaustFlame',
                 x: tipX + jitterX,
                 y: tipY + jitterY,
-                vx: -d.velX * 4 + aim + (Math.random() - 0.5) * (3 + over * 5) + (d.yaw || 0) * 10,
-                vy: 92 + Math.random() * (48 + over * 68) + spread * 8,
-                life: 0.05 + Math.random() * 0.08 + over * 0.05,
-                maxLife: 0.16,
-                size: (0.65 + Math.random() * 0.55 + over * 0.85) * Math.min(1.3, 0.55 + s),
+                wx: pipe.wx + pipe.spread * 0.012,
+                wy: pipe.wy,
+                wz: pipe.wz,
+                wvx: pipe.spread * (0.08 + Math.random() * 0.12),
+                wvy: 0.15 + Math.random() * 0.45,
+                wvz: carVz - (36 + Math.random() * 40 + over * 30),
+                vx: alongX,
+                vy: alongY,
+                life: 0.1 + Math.random() * 0.08 + over * 0.04,
+                maxLife: 0.24,
+                worldSize: 0.012 + Math.random() * 0.01 + over * 0.008,
+                size: 2,
                 heat: 0.9 + Math.random() * 0.1
               });
             }
@@ -7973,11 +8357,18 @@
                 exhaust: true,
                 x: tipX + (Math.random() - 0.5) * 3.5 * s,
                 y: tipY + (Math.random() - 0.5) * 2.5 * s,
-                vx: -d.velX * 10 + spread * 22 + (Math.random() - 0.5) * (8 + throttle * 12) + (d.yaw || 0) * 28,
-                vy: -2 - Math.random() * (10 + throttle * 14),
-                life: 0.35 + Math.random() * 0.5 + throttle * 0.18,
-                maxLife: 0.95,
-                size: (2.2 + Math.random() * 3.5 + throttle * 4) * Math.min(1.35, 0.55 + s),
+                wx: pipe.wx + (Math.random() - 0.5) * 0.03,
+                wy: pipe.wy,
+                wz: pipe.wz,
+                wvx: pipe.spread * (0.12 + Math.random() * 0.16),
+                wvy: 0.2 + Math.random() * (0.4 + throttle * 0.6),
+                wvz: carVz - (4 + Math.random() * 6 + throttle * 4),
+                vx: alongX,
+                vy: alongY,
+                life: 0.28 + Math.random() * 0.35 + throttle * 0.12,
+                maxLife: 0.8,
+                worldSize: 0.02 + Math.random() * 0.02 + throttle * 0.02,
+                size: 4,
                 color: soot > 0.6 ? '#12100e' : soot > 0.3 ? '#0a0a0c' : '#1c1814'
               });
             }
@@ -7986,11 +8377,18 @@
                 type: 'exhaustFlame',
                 x: tipX + jitterX,
                 y: tipY + jitterY,
-                vx: -d.velX * 3 + spread * 10 + (Math.random() - 0.5) * 3,
-                vy: 38 + Math.random() * 22,
-                life: 0.04 + Math.random() * 0.05,
-                maxLife: 0.11,
-                size: (0.45 + Math.random() * 0.35) * Math.min(1.1, 0.5 + s),
+                wx: pipe.wx,
+                wy: pipe.wy,
+                wz: pipe.wz,
+                wvx: pipe.spread * 0.06,
+                wvy: 0.1 + Math.random() * 0.2,
+                wvz: carVz - (6 + Math.random() * 6),
+                vx: alongX,
+                vy: alongY,
+                life: 0.06 + Math.random() * 0.05,
+                maxLife: 0.14,
+                worldSize: 0.01 + Math.random() * 0.008,
+                size: 1.5,
                 heat: 0.55 + Math.random() * 0.25
               });
             }
@@ -8004,7 +8402,35 @@
   }
 
   function updateParticles(dt) {
+    const drive = state.drive;
     for (const p of state.particles) {
+      if (p.wz != null && drive) {
+        const camZ = drive.z - (drive.camBack || 110);
+        if (p.wz < camZ + 16) {
+          p.life = 0;
+          continue;
+        }
+        p.wx += (p.wvx || 0) * dt;
+        p.wy += (p.wvy || 0) * dt;
+        p.wz += (p.wvz || 0) * dt;
+        if (p.type === 'smoke') {
+          p.wvy = (p.wvy || 0) + (p.exhaust ? 1.4 : 0.5) * dt;
+          p.worldSize = Math.min(0.16, (p.worldSize || 0.03) + (p.exhaust ? 0.04 : 0.025) * dt);
+        } else if (p.type === 'exhaustFlame') {
+          p.worldSize = Math.min(0.08, (p.worldSize || 0.015) + 0.03 * dt);
+          p.heat = (p.heat || 1) * Math.pow(0.15, dt);
+        }
+        const prevX = p.x;
+        const prevY = p.y;
+        const proj = projectWorld(p.wx, p.wy, p.wz, drive);
+        p.x = proj.x;
+        p.y = proj.y;
+        p.vx = (p.x - prevX) / Math.max(dt, 1e-3);
+        p.vy = (p.y - prevY) / Math.max(dt, 1e-3);
+        p.size = (p.worldSize || 0.02) * proj.scale * (p.type === 'smoke' ? 140 : 90);
+        p.life -= dt;
+        continue;
+      }
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (p.type === 'shard' || p.type === 'pebble') {
@@ -9680,29 +10106,20 @@
     }
   }
 
-  // Blue jets from each bumper tip — narrow at the pipe, flaring down the beam.
+  // Pipe hardware on the bumper. The jet itself is drawn in road space.
   function drawPlayerExhaustFlames(drawW, drawH, s, intensity) {
     if (intensity <= 0.02) return;
-    const t = performance.now() / 1000;
     const plume = lookOn('plume');
     const hot = intensity > 0.45;
     const flame = plume ? lookRgb('plume') : [90, 190, 255];
     const flameHot = mixTowardWhite(flame, 0.78);
-    const flameMid = mixTowardWhite(flame, 0.28);
     const tips = playerAnchors(s).tips;
     for (let i = 0; i < tips.length; i++) {
       const tip = tips[i];
       const [tx, ty] = spritePoint(drawW, drawH, s, tip.fx, tip.fy);
-      const spread = tip.spread != null ? tip.spread : (i === 0 ? -1 : 1);
-      const flicker = 0.88 + Math.sin(t * 42 + i * 5.1) * 0.08 + Math.sin(t * 90 + i) * 0.04;
-      const reach = plume ? 52 : 38;
-      const len = (3 + intensity * reach) * s * flicker;
       const pipeR = Math.max(1.1, 1.35 * s);
-      const tipW = (0.35 + intensity * (plume ? 0.55 : 0.32)) * s;
-      const endW = (1.6 + intensity * (plume ? 10 : 6.5)) * s * flicker;
       ctx.save();
       ctx.translate(tx, ty);
-      ctx.rotate(spread * 0.11);
       ctx.fillStyle = '#1a1a1e';
       ctx.beginPath();
       ctx.ellipse(0, 0, pipeR * 1.15, pipeR * 0.85, 0, 0, Math.PI * 2);
@@ -9721,44 +10138,6 @@
         ctx.ellipse(0, 0, pipeR * 1.1, pipeR * 0.8, 0, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.globalCompositeOperation = 'lighter';
-      const halo = ctx.createLinearGradient(0, 0, 0, len);
-      halo.addColorStop(0, rgbCss(flameMid, 0.38 * Math.min(1, intensity + 0.15)));
-      halo.addColorStop(0.5, rgbCss(flame, 0.2 * intensity));
-      halo.addColorStop(1, rgbCss(flame, 0));
-      ctx.fillStyle = halo;
-      ctx.beginPath();
-      ctx.moveTo(-tipW * 1.5, 0);
-      ctx.lineTo(-endW * 1.25, len);
-      ctx.lineTo(endW * 1.25, len);
-      ctx.lineTo(tipW * 1.5, 0);
-      ctx.closePath();
-      ctx.fill();
-      const g = ctx.createLinearGradient(0, 0, 0, len);
-      g.addColorStop(0, rgbCss(flameHot, hot ? 0.98 : 0.55 + intensity * 0.35));
-      g.addColorStop(0.15, rgbCss(flameMid, hot ? 0.92 : 0.35 + intensity * 0.45));
-      g.addColorStop(0.65, rgbCss(flame, 0.5 * intensity));
-      g.addColorStop(1, rgbCss(flame, 0));
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.moveTo(-tipW * 0.48, 0);
-      ctx.lineTo(-endW * 0.48, len);
-      ctx.lineTo(endW * 0.48, len);
-      ctx.lineTo(tipW * 0.48, 0);
-      ctx.closePath();
-      ctx.fill();
-      const core = ctx.createLinearGradient(0, 0, 0, len * 0.82);
-      core.addColorStop(0, `rgba(255,255,255,${hot ? 0.95 : 0.5 + intensity * 0.35})`);
-      core.addColorStop(0.4, `rgba(200,235,255,${hot ? 0.7 : 0.25 + intensity * 0.35})`);
-      core.addColorStop(1, 'rgba(140,200,255,0)');
-      ctx.fillStyle = core;
-      ctx.beginPath();
-      ctx.moveTo(-tipW * 0.2, 0);
-      ctx.lineTo(-endW * 0.16, len * 0.82);
-      ctx.lineTo(endW * 0.16, len * 0.82);
-      ctx.lineTo(tipW * 0.2, 0);
-      ctx.closePath();
-      ctx.fill();
       ctx.restore();
     }
   }
@@ -9961,43 +10340,87 @@
     ctx.restore();
   }
 
+  // Scrap copper strapped in a roof basket: a stack of pipe seen end-on,
+  // a coil of tubing beside it, ratchet straps holding it down.
   function drawPlayerRoofRack(drawW, drawH, s) {
     const a = playerAnchors(s).rack;
     const [rx, ry] = spritePoint(drawW, drawH, s, a.fx, a.fy);
     const rw = drawW * a.w;
-    const pipeH = Math.max(1.8, 2.2 * s);
+    const metal = lookRgb('rack');
+    const hi = mixTowardWhite(metal, 0.62);
+    const mid = mixTowardWhite(metal, 0.12);
+    const lo = metal.map((c) => Math.round(c * 0.4));
+    const deep = metal.map((c) => Math.round(c * 0.18));
+    const css = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
+    const pr = Math.max(1.2, Math.min(2.3 * s, rw * 0.072));
+    const floorY = ry + pr * 1.1;
     ctx.save();
     ctx.translate(rx, 0);
-    ctx.fillStyle = '#181a1e';
-    ctx.fillRect(-rw * 0.54, ry + pipeH * 0.7, rw * 1.08, Math.max(1.2, 1.4 * s));
-    const metal = lookRgb('rack');
-    const metalHi = mixTowardWhite(metal, 0.55);
-    const metalLo = metal.map((c) => Math.round(c * 0.32));
-    const pipes = [-0.34, -0.18, -0.02, 0.14, 0.3];
-    for (let i = 0; i < pipes.length; i++) {
-      const px = pipes[i] * rw;
-      const py = ry - (i % 2) * pipeH * 0.65;
-      const pw = rw * 0.16;
-      const grad = ctx.createLinearGradient(px - pw / 2, py - pipeH, px + pw / 2, py + pipeH);
-      grad.addColorStop(0, `rgb(${metalHi[0]},${metalHi[1]},${metalHi[2]})`);
-      grad.addColorStop(0.45, `rgb(${metal[0]},${metal[1]},${metal[2]})`);
-      grad.addColorStop(1, `rgb(${metalLo[0]},${metalLo[1]},${metalLo[2]})`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(px - pw * 0.5, py - pipeH * 0.5, pw, pipeH);
-      ctx.fillStyle = '#2b1608';
-      ctx.beginPath();
-      ctx.arc(px - pw * 0.22, py, pipeH * 0.32, 0, Math.PI * 2);
-      ctx.arc(px + pw * 0.22, py, pipeH * 0.32, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.strokeStyle = lookHex('rack');
-    ctx.lineWidth = Math.max(1, 1.15 * s);
+
+    // Basket: steel floor bar and two uprights.
+    ctx.fillStyle = '#121418';
+    ctx.fillRect(-rw * 0.52, floorY, rw * 1.04, Math.max(1, 1.15 * s));
+    ctx.strokeStyle = '#2c3038';
+    ctx.lineWidth = Math.max(0.8, 0.85 * s);
     ctx.beginPath();
-    ctx.moveTo(-rw * 0.42, ry - pipeH * 1.1);
-    ctx.lineTo(-rw * 0.42, ry + pipeH * 1.1);
-    ctx.moveTo(rw * 0.42, ry - pipeH * 1.1);
-    ctx.lineTo(rw * 0.42, ry + pipeH * 1.1);
+    ctx.moveTo(-rw * 0.5, floorY + 0.5);
+    ctx.lineTo(-rw * 0.5, floorY - pr * 4.6);
+    ctx.moveTo(rw * 0.5, floorY + 0.5);
+    ctx.lineTo(rw * 0.5, floorY - pr * 4.6);
     ctx.stroke();
+
+    // Pipe bundle, end-on: 4 / 3 / 2 stacked. Bright rim, dark bore.
+    const rows = [4, 3, 2];
+    const bundleX = -rw * 0.17;
+    for (let r = 0; r < rows.length; r++) {
+      const n = rows[r];
+      const cy = floorY - pr - r * pr * 1.74;
+      for (let i = 0; i < n; i++) {
+        const cx = bundleX + (i - (n - 1) / 2) * pr * 2.04;
+        const g = ctx.createRadialGradient(cx - pr * 0.38, cy - pr * 0.38, pr * 0.08, cx, cy, pr);
+        g.addColorStop(0, css(hi));
+        g.addColorStop(0.5, css(mid));
+        g.addColorStop(1, css(lo));
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(cx, cy, pr, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = css(deep);
+        ctx.beginPath();
+        ctx.arc(cx, cy, pr * 0.58, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0d0806';
+        ctx.beginPath();
+        ctx.arc(cx + pr * 0.1, cy + pr * 0.1, pr * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Coil of soft tubing leaning against the bundle.
+    const coilR = pr * 2.25;
+    const coilX = rw * 0.3;
+    const coilY = floorY - coilR * 0.78;
+    ctx.lineWidth = Math.max(0.9, pr * 0.5);
+    for (let k = 0; k < 4; k++) {
+      ctx.strokeStyle = k === 2 ? css(hi) : k === 0 ? css(lo) : css(mid);
+      ctx.beginPath();
+      ctx.ellipse(coilX + (k - 1.5) * pr * 0.42, coilY, coilR, coilR * 0.72, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Ratchet straps across the load, buckles near the floor.
+    const straps = [bundleX - pr * 1.5, bundleX + pr * 1.5, coilX];
+    ctx.strokeStyle = '#0b0c0f';
+    ctx.lineWidth = Math.max(0.9, 1.05 * s);
+    ctx.beginPath();
+    for (const sx of straps) {
+      ctx.moveTo(sx, floorY - pr * 5.1);
+      ctx.lineTo(sx, floorY + 0.5);
+    }
+    ctx.stroke();
+    ctx.fillStyle = '#9aa0aa';
+    for (const sx of straps) ctx.fillRect(sx - pr * 0.36, floorY - pr * 1.2, pr * 0.72, pr * 0.55);
+
     ctx.restore();
   }
 
@@ -10330,6 +10753,97 @@
         spread
       };
     });
+  }
+
+  // Pipe in the same world units as the road, so the jet can run along the lane.
+  function pipeWorldFromTip(d, tip) {
+    const carZ = d.z + 14;
+    const ground = projectWorld(d.playerX, 0, carZ, d);
+    const side = projectWorld(d.playerX + 1, 0, carZ, d);
+    const per = side.x - ground.x;
+    const wx = Math.abs(per) > 0.5 ? d.playerX + (tip.x - ground.x) / per : d.playerX;
+    const wy = Math.max(0.04, (ground.y - tip.y) / Math.max(0.2, ground.scale));
+    return { wx, wy, wz: carZ, spread: tip.spread || 0 };
+  }
+
+  // Jet lies on the road behind the bumper. Equal steps in world Z bunch up
+  // toward the vanishing point and spread as they come toward the camera.
+  function drawPlayerExhaustPlume(d, intensity) {
+    if (intensity <= 0.02) return;
+    const tips = playerExhaustTipPoints(d);
+    if (!tips.length) return;
+    const plume = lookOn('plume');
+    const flame = plume ? lookRgb('plume') : [90, 190, 255];
+    const flameHot = mixTowardWhite(flame, 0.78);
+    const flameMid = mixTowardWhite(flame, 0.28);
+    const hot = intensity > 0.45;
+    const now = performance.now() / 1000;
+    const reach = 6 + intensity * (plume ? 30 : 22);
+    const steps = 8;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let n = 0; n < tips.length; n++) {
+      const pipe = pipeWorldFromTip(d, tips[n]);
+      const flicker = 0.9 + Math.sin(now * 42 + n * 5.1) * 0.07;
+      const centers = [];
+      const widths = [];
+      for (let i = 0; i <= steps; i++) {
+        const u = i / steps;
+        const lift = Math.sin(u * Math.PI) * (0.12 + intensity * 0.35) * flicker;
+        const wx = pipe.wx + pipe.spread * u * 0.06;
+        const wy = pipe.wy * (1 - u * 0.75) + lift;
+        const wz = pipe.wz - u * reach * flicker;
+        const proj = projectWorld(wx, wy, wz, d);
+        centers.push(proj);
+        const worldHalf = (0.016 + u * (0.04 + intensity * 0.07)) * flicker;
+        widths.push(Math.max(1.2, worldHalf * proj.scale * 100));
+      }
+      const left = [];
+      const right = [];
+      for (let i = 0; i < centers.length; i++) {
+        const prev = centers[Math.max(0, i - 1)];
+        const next = centers[Math.min(centers.length - 1, i + 1)];
+        let dx = next.x - prev.x;
+        let dy = next.y - prev.y;
+        const len = Math.hypot(dx, dy) || 1;
+        dx /= len;
+        dy /= len;
+        left.push({ x: centers[i].x - dy * widths[i], y: centers[i].y + dx * widths[i] });
+        right.push({ x: centers[i].x + dy * widths[i], y: centers[i].y - dx * widths[i] });
+      }
+      const mouth = centers[0];
+      const tail = centers[centers.length - 1];
+      const jet = ctx.createLinearGradient(mouth.x, mouth.y, tail.x, tail.y);
+      jet.addColorStop(0, rgbCss(flameHot, hot ? 0.95 : 0.5 + intensity * 0.35));
+      jet.addColorStop(0.18, rgbCss(flameMid, hot ? 0.85 : 0.32 + intensity * 0.4));
+      jet.addColorStop(0.62, rgbCss(flame, 0.28 * intensity));
+      jet.addColorStop(1, rgbCss(flame, 0));
+      ctx.fillStyle = jet;
+      ctx.beginPath();
+      ctx.moveTo(left[0].x, left[0].y);
+      for (let i = 1; i < left.length; i++) ctx.lineTo(left[i].x, left[i].y);
+      for (let i = right.length - 1; i >= 0; i--) ctx.lineTo(right[i].x, right[i].y);
+      ctx.closePath();
+      ctx.fill();
+      const core = ctx.createLinearGradient(mouth.x, mouth.y, tail.x, tail.y);
+      core.addColorStop(0, `rgba(255,255,255,${hot ? 0.9 : 0.4 + intensity * 0.3})`);
+      core.addColorStop(0.4, `rgba(200,235,255,${hot ? 0.55 : 0.2 + intensity * 0.25})`);
+      core.addColorStop(1, 'rgba(140,200,255,0)');
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.moveTo(left[0].x * 0.35 + mouth.x * 0.65, left[0].y * 0.35 + mouth.y * 0.65);
+      for (let i = 1; i < left.length; i++) {
+        const w = 0.35;
+        ctx.lineTo(left[i].x * w + centers[i].x * (1 - w), left[i].y * w + centers[i].y * (1 - w));
+      }
+      for (let i = right.length - 1; i >= 0; i--) {
+        const w = 0.35;
+        ctx.lineTo(right[i].x * w + centers[i].x * (1 - w), right[i].y * w + centers[i].y * (1 - w));
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   // Perspective scales — keep highway size, but allow growth when the cam pulls in.
@@ -12845,29 +13359,73 @@
     ctx.globalAlpha = 1;
   }
 
+  // Metres per degree and per-segment lengths for the GPS route, computed once.
+  function gpsPrepare(map) {
+    if (!map || map.ready || !map.route || !map.route.length) return;
+    const lat0 = (map.bounds.s + map.bounds.n) / 2;
+    map.mLat = 110540;
+    map.mLon = 111320 * Math.cos(lat0 * Math.PI / 180);
+    for (const seg of map.route) {
+      const lens = [];
+      let total = 0;
+      for (let i = 1; i < seg.pts.length; i++) {
+        const a = seg.pts[i - 1];
+        const b = seg.pts[i];
+        const len = Math.hypot((b[1] - a[1]) * map.mLon, (b[0] - a[0]) * map.mLat);
+        lens.push(len);
+        total += len;
+      }
+      seg.lens = lens;
+      seg.len = total || 1;
+    }
+    map.ready = true;
+  }
+
+  function gpsPointOnSeg(seg, t) {
+    const target = Math.max(0, Math.min(1, t)) * seg.len;
+    let acc = 0;
+    for (let i = 0; i < seg.lens.length; i++) {
+      const span = seg.lens[i];
+      if (acc + span >= target || i === seg.lens.length - 1) {
+        const k = span ? Math.max(0, Math.min(1, (target - acc) / span)) : 0;
+        const a = seg.pts[i];
+        const c = seg.pts[i + 1];
+        return [a[0] + (c[0] - a[0]) * k, a[1] + (c[1] - a[1]) * k];
+      }
+      acc += span;
+    }
+    return seg.pts[0];
+  }
+
+  // [lat, lon] of a route z on the GPS map.
+  function gpsAtZ(map, route, z) {
+    const segs = map.route;
+    const total = segs[segs.length - 1].z1 || route.length;
+    z = wrapRouteZ(z, total);
+    for (let i = 0; i < segs.length; i++) {
+      const seg = segs[i];
+      if (z <= seg.z1 || i === segs.length - 1) {
+        return gpsPointOnSeg(seg, (z - seg.z0) / ((seg.z1 - seg.z0) || 1));
+      }
+    }
+    return segs[0].pts[0];
+  }
+
+  // Compass heading (radians, 0 = north, clockwise) of travel at route z.
+  function gpsHeadingAt(map, route, z, eps = 90) {
+    const a = gpsAtZ(map, route, z - eps);
+    const b = gpsAtZ(map, route, z + eps);
+    const de = (b[1] - a[1]) * map.mLon;
+    const dn = (b[0] - a[0]) * map.mLat;
+    if (Math.abs(de) < 1e-6 && Math.abs(dn) < 1e-6) return 0;
+    return Math.atan2(de, dn);
+  }
+
   function drawGpsReferenceMap(d) {
     const map = window.GOLD_COAST_MAP;
     const route = d.route;
     if (!map || !route || !map.route || !map.route.length) return;
-    if (!map.ready) {
-      const lat0 = (map.bounds.s + map.bounds.n) / 2;
-      map.mLat = 110540;
-      map.mLon = 111320 * Math.cos(lat0 * Math.PI / 180);
-      for (const seg of map.route) {
-        const lens = [];
-        let total = 0;
-        for (let i = 1; i < seg.pts.length; i++) {
-          const a = seg.pts[i - 1];
-          const b = seg.pts[i];
-          const len = Math.hypot((b[1] - a[1]) * map.mLon, (b[0] - a[0]) * map.mLat);
-          lens.push(len);
-          total += len;
-        }
-        seg.lens = lens;
-        seg.len = total || 1;
-      }
-      map.ready = true;
-    }
+    gpsPrepare(map);
 
     const { innerX, innerY, titleH } = MAP_LAYOUT;
     const { mx, my, mapW, mapH } = getMapRect();
@@ -12898,34 +13456,8 @@
       return null;
     }
 
-    function pointOnSeg(seg, t) {
-      const target = Math.max(0, Math.min(1, t)) * seg.len;
-      let acc = 0;
-      for (let i = 0; i < seg.lens.length; i++) {
-        const span = seg.lens[i];
-        if (acc + span >= target || i === seg.lens.length - 1) {
-          const k = span ? Math.max(0, Math.min(1, (target - acc) / span)) : 0;
-          const a = seg.pts[i];
-          const c = seg.pts[i + 1];
-          return [a[0] + (c[0] - a[0]) * k, a[1] + (c[1] - a[1]) * k];
-        }
-        acc += span;
-      }
-      return seg.pts[0];
-    }
-
-    function gpsAt(z) {
-      const segs = map.route;
-      const total = segs[segs.length - 1].z1 || route.length;
-      z = wrapRouteZ(z, total);
-      for (let i = 0; i < segs.length; i++) {
-        const seg = segs[i];
-        if (z <= seg.z1 || i === segs.length - 1) {
-          return pointOnSeg(seg, (z - seg.z0) / ((seg.z1 - seg.z0) || 1));
-        }
-      }
-      return segs[0].pts[0];
-    }
+    const pointOnSeg = gpsPointOnSeg;
+    const gpsAt = (z) => gpsAtZ(map, route, z);
 
     function trace(pts) {
       let started = false;
@@ -14040,6 +14572,7 @@
     const bob = Math.sin(d.wheelSpin * 2) * (d.speed / 900) + (d.susp || 0) * 0.35;
     const carZ = d.z + 14;
     const ground = projectWorld(d.playerX, 0, carZ, d);
+    drawPlayerExhaustPlume(d, playerExhaustIntensity(d));
     drawPlayerCar(ground.x, ground.y + bob, playerCarScale(ground), {
       yaw: d.yaw,
       pitch: d.pitch,
