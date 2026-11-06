@@ -2734,7 +2734,7 @@
   WRX_NEAR_IMG.src = 'assets/wrx-near.png';
   const WRX_BASE_W = 62;
   // Bumper lip sits on the road. Tires are inset so the body covers them.
-  const WRX_GROUND = 1.0;
+  const WRX_GROUND = 0.96;
   const WRX_WHEEL_X = 0.26;
   const WRX_WHEEL_R = 0.095;
   // Single pipe, left of the plate, on the shared bumper anchor.
@@ -5330,6 +5330,13 @@
     return false;
   }
 
+  const NEON_SIGNS = [
+    { text: 'BAR', color: '#ff4f6d' }, { text: 'OLD STYLE', color: '#ffb347' }, { text: 'TAP', color: '#47d7ff' },
+    { text: 'PIZZA', color: '#ff6b3d' }, { text: 'TACOS', color: '#7cff6b' }, { text: 'LIQUOR', color: '#ff4f6d' },
+    { text: 'OPEN', color: '#ff3b3b' }, { text: 'COCKTAILS', color: '#c77dff' }, { text: 'DINER', color: '#ffd84d' },
+    { text: 'BILLIARDS', color: '#47d7ff' }, { text: 'JAZZ', color: '#ff8fd6' }, { text: 'HOT DOGS', color: '#ffb347' }
+  ];
+
   function seedCityBlocks(d, fromZ, toZ) {
     // Chicago blocks — inland facades on LSD, lake side gets shoreline props
     const facades = ['#4a3f38', '#3d4248', '#5a5048', '#2f353c', '#5c4a3a', '#3a4038', '#6a5a4a'];
@@ -5379,7 +5386,10 @@
           lean: Math.sin(routeZ * 0.01) * (fancy ? 0.014 : 0.025),
           boarded: !fancy && zi % 5 === 0,
           graffiti: !fancy && zi % 3 !== 0,
-          fancy: !!fancy
+          fancy: !!fancy,
+          // Clark St bar strip — neon in every few storefronts
+          neon: (!fancy && env.clarkGrid && zi % 5 !== 0 && (zi + side) % 3 === 1)
+            ? NEON_SIGNS[Math.abs(zi * 3 + side) % NEON_SIGNS.length] : null
         });
       }
       if (env.onLakefront) {
@@ -9839,7 +9849,7 @@
   function drawWrxRearTire(cx, cy, r, side) {
     const drop = r * 1.15;
     const h = r * 2 + drop;
-    const w = r * 1.62;
+    const w = r * 2.35;
     const x = cx - w / 2;
     const y = cy - r;
     const rad = w * 0.08;
@@ -11402,6 +11412,31 @@
     ctx.fillRect(w0.x + 8 * w0.scale, waveY, Math.max(18, (W - w0.x) * 0.28), 1.6 * w0.scale);
   }
 
+  // Roof heights (world units) matching each kind's drawing routine.
+  const LM_ROOF_H = {
+    hancock: 500, aon: 520, parktower: 360, wtplace: 330, ninems: 320, onemag: 310,
+    tribune: 285, marina: 280, palmolive: 235, wrigley: 210, london: 195, drake: 175,
+    church: 142, biograph: 128, watertower: 105, zoo: 95, pier: 70, beach: 30, oakbeach: 30
+  };
+  // Night-sky tint behind each crown as it looms.
+  const LM_HALO = {
+    hancock: '120,150,200', aon: '190,200,220', wtplace: '210,180,130', ninems: '110,140,190',
+    tribune: '220,205,170', wrigley: '235,230,210', marina: '200,200,210', palmolive: '240,210,120',
+    london: '230,210,160', drake: '230,190,120', watertower: '220,200,150', church: '230,200,140',
+    onemag: '160,170,200', parktower: '210,200,180', biograph: '240,120,120', zoo: '160,200,150', pier: '240,200,120'
+  };
+  const LM_SUBTITLE = {
+    hancock: 'JOHN HANCOCK CENTER · 1,128 FT', aon: '200 E RANDOLPH · 1,136 FT', wtplace: 'MAG MILE · 1976',
+    ninems: 'BLOOMINGDALE\'S · 1989', tribune: 'FLYING BUTTRESSES · 1925', wrigley: 'TERRA COTTA · 1924',
+    marina: 'CORNCOBS · 1964', palmolive: 'LINDBERGH BEACON · 1929', london: 'MICHIGAN AVE BRIDGE · 1923',
+    drake: 'LAKE SHORE DR · 1920', watertower: 'SURVIVED THE FIRE · 1869', church: 'ESTABLISHED 1864',
+    onemag: 'ONE MAGNIFICENT MILE · 1983', parktower: '800 N MICHIGAN · 2000', biograph: 'DILLINGER · 1934',
+    zoo: 'FREE SINCE 1868', pier: 'FERRIS WHEEL · 1916', beach: 'LAKEFRONT TRAIL · CHESS PAVILION', oakbeach: 'WHERE THE MAG MILE MEETS THE LAKE',
+    // Label-keyed overrides where one drawing kind serves several buildings
+    'Holy Name Cathedral': 'STATE & SUPERIOR · 1875', 'Moody Church': 'NORTH & LASALLE · 1925',
+    'Second City': 'PIPER\'S ALLEY · 1959', 'Lincoln Park': 'ZOO · FREE SINCE 1868'
+  };
+
   function drawLandmark(lm, d) {
     const side = lm.side != null ? lm.side : (lm.e > 1.5 ? 1 : -1);
     const lakeKinds = ['pier', 'beach', 'oakbeach'];
@@ -11412,22 +11447,58 @@
     const xWorld = side * (DW.BUILD + inset);
     const ground = projectWorld(xWorld, 0, lm.z, d);
     if (ground.relZ > 2400) return;
-    const nearFade = facadeProximityFade(ground, d, { minZ: 82, fadeZ: 320, minScale: 0.04 });
+    // Set-back landmarks sit far from the kerb, so they stay in view longer
+    // before sliding past the edge of the windshield.
+    const deepSet = (lm.setback || 0) > 150;
+    const nearFade = facadeProximityFade(ground, d, { minZ: deepSet ? 50 : 82, fadeZ: deepSet ? 220 : 320, minScale: 0.04 });
     if (nearFade <= 0) return;
     const fade = Math.max(0, Math.min(1, (2400 - ground.relZ) / 620)) * nearFade;
     const near = Math.max(0, 1 - ground.relZ / 480);
+
+    // Hero approach: the classics loom larger than life as you close in.
+    const roofH = LM_ROOF_H[lm.kind] || 120;
+    const isTall = roofH >= 190;
+    const isLow = roofH <= 60;
+    const heroRaw = Math.max(0, Math.min(1, (1300 - ground.relZ) / 1040));
+    const heroT = heroRaw * heroRaw * (3 - 2 * heroRaw);
+    // Stretch only as far as needed to lift the crown toward the sky line
+    // under the HUD, so the signature silhouette always stays in frame.
+    const crownReal = projectWorld(xWorld, roofH, lm.z, d);
+    // Taller icons reach higher so the exaggerated skyline keeps its hierarchy
+    const skyTarget = H * (0.2 + 0.15 * (1 - Math.min(1, roofH / 520)));
+    let heroH = 1;
+    if (heroT > 0 && crownReal.y > skyTarget) {
+      const wantY = crownReal.y + (skyTarget - crownReal.y) * heroT;
+      const wantH = (d.camY || 46) + (H * 0.46 - wantY) / ground.scale;
+      heroH = Math.max(1, Math.min(isTall ? 1.75 : isLow ? 1.15 : 1.45, wantH / roofH));
+    }
+    const heroW = 1 + (heroH - 1) * 0.4;
+
     ctx.save();
     ctx.globalAlpha = fade;
-    const topClip = H * (ground.relZ < 160 ? 0.29 : 0.24);
+    const topClip = H * ((ground.relZ < 160 ? 0.29 : 0.24) - 0.1 * heroT);
     ctx.beginPath();
     ctx.rect(-40, topClip, W + 80, H - topClip + 40);
     ctx.clip();
-    const s = ground.scale;
+    const s = ground.scale * heroW;
     const gx = ground.x;
     const gy = ground.y;
 
     function lmTop(h) {
-      return projectWorld(xWorld, h, lm.z, d);
+      return projectWorld(xWorld, h * heroH, lm.z, d);
+    }
+
+    // Sky halo behind the crown so a looming tower reads against the night.
+    if (heroT > 0.05 && !isLow) {
+      const crown = lmTop(roofH);
+      const haloR = Math.max(30, (isTall ? 150 : 90) * s) * (0.6 + heroT * 0.6);
+      const halo = ctx.createRadialGradient(gx, crown.y + haloR * 0.25, 0, gx, crown.y + haloR * 0.25, haloR);
+      const tint = LM_HALO[lm.kind] || '210,190,140';
+      halo.addColorStop(0, `rgba(${tint},${0.2 * heroT})`);
+      halo.addColorStop(0.55, `rgba(${tint},${0.07 * heroT})`);
+      halo.addColorStop(1, `rgba(${tint},0)`);
+      ctx.fillStyle = halo;
+      ctx.fillRect(gx - haloR, crown.y - haloR * 0.75, haloR * 2, haloR * 2);
     }
     function lmWinGrid(cx, y0, bw, bh, cols, rows, lit) {
       const padX = bw * 0.12;
@@ -11447,9 +11518,9 @@
       }
     }
     function lmGlow(cx, y0, bw, bh, color) {
-      if (near < 0.08) return;
+      if (near < 0.08 && heroT < 0.1) return;
       ctx.save();
-      ctx.globalAlpha = near * 0.22 * fade;
+      ctx.globalAlpha = (near * 0.22 + heroT * 0.12) * fade;
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.ellipse(cx, y0 + bh * 0.45, bw * 0.72, bh * 0.55, 0, 0, Math.PI * 2);
@@ -12515,8 +12586,86 @@
       const tbw = (lm.kind === 'hancock' ? 68 : lm.kind === 'drake' ? 98 : 70) * s;
       lmLakeReflect(gx, gy, tbw, tbh);
     }
-
     ctx.restore();
+
+    // Nameplate: fades in once the landmark dominates the view, then drops
+    // away as it slides past the windshield.
+    const plateA = Math.min(1, Math.max(0, (heroT - 0.28) / 0.3))
+      * Math.min(1, Math.max(0, (ground.relZ - 140) / 90)) * fade;
+    if (plateA > 0.02 && lm.label) {
+      const crown = lmTop(roofH);
+      (d.lmLabelQueue || (d.lmLabelQueue = [])).push({
+        lm, gx, s, side, heroT, plateA,
+        anchorY: Math.max(crown.y, topClip + 6),
+        // Prominence: how dominant it is now, weighted toward the icons
+        score: plateA * (0.6 + roofH / 500) + ((d.lmLabelActive || []).includes(lm.label) ? 0.25 : 0)
+      });
+    }
+  }
+
+  // Nameplates for the one or two landmarks that dominate the view, drawn
+  // over the whole street scene so facades never paint across them.
+  function drawLandmarkLabels(d) {
+    const queue = d.lmLabelQueue || [];
+    d.lmLabelQueue = [];
+    if (!queue.length) { d.lmLabelActive = []; return; }
+    queue.sort((a, b) => b.score - a.score);
+    const picks = queue.slice(0, 2);
+    d.lmLabelActive = picks.map((p) => p.lm.label);
+    const boxes = [];
+    const overlaps = (bx) => boxes.some((o) => bx.x < o.x + o.w && bx.x + bx.w > o.x && bx.y < o.y + o.h && bx.y + bx.h > o.y);
+    for (const p of picks) {
+      const { lm, gx, s, side, heroT, plateA, anchorY } = p;
+      const fs = Math.max(10, Math.min(15, 9 + 6 * heroT));
+      ctx.save();
+      ctx.font = `600 ${fs}px "General Sans", sans-serif`;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
+      const text = lm.label.toUpperCase();
+      const tw = ctx.measureText(text).width;
+      const sub = LM_SUBTITLE[lm.label] || LM_SUBTITLE[lm.kind];
+      const boxH = fs + 10 + (sub ? fs * 0.8 : 0);
+      // Beside the crown on the road side, under the HUD band; step down
+      // if the other nameplate already sits there.
+      const toCenter = side > 0 ? -1 : 1;
+      let lx = gx + toCenter * (52 * s + tw * 0.5 + 18);
+      lx = Math.max(tw * 0.5 + 10, Math.min(W - tw * 0.5 - 10, lx));
+      let ly = Math.max(H * 0.235 + fs, Math.min(H * 0.43, anchorY + fs * 0.6));
+      let box = { x: lx - tw * 0.5 - 8, y: ly - fs - 2, w: tw + 16, h: boxH };
+      for (let tries = 0; tries < 4 && overlaps(box); tries++) {
+        ly += boxH + 6;
+        box = { x: lx - tw * 0.5 - 8, y: ly - fs - 2, w: tw + 16, h: boxH };
+      }
+      boxes.push(box);
+      ctx.globalAlpha = plateA;
+      const leadX = lx - toCenter * (tw * 0.5 + 8);
+      const dotY = Math.min(anchorY + 4, H * 0.5);
+      ctx.strokeStyle = 'rgba(235,225,200,0.55)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(gx, dotY);
+      ctx.lineTo(leadX, ly - fs * 0.35);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(235,225,200,0.75)';
+      ctx.beginPath();
+      ctx.arc(gx, dotY, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = 'rgba(8,10,16,0.62)';
+      ctx.fillRect(box.x, box.y, box.w, box.h);
+      ctx.fillStyle = 'rgba(14,16,22,0.9)';
+      ctx.fillText(text, lx + 1, ly + 1);
+      ctx.fillStyle = '#f1e6c8';
+      ctx.fillText(text, lx, ly);
+      if (sub && heroT > 0.6) {
+        ctx.globalAlpha = plateA * Math.min(1, (heroT - 0.6) / 0.25);
+        ctx.font = `500 ${Math.max(8, fs * 0.68)}px "General Sans", sans-serif`;
+        if ('letterSpacing' in ctx) ctx.letterSpacing = '1px';
+        ctx.fillStyle = 'rgba(200,190,160,0.85)';
+        ctx.fillText(sub, lx, ly + fs * 0.85);
+      }
+      ctx.restore();
+    }
   }
 
   function drawBuilding(b, d) {
@@ -12536,7 +12685,9 @@
     const lean = (b.lean || 0) * bh;
     let x = ground.x - (b.side < 0 ? bw : 0) + lean * 0.5;
     let y = ground.y - bh;
+    const yRaw = y;
     ({ y, bh } = capFacadeScreen(y, bh, ground));
+    const roofCapped = y !== yRaw;
     const roadFade = facadeRoadOverlapFade(ground, x, bw);
     if (roadFade <= 0) { ctx.restore(); return; }
     ctx.globalAlpha = fade * roadFade;
@@ -12577,6 +12728,35 @@
       ctx.fillRect(x + bw * 0.15, ground.y - 16 * ground.scale, bw * 0.7, 3 * ground.scale);
     }
 
+    if (b.neon && ground.scale > 0.13) {
+      // Neon sign over the storefront, buzzing a little
+      const ns = ground.scale;
+      const flick = (Math.floor(performance.now() / 90 + b.z) % 23 === 0) ? 0.45 : 1;
+      const fsz = Math.max(5, Math.min(bw * 0.22, 9 * ns));
+      ctx.save();
+      ctx.font = `800 ${fsz}px "General Sans", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const cx = x + bw * (b.side < 0 ? 0.6 : 0.4);
+      const cy = ground.y - 30 * ns;
+      const tw = ctx.measureText(b.neon.text).width;
+      ctx.fillStyle = 'rgba(10,8,12,0.8)';
+      ctx.fillRect(cx - tw * 0.5 - 3 * ns, cy - fsz * 0.7, tw + 6 * ns, fsz * 1.4);
+      ctx.globalAlpha = flick;
+      ctx.shadowColor = b.neon.color;
+      ctx.shadowBlur = liteFx ? 0 : 10 * ns;
+      ctx.fillStyle = b.neon.color;
+      ctx.fillText(b.neon.text, cx, cy);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillText(b.neon.text, cx, cy);
+      // Spill onto the sidewalk
+      ctx.globalAlpha = 0.18 * flick;
+      ctx.fillStyle = b.neon.color;
+      ctx.fillRect(cx - tw * 0.7, ground.y - 2 * ns, tw * 1.4, 4 * ns);
+      ctx.restore();
+    }
+
     if (b.graffiti) {
       ctx.fillStyle = 'rgba(180,60,90,0.35)';
       ctx.fillRect(x + 8 * ground.scale, ground.y - 40 * ground.scale, bw * 0.35, 10 * ground.scale);
@@ -12598,6 +12778,70 @@
         const wx = x + 6 * ground.scale + c * ((bw - 12 * ground.scale) / cols) + lean * (1 - r / rows);
         const wy = y + 8 * ground.scale + r * 14 * ground.scale;
         ctx.fillRect(wx, wy, Math.max(2, 7 * ground.scale), Math.max(2, 6 * ground.scale));
+      }
+    }
+
+    // Rooftop clutter — Chicago's wooden water tanks, HVAC penthouses,
+    // parapet lines. Only once the facade is big enough to read.
+    const gs = ground.scale;
+    if (gs > 0.1 && bh > 30 * gs && !roofCapped) {
+      const zi = Math.floor(b.z / 56);
+      const roofY = y;
+      // Parapet
+      ctx.fillStyle = shade(b.color, b.fancy ? 18 : 10);
+      ctx.fillRect(x + lean - 1.5 * gs, roofY - 2.5 * gs, bw + 3 * gs, 3 * gs);
+      if (b.fancy) {
+        // Lit cornice
+        ctx.fillStyle = 'rgba(255,214,150,0.28)';
+        ctx.fillRect(x + lean + bw * 0.06, roofY + 1.5 * gs, bw * 0.88, 1.6 * gs);
+        for (let i = 0; i < 5; i++) {
+          ctx.fillStyle = 'rgba(255,224,170,0.55)';
+          ctx.fillRect(x + lean + bw * (0.1 + i * 0.2), roofY - 1.2 * gs, 2 * gs, 2 * gs);
+        }
+      }
+      const variant = Math.abs(zi * 7 + b.side * 3) % 5;
+      if (variant === 0 || variant === 3) {
+        // Water tank on stilts
+        const tx = x + lean + bw * (variant === 0 ? 0.28 : 0.68);
+        const tw = Math.min(bw * 0.3, 16 * gs);
+        const th = tw * 1.05;
+        const legH = tw * 0.45;
+        ctx.fillStyle = '#1e1a16';
+        ctx.fillRect(tx - tw * 0.42, roofY - legH, 1.4 * gs, legH);
+        ctx.fillRect(tx + tw * 0.42 - 1.4 * gs, roofY - legH, 1.4 * gs, legH);
+        ctx.fillStyle = '#3b2e24';
+        ctx.fillRect(tx - tw * 0.5, roofY - legH - th, tw, th);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(tx + tw * 0.15, roofY - legH - th, tw * 0.35, th);
+        ctx.fillStyle = 'rgba(120,100,80,0.35)';
+        for (let hp = 1; hp < 4; hp++) ctx.fillRect(tx - tw * 0.5, roofY - legH - th * (hp / 4), tw, Math.max(1, 0.7 * gs));
+        ctx.fillStyle = '#2a2420';
+        ctx.beginPath();
+        ctx.moveTo(tx - tw * 0.56, roofY - legH - th);
+        ctx.lineTo(tx, roofY - legH - th - tw * 0.42);
+        ctx.lineTo(tx + tw * 0.56, roofY - legH - th);
+        ctx.closePath();
+        ctx.fill();
+      } else if (variant === 1) {
+        // HVAC penthouse + stack
+        const px = x + lean + bw * 0.55;
+        const pw = Math.min(bw * 0.34, 18 * gs);
+        const ph = pw * 0.55;
+        ctx.fillStyle = shade(b.color, -18);
+        ctx.fillRect(px - pw * 0.5, roofY - ph, pw, ph);
+        ctx.fillStyle = shade(b.color, -34);
+        ctx.fillRect(px - pw * 0.5, roofY - ph, pw, 1.5 * gs);
+        ctx.fillStyle = '#2b2b30';
+        ctx.fillRect(px + pw * 0.2, roofY - ph - 7 * gs, 2.2 * gs, 7 * gs);
+        ctx.fillStyle = 'rgba(255,90,60,0.8)';
+        ctx.fillRect(px + pw * 0.2 + 0.4 * gs, roofY - ph - 8 * gs, 1.4 * gs, 1.4 * gs);
+      } else if (variant === 4 && !b.fancy) {
+        // Rooftop billboard frame / antenna stub
+        const ax = x + lean + bw * 0.3;
+        ctx.fillStyle = '#44464c';
+        ctx.fillRect(ax, roofY - 9 * gs, 1.2 * gs, 9 * gs);
+        ctx.fillRect(ax - 3 * gs, roofY - 9 * gs, 7 * gs, 0.9 * gs);
+        ctx.fillRect(ax - 2 * gs, roofY - 6 * gs, 5 * gs, 0.9 * gs);
       }
     }
 
@@ -14626,9 +14870,19 @@
     const ixs = [...(d.route.intersections || [])].sort(byRouteDist);
     for (const ix of ixs) drawIntersection(ix, d);
 
-    // City blocks (far → near), sit on sidewalk grade
-    const builds = [...d.buildings].sort(byRouteDist);
-    for (const b of builds) drawBuilding(b, d);
+    // City blocks and landmarks in one far → near pass so a tower set back
+    // behind the lot line is occluded by the greystones in front of it.
+    // Landmark depth folds in its real setback (~1.9 z per metre).
+    d.lmLabelQueue = [];
+    const facadeDepth = (f) => routeSignedDist(d.z, f.z, pathLen) + (f.lm ? (f.setback || 0) * 1.9 : 0);
+    const facades = [
+      ...d.buildings,
+      ...(d.landmarks || []).map((lm) => ({ ...lm, lm: true }))
+    ].sort((a, b) => facadeDepth(b) - facadeDepth(a));
+    for (const f of facades) {
+      if (f.lm) drawLandmark(f, d);
+      else drawBuilding(f, d);
+    }
 
     const props = [...d.props].sort(byRouteDist);
     for (const pr of props) drawStreetProp(pr, d);
@@ -14637,12 +14891,10 @@
     const exits = [...(d.exits || [])].sort(byRouteDist);
     for (const ex of exits) drawRoadExit(ex, d);
 
-    const lms = [...(d.landmarks || [])].sort(byRouteDist);
-    for (const lm of lms) drawLandmark(lm, d);
-
     // Mast-arm signals after facades so buildings don't paint over / clip them
     const sigs = [...(d.signals || [])].sort(byRouteDist);
     for (const sig of sigs) drawTrafficSignal(sig, d);
+    drawLandmarkLabels(d);
 
     // Traffic on the road plane — absolute Z, not loop-wrapped
     const cars = [...d.traffic].sort((a, b) => b.z - a.z);
