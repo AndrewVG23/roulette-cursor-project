@@ -2317,6 +2317,41 @@
   const WRX_WHEEL_R = 0.095;
   // Single pipe, left of the plate, on the shared bumper anchor.
   const WRX_TIPS = [{ fx: 0.36, fy: 0.975, spread: 0 }];
+  // Where each add-on sits on the photo, as fractions of the sprite box
+  // (fx across, fy down from the image top). Measured off the pixels so the
+  // glow lands on the lamp, the plate on the plate, the rack on the roof.
+  const BMW_ANCHORS = {
+    tips: PLAYER_CAR_TIPS,
+    lamps: [{ fx: 0.17, fy: 0.578, w: 0.23, h: 0.138 }, { fx: 0.836, fy: 0.578, w: 0.23, h: 0.138 }],
+    brake: { fx: 0.503, fy: 0.207, w: 0.17 },
+    plate: { fx: 0.503, fy: 0.605, w: 0.164, h: 0.1 },
+    rack: { fx: 0.5, fy: 0.08, w: 0.46 },
+    hitch: { fx: 0.5, fy: 0.96 },
+    tubes: { fy: 0.975 },
+    pool: { fy: 0.97 }
+  };
+  // The two WRX plates share a bumper, but the lamps, spoiler, and roof sit
+  // at different heights, so the anchors crossfade with the pictures.
+  const WRX_ANCHORS_FAR = {
+    tips: WRX_TIPS,
+    lamps: [{ fx: 0.207, fy: 0.653, w: 0.115, h: 0.095 }, { fx: 0.792, fy: 0.657, w: 0.115, h: 0.095 }],
+    brake: { fx: 0.492, fy: 0.465, w: 0.178 },
+    plate: { fx: 0.488, fy: 0.933, w: 0.2, h: 0.128 },
+    rack: { fx: 0.49, fy: 0.045, w: 0.3 },
+    hitch: { fx: 0.49, fy: 0.99 },
+    tubes: { fy: 1.0 },
+    pool: { fy: 1.09 }
+  };
+  const WRX_ANCHORS_NEAR = {
+    tips: WRX_TIPS,
+    lamps: [{ fx: 0.207, fy: 0.64, w: 0.11, h: 0.097 }, { fx: 0.785, fy: 0.648, w: 0.11, h: 0.097 }],
+    brake: { fx: 0.484, fy: 0.451, w: 0.18 },
+    plate: { fx: 0.482, fy: 0.926, w: 0.2, h: 0.135 },
+    rack: { fx: 0.5, fy: 0.19, w: 0.58 },
+    hitch: { fx: 0.48, fy: 0.99 },
+    tubes: { fy: 1.0 },
+    pool: { fy: 1.09 }
+  };
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
@@ -9316,11 +9351,12 @@
 
   // Rear chase view: the tire's axle runs across the car, so we see a tall slab of rubber.
   function drawWrxRearTire(cx, cy, r, side) {
-    const h = r * 2;
-    const w = r * 0.92;
+    const drop = r * 0.62;
+    const h = r * 2 + drop;
+    const w = r * 1.62;
     const x = cx - w / 2;
     const y = cy - r;
-    const rad = w * 0.2;
+    const rad = w * 0.08;
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(x + rad, y);
@@ -9653,7 +9689,7 @@
     const flame = plume ? lookRgb('plume') : [90, 190, 255];
     const flameHot = mixTowardWhite(flame, 0.78);
     const flameMid = mixTowardWhite(flame, 0.28);
-    const tips = playerUsesWrx() ? WRX_TIPS : PLAYER_CAR_TIPS;
+    const tips = playerAnchors(s).tips;
     for (let i = 0; i < tips.length; i++) {
       const tip = tips[i];
       const [tx, ty] = spritePoint(drawW, drawH, s, tip.fx, tip.fy);
@@ -9730,7 +9766,7 @@
   function drawPlayerGlow(drawW, drawH, s) {
     const rgb = lookRgb('glow');
     const t = performance.now() / 1000;
-    const [, y0] = spritePoint(drawW, drawH, s, 0.5, 0.97);
+    const [, y0] = spritePoint(drawW, drawH, s, 0.5, playerAnchors(s).pool.fy);
     const reach = Math.max(16 * s, drawH * 0.18);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -9754,7 +9790,7 @@
     const rgb = lookRgb('glow');
     const hot = mixTowardWhite(rgb, 0.78);
     const t = performance.now() / 1000;
-    const [, y] = spritePoint(drawW, drawH, s, 0.5, 0.965);
+    const [, y] = spritePoint(drawW, drawH, s, 0.5, playerAnchors(s).tubes.fy);
     const rails = [
       { x0: -drawW * 0.42, x1: -drawW * 0.1 },
       { x0: drawW * 0.1, x1: drawW * 0.42 }
@@ -9806,52 +9842,103 @@
     return [-drawW / 2 + fx * drawW, top + fy * drawH];
   }
 
+  // How far the WRX has crossfaded to the near photo. Cruise cam sits back
+  // (scale ~1.3); slowing down pulls it in past ~2.2.
+  function wrxNearBlend(s) {
+    const tRaw = (s - 1.22) / (2.2 - 1.22);
+    const tClamp = Math.max(0, Math.min(1, tRaw));
+    return tClamp * tClamp * (3 - 2 * tClamp);
+  }
+
+  function blendAnchor(a, b, t) {
+    if (Array.isArray(a)) return a.map((p, i) => blendAnchor(p, b[i] || p, t));
+    const out = {};
+    for (const k of Object.keys(a)) {
+      out[k] = (typeof a[k] === 'number' && typeof b[k] === 'number') ? a[k] + (b[k] - a[k]) * t : a[k];
+    }
+    return out;
+  }
+
+  // Anchors for the ride on screen, blended to match the photo being shown.
+  function playerAnchors(s) {
+    if (!playerUsesWrx()) return BMW_ANCHORS;
+    const t = wrxNearBlend(s);
+    if (t <= 0) return WRX_ANCHORS_FAR;
+    if (t >= 1) return WRX_ANCHORS_NEAR;
+    const out = {};
+    for (const k of Object.keys(WRX_ANCHORS_FAR)) {
+      out[k] = blendAnchor(WRX_ANCHORS_FAR[k], WRX_ANCHORS_NEAR[k], t);
+    }
+    return out;
+  }
+
+  // Sits in the photo's plate recess, same width and height as the real plate.
   function drawPlayerPlate(drawW, drawH, s) {
-    const pw = drawW * 0.18;
-    const ph = Math.max(7 * s, drawH * 0.05);
-    const [, y] = spritePoint(drawW, drawH, s, 0.5, playerUsesWrx() ? 0.845 : 0.7);
-    const plateY = y - ph / 2;
+    const a = playerAnchors(s).plate;
+    const pw = drawW * a.w;
+    const ph = Math.max(4 * s, drawH * a.h);
+    const [px, py] = spritePoint(drawW, drawH, s, a.fx, a.fy);
+    const plateX = px - pw / 2;
+    const plateY = py - ph / 2;
     const rgb = lookRgb('plate');
     const ink = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) < 150 ? '#f7ead0' : '#1a1307';
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.fillStyle = rgbCss(rgb, 0.45);
-    ctx.fillRect(-pw * 0.55, plateY - ph * 0.2, pw * 1.1, ph * 1.35);
+    const halo = ctx.createRadialGradient(px, py, ph * 0.3, px, py, pw * 0.9);
+    halo.addColorStop(0, rgbCss(rgb, 0.4));
+    halo.addColorStop(1, rgbCss(rgb, 0));
+    ctx.fillStyle = halo;
+    ctx.fillRect(plateX - pw * 0.4, plateY - ph * 0.8, pw * 1.8, ph * 2.6);
     ctx.restore();
     ctx.fillStyle = lookHex('plate');
-    ctx.fillRect(-pw / 2, plateY, pw, ph);
+    ctx.fillRect(plateX, plateY, pw, ph);
     ctx.strokeStyle = '#1a1307';
-    ctx.lineWidth = Math.max(1, s);
-    ctx.strokeRect(-pw / 2, plateY, pw, ph);
+    ctx.lineWidth = Math.max(0.8, 0.9 * s);
+    ctx.strokeRect(plateX, plateY, pw, ph);
     ctx.fillStyle = ink;
-    ctx.font = `700 ${Math.max(9, ph * 0.62)}px sans-serif`;
+    ctx.font = `700 ${Math.max(5, ph * 0.66)}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('C4C', 0, plateY + ph / 2);
+    ctx.fillText('C4C', px, py + ph * 0.04);
   }
 
   function drawPlayerTaillights(drawW, drawH, s) {
     const pulse = 0.88 + Math.sin(performance.now() * 0.009) * 0.12;
     const rgb = lookRgb('taillights');
     const hot = mixTowardWhite(rgb, 0.72);
-    const lamps = playerUsesWrx()
-      ? [{ fx: 0.2, fy: 0.58 }, { fx: 0.8, fy: 0.58 }]
-      : [{ fx: 0.145, fy: 0.56 }, { fx: 0.855, fy: 0.56 }];
+    const anchors = playerAnchors(s);
+    const lamps = anchors.lamps;
+    const brake = anchors.brake;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < lamps.length; i++) {
-      const [lx, ly] = spritePoint(drawW, drawH, s, lamps[i].fx, lamps[i].fy);
-      const r = drawW * 0.22;
-      const g = ctx.createRadialGradient(lx, ly, 1, lx, ly, r);
-      g.addColorStop(0, rgbCss(hot, 0.92 * pulse));
-      g.addColorStop(0.28, rgbCss(rgb, 0.72 * pulse));
-      g.addColorStop(0.62, rgbCss(rgb, 0.28 * pulse));
-      g.addColorStop(1, rgbCss(rgb, 0));
-      ctx.fillStyle = g;
+      const lamp = lamps[i];
+      const [lx, ly] = spritePoint(drawW, drawH, s, lamp.fx, lamp.fy);
+      // Shaped to the lens: a hot core the size of the lamp, then a soft
+      // halo that fades out before it reaches the quarter panel.
+      const rw = Math.max(1.5, drawW * lamp.w * 0.5);
+      const rh = Math.max(1, drawH * lamp.h * 0.5);
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.scale(rw, rh);
+      const halo = ctx.createRadialGradient(0, 0, 0.4, 0, 0, 2.1);
+      halo.addColorStop(0, rgbCss(rgb, 0.55 * pulse));
+      halo.addColorStop(0.45, rgbCss(rgb, 0.22 * pulse));
+      halo.addColorStop(1, rgbCss(rgb, 0));
+      ctx.fillStyle = halo;
       ctx.beginPath();
-      ctx.ellipse(lx, ly, r * 0.95, r * 0.62, 0, 0, Math.PI * 2);
+      ctx.arc(0, 0, 2.1, 0, Math.PI * 2);
       ctx.fill();
-      const [rx, ry] = spritePoint(drawW, drawH, s, lamps[i].fx, 0.96);
+      const lens = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+      lens.addColorStop(0, rgbCss(hot, 0.95 * pulse));
+      lens.addColorStop(0.55, rgbCss(rgb, 0.8 * pulse));
+      lens.addColorStop(1, rgbCss(rgb, 0.1 * pulse));
+      ctx.fillStyle = lens;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      const [rx, ry] = spritePoint(drawW, drawH, s, lamp.fx, anchors.pool.fy);
       const spill = ctx.createRadialGradient(rx, ry, 1, rx, ry + 8 * s, drawW * 0.26);
       spill.addColorStop(0, rgbCss(rgb, 0.32 * pulse));
       spill.addColorStop(1, rgbCss(rgb, 0));
@@ -9860,9 +9947,10 @@
       ctx.ellipse(rx, ry + 4 * s, drawW * 0.24, Math.max(4 * s, drawH * 0.07), 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    const [bx, by] = spritePoint(drawW, drawH, s, 0.5, 0.19);
-    const barW = drawW * 0.24;
-    const barH = Math.max(1.6, 2.2 * s);
+    // Third brake light: the strip on the BMW's glass, or the WRX's wing.
+    const [bx, by] = spritePoint(drawW, drawH, s, brake.fx, brake.fy);
+    const barW = drawW * brake.w;
+    const barH = Math.max(1.2, Math.min(2.2 * s, drawH * 0.02));
     const bg = ctx.createRadialGradient(bx, by, 1, bx, by, barW * 0.9);
     bg.addColorStop(0, rgbCss(rgb, 0.65 * pulse));
     bg.addColorStop(1, rgbCss(rgb, 0));
@@ -9874,10 +9962,12 @@
   }
 
   function drawPlayerRoofRack(drawW, drawH, s) {
-    const [, ry] = spritePoint(drawW, drawH, s, 0.5, playerUsesWrx() ? 0.2 : 0.135);
-    const rw = drawW * 0.46;
+    const a = playerAnchors(s).rack;
+    const [rx, ry] = spritePoint(drawW, drawH, s, a.fx, a.fy);
+    const rw = drawW * a.w;
     const pipeH = Math.max(1.8, 2.2 * s);
     ctx.save();
+    ctx.translate(rx, 0);
     ctx.fillStyle = '#181a1e';
     ctx.fillRect(-rw * 0.54, ry + pipeH * 0.7, rw * 1.08, Math.max(1.2, 1.4 * s));
     const metal = lookRgb('rack');
@@ -9912,7 +10002,8 @@
   }
 
   function drawPlayerTowChain(drawW, drawH, s, sway = 0) {
-    const [hx, hy] = spritePoint(drawW, drawH, s, 0.5, 0.895);
+    const a = playerAnchors(s).hitch;
+    const [hx, hy] = spritePoint(drawW, drawH, s, a.fx, a.fy);
     const swing = Math.sin(performance.now() * 0.008) * 1.4 * s + sway * 10 * s;
     const drop = Math.max(4 * s, drawH * 0.065);
     const span = drawW * 0.13;
@@ -10167,10 +10258,7 @@
       const nearReady = nearImg === WRX_NEAR_IMG
         ? WRX_NEAR_IMG.complete && WRX_NEAR_IMG.naturalWidth > 0
         : true;
-      // Cruise cam sits back (scale ~1.3). Slowing down pulls it in past ~2.2.
-      const tRaw = (s - 1.22) / (2.2 - 1.22);
-      const tClamp = Math.max(0, Math.min(1, tRaw));
-      const t = nearReady ? tClamp * tClamp * (3 - 2 * tClamp) : 0;
+      const t = nearReady ? wrxNearBlend(s) : 0;
       const baseAlpha = ctx.globalAlpha;
       ctx.imageSmoothingEnabled = true;
       const top = -drawH * WRX_GROUND;
@@ -10231,7 +10319,7 @@
     const sin = Math.sin(ang);
     const ox = ground.x;
     const oy = ground.y + bob;
-    const tips = ride ? WRX_TIPS : PLAYER_CAR_TIPS;
+    const tips = playerAnchors(s).tips;
     return tips.map((tip, i) => {
       const [lx, ly] = spritePoint(drawW, drawH, s, tip.fx, tip.fy);
       const spread = tip.spread != null ? tip.spread : (i === 0 ? -1 : 1);
