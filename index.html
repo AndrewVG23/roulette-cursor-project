@@ -503,6 +503,11 @@
       background: var(--swatch);
       box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
     }
+    .look-swatch.is-metal {
+      background:
+        linear-gradient(155deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.08) 36%, rgba(0,0,0,0.38) 68%, rgba(255,255,255,0.42) 100%),
+        var(--swatch);
+    }
     .look-swatch.is-on {
       border-color: #f7ead0;
       box-shadow: 0 0 0 2px rgba(247, 234, 208, 0.35);
@@ -4251,7 +4256,18 @@
     { name: 'green', hex: '#2ee59a' },
     { name: 'blue', hex: '#4aa3ff' },
     { name: 'violet', hex: '#9b6bff' },
-    { name: 'pink', hex: '#ff6b9a' }
+    { name: 'pink', hex: '#ff6b9a' },
+    { name: 'black', hex: '#23262c' },
+    { name: 'yellow', hex: '#f0c21a' },
+    { name: 'orange', hex: '#ff7a18' },
+    { name: 'burgundy', hex: '#8e2438' },
+    { name: 'navy', hex: '#1c3d86' },
+    { name: 'silver', hex: '#c8d0d8', metal: true },
+    { name: 'gunmetal', hex: '#55606c', metal: true },
+    { name: 'champagne', hex: '#e4d2a4', metal: true },
+    { name: 'bronze', hex: '#a86b38', metal: true },
+    { name: 'pearl', hex: '#f4f1ea', metal: true },
+    { name: 'brushed copper', hex: '#e08a3c', metal: true }
   ];
   const LOOK_DEFAULT_COLOR = {
     paint: '#d47832',
@@ -6004,9 +6020,9 @@
       for (const swatch of LOOK_SWATCHES) {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'look-swatch' + (swatch.hex === current ? ' is-on' : '');
+        btn.className = 'look-swatch' + (swatch.metal ? ' is-metal' : '') + (swatch.hex === current ? ' is-on' : '');
         btn.style.setProperty('--swatch', swatch.hex);
-        btn.setAttribute('aria-label', `${label} ${swatch.name}`);
+        btn.setAttribute('aria-label', `${label} ${swatch.name}${swatch.metal ? ', metallic' : ''}`);
         btn.setAttribute('aria-pressed', swatch.hex === current ? 'true' : 'false');
         btn.addEventListener('click', () => {
           lookBayFloat = look.id;
@@ -10577,20 +10593,57 @@
   }
 
   function paintTone() {
-    const [r, g, b] = hexToRgb(lookHex('paint'));
+    const hex = lookHex('paint');
+    const [r, g, b] = hexToRgb(hex);
     const hsl = rgbToHsl(r, g, b);
     const pale = hsl.s < 0.22;
+    const swatch = LOOK_SWATCHES.find((s) => s.hex === hex);
     return {
       h: hsl.h,
       s: pale ? hsl.s : Math.min(0.92, Math.max(0.74, hsl.s)),
       target: [r, g, b],
-      pull: pale ? 0.62 : 0.4
+      pull: pale ? 0.62 : 0.4,
+      metal: !!(swatch && swatch.metal)
     };
+  }
+
+  function paintPixel(r, g, b, tone) {
+    const luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    let light;
+    let sat = tone.s;
+    let pull = tone.pull;
+    let spec = 0;
+    if (tone.metal) {
+      const t = Math.max(0, Math.min(1, luma));
+      light = t < 0.5
+        ? Math.pow(t / 0.5, 1.45) * 0.34
+        : 0.34 + Math.pow((t - 0.5) / 0.5, 0.55) * 0.62;
+      light = Math.min(0.94, Math.max(0.05, light));
+      sat = Math.min(0.55, tone.s * 0.62);
+      spec = Math.max(0, (luma - 0.56) / 0.44);
+      pull = tone.pull * (1 - spec * 0.75);
+    } else {
+      light = Math.min(0.82, Math.max(0.2, luma * 0.62 + 0.16));
+    }
+    let [nr, ng, nb] = hslToRgb(tone.h, sat, light);
+    nr = nr + (tone.target[0] - nr) * pull;
+    ng = ng + (tone.target[1] - ng) * pull;
+    nb = nb + (tone.target[2] - nb) * pull;
+    if (spec > 0) {
+      nr += (255 - nr) * spec * 0.7;
+      ng += (255 - ng) * spec * 0.7;
+      nb += (248 - nb) * spec * 0.78;
+    }
+    return [
+      Math.max(0, Math.min(255, Math.round(nr))),
+      Math.max(0, Math.min(255, Math.round(ng))),
+      Math.max(0, Math.min(255, Math.round(nb)))
+    ];
   }
 
   function panelSheet() {
     const tone = paintTone();
-    const key = `${tone.h}|${tone.s}|${tone.pull}|${tone.target.join(',')}`;
+    const key = `${tone.h}|${tone.s}|${tone.pull}|${tone.metal ? 1 : 0}|${tone.target.join(',')}`;
     if (paintSheet && paintSheetKey === key) return paintSheet;
     if (!PLAYER_CAR_IMG.complete || !PLAYER_CAR_IMG.naturalWidth) return null;
     const sheet = document.createElement('canvas');
@@ -10607,13 +10660,7 @@
     const d = img.data;
     for (let i = 0; i < d.length; i += 4) {
       if (!isBodyPanel(d[i], d[i + 1], d[i + 2], d[i + 3])) continue;
-      const luma = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
-      const light = Math.min(0.82, Math.max(0.2, luma * 0.62 + 0.16));
-      let [nr, ng, nb] = hslToRgb(tone.h, tone.s, light);
-      const pull = tone.pull;
-      nr = Math.round(nr + (tone.target[0] - nr) * pull);
-      ng = Math.round(ng + (tone.target[1] - ng) * pull);
-      nb = Math.round(nb + (tone.target[2] - nb) * pull);
+      const [nr, ng, nb] = paintPixel(d[i], d[i + 1], d[i + 2], tone);
       d[i] = nr;
       d[i + 1] = ng;
       d[i + 2] = nb;
@@ -10634,13 +10681,7 @@
     const d = image.data;
     for (let i = 0; i < d.length; i += 4) {
       if (!isWrxBody(d[i], d[i + 1], d[i + 2], d[i + 3])) continue;
-      const luma = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
-      const light = Math.min(0.82, Math.max(0.2, luma * 0.62 + 0.16));
-      let [nr, ng, nb] = hslToRgb(tone.h, tone.s, light);
-      const pull = tone.pull;
-      nr = Math.round(nr + (tone.target[0] - nr) * pull);
-      ng = Math.round(ng + (tone.target[1] - ng) * pull);
-      nb = Math.round(nb + (tone.target[2] - nb) * pull);
+      const [nr, ng, nb] = paintPixel(d[i], d[i + 1], d[i + 2], tone);
       d[i] = nr;
       d[i + 1] = ng;
       d[i + 2] = nb;
@@ -10654,7 +10695,7 @@
     if (!WRX_FAR_IMG.complete || !WRX_FAR_IMG.naturalWidth) return null;
     const tone = paintTone();
     const nearOk = WRX_NEAR_IMG.complete && WRX_NEAR_IMG.naturalWidth > 0;
-    const key = `${tone.h}|${tone.s}|${tone.pull}|${tone.target.join(',')}|${nearOk ? 1 : 0}`;
+    const key = `${tone.h}|${tone.s}|${tone.pull}|${tone.metal ? 1 : 0}|${tone.target.join(',')}|${nearOk ? 1 : 0}`;
     if (wrxPaintKey === key && wrxPaintFar) return { far: wrxPaintFar, near: wrxPaintNear };
     wrxPaintFar = recolorWrx(WRX_FAR_IMG, tone);
     wrxPaintNear = nearOk ? recolorWrx(WRX_NEAR_IMG, tone) : null;
