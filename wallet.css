@@ -720,6 +720,36 @@ body.has-game-logo > .app > .controls {
   padding: 16px;
   background: rgba(0, 0, 0, 0.55);
 }
+.score-offer {
+  position: fixed;
+  z-index: 10001;
+  width: min(280px, calc(100vw - 24px));
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid #f4dfa0;
+  border-radius: 14px;
+  background: #1a1206;
+  color: #f5edd8;
+  font-family: "General Sans", "Nunito", system-ui, sans-serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.score-offer p { margin: 0 0 8px; font-size: 0.85rem; line-height: 1.35; }
+.score-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.score-offer button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #e8c878;
+  color: #1a1206;
+  font: 700 12px "General Sans", "Nunito", system-ui, sans-serif;
+  cursor: pointer;
+}
+.score-offer button:last-child {
+  background: transparent;
+  color: #f4dfa0;
+}
+.score-offer[hidden] { display: none !important; }
+
 .board-sheet[hidden],
 .board-form[hidden],
 .board-signed[hidden],

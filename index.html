@@ -70,8 +70,8 @@
   }
   </script>
   <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&f[]=zodiak@400,500,700,900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="wallet.css?v=6">
-  <script src="wallet.js?v=6"></script>
+  <link rel="stylesheet" href="wallet.css?v=7">
+  <script src="wallet.js?v=7"></script>
   <script src="orientation.js"></script>
   <script src="music.js"></script>
   <style>
@@ -1413,7 +1413,7 @@
           <summary>About &amp; games</summary>
           <div class="game-guide-card">
             <h2>Night Drive</h2>
-            <p>A free car game in the browser. Steer the lake road at night. A clean minute pays, then you go again. No account and no download.</p>
+            <p>A free car game in the browser. Steer the lake road at night. A clean minute pays, then you go again. No account is required. Post a score only if you want it on the board.</p>
             <nav aria-label="Explore Cash 4 Copper games">
               <a href="/roulette">Roulette</a>
               <a href="/craps">Craps</a>
@@ -6176,6 +6176,7 @@
       runPurseToday.hidden = false;
       runPurseToday.textContent = `Today's best ${Wallet.format(today)}`;
     }
+    if (delta > 0 && Wallet.showScoreOffer) Wallet.showScoreOffer();
     return delta;
   }
 

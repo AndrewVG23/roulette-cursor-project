@@ -1,4 +1,4 @@
-import { createBoard } from './_board.mjs';
+import { createBoard, noteInsight } from './_board.mjs';
 import { validClientId, verifyGoogleIdToken } from './google.mjs';
 
 const COOKIE = 'c4c_session';
@@ -45,6 +45,17 @@ async function readJson(request) {
   }
 }
 
+function insightKind(route, result) {
+  if (!result) return '';
+  if (route === 'register') return result.status === 200 ? 'register_ok' : 'register_fail';
+  if (route === 'login') return result.status === 200 ? 'login_ok' : 'login_fail';
+  if (route === 'google') return result.status === 200 ? 'google_ok' : 'google_fail';
+  if (route === 'best' && result.status === 200) {
+    return result.body && result.body.improved ? 'score_posted' : 'score_kept';
+  }
+  return '';
+}
+
 function sameOrigin(request) {
   const origin = request.headers.get('origin');
   if (!origin) return true;
@@ -74,6 +85,18 @@ export async function handleRequest(request, db, env = {}, deps = {}) {
   }
   if (request.method === 'GET' && route === 'google-config') {
     return json({ clientId: clientId || null });
+  }
+  if (route === 'insight') {
+    if (request.method === 'GET') {
+      const result = await board.insight();
+      return json(result.body, result.status);
+    }
+    if (request.method === 'POST') {
+      if (!sameOrigin(request)) return json({ error: 'bad' }, 403);
+      const payload = await readJson(request);
+      const result = await board.insight(payload && payload.kind);
+      return json(result.body, result.status);
+    }
   }
   if (request.method === 'POST' && (route === 'here' || route === 'note')) {
     if (!sameOrigin(request)) return json({ error: 'bad' }, 403);
@@ -118,6 +141,11 @@ export async function handleRequest(request, db, env = {}, deps = {}) {
     if (!profile) return json({ error: 'google' }, 401);
     result = await board.signInGoogle(profile);
   } else result = await board.postBest(token, payload);
+
+  const recorded = insightKind(route, result);
+  if (recorded) {
+    try { await noteInsight(db, recorded); } catch (_) { /* a counter must not block the score */ }
+  }
 
   const cookie = result.token
     ? cookieHeader(result.token, request, false)

@@ -126,6 +126,69 @@ test('a password can differ from the name', async () => {
   assert.equal((await api.login('Nora', 'river')).status, 200);
 });
 
+test('the score funnel counts choices without requiring an account', async () => {
+  const db = openBoardDb();
+  await ensureSchema(db);
+  const seen = await handleRequest(
+    new Request('https://cashforcopper.us/api/insight', {
+      method: 'POST',
+      headers: { origin: 'https://cashforcopper.us', 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: 'offer_shown' })
+    }),
+    db
+  );
+  assert.equal(seen.status, 200);
+  const again = await handleRequest(
+    new Request('https://cashforcopper.us/api/insight', {
+      method: 'POST',
+      headers: { origin: 'https://cashforcopper.us', 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: 'offer_dismiss' })
+    }),
+    db
+  );
+  assert.equal(again.status, 200);
+  const blocked = await handleRequest(
+    new Request('https://cashforcopper.us/api/insight', {
+      method: 'POST',
+      headers: { origin: 'https://cashforcopper.us', 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: 'register_ok' })
+    }),
+    db
+  );
+  assert.equal(blocked.status, 400);
+
+  const created = await handleRequest(
+    new Request('https://cashforcopper.us/api/register', {
+      method: 'POST',
+      headers: { origin: 'https://cashforcopper.us', 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Ada', password: 'copper' })
+    }),
+    db
+  );
+  assert.equal(created.status, 200);
+  const posted = await handleRequest(
+    new Request('https://cashforcopper.us/api/best', {
+      method: 'POST',
+      headers: {
+        origin: 'https://cashforcopper.us',
+        'content-type': 'application/json',
+        cookie: created.headers.get('set-cookie').split(';')[0]
+      },
+      body: JSON.stringify({ netWorth: 4200, weeks: 2 })
+    }),
+    db
+  );
+  assert.equal(posted.status, 200);
+
+  const totals = await handleRequest(new Request('https://cashforcopper.us/api/insight'), db);
+  const counts = (await totals.json()).counts;
+  assert.equal(counts.offer_shown, 1);
+  assert.equal(counts.offer_dismiss, 1);
+  assert.equal(counts.register_ok, 1);
+  assert.equal(counts.score_posted, 1);
+  assert.equal(counts.register_fail, undefined);
+});
+
 test('the richer purse ranks first', async () => {
   const api = await board();
   const ada = await api.register('Ada', 'copper');

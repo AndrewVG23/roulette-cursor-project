@@ -70,6 +70,10 @@
   let scorePostTimer = null;
   let scorePostChain = Promise.resolve();
   let boardOffline = false;
+  let scoreBaseline = null;
+  let offerTimer = null;
+  let offerNotedFor = null;
+  const OFFER_KEY = 'c4c-offer-floor';
 
   function clampFuel(gallons) {
     return Math.max(0, Math.min(GAS_TANK_GAL, Number(gallons) || 0));
@@ -153,6 +157,9 @@
       try { fn(getState()); } catch (_) { /* ignore listener errors */ }
     });
     scheduleScorePost();
+    const chip = document.getElementById('boardChip');
+    if (chip && !boardPlayer) chip.textContent = chipLabel();
+    maybeOfferFromPurse();
   }
 
   function getState() {
@@ -785,7 +792,7 @@
     chip.style.left = `${Math.round(rect.left)}px`;
     chip.style.top = `${Math.round(rect.bottom + 6)}px`;
     const menu = anchor.closest('details');
-    chip.hidden = !!(menu && menu.open);
+    placeScoreOffer();
     placePresence();
     if (menu && !menu.dataset.boardToggle) {
       menu.dataset.boardToggle = '1';
@@ -803,12 +810,100 @@
       signed.hidden = false;
       document.getElementById('boardSignedAs').textContent = `Signed in as ${boardPlayer.name}`;
       chip.textContent = 'Leaderboard';
+      chip.setAttribute('aria-label', 'Leaderboard');
     } else {
       form.hidden = false;
       signed.hidden = true;
-      chip.textContent = 'Leaderboard';
+      chip.textContent = chipLabel();
+      chip.setAttribute('aria-label', chip.textContent);
     }
+    paintBoardLead();
+    if (boardPlayer) hideScoreOffer();
     placeBoardChip();
+  }
+
+  function purseWorthPosting() {
+    return totalWeeks() > 0 || gold() > 0 || state.digital !== DEFAULT_DIGITAL || state.cash > DEFAULT_CASH;
+  }
+
+  function chipLabel() {
+    if (boardPlayer) return 'Leaderboard';
+    return purseWorthPosting() ? `Post ${fmt.format(netWorth())}` : 'Post a score';
+  }
+
+  function paintBoardLead() {
+    const lead = document.getElementById('boardLead');
+    if (!lead) return;
+    if (boardPlayer) {
+      lead.textContent = 'Best net worth. Your purse stays on this phone.';
+      return;
+    }
+    lead.textContent = purseWorthPosting()
+      ? `${fmt.format(netWorth())} is on this phone. An account is optional and only posts this score.`
+      : 'An account is optional. Create one when you want this purse on the board.';
+  }
+
+  function offerFloor() {
+    try {
+      const raw = localStorage.getItem(OFFER_KEY);
+      if (raw == null || raw === '') return null;
+      const saved = Number(raw);
+      return Number.isFinite(saved) ? saved : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function playingDrive() {
+    const game = document.getElementById('game');
+    const overlay = document.getElementById('overlay');
+    return !!(game && overlay && overlay.hidden);
+  }
+
+  function hideScoreOffer() {
+    const offer = document.getElementById('scoreOffer');
+    if (offer) offer.hidden = true;
+  }
+
+  function placeScoreOffer() {
+    const offer = document.getElementById('scoreOffer');
+    const chip = document.getElementById('boardChip');
+    if (!offer || !chip || offer.hidden) return;
+    const rect = chip.getBoundingClientRect();
+    offer.style.left = `${Math.round(rect.left)}px`;
+    offer.style.top = `${Math.round(rect.bottom + 8)}px`;
+  }
+
+  function noteInsight(kind) {
+    fetch('/api/insight', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind })
+    }).catch(() => {});
+  }
+
+  function showScoreOffer() {
+    if (boardPlayer || playingDrive()) return;
+    const worth = netWorth();
+    const floor = offerFloor();
+    if (floor != null ? worth <= floor : (scoreBaseline == null || worth === scoreBaseline)) return;
+    const offer = document.getElementById('scoreOffer');
+    const text = document.getElementById('scoreOfferText');
+    if (!offer || !text) return;
+    text.textContent = `${fmt.format(worth)} net worth is on this phone. Posting it is optional.`;
+    const wasHidden = offer.hidden;
+    offer.hidden = false;
+    placeScoreOffer();
+    if (wasHidden || offerNotedFor !== worth) {
+      offerNotedFor = worth;
+      noteInsight('offer_shown');
+    }
+  }
+
+  function maybeOfferFromPurse() {
+    clearTimeout(offerTimer);
+    offerTimer = setTimeout(showScoreOffer, 700);
   }
 
   function paintBoard(data) {
@@ -884,8 +979,11 @@
   function setBoardOpen(open) {
     const sheet = document.getElementById('boardSheet');
     if (!sheet) return;
+    const opening = open && sheet.hidden;
     sheet.hidden = !open;
     if (open) {
+      hideScoreOffer();
+      if (opening) noteInsight('board_open');
       boardOffline = false;
       loadBoard();
       ensureGoogleButton();
@@ -1045,8 +1143,8 @@
     chip.type = 'button';
     chip.className = 'board-chip';
     chip.id = 'boardChip';
-    chip.textContent = 'Leaderboard';
-    chip.setAttribute('aria-label', 'Leaderboard');
+    chip.textContent = chipLabel();
+    chip.setAttribute('aria-label', chip.textContent);
     const sheet = document.createElement('div');
     sheet.className = 'board-sheet';
     sheet.id = 'boardSheet';
@@ -1057,7 +1155,7 @@
       '<h2 id="boardTitle">Leaderboard</h2>',
       '<button type="button" class="board-close" id="boardClose" aria-label="Close">×</button>',
       '</div>',
-      '<p class="board-lead">Best net worth. Your purse stays on this phone.</p>',
+      '<p class="board-lead" id="boardLead">Best net worth. Your purse stays on this phone.</p>',
       '<ol class="board-list" id="boardList"></ol>',
       '<p class="board-you" id="boardYou" hidden></p>',
       '<form class="board-form" id="boardForm">',
@@ -1065,11 +1163,11 @@
       '<p class="board-or" id="boardOr" hidden>or</p>',
       '<label>Name <input name="name" autocomplete="off" maxlength="16" required></label>',
       '<label>Password <input name="password" type="password" autocomplete="new-password" maxlength="64" required></label>',
-      '<p class="board-hint">Any password. It does not have to match your name.</p>',
+      '<p class="board-hint">Create an account to post this score. Sign in if you already have one. The password does not have to match your name.</p>',
       '<p class="board-error" id="boardError" role="alert"></p>',
       '<div class="board-actions">',
-      '<button type="submit">Sign in</button>',
-      '<button type="button" id="boardCreate">Create account</button>',
+      '<button type="submit">Create account</button>',
+      '<button type="button" id="boardSignIn">Sign in</button>',
       '</div>',
       '</form>',
       '<div class="board-signed" id="boardSigned" hidden>',
@@ -1081,8 +1179,29 @@
     const nav = document.querySelector('.world-nav');
     if (nav) nav.insertAdjacentElement('afterend', chip);
     else document.body.appendChild(chip);
+    const offer = document.createElement('aside');
+    offer.className = 'score-offer';
+    offer.id = 'scoreOffer';
+    offer.hidden = true;
+    offer.innerHTML = [
+      '<p id="scoreOfferText"></p>',
+      '<div class="score-offer-actions">',
+      '<button type="button" id="scoreOfferPost">Post this score</button>',
+      '<button type="button" id="scoreOfferLater">Not now</button>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(offer);
     document.body.appendChild(sheet);
     chip.addEventListener('click', () => setBoardOpen(true));
+    document.getElementById('scoreOfferPost').addEventListener('click', () => {
+      noteInsight('offer_post');
+      setBoardOpen(true);
+    });
+    document.getElementById('scoreOfferLater').addEventListener('click', () => {
+      try { localStorage.setItem(OFFER_KEY, String(netWorth())); } catch (_) { /* private mode */ }
+      noteInsight('offer_dismiss');
+      hideScoreOffer();
+    });
     sheet.addEventListener('click', (event) => {
       if (event.target === sheet) setBoardOpen(false);
     });
@@ -1093,9 +1212,9 @@
     });
     document.getElementById('boardForm').addEventListener('submit', (event) => {
       event.preventDefault();
-      sendAuth('login');
+      sendAuth('register');
     });
-    document.getElementById('boardCreate').addEventListener('click', () => sendAuth('register'));
+    document.getElementById('boardSignIn').addEventListener('click', () => sendAuth('login'));
     document.getElementById('boardLogout').addEventListener('click', async () => {
       try {
         await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
@@ -1107,7 +1226,8 @@
     });
     window.addEventListener('resize', placeBoardChip);
     window.addEventListener('load', placeBoardChip);
-    placeBoardChip();
+    paintSession();
+    noteInsight('visit');
     loadSession();
     mountPresence();
     watchHere();
@@ -1224,6 +1344,7 @@
 
   migrateTips();
   persist();
+  scoreBaseline = netWorth();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mountHud);
@@ -1257,6 +1378,7 @@
     GAS_TANK_GAL, GAS_EMPTY_SEC, GAS_CASH_DISCOUNT,
     // plumbing
     snapshot, restore, getState, reincarnate, resetTimeline,
+    showScoreOffer,
     migrateTips, mountHud, mountLogo, updateDisplay, toggleHudExpanded,
     getInsets, canvasInset, subscribe
   };

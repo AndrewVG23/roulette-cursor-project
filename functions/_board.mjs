@@ -82,6 +82,18 @@ async function addColumn(db, table, column, type) {
   await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
 }
 
+const CLIENT_INSIGHTS = new Set(['visit', 'offer_shown', 'offer_dismiss', 'offer_post', 'board_open']);
+
+export async function noteInsight(db, kind) {
+  if (typeof kind !== 'string' || !/^[a-z_]{1,32}$/.test(kind)) return false;
+  const day = new Date().toISOString().slice(0, 10);
+  await db.prepare(
+    `INSERT INTO insights (day, kind, n) VALUES (?, ?, 1)
+     ON CONFLICT(day, kind) DO UPDATE SET n = n + 1`
+  ).bind(day, kind).run();
+  return true;
+}
+
 export async function ensureSchema(db) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS players (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,6 +120,12 @@ export async function ensureSchema(db) {
     visitor_id TEXT PRIMARY KEY,
     player_id INTEGER,
     seen_at INTEGER NOT NULL
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS insights (
+    day TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    n INTEGER NOT NULL,
+    PRIMARY KEY (day, kind)
   )`).run();
   await db.prepare(`CREATE TABLE IF NOT EXISTS notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -348,6 +366,17 @@ export function createBoard(db) {
         }
       }
       return { status: 200, body: { leaders, you } };
+    },
+
+    async insight(kind) {
+      if (kind != null) {
+        if (!CLIENT_INSIGHTS.has(kind)) return { status: 400, body: { error: 'bad' } };
+        await noteInsight(db, kind);
+      }
+      const listed = await db.prepare('SELECT kind, SUM(n) AS n FROM insights GROUP BY kind').all();
+      const counts = {};
+      for (const row of listed.results || []) counts[row.kind] = Number(row.n) || 0;
+      return { status: 200, body: { counts } };
     },
 
     async here(token, visitorId) {
