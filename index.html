@@ -808,7 +808,9 @@
       text-shadow: 0 0 10px rgba(232, 120, 170, 0.45);
       margin-bottom: 0.4em;
       max-width: 100%;
-      hyphens: auto;
+      hyphens: none;
+      overflow-wrap: normal;
+      word-break: keep-all;
     }
     .phone-rhyme-word {
       font-family: var(--font-display);
@@ -979,6 +981,9 @@
       font-size: clamp(2rem, 5vw, 3.6rem);
       line-height: 1.05;
       color: #f5a8c8;
+      hyphens: none;
+      overflow-wrap: normal;
+      word-break: keep-all;
     }
     .freestyle-title-gloss {
       width: min(100%, 920px);
@@ -4497,11 +4502,23 @@
     return pickFrom(pool, Math.min(n, pool.length));
   }
 
+  function fillTitleEl(el, title) {
+    if (!el) return;
+    const words = String(title || '').trim().split(/\s+/).filter(Boolean);
+    el.replaceChildren();
+    if (!words.length) return;
+    el.append(document.createTextNode(words[0]));
+    if (words.length > 1) {
+      el.append(document.createElement('br'));
+      el.append(document.createTextNode(words.slice(1).join(' ')));
+    }
+  }
+
   function setPhoneRhymeWords(words, title) {
     for (let i = 0; i < phoneRhymeEls.length; i++) {
       phoneRhymeEls[i].textContent = words[i] || '';
     }
-    if (phoneRhymeTitleEl) phoneRhymeTitleEl.textContent = title || '';
+    fillTitleEl(phoneRhymeTitleEl, title);
   }
 
   function pickPhoneTitle(exclude) {
@@ -4637,7 +4654,7 @@
     renderSpinSpeed();
     if (!freestylePanel || freestylePanel.hidden) return;
     if (freestyleSchemeEl) freestyleSchemeEl.textContent = phoneRhymeCurrent.scheme || '';
-    if (freestyleTitleEl) freestyleTitleEl.textContent = phoneRhymeCurrent.title || '';
+    fillTitleEl(freestyleTitleEl, phoneRhymeCurrent.title);
     const titleGloss = rhymeGloss('title', phoneRhymeCurrent.title);
     if (freestyleTitleGlossEl) {
       freestyleTitleGlossEl.textContent = titleGloss;
