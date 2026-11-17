@@ -863,6 +863,20 @@
   function hideScoreOffer() {
     const offer = document.getElementById('scoreOffer');
     if (offer) offer.hidden = true;
+    const runOffer = document.getElementById('runOffer');
+    if (runOffer) runOffer.hidden = true;
+  }
+
+  function dismissScoreOffer() {
+    try { localStorage.setItem(OFFER_KEY, String(netWorth())); } catch (_) { /* private mode */ }
+    noteInsight('offer_dismiss');
+    hideScoreOffer();
+  }
+
+  function acceptScoreOffer() {
+    noteInsight('offer_post');
+    hideScoreOffer();
+    setBoardOpen(true);
   }
 
   function placeScoreOffer() {
@@ -888,10 +902,28 @@
     const worth = netWorth();
     const floor = offerFloor();
     if (floor != null ? worth <= floor : (scoreBaseline == null || worth === scoreBaseline)) return;
+    const sentence = `${fmt.format(worth)} net worth is on this phone. Posting it is optional.`;
+    const runOffer = document.getElementById('runOffer');
+    const runPurse = document.getElementById('runPurse');
+    const overlay = document.getElementById('overlay');
+    if (runOffer && overlay && !overlay.hidden && runPurse && !runPurse.hidden) {
+      const text = document.getElementById('runOfferText');
+      if (text) text.textContent = sentence;
+      const floating = document.getElementById('scoreOffer');
+      if (floating) floating.hidden = true;
+      const wasHidden = runOffer.hidden;
+      runOffer.hidden = false;
+      if (wasHidden || offerNotedFor !== worth) {
+        offerNotedFor = worth;
+        noteInsight('offer_shown');
+      }
+      return;
+    }
+    if (runOffer) return;
     const offer = document.getElementById('scoreOffer');
     const text = document.getElementById('scoreOfferText');
     if (!offer || !text) return;
-    text.textContent = `${fmt.format(worth)} net worth is on this phone. Posting it is optional.`;
+    text.textContent = sentence;
     const wasHidden = offer.hidden;
     offer.hidden = false;
     placeScoreOffer();
@@ -1193,15 +1225,10 @@
     document.body.appendChild(offer);
     document.body.appendChild(sheet);
     chip.addEventListener('click', () => setBoardOpen(true));
-    document.getElementById('scoreOfferPost').addEventListener('click', () => {
-      noteInsight('offer_post');
-      setBoardOpen(true);
-    });
-    document.getElementById('scoreOfferLater').addEventListener('click', () => {
-      try { localStorage.setItem(OFFER_KEY, String(netWorth())); } catch (_) { /* private mode */ }
-      noteInsight('offer_dismiss');
-      hideScoreOffer();
-    });
+    document.getElementById('scoreOfferPost').addEventListener('click', acceptScoreOffer);
+    document.getElementById('scoreOfferLater').addEventListener('click', dismissScoreOffer);
+    document.getElementById('runOfferPost')?.addEventListener('click', acceptScoreOffer);
+    document.getElementById('runOfferLater')?.addEventListener('click', dismissScoreOffer);
     sheet.addEventListener('click', (event) => {
       if (event.target === sheet) setBoardOpen(false);
     });

@@ -74,6 +74,7 @@
   <script src="wallet.js?v=7"></script>
   <script src="orientation.js"></script>
   <script src="music.js"></script>
+  <script src="rhyme-gloss.js"></script>
   <style>
     :root, [data-theme="light"] {
       --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
@@ -316,6 +317,33 @@
       margin: 6px 0 0;
       font-size: var(--text-xs);
       color: #d7c9aa;
+    }
+    .run-offer {
+      margin: 0 0 var(--space-4);
+      padding-top: 10px;
+      border-top: 1px solid rgba(244, 223, 160, 0.28);
+    }
+    .run-offer[hidden] { display: none; }
+    .overlay-card .run-offer p {
+      margin: 0 0 10px;
+      color: #f5edd8;
+    }
+    .run-offer-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .run-offer-actions .btn {
+      min-height: 40px;
+      border-radius: 999px;
+      letter-spacing: 0.04em;
+    }
+    #runOfferPost {
+      background: #e8c878;
+      color: #1a1206;
+      border-color: #f4dfa0;
+    }
+    #runOfferLater {
+      background: transparent;
+      border-color: transparent;
+      box-shadow: none;
+      color: #f4dfa0;
     }
     .controls .btn,
     .overlay-card .btn {
@@ -878,25 +906,47 @@
       cursor: pointer;
     }
     .freestyle-panel {
-      position: absolute;
-      left: max(16px, env(safe-area-inset-left, 0px));
-      top: 148px;
-      z-index: 7;
-      width: min(420px, calc(100vw - 32px));
-      padding: 16px 16px 14px;
-      border-radius: 12px;
-      background: linear-gradient(180deg, rgba(16, 22, 20, 0.96), rgba(8, 10, 12, 0.98));
-      border: 1px solid rgba(238, 194, 97, 0.32);
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-      display: grid;
-      gap: 12px;
+      position: fixed;
+      inset: 0;
+      z-index: 10020;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+      width: auto;
+      height: auto;
+      padding:
+        max(18px, env(safe-area-inset-top, 0px))
+        max(18px, env(safe-area-inset-right, 0px))
+        max(18px, env(safe-area-inset-bottom, 0px))
+        max(18px, env(safe-area-inset-left, 0px));
+      background: rgba(4, 8, 10, 0.72);
+      border: 0;
+      border-radius: 0;
+      box-shadow: none;
     }
     .freestyle-panel[hidden] { display: none; }
+    .freestyle-sheet {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      overscroll-behavior: contain;
+      display: flex;
+      flex-direction: column;
+      gap: clamp(10px, 2vh, 18px);
+      padding: clamp(18px, 3vw, 36px) clamp(16px, 4vw, 48px) clamp(14px, 2vh, 24px);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(16, 22, 20, 0.97), rgba(8, 10, 12, 0.98));
+      border: 1px solid rgba(238, 194, 97, 0.32);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+      outline: none;
+    }
     .freestyle-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      flex-wrap: wrap;
+      gap: 10px 12px;
     }
     .freestyle-kicker {
       margin: 0;
@@ -906,47 +956,105 @@
       text-transform: uppercase;
       color: #f0d078;
     }
+    .freestyle-paused {
+      margin: 0 auto 0 0;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(232, 220, 192, 0.55);
+    }
     .freestyle-scheme {
-      margin: 0;
+      width: min(100%, 920px);
+      margin: 0 auto;
       font-size: 12px;
       font-weight: 800;
       letter-spacing: 0.18em;
       color: rgba(232, 220, 192, 0.7);
     }
     .freestyle-title {
-      margin: 0;
+      width: min(100%, 920px);
+      margin: 0 auto;
       font-family: var(--font-display);
-      font-size: 1.7rem;
-      line-height: 1.1;
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      line-height: 1.05;
       color: #f5a8c8;
     }
+    .freestyle-title-gloss {
+      width: min(100%, 920px);
+      margin: -6px auto 0;
+      font-family: var(--font-body);
+      font-size: clamp(1rem, 2.1vw, 1.35rem);
+      font-weight: 650;
+      line-height: 1.2;
+      color: rgba(245, 168, 200, 0.78);
+    }
+    .freestyle-title-gloss[hidden] { display: none; }
     .freestyle-lines {
       list-style: none;
-      margin: 0;
+      width: min(100%, 920px);
+      margin: 0 auto;
       padding: 0;
+      flex: 1;
       display: grid;
-      gap: 8px;
+      align-content: center;
+      gap: clamp(12px, 2.6vh, 28px);
     }
     .freestyle-lines li {
       display: grid;
-      grid-template-columns: 28px 1fr;
+      grid-template-columns: 36px 1fr;
       align-items: baseline;
-      gap: 8px;
+      gap: 10px;
     }
     .freestyle-letter {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 800;
       letter-spacing: 0.12em;
       color: rgba(240, 208, 120, 0.8);
     }
     .freestyle-word {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
       font-family: var(--font-display);
-      font-size: 1.55rem;
-      line-height: 1;
+      font-size: clamp(2.15rem, 6.2vw, 4.4rem);
+      font-weight: 700;
+      line-height: 0.95;
       text-transform: lowercase;
       color: #f3e2b8;
     }
-    .freestyle-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .freestyle-gloss {
+      font-family: var(--font-body);
+      font-size: 0.38em;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+      line-height: 1.15;
+      text-transform: none;
+      color: rgba(232, 220, 192, 0.7);
+    }
+    .freestyle-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .freestyle-actions > button { min-height: 44px; }
+    .freestyle-translate[aria-pressed="true"] {
+      background: rgba(238, 194, 97, 0.2);
+      color: #f4dfa0;
+    }
+    @media (max-width: 520px), (hover: none), (pointer: coarse) {
+      .freestyle-panel {
+        padding:
+          max(8px, env(safe-area-inset-top, 0px))
+          max(8px, env(safe-area-inset-right, 0px))
+          max(8px, env(safe-area-inset-bottom, 0px))
+          max(8px, env(safe-area-inset-left, 0px));
+      }
+      .freestyle-sheet {
+        border-radius: 12px;
+        padding: 16px 14px 14px;
+      }
+      .freestyle-title { font-size: clamp(1.85rem, 8vw, 2.8rem); }
+      .freestyle-word { font-size: clamp(2.25rem, 11vw, 3.6rem); }
+      .freestyle-actions > button { flex: 1 1 calc(50% - 8px); }
+    }
     .phone-face--back {
       transform: rotateY(180deg) translateZ(calc(var(--phone-depth) / 2));
       background: #e8b4cc;
@@ -1617,6 +1725,13 @@
                 <p class="run-purse-delta" id="runPurseDelta"></p>
                 <p class="run-purse-today" id="runPurseToday" hidden></p>
               </div>
+              <div class="run-offer" id="runOffer" hidden>
+                <p id="runOfferText"></p>
+                <div class="run-offer-actions">
+                  <button type="button" class="btn" id="runOfferPost">Post this score</button>
+                  <button type="button" class="btn" id="runOfferLater">Not now</button>
+                </div>
+              </div>
               <div class="double-coins double-coins--card" id="doubleCoinsCard" hidden aria-hidden="true"></div>
               <div class="look-bay" id="lookBay" hidden>
                 <p class="look-bay-title">Your car</p>
@@ -1688,23 +1803,28 @@
           </div>
         </div>
         <div class="freestyle-panel" id="freestylePanel" hidden>
-          <div class="freestyle-head">
-            <p class="freestyle-kicker" id="freestyleKicker">Freestyle</p>
-            <div class="lang-switch" role="group" aria-label="Freestyle language">
-              <button type="button" data-lang="en" aria-pressed="true">EN</button>
-              <button type="button" data-lang="es" aria-pressed="false">ES</button>
+          <div class="freestyle-sheet" role="dialog" aria-modal="true" aria-labelledby="freestyleTitle" tabindex="-1">
+            <div class="freestyle-head">
+              <p class="freestyle-kicker" id="freestyleKicker">Freestyle</p>
+              <p class="freestyle-paused" id="freestylePaused">Paused</p>
+              <div class="lang-switch" role="group" aria-label="Freestyle language">
+                <button type="button" data-lang="en" aria-pressed="true">EN</button>
+                <button type="button" data-lang="es" aria-pressed="false">ES</button>
+              </div>
             </div>
-          </div>
-          <p class="freestyle-scheme" id="freestyleScheme"></p>
-          <h2 class="freestyle-title" id="freestyleTitle"></h2>
-          <ol class="freestyle-lines" id="freestyleLines"></ol>
-          <div class="freestyle-actions">
-            <button type="button" id="freestyleNext">Next bar</button>
-            <button type="button" id="freestyleClose">Back to the drive</button>
-            <div class="spin-speed" role="group" aria-label="Spin speed">
-              <button type="button" data-spin="slower" aria-label="Slow the spin">−</button>
-              <span class="spin-speed-label">1×</span>
-              <button type="button" data-spin="faster" aria-label="Speed the spin">+</button>
+            <p class="freestyle-scheme" id="freestyleScheme"></p>
+            <h2 class="freestyle-title" id="freestyleTitle"></h2>
+            <p class="freestyle-title-gloss" id="freestyleTitleGloss" hidden></p>
+            <ol class="freestyle-lines" id="freestyleLines"></ol>
+            <div class="freestyle-actions">
+              <button type="button" id="freestyleTranslate" class="freestyle-translate" aria-pressed="false">Show translation</button>
+              <button type="button" id="freestyleNext">Next bar</button>
+              <button type="button" id="freestyleClose">Back to the drive</button>
+              <div class="spin-speed" role="group" aria-label="Spin speed">
+                <button type="button" data-spin="slower" aria-label="Slow the spin">−</button>
+                <span class="spin-speed-label">1×</span>
+                <button type="button" data-spin="faster" aria-label="Speed the spin">+</button>
+              </div>
             </div>
           </div>
         </div>
@@ -3018,6 +3138,10 @@
   const freestyleNextBtn = document.getElementById('freestyleNext');
   const freestyleCloseBtn = document.getElementById('freestyleClose');
   const freestyleOpenBtn = document.getElementById('freestyleOpen');
+  const freestyleSheet = freestylePanel?.querySelector('.freestyle-sheet');
+  const freestyleTitleGlossEl = document.getElementById('freestyleTitleGloss');
+  const freestyleTranslateBtn = document.getElementById('freestyleTranslate');
+  const freestylePausedEl = document.getElementById('freestylePaused');
   let freestylePausedDrive = false;
   const PHONE_TITLES = [
     'Vegan Food',
@@ -4301,10 +4425,13 @@
   const PHONE_RHYME_FAMILIES_ES = buildPhoneRhymeFamilies(PHONE_RHYMES_ES);
   const PHONE_RHYME_SCHEMES = ['AABB', 'ABAB', 'ABCB', 'AAAA'];
   const RHYME_LANG_KEY = 'cfc-rhyme-lang';
+  const RHYME_TRANSLATE_KEY = 'cfc-rhyme-translate';
   let phoneRhymeLang = 'en';
+  let phoneRhymeTranslate = false;
   try {
     const savedLang = localStorage.getItem(RHYME_LANG_KEY);
     if (savedLang === 'es' || savedLang === 'en') phoneRhymeLang = savedLang;
+    phoneRhymeTranslate = localStorage.getItem(RHYME_TRANSLATE_KEY) === '1';
   } catch (_) { /* ignore */ }
   const PHONE_RHYME_PACKS = {
     en: { titles: PHONE_TITLES, families: PHONE_RHYME_FAMILIES, families4: PHONE_RHYME_FAMILIES_4 },
@@ -4441,9 +4568,30 @@
   }
 
   const FREESTYLE_COPY = {
-    en: { open: 'Freestyle', next: 'Next bar', close: 'Back to the drive', kicker: 'Freestyle', slower: 'Slow the spin', faster: 'Speed the spin' },
-    es: { open: 'Freestyle', next: 'Siguiente', close: 'Volver a manejar', kicker: 'Freestyle', slower: 'Más lento', faster: 'Más rápido' }
+    en: {
+      open: 'Freestyle', next: 'Next bar', close: 'Back to the drive', kicker: 'Freestyle',
+      slower: 'Slow the spin', faster: 'Speed the spin', paused: 'Paused',
+      showTranslation: 'Show translation', hideTranslation: 'Hide translation'
+    },
+    es: {
+      open: 'Freestyle', next: 'Siguiente', close: 'Volver a manejar', kicker: 'Freestyle',
+      slower: 'Más lento', faster: 'Más rápido', paused: 'En pausa',
+      showTranslation: 'Ver traducción', hideTranslation: 'Ocultar traducción'
+    }
   };
+
+  function rhymeGloss(kind, text) {
+    const book = window.RHYME_GLOSS;
+    if (!phoneRhymeTranslate || !book || !text) return '';
+    const table = kind === 'title' ? book.titles?.[phoneRhymeLang] : book[phoneRhymeLang];
+    return (table && table[text]) || '';
+  }
+
+  function setRhymeTranslate(on) {
+    phoneRhymeTranslate = !!on;
+    try { localStorage.setItem(RHYME_TRANSLATE_KEY, phoneRhymeTranslate ? '1' : '0'); } catch (_) { /* ignore */ }
+    renderFreestyle();
+  }
 
   function spinSpeedText(scale) {
     return `${scale}×`;
@@ -4478,6 +4626,11 @@
     if (freestyleCloseBtn) freestyleCloseBtn.textContent = copy.close;
     const kicker = document.getElementById('freestyleKicker');
     if (kicker) kicker.textContent = copy.kicker;
+    if (freestylePausedEl) freestylePausedEl.textContent = copy.paused;
+    if (freestyleTranslateBtn) {
+      freestyleTranslateBtn.textContent = phoneRhymeTranslate ? copy.hideTranslation : copy.showTranslation;
+      freestyleTranslateBtn.setAttribute('aria-pressed', String(phoneRhymeTranslate));
+    }
     for (const btn of document.querySelectorAll('.lang-switch button')) {
       btn.setAttribute('aria-pressed', String(btn.dataset.lang === phoneRhymeLang));
     }
@@ -4485,6 +4638,11 @@
     if (!freestylePanel || freestylePanel.hidden) return;
     if (freestyleSchemeEl) freestyleSchemeEl.textContent = phoneRhymeCurrent.scheme || '';
     if (freestyleTitleEl) freestyleTitleEl.textContent = phoneRhymeCurrent.title || '';
+    const titleGloss = rhymeGloss('title', phoneRhymeCurrent.title);
+    if (freestyleTitleGlossEl) {
+      freestyleTitleGlossEl.textContent = titleGloss;
+      freestyleTitleGlossEl.hidden = !titleGloss;
+    }
     if (freestyleLinesEl) {
       freestyleLinesEl.replaceChildren(...phoneRhymeCurrent.words.map((word, i) => {
         const li = document.createElement('li');
@@ -4493,7 +4651,14 @@
         letter.textContent = phoneRhymeCurrent.letters[i] || '';
         const text = document.createElement('span');
         text.className = 'freestyle-word';
-        text.textContent = word;
+        text.append(document.createTextNode(word));
+        const gloss = rhymeGloss('word', word);
+        if (gloss) {
+          const glossEl = document.createElement('span');
+          glossEl.className = 'freestyle-gloss';
+          glossEl.textContent = gloss;
+          text.append(glossEl);
+        }
         li.append(letter, text);
         return li;
       }));
@@ -4514,14 +4679,17 @@
 
   function openFreestyle() {
     if (!freestylePanel || state.phase !== 'drive') return;
-    if (state.mode === 'drive') {
+    if (state.mode === 'drive' || state.mode === 'pause') {
       state._resumeMode = 'drive';
       state.mode = 'freestyle';
       freestylePausedDrive = true;
+      syncPauseBtn(false, 'Pause');
     }
+    state.keys.left = state.keys.right = state.keys.up = state.keys.down = false;
     if (!phoneRhymeCurrent.words.length) pickPhoneRhyme();
     freestylePanel.hidden = false;
     renderFreestyle();
+    freestyleSheet?.focus({ preventScroll: true });
   }
 
   function closeFreestyle() {
@@ -6557,6 +6725,8 @@
   function hideRunPurse() {
     if (runPurse) runPurse.hidden = true;
     if (runPurseToday) runPurseToday.hidden = true;
+    const runOffer = document.getElementById('runOffer');
+    if (runOffer) runOffer.hidden = true;
     if (overlayShareBtn) {
       overlayShareBtn.hidden = true;
       overlayShareBtn.classList.remove('is-shared');
@@ -8357,7 +8527,7 @@
     if (d.skid > 0) d.skid = Math.max(0, d.skid - dt);
     if (d.rumble > 0) d.rumble = Math.max(0, d.rumble - dt);
 
-    if (state.mode === 'pause' || state.mode === 'gameover' || state.mode === 'arrived') {
+    if (state.mode === 'pause' || state.mode === 'freestyle' || state.mode === 'gameover' || state.mode === 'arrived') {
       d.rpmPulse += dt;
       updateParticles(dt);
       return;
@@ -15789,6 +15959,13 @@
   freestyleCloseBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     closeFreestyle();
+  });
+  freestyleTranslateBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setRhymeTranslate(!phoneRhymeTranslate);
+  });
+  freestylePanel?.addEventListener('click', (e) => {
+    if (e.target === freestylePanel) closeFreestyle();
   });
   document.querySelectorAll('.spin-speed button').forEach((btn) => {
     btn.addEventListener('click', (e) => {
