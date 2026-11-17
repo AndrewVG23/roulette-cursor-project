@@ -793,6 +793,160 @@
       text-shadow: 0 0 10px rgba(240, 200, 120, 0.35);
       white-space: nowrap;
     }
+    .freestyle-dock {
+      position: absolute;
+      left: calc(max(12px, env(safe-area-inset-left, 0px)) + 202px);
+      bottom: max(78px, calc(env(safe-area-inset-bottom, 0px) + 72px));
+      z-index: 6;
+      display: none;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      max-width: 250px;
+    }
+    .panel-inner.drive-phase .freestyle-dock { display: flex; }
+    .panel-inner:has(#overlay:not([hidden])) .freestyle-dock,
+    .panel-inner:has(#overlay:not([hidden])) .freestyle-panel { display: none !important; }
+    .lang-switch {
+      display: inline-flex;
+      padding: 2px;
+      border-radius: 8px;
+      background: rgba(8, 10, 14, 0.92);
+      border: 1px solid rgba(238, 194, 97, 0.28);
+    }
+    .lang-switch button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: rgba(232, 220, 192, 0.62);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .lang-switch button[aria-pressed="true"] {
+      background: rgba(238, 194, 97, 0.18);
+      color: #f0d078;
+    }
+    .spin-speed {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px;
+      border-radius: 8px;
+      background: rgba(8, 10, 14, 0.92);
+      border: 1px solid rgba(238, 194, 97, 0.28);
+    }
+    .spin-speed button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: #f0d078;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+      width: 28px;
+      height: 26px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .spin-speed button:disabled {
+      color: rgba(232, 220, 192, 0.28);
+      cursor: default;
+    }
+    .spin-speed-label {
+      min-width: 2.6em;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: rgba(232, 220, 192, 0.86);
+    }
+    .freestyle-open,
+    .freestyle-actions button {
+      appearance: none;
+      border: 1px solid rgba(238, 194, 97, 0.35);
+      background: linear-gradient(180deg, rgba(18, 22, 28, 0.94), rgba(8, 10, 14, 0.96));
+      color: #f0d078;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 7px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .freestyle-panel {
+      position: absolute;
+      left: max(16px, env(safe-area-inset-left, 0px));
+      top: 148px;
+      z-index: 7;
+      width: min(420px, calc(100vw - 32px));
+      padding: 16px 16px 14px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(16, 22, 20, 0.96), rgba(8, 10, 12, 0.98));
+      border: 1px solid rgba(238, 194, 97, 0.32);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+      display: grid;
+      gap: 12px;
+    }
+    .freestyle-panel[hidden] { display: none; }
+    .freestyle-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .freestyle-kicker {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #f0d078;
+    }
+    .freestyle-scheme {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      color: rgba(232, 220, 192, 0.7);
+    }
+    .freestyle-title {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 1.7rem;
+      line-height: 1.1;
+      color: #f5a8c8;
+    }
+    .freestyle-lines {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .freestyle-lines li {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .freestyle-letter {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: rgba(240, 208, 120, 0.8);
+    }
+    .freestyle-word {
+      font-family: var(--font-display);
+      font-size: 1.55rem;
+      line-height: 1;
+      text-transform: lowercase;
+      color: #f3e2b8;
+    }
+    .freestyle-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .phone-face--back {
       transform: rotateY(180deg) translateZ(calc(var(--phone-depth) / 2));
       background: #e8b4cc;
@@ -943,13 +1097,13 @@
     .panel-inner.drive-phase .phone-ctl {
       left: max(12px, env(safe-area-inset-left, 0px));
       bottom: max(14px, env(safe-area-inset-bottom, 0px));
-      width: 95px;
-      height: calc(88px * 1024 / 540);
+      width: 190px;
+      height: calc(176px * 1024 / 540);
     }
     /* Now-playing chip — sits just off the phone when the drive starts */
     .now-playing {
       position: absolute;
-      left: calc(max(12px, env(safe-area-inset-left, 0px)) + 102px);
+      left: calc(max(12px, env(safe-area-inset-left, 0px)) + 202px);
       bottom: max(34px, calc(env(safe-area-inset-bottom, 0px) + 28px));
       z-index: 6;
       display: none;
@@ -1001,13 +1155,13 @@
       border-radius: 0;
     }
     .panel-inner.drive-phase .phone-scene {
-      --phone-w: 88px;
-      --phone-depth: 14px;
+      --phone-w: 176px;
+      --phone-depth: 28px;
       --phone-screen-inset: 2.8%;
       width: var(--phone-w);
       height: var(--phone-h);
-      perspective: 420px;
-      -webkit-perspective: 420px;
+      perspective: 840px;
+      -webkit-perspective: 840px;
     }
     .panel-inner.drive-phase .phone-face {
       box-shadow:
@@ -1039,7 +1193,7 @@
       gap: 10px;
     }
     .panel-inner.drive-phase .help-panel {
-      bottom: calc(181px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(362px + env(safe-area-inset-bottom, 0px));
     }
     .help-panel[hidden] { display: none; }
     .help-panel .hint {
@@ -1137,6 +1291,22 @@
       box-shadow: 0 0 0 1.5px var(--dest-color, #e8a040), 0 2px 8px rgba(0, 0, 0, 0.45);
     }
     .map-dest:disabled { opacity: 0.35; pointer-events: none; }
+    @media (hover: hover) and (pointer: fine) and (min-width: 521px) {
+      .map-nav { gap: 5px; justify-content: flex-start; }
+      .map-dest {
+        min-width: 118px;
+        padding: 6px 12px 5px;
+        border-radius: 10px;
+        border-width: 2px;
+        gap: 8px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+      }
+      .map-dest-icon svg { width: 26px; height: 26px; }
+      .map-dest-label { font-size: 12px; letter-spacing: 0.08em; }
+      .map-dest.active {
+        box-shadow: 0 0 0 2px var(--dest-color, #e8a040), 0 6px 16px rgba(0, 0, 0, 0.45);
+      }
+    }
     .lives-pips {
       display: flex;
       gap: 4px;
@@ -1248,6 +1418,9 @@
         height: var(--phone-h);
       }
       .panel-inner.drive-phase .now-playing {
+        left: calc(max(12px, env(safe-area-inset-left, 0px)) + 86px);
+      }
+      .freestyle-dock {
         left: calc(max(12px, env(safe-area-inset-left, 0px)) + 86px);
       }
       .help-panel { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
@@ -1373,6 +1546,10 @@
         max-width: min(40vw, 150px);
         padding: 4px 8px;
       }
+      .panel-inner.drive-phase:not(:has(#overlay:not([hidden]))) .freestyle-dock {
+        left: calc(max(12px, env(safe-area-inset-left, 0px)) + 60px);
+        bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+      }
       .panel-inner.drive-phase:not(:has(#overlay:not([hidden]))) .now-playing-title {
         font-size: 0.78rem;
       }
@@ -1497,6 +1674,39 @@
             </div>
           </div>
           <button class="help-btn" id="helpBtn" type="button" aria-label="Show phone" aria-expanded="false" aria-controls="mapNav"></button>
+        </div>
+        <div class="freestyle-dock" id="freestyleDock">
+          <div class="lang-switch" role="group" aria-label="Freestyle language">
+            <button type="button" data-lang="en" aria-pressed="true">EN</button>
+            <button type="button" data-lang="es" aria-pressed="false">ES</button>
+          </div>
+          <button type="button" id="freestyleOpen" class="freestyle-open">Freestyle</button>
+          <div class="spin-speed" role="group" aria-label="Spin speed">
+            <button type="button" data-spin="slower" aria-label="Slow the spin">−</button>
+            <span class="spin-speed-label">1×</span>
+            <button type="button" data-spin="faster" aria-label="Speed the spin">+</button>
+          </div>
+        </div>
+        <div class="freestyle-panel" id="freestylePanel" hidden>
+          <div class="freestyle-head">
+            <p class="freestyle-kicker" id="freestyleKicker">Freestyle</p>
+            <div class="lang-switch" role="group" aria-label="Freestyle language">
+              <button type="button" data-lang="en" aria-pressed="true">EN</button>
+              <button type="button" data-lang="es" aria-pressed="false">ES</button>
+            </div>
+          </div>
+          <p class="freestyle-scheme" id="freestyleScheme"></p>
+          <h2 class="freestyle-title" id="freestyleTitle"></h2>
+          <ol class="freestyle-lines" id="freestyleLines"></ol>
+          <div class="freestyle-actions">
+            <button type="button" id="freestyleNext">Next bar</button>
+            <button type="button" id="freestyleClose">Back to the drive</button>
+            <div class="spin-speed" role="group" aria-label="Spin speed">
+              <button type="button" data-spin="slower" aria-label="Slow the spin">−</button>
+              <span class="spin-speed-label">1×</span>
+              <button type="button" data-spin="faster" aria-label="Speed the spin">+</button>
+            </div>
+          </div>
         </div>
         <div class="now-playing" id="nowPlaying" aria-live="polite">
           <span class="now-playing-label">Now</span>
@@ -2801,6 +3011,14 @@
   const phone3dEl = document.querySelector('.phone-3d');
   const phoneRhymeEls = Array.from(document.querySelectorAll('#phoneRhyme .phone-rhyme-word'));
   const phoneRhymeTitleEl = document.getElementById('phoneRhymeTitle');
+  const freestylePanel = document.getElementById('freestylePanel');
+  const freestyleSchemeEl = document.getElementById('freestyleScheme');
+  const freestyleTitleEl = document.getElementById('freestyleTitle');
+  const freestyleLinesEl = document.getElementById('freestyleLines');
+  const freestyleNextBtn = document.getElementById('freestyleNext');
+  const freestyleCloseBtn = document.getElementById('freestyleClose');
+  const freestyleOpenBtn = document.getElementById('freestyleOpen');
+  let freestylePausedDrive = false;
   const PHONE_TITLES = [
     'Vegan Food',
     'Mental Health',
@@ -4012,7 +4230,93 @@
 
   const PHONE_RHYME_FAMILIES = buildPhoneRhymeFamilies(PHONE_RHYMES);
   const PHONE_RHYME_FAMILIES_4 = PHONE_RHYME_FAMILIES.filter((f) => f.length >= 4);
+  const PHONE_TITLES_ES = [
+    'Comida vegana',
+    'Salud mental',
+    'Cárcel chica',
+    'Mini desastre',
+    'Teatro de noche',
+    'Sueños rotos',
+    'Negocio raro',
+    'Estación de bus',
+    'Nueva era',
+    'Robo del siglo',
+    'Viaje en el tiempo',
+    'Regalos raros',
+    'Adicción digital',
+    'Universos paralelos',
+    'Promesas rotas',
+    'Leyendas del metro',
+    'Sistemas rotos',
+    'Síndrome del impostor',
+    'Ciudad a oscuras',
+    'Placeres culpables',
+    'Silencio y ruido',
+    'Lealtad y traición',
+    'Destino ciego',
+    'Trabajo invisible',
+    'Revolución lenta',
+    'Miedo al éxito',
+    'Vida de oficina',
+    'Sueño y realidad',
+    'Segunda oportunidad',
+    'Héroes sin capa',
+    'Vender el alma',
+    'Conspiración'
+  ];
+  const PHONE_RHYMES_ES = [
+    ['noche', 'coche'], ['coche', 'broche'], ['broche', 'reproche'],
+    ['oro', 'toro'], ['toro', 'foro'], ['foro', 'loro'],
+    ['plata', 'trata'], ['trata', 'rata'], ['rata', 'barata'],
+    ['peso', 'beso'], ['beso', 'hueso'], ['hueso', 'exceso'],
+    ['fuego', 'juego'], ['juego', 'luego'], ['luego', 'ruego'],
+    ['vida', 'herida'], ['herida', 'salida'], ['salida', 'caída'],
+    ['luz', 'cruz'], ['cruz', 'trasluz'], ['trasluz', 'andaluz'],
+    ['motor', 'dolor'], ['dolor', 'calor'], ['calor', 'color'],
+    ['sombra', 'alfombra'], ['alfombra', 'asombra'],
+    ['ciudad', 'verdad'], ['verdad', 'mitad'], ['mitad', 'amistad'],
+    ['mente', 'gente'], ['gente', 'fuente'], ['fuente', 'diente'],
+    ['mano', 'hermano'], ['hermano', 'verano'], ['verano', 'lejano'],
+    ['alma', 'calma'], ['calma', 'palma'],
+    ['mar', 'hogar'], ['hogar', 'lugar'], ['lugar', 'azar'],
+    ['tiempo', 'viento'], ['viento', 'siento'], ['siento', 'cuento'],
+    ['copa', 'ropa'], ['ropa', 'tropa'], ['tropa', 'Europa'],
+    ['dado', 'lado'], ['lado', 'estado'], ['estado', 'pasado'],
+    ['suerte', 'muerte'], ['muerte', 'fuerte'], ['fuerte', 'suerte'],
+    ['apuesta', 'respuesta'], ['respuesta', 'compuesta'],
+    ['freno', 'lleno'], ['lleno', 'sereno'], ['sereno', 'veneno'],
+    ['banco', 'blanco'], ['blanco', 'franco'], ['franco', 'manco'],
+    ['llama', 'cama'], ['cama', 'fama'], ['fama', 'trama'],
+    ['prisa', 'risa'], ['risa', 'brisa'],
+    ['neón', 'camión'], ['camión', 'razón'], ['razón', 'corazón'],
+    ['hielo', 'cielo'], ['cielo', 'vuelo'], ['vuelo', 'duelo'],
+    ['humo', 'consumo'], ['consumo', 'presumo'],
+    ['ruta', 'bruta'], ['bruta', 'disputa'],
+    ['pase', 'clase'], ['clase', 'fase'], ['fase', 'envase'],
+    ['rey', 'ley'], ['ley', 'buey'],
+    ['nota', 'gota'], ['gota', 'bota'], ['bota', 'pelota'],
+    ['flujo', 'lujo'], ['lujo', 'brujo'], ['brujo', 'refugio'],
+    ['calle', 'detalle']
+  ];
+  const PHONE_RHYME_FAMILIES_ES = buildPhoneRhymeFamilies(PHONE_RHYMES_ES);
   const PHONE_RHYME_SCHEMES = ['AABB', 'ABAB', 'ABCB', 'AAAA'];
+  const RHYME_LANG_KEY = 'cfc-rhyme-lang';
+  let phoneRhymeLang = 'en';
+  try {
+    const savedLang = localStorage.getItem(RHYME_LANG_KEY);
+    if (savedLang === 'es' || savedLang === 'en') phoneRhymeLang = savedLang;
+  } catch (_) { /* ignore */ }
+  const PHONE_RHYME_PACKS = {
+    en: { titles: PHONE_TITLES, families: PHONE_RHYME_FAMILIES, families4: PHONE_RHYME_FAMILIES_4 },
+    es: {
+      titles: PHONE_TITLES_ES,
+      families: PHONE_RHYME_FAMILIES_ES,
+      families4: PHONE_RHYME_FAMILIES_ES.filter((f) => f.length >= 4)
+    }
+  };
+  function rhymePack() {
+    return PHONE_RHYME_PACKS[phoneRhymeLang] || PHONE_RHYME_PACKS.en;
+  }
   let phoneRhymeFront = true;
   let phoneRhymeRaf = 0;
   let phoneRhymeLastKey = '';
@@ -4021,10 +4325,21 @@
   const PHONE_SPIN_BASE_DPS = 360 / 14;
   const PHONE_SPIN_SLOW_DPS = PHONE_SPIN_BASE_DPS * 0.5;
   const PHONE_SPIN_FAST_DPS = PHONE_SPIN_BASE_DPS * 1.85;
+  const SPIN_SPEEDS = [0.5, 0.75, 1, 1.5, 2, 3];
+  const SPIN_SPEED_KEY = 'cfc-spin-speed';
+  let phoneSpinSpeedIdx = SPIN_SPEEDS.indexOf(1);
+  try {
+    const savedSpeed = parseFloat(localStorage.getItem(SPIN_SPEED_KEY));
+    const savedIdx = SPIN_SPEEDS.indexOf(savedSpeed);
+    if (savedIdx >= 0) phoneSpinSpeedIdx = savedIdx;
+  } catch (_) { /* ignore */ }
+  function phoneSpinScale() {
+    return SPIN_SPEEDS[phoneSpinSpeedIdx] || 1;
+  }
   // cos(yaw) threshold ≈ ±70° from dead-on — linger slow past the perfect front
   const PHONE_SPIN_FACE_ON = 0.342;
   let phoneYawDeg = 0;
-  let phoneSpinRate = PHONE_SPIN_FAST_DPS;
+  let phoneSpinRate = PHONE_SPIN_FAST_DPS * phoneSpinScale();
   let phoneSpinLastTs = 0;
   let phoneSpinPaused = false;
   const phoneCtlEl = document.querySelector('.phone-ctl');
@@ -4051,7 +4366,7 @@
   }
 
   function pickFamilies(n, minSize = 2, exclude = null) {
-    const pool = PHONE_RHYME_FAMILIES.filter((f) => f.length >= minSize && (!exclude || !exclude.has(f)));
+    const pool = rhymePack().families.filter((f) => f.length >= minSize && (!exclude || !exclude.has(f)));
     return pickFrom(pool, Math.min(n, pool.length));
   }
 
@@ -4063,23 +4378,33 @@
   }
 
   function pickPhoneTitle(exclude) {
-    if (!PHONE_TITLES.length) return '';
-    let title = PHONE_TITLES[Math.floor(Math.random() * PHONE_TITLES.length)];
-    if (PHONE_TITLES.length > 1 && title === exclude) {
-      title = PHONE_TITLES[Math.floor(Math.random() * PHONE_TITLES.length)];
+    const titles = rhymePack().titles;
+    if (!titles.length) return '';
+    let title = titles[Math.floor(Math.random() * titles.length)];
+    if (titles.length > 1 && title === exclude) {
+      title = titles[Math.floor(Math.random() * titles.length)];
     }
     return title;
   }
 
+  const SCHEME_LETTERS = {
+    AABB: ['A', 'A', 'B', 'B'],
+    ABAB: ['A', 'B', 'A', 'B'],
+    ABCB: ['A', 'B', 'C', 'B'],
+    AAAA: ['A', 'A', 'A', 'A']
+  };
+  let phoneRhymeCurrent = { scheme: '', title: '', words: [], letters: [] };
+
   function pickPhoneRhyme() {
-    if (phoneRhymeEls.length < 4 || PHONE_RHYME_FAMILIES.length < 2) return;
+    const pack = rhymePack();
+    if (phoneRhymeEls.length < 4 || pack.families.length < 2) return;
     for (let attempt = 0; attempt < 8; attempt++) {
       let scheme = PHONE_RHYME_SCHEMES[Math.floor(Math.random() * PHONE_RHYME_SCHEMES.length)];
-      if (scheme === 'AAAA' && !PHONE_RHYME_FAMILIES_4.length) scheme = 'AABB';
+      if (scheme === 'AAAA' && !pack.families4.length) scheme = 'AABB';
 
       let words = null;
       if (scheme === 'AAAA') {
-        const [fam] = pickFrom(PHONE_RHYME_FAMILIES_4, 1);
+        const [fam] = pickFrom(pack.families4, 1);
         if (!fam) continue;
         words = pickFrom(fam, 4);
       } else if (scheme === 'AABB' || scheme === 'ABAB') {
@@ -4105,12 +4430,107 @@
       }
 
       const title = pickPhoneTitle(phoneRhymeTitleEl?.textContent);
-      const key = `${scheme}:${title}:${words.join('|')}`;
+      const key = `${phoneRhymeLang}:${scheme}:${title}:${words.join('|')}`;
       if (key === phoneRhymeLastKey) continue;
       phoneRhymeLastKey = key;
+      phoneRhymeCurrent = { scheme, title, words, letters: SCHEME_LETTERS[scheme] || [] };
       setPhoneRhymeWords(words, title);
+      renderFreestyle();
       return;
     }
+  }
+
+  const FREESTYLE_COPY = {
+    en: { open: 'Freestyle', next: 'Next bar', close: 'Back to the drive', kicker: 'Freestyle', slower: 'Slow the spin', faster: 'Speed the spin' },
+    es: { open: 'Freestyle', next: 'Siguiente', close: 'Volver a manejar', kicker: 'Freestyle', slower: 'Más lento', faster: 'Más rápido' }
+  };
+
+  function spinSpeedText(scale) {
+    return `${scale}×`;
+  }
+
+  function renderSpinSpeed() {
+    const copy = FREESTYLE_COPY[phoneRhymeLang] || FREESTYLE_COPY.en;
+    const scale = phoneSpinScale();
+    for (const label of document.querySelectorAll('.spin-speed-label')) {
+      label.textContent = spinSpeedText(scale);
+    }
+    for (const btn of document.querySelectorAll('.spin-speed button')) {
+      const slower = btn.dataset.spin === 'slower';
+      btn.disabled = slower ? phoneSpinSpeedIdx <= 0 : phoneSpinSpeedIdx >= SPIN_SPEEDS.length - 1;
+      btn.setAttribute('aria-label', slower ? copy.slower : copy.faster);
+    }
+  }
+
+  function setSpinSpeed(idx) {
+    const prev = phoneSpinScale();
+    phoneSpinSpeedIdx = Math.max(0, Math.min(SPIN_SPEEDS.length - 1, idx));
+    const next = phoneSpinScale();
+    if (prev > 0) phoneSpinRate *= next / prev;
+    try { localStorage.setItem(SPIN_SPEED_KEY, String(next)); } catch (_) { /* ignore */ }
+    renderSpinSpeed();
+  }
+
+  function renderFreestyle() {
+    const copy = FREESTYLE_COPY[phoneRhymeLang] || FREESTYLE_COPY.en;
+    if (freestyleOpenBtn) freestyleOpenBtn.textContent = copy.open;
+    if (freestyleNextBtn) freestyleNextBtn.textContent = copy.next;
+    if (freestyleCloseBtn) freestyleCloseBtn.textContent = copy.close;
+    const kicker = document.getElementById('freestyleKicker');
+    if (kicker) kicker.textContent = copy.kicker;
+    for (const btn of document.querySelectorAll('.lang-switch button')) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.lang === phoneRhymeLang));
+    }
+    renderSpinSpeed();
+    if (!freestylePanel || freestylePanel.hidden) return;
+    if (freestyleSchemeEl) freestyleSchemeEl.textContent = phoneRhymeCurrent.scheme || '';
+    if (freestyleTitleEl) freestyleTitleEl.textContent = phoneRhymeCurrent.title || '';
+    if (freestyleLinesEl) {
+      freestyleLinesEl.replaceChildren(...phoneRhymeCurrent.words.map((word, i) => {
+        const li = document.createElement('li');
+        const letter = document.createElement('span');
+        letter.className = 'freestyle-letter';
+        letter.textContent = phoneRhymeCurrent.letters[i] || '';
+        const text = document.createElement('span');
+        text.className = 'freestyle-word';
+        text.textContent = word;
+        li.append(letter, text);
+        return li;
+      }));
+    }
+  }
+
+  function setPhoneRhymeLang(lang) {
+    if (lang !== 'en' && lang !== 'es') return;
+    if (lang === phoneRhymeLang && phoneRhymeCurrent.words.length) {
+      renderFreestyle();
+      return;
+    }
+    phoneRhymeLang = lang;
+    try { localStorage.setItem(RHYME_LANG_KEY, lang); } catch (_) { /* ignore */ }
+    phoneRhymeLastKey = '';
+    pickPhoneRhyme();
+  }
+
+  function openFreestyle() {
+    if (!freestylePanel || state.phase !== 'drive') return;
+    if (state.mode === 'drive') {
+      state._resumeMode = 'drive';
+      state.mode = 'freestyle';
+      freestylePausedDrive = true;
+    }
+    if (!phoneRhymeCurrent.words.length) pickPhoneRhyme();
+    freestylePanel.hidden = false;
+    renderFreestyle();
+  }
+
+  function closeFreestyle() {
+    if (!freestylePanel) return;
+    freestylePanel.hidden = true;
+    if (freestylePausedDrive && state.mode === 'freestyle') {
+      state.mode = state._resumeMode || 'drive';
+    }
+    freestylePausedDrive = false;
   }
 
   function phoneYawRad() {
@@ -4140,9 +4560,9 @@
     phoneSpinLastTs = ts;
     dt = Math.min(0.05, Math.max(0, dt));
 
-    if (!phoneReduceMotion.matches && !phoneSpinPaused) {
+    if (!phoneReduceMotion.matches && !phoneSpinPaused && freestylePanel?.hidden !== false) {
       const faceOn = Math.cos(phoneYawRad()) > PHONE_SPIN_FACE_ON;
-      const target = faceOn ? PHONE_SPIN_SLOW_DPS : PHONE_SPIN_FAST_DPS;
+      const target = (faceOn ? PHONE_SPIN_SLOW_DPS : PHONE_SPIN_FAST_DPS) * phoneSpinScale();
       // Drop into slow quickly; ease back up more slowly so the front lingers
       const ease = target < phoneSpinRate ? 5 : 1.6;
       phoneSpinRate += (target - phoneSpinRate) * Math.min(1, dt * ease);
@@ -4171,7 +4591,7 @@
     phoneRhymeFront = true;
     phoneSpinLastTs = 0;
     phoneSpinPaused = false;
-    phoneSpinRate = PHONE_SPIN_FAST_DPS;
+    phoneSpinRate = PHONE_SPIN_FAST_DPS * phoneSpinScale();
     if (phone3dEl) phone3dEl.style.transform = '';
   }
 
@@ -4365,9 +4785,56 @@
 
   const MAP_LAYOUT = { mapW: 158, mapH: 158, pad: 10, innerX: 10, innerY: 22, titleH: 24 };
 
+  function desktopMapHud() {
+    return window.innerWidth > 520 && !coarsePointer();
+  }
+
+  function boardScale() {
+    const rect = canvas?.getBoundingClientRect();
+    return {
+      sx: rect && rect.width ? W / rect.width : 1,
+      sy: rect && rect.height ? H / rect.height : 1
+    };
+  }
+
+  function getMapLayout() {
+    if (!desktopMapHud() || !(W > 0) || !(H > 0)) return MAP_LAYOUT;
+    const { sx, sy } = boardScale();
+    const phoneBlock = (176 * 1024 / 540 + 70) * sy;
+    const destCol = 156 * sx;
+    const gap = 10 * sx;
+    const topClear = 148 * sy;
+    const pad = 16 * sx;
+    const rightLimit = W * 0.48;
+    const room = H - phoneBlock - 12 * sy - topClear;
+    const mapH = Math.min(MAP_LAYOUT.mapH * 2, Math.max(120, room));
+    let mapW = Math.min(
+      MAP_LAYOUT.mapW * 2,
+      Math.max(120, rightLimit - pad - gap - destCol)
+    );
+    mapW = Math.min(mapW, mapH * 1.25);
+    const scale = mapW / MAP_LAYOUT.mapW;
+    return {
+      mapW,
+      mapH,
+      pad,
+      innerX: Math.round(10 * scale),
+      innerY: Math.round(22 * scale),
+      titleH: Math.round(24 * scale),
+      abovePhone: true,
+      phoneBlock
+    };
+  }
+
   function getMapRect() {
-    const { mapW, mapH, pad } = MAP_LAYOUT;
-    return { mx: pad, my: H - mapH - pad - 8, mapW, mapH };
+    const layout = getMapLayout();
+    const { mapW, mapH, pad } = layout;
+    if (!layout.abovePhone) return { mx: pad, my: H - mapH - pad - 8, mapW, mapH };
+    const { sy } = boardScale();
+    const top = 148 * sy;
+    const bottom = H - layout.phoneBlock - 10 * sy;
+    const h = Math.min(mapH, Math.max(96, bottom - top));
+    return { mx: pad, my: Math.max(8, bottom - h), mapW, mapH: h };
   }
   const MAP_DEST_ICONS = {
     casino: {
@@ -4636,7 +5103,7 @@
   }
 
   function mapGeoToCanvas(n, e, route) {
-    const { innerX, innerY, titleH } = MAP_LAYOUT;
+    const { innerX, innerY, titleH } = getMapLayout();
     const { mx, my, mapW, mapH } = getMapRect();
     const innerW = mapW - innerX * 2;
     const innerH = mapH - titleH - 8;
@@ -4680,14 +5147,30 @@
     ensureMapNav(d.route);
     mapNav.hidden = false;
     const { mx, my, mapW, mapH } = getMapRect();
-    const gap = 6;
+    const { sx } = boardScale();
+    const view = canvas?.getBoundingClientRect();
+    const gap = desktopMapHud() ? 10 * sx : 6;
     mapNav.style.left = `${((mx + mapW + gap) / W) * 100}%`;
     mapNav.style.top = 'auto';
-    const bottomPct = ((H - my - mapH) / H) * 100;
-    mapNav.style.bottom = coarsePointer()
-      ? `max(${bottomPct}%, calc(72px + env(safe-area-inset-bottom, 0px)))`
-      : `${bottomPct}%`;
-    mapNav.style.height = 'auto';
+    if (desktopMapHud() && view) {
+      const cssLeft = ((mx + mapW + gap) / W) * view.width;
+      mapNav.style.maxWidth = `${Math.max(118, view.width * 0.48 - cssLeft)}px`;
+      mapNav.style.top = `${(my / H) * 100}%`;
+      mapNav.style.bottom = 'auto';
+      mapNav.style.maxHeight = `${(mapH / H) * 100}%`;
+      mapNav.style.overflowY = 'auto';
+      mapNav.style.pointerEvents = 'auto';
+    } else {
+      mapNav.style.maxWidth = '';
+      mapNav.style.top = 'auto';
+      mapNav.style.maxHeight = '';
+      mapNav.style.overflowY = '';
+      mapNav.style.pointerEvents = '';
+      const bottomPct = ((H - my - mapH) / H) * 100;
+      mapNav.style.bottom = coarsePointer()
+        ? `max(${bottomPct}%, calc(72px + env(safe-area-inset-bottom, 0px)))`
+        : `${bottomPct}%`;
+    }
     const taken = new Set((d.exits || []).filter(e => e.taken).map(e => e.id));
     for (const btn of mapNav.querySelectorAll('.map-dest')) {
       const ex = (d.route.exits || []).find(e => e.id === btn.dataset.exitId);
@@ -13765,8 +14248,9 @@
     if (!map || !route || !map.route || !map.route.length) return;
     gpsPrepare(map);
 
-    const { innerX, innerY, titleH } = MAP_LAYOUT;
+    const { innerX, innerY, titleH } = getMapLayout();
     const { mx, my, mapW, mapH } = getMapRect();
+    const u = mapW / MAP_LAYOUT.mapW;
     const innerW = mapW - innerX * 2;
     const innerH = mapH - titleH - 8;
     const b = map.bounds;
@@ -13809,11 +14293,16 @@
     }
 
     ctx.save();
-    ctx.fillStyle = 'rgba(12,14,18,0.92)';
-    ctx.strokeStyle = 'rgba(208,162,58,0.35)';
-    ctx.lineWidth = 1;
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 18 * u;
+    ctx.shadowOffsetY = 6 * u;
+    ctx.fillStyle = 'rgba(12,14,18,0.94)';
     ctx.fillRect(mx, my, mapW, mapH);
-    ctx.strokeRect(mx + 0.5, my + 0.5, mapW - 1, mapH - 1);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(232, 196, 96, 0.92)';
+    ctx.lineWidth = Math.max(1.5, 2 * u);
+    ctx.strokeRect(mx + 1, my + 1, mapW - 2, mapH - 2);
 
     ctx.beginPath();
     ctx.rect(mx + 1, my + innerY - 1, mapW - 2, mapH - innerY);
@@ -13865,7 +14354,7 @@
       if (shoreLon != null) {
         const lp = project(41.907, (shoreLon + b.e) / 2);
         ctx.fillStyle = 'rgba(150, 196, 220, 0.6)';
-        ctx.font = '700 8px "General Sans", sans-serif';
+        ctx.font = `700 ${Math.round(8 * u)}px "General Sans", sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillText('LAKE', lp.px, lp.py);
       }
@@ -13875,7 +14364,7 @@
       ctx.beginPath();
       trace(map.river);
       ctx.strokeStyle = 'rgba(48, 112, 148, 0.95)';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 2.5 * u;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.stroke();
@@ -13900,18 +14389,18 @@
       ctx.beginPath();
       trace(st.pts);
       ctx.strokeStyle = st.major ? 'rgba(220, 224, 228, 0.8)' : 'rgba(168, 174, 184, 0.34)';
-      ctx.lineWidth = st.name === 'Lake Shore' ? 1.7 : st.major ? 1.15 : 0.7;
+      ctx.lineWidth = (st.name === 'Lake Shore' ? 1.7 : st.major ? 1.15 : 0.7) * u;
       ctx.stroke();
     }
 
-    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.font = `600 ${Math.round(7 * u)}px "General Sans", sans-serif`;
     ctx.fillStyle = 'rgba(232, 226, 210, 0.9)';
     function tag(text, lat, lon, align, dx, dy) {
       if (lat == null || lon == null) return;
       const q = project(lat, lon);
       if (q.py < my + innerY + 1 || q.py > my + mapH - 3) return;
       ctx.textAlign = align;
-      ctx.fillText(text, q.px + dx, q.py + dy);
+      ctx.fillText(text, q.px + dx * u, q.py + dy * u);
     }
     const lsdLat = 41.907;
     tag('LSD', lsdLat, lonAt((map.streets.find(s => s.name === 'Lake Shore') || {}).pts || [], lsdLat), 'right', -4, -2);
@@ -13936,22 +14425,22 @@
       const tall = ['hancock', 'aon', 'wtplace', 'ninems', 'parktower', 'onemag', 'marina'].includes(lm.kind);
       ctx.fillStyle = 'rgba(208,162,58,0.4)';
       ctx.beginPath();
-      if (lake) ctx.rect(pt.px - 4, pt.py - 3, 8, 6);
+      if (lake) ctx.rect(pt.px - 4 * u, pt.py - 3 * u, 8 * u, 6 * u);
       else if (tall) {
-        ctx.moveTo(pt.px, pt.py - 5);
-        ctx.lineTo(pt.px + 4, pt.py + 3);
-        ctx.lineTo(pt.px - 4, pt.py + 3);
+        ctx.moveTo(pt.px, pt.py - 5 * u);
+        ctx.lineTo(pt.px + 4 * u, pt.py + 3 * u);
+        ctx.lineTo(pt.px - 4 * u, pt.py + 3 * u);
         ctx.closePath();
-      } else ctx.arc(pt.px, pt.py, 3.5, 0, Math.PI * 2);
+      } else ctx.arc(pt.px, pt.py, 3.5 * u, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = 'rgba(230,200,120,0.95)';
       ctx.beginPath();
-      ctx.arc(pt.px, pt.py, 1.6, 0, Math.PI * 2);
+      ctx.arc(pt.px, pt.py, 1.6 * u, 0, Math.PI * 2);
       ctx.fill();
     }
 
     ctx.strokeStyle = 'rgba(212, 168, 64, 0.95)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * u;
     ctx.lineJoin = 'round';
     ctx.beginPath();
     for (const seg of map.route) trace(seg.pts);
@@ -13960,7 +14449,7 @@
     const routeZ = wrapRouteZ(d.z, route.length);
     if (routeZ > 8) {
       ctx.strokeStyle = 'rgba(245, 236, 214, 0.9)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 * u;
       ctx.beginPath();
       let drawing = false;
       for (const seg of map.route) {
@@ -13986,7 +14475,7 @@
       const pt = project(g[0], g[1]);
       const ph = signalPhase(sig, sigTime);
       ctx.fillStyle = ph === 'red' ? '#e74c3c' : ph === 'yellow' ? '#f1c40f' : '#2ecc71';
-      ctx.fillRect(pt.px - 2, pt.py - 2, 4, 4);
+      ctx.fillRect(pt.px - 2 * u, pt.py - 2 * u, 4 * u, 4 * u);
     }
 
     if (d.navTarget) {
@@ -13998,8 +14487,8 @@
         const toZ = wrapRouteZ(navEx.z, pathLen);
         const ahead = routeAheadDist(fromZ, toZ, pathLen);
         ctx.strokeStyle = navMeta.color;
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 2.5 * u;
+        ctx.setLineDash([4 * u, 3 * u]);
         ctx.lineJoin = 'round';
         ctx.beginPath();
         let started = false;
@@ -14033,16 +14522,16 @@
       const g = gpsAt(ex.z);
       const pt = project(g[0], g[1]);
       const isNav = d.navTarget === ex.id;
-      const r = isNav ? 6 : 3.5;
+      const r = (isNav ? 6 : 3.5) * u;
       if (isNav) {
         ctx.fillStyle = 'rgba(255,255,255,0.2)';
         ctx.beginPath();
-        ctx.arc(pt.px, pt.py, r + 3, 0, Math.PI * 2);
+        ctx.arc(pt.px, pt.py, r + 3 * u, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.fillStyle = meta.color;
       ctx.strokeStyle = isNav ? 'rgba(245,237,216,0.95)' : 'rgba(12,14,18,0.95)';
-      ctx.lineWidth = isNav ? 2 : 1.5;
+      ctx.lineWidth = (isNav ? 2 : 1.5) * u;
       ctx.beginPath();
       ctx.arc(pt.px, pt.py, r, 0, Math.PI * 2);
       ctx.fill();
@@ -14051,47 +14540,47 @@
 
     const here = gpsAt(routeZ);
     const playerPt = project(here[0], here[1]);
-    playerPt.px += (d.playerX || 0) * 4;
+    playerPt.px += (d.playerX || 0) * 4 * u;
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.beginPath();
-    ctx.arc(playerPt.px, playerPt.py, 7, 0, Math.PI * 2);
+    ctx.arc(playerPt.px, playerPt.py, 7 * u, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#f0ece0';
     ctx.beginPath();
-    ctx.arc(playerPt.px, playerPt.py, 3.5, 0, Math.PI * 2);
+    ctx.arc(playerPt.px, playerPt.py, 3.5 * u, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
 
     ctx.save();
     ctx.fillStyle = 'rgba(208,162,58,0.9)';
-    ctx.font = '700 10px "General Sans", sans-serif';
+    ctx.font = `700 ${Math.round(11 * u)}px "General Sans", sans-serif`;
     ctx.textAlign = 'left';
-    ctx.fillText(route.name, mx + 8, my + 14);
+    ctx.fillText(route.name, mx + 10 * u, my + 16 * u);
 
     const pos = sampleRouteAt(route, d.z, d);
     if (pos.label) {
       ctx.fillStyle = 'rgba(232,220,192,0.7)';
-      ctx.font = '600 8px "General Sans", sans-serif';
+      ctx.font = `600 ${Math.round(9 * u)}px "General Sans", sans-serif`;
       ctx.textAlign = 'right';
-      ctx.fillText(pos.label, mx + mapW - 8, my + 14);
+      ctx.fillText(pos.label, mx + mapW - 10 * u, my + 16 * u);
     }
 
     ctx.strokeStyle = 'rgba(208,162,58,0.5)';
     ctx.fillStyle = 'rgba(208,162,58,0.65)';
-    ctx.lineWidth = 1;
-    const ax = mx + mapW - 14;
-    const ay = my + innerY + 6;
+    ctx.lineWidth = u;
+    const ax = mx + mapW - 16 * u;
+    const ay = my + innerY + 8 * u;
     ctx.beginPath();
-    ctx.moveTo(ax, ay + 10);
+    ctx.moveTo(ax, ay + 12 * u);
     ctx.lineTo(ax, ay);
-    ctx.lineTo(ax - 3, ay + 4);
+    ctx.lineTo(ax - 4 * u, ay + 5 * u);
     ctx.moveTo(ax, ay);
-    ctx.lineTo(ax + 3, ay + 4);
+    ctx.lineTo(ax + 4 * u, ay + 5 * u);
     ctx.stroke();
-    ctx.font = '700 8px "General Sans", sans-serif';
+    ctx.font = `700 ${Math.round(9 * u)}px "General Sans", sans-serif`;
     ctx.textAlign = 'center';
-    ctx.fillText('N', ax, ay - 2);
+    ctx.fillText('N', ax, ay - 3 * u);
     ctx.restore();
   }
 
@@ -14103,8 +14592,9 @@
       return;
     }
 
-    const { innerX, innerY, titleH } = MAP_LAYOUT;
+    const { innerX, innerY, titleH } = getMapLayout();
     const { mx, my, mapW, mapH } = getMapRect();
+    const u = mapW / MAP_LAYOUT.mapW;
     const innerW = mapW - innerX * 2;
     const innerH = mapH - titleH - 8;
     const b = route.geoBounds;
@@ -14119,26 +14609,31 @@
     }
 
     ctx.save();
-    ctx.fillStyle = 'rgba(12,14,18,0.9)';
-    ctx.strokeStyle = 'rgba(208,162,58,0.35)';
-    ctx.lineWidth = 1;
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 18 * u;
+    ctx.shadowOffsetY = 6 * u;
+    ctx.fillStyle = 'rgba(12,14,18,0.94)';
     ctx.fillRect(mx, my, mapW, mapH);
-    ctx.strokeRect(mx + 0.5, my + 0.5, mapW - 1, mapH - 1);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(232, 196, 96, 0.92)';
+    ctx.lineWidth = Math.max(1.5, 2 * u);
+    ctx.strokeRect(mx + 1, my + 1, mapW - 2, mapH - 2);
 
     // Lake Michigan (east / right side)
     const lakeX = mx + innerX + ((route.lakeEastOf - b.eMin) / eSpan) * innerW;
     ctx.fillStyle = 'rgba(45,85,120,0.55)';
     ctx.fillRect(lakeX, my + innerY, mx + innerX + innerW - lakeX, innerH);
     ctx.fillStyle = 'rgba(90,140,180,0.35)';
-    ctx.font = '700 8px "General Sans", sans-serif';
+    ctx.font = `700 ${Math.round(8 * u)}px "General Sans", sans-serif`;
     ctx.textAlign = 'center';
     ctx.fillText('LAKE', lakeX + (mx + innerX + innerW - lakeX) * 0.5, my + innerY + innerH * 0.55);
 
     // Street grid
     ctx.strokeStyle = 'rgba(120,125,135,0.28)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = u;
     ctx.fillStyle = 'rgba(160,165,175,0.45)';
-    ctx.font = '600 7px "General Sans", sans-serif';
+    ctx.font = `600 ${Math.round(7 * u)}px "General Sans", sans-serif`;
     for (const st of route.streets || []) {
       if (st.kind === 'ns') {
         const p0 = geoToMap(b.nMin, st.e);
@@ -14188,7 +14683,7 @@
     // Complete loop route
     const wps = route.waypoints;
     ctx.strokeStyle = 'rgba(196,160,53,0.8)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * u;
     ctx.lineJoin = 'round';
     ctx.beginPath();
     for (let i = 0; i < wps.length; i++) {
@@ -14203,7 +14698,7 @@
     const geo = interpRouteGeo(wps, routeZ, true);
     if (routeZ > 0) {
       ctx.strokeStyle = 'rgba(230,220,190,0.65)';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 * u;
       ctx.beginPath();
       for (let i = 0; i < wps.length; i++) {
         if (wps[i].z > routeZ) break;
@@ -14243,8 +14738,8 @@
         const toZ = wrapRouteZ(navEx.z, pathLen);
         const ahead = routeAheadDist(fromZ, toZ, pathLen);
         ctx.strokeStyle = navMeta.color;
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([4, 3]);
+        ctx.lineWidth = 2.5 * u;
+        ctx.setLineDash([4 * u, 3 * u]);
         ctx.lineJoin = 'round';
         ctx.beginPath();
         let started = false;
@@ -14305,9 +14800,9 @@
 
     // Title + area label
     ctx.fillStyle = 'rgba(208,162,58,0.9)';
-    ctx.font = '700 10px "General Sans", sans-serif';
+    ctx.font = `700 ${Math.round(11 * u)}px "General Sans", sans-serif`;
     ctx.textAlign = 'left';
-    ctx.fillText(route.name, mx + 8, my + 14);
+    ctx.fillText(route.name, mx + 10 * u, my + 16 * u);
 
     const pos = sampleRouteAt(route, d.z, d);
     if (pos.label) {
@@ -15137,6 +15632,10 @@
         endInstantReplay();
         return;
       }
+      if (!freestylePanel?.hidden) {
+        closeFreestyle();
+        return;
+      }
       if (isHelpUiOpen()) {
         setHelpOpen(false);
         return;
@@ -15273,6 +15772,31 @@
     e.stopPropagation();
     toggleHelp();
   });
+  document.querySelectorAll('.lang-switch button').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setPhoneRhymeLang(btn.dataset.lang);
+    });
+  });
+  freestyleOpenBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openFreestyle();
+  });
+  freestyleNextBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    pickPhoneRhyme();
+  });
+  freestyleCloseBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeFreestyle();
+  });
+  document.querySelectorAll('.spin-speed button').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setSpinSpeed(phoneSpinSpeedIdx + (btn.dataset.spin === 'faster' ? 1 : -1));
+    });
+  });
+  renderFreestyle();
   // Keep phone open when using Replay / Share above it
   document.getElementById('phoneActions')?.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
@@ -15286,6 +15810,8 @@
     if (mapNav?.contains(e.target)) return;
     if (phoneCtlEl?.contains(e.target)) return;
     if (helpPanel?.contains(e.target)) return;
+    if (freestylePanel?.contains(e.target)) return;
+    if (document.getElementById('freestyleDock')?.contains(e.target)) return;
     setHelpOpen(false);
   });
 
