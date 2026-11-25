@@ -206,7 +206,28 @@
       justify-content: center;
     }
     .play { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; font-size: 0.75rem; color: #d7c9aa; }
-    .status { margin: 0; text-align: center; line-height: 1.4; }
+    .coach {
+      width: min(640px, 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .status { margin: 0; text-align: center; line-height: 1.4; font-weight: 600; }
+    .tip {
+      margin: 0;
+      text-align: center;
+      color: #d7c9aa;
+      font-size: var(--text-xs);
+      line-height: 1.45;
+    }
+    .tip-kicker {
+      color: #e8c878;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      font-size: 0.68rem;
+      margin-right: 0.35rem;
+    }
     .actions { display: flex; flex-wrap: wrap; gap: 0.45rem; justify-content: center; }
     .your-place { display: flex; flex-direction: column; gap: 0.55rem; }
     .hand { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
@@ -316,7 +337,10 @@
         </div>
       </div>
       <div class="trick" id="trick" aria-label="Current trick"></div>
-      <p class="status" id="status">Deal. You get six cards, and two more sit face down.</p>
+      <div class="coach" aria-live="polite">
+        <p class="status" id="status">Deal. You get six cards, and two more sit face down.</p>
+        <p class="tip" id="tip"><span class="tip-kicker">Tip</span> <span id="tipText">Press Deal. Whoever picks up the two face-down cards needs 61 of the 120 points.</span></p>
+      </div>
       <div class="actions" id="actions">
         <button class="btn primary" type="button" data-act="deal">Deal</button>
       </div>
@@ -337,7 +361,9 @@
 import * as S from './sheepshead.js';
 
 const NAMES = ['You', 'Greta', 'Otto', 'Helen', 'Frank'];
-const SUIT_NAME = { c: 'clubs', s: 'spades', h: 'hearts' };
+const SUIT_NAME = { c: 'clubs', s: 'spades', h: 'hearts', d: 'diamonds' };
+const RANK_NAME = { A: 'ace', K: 'king', Q: 'queen', J: 'jack', '10': 'ten', '9': 'nine', '8': 'eight', '7': 'seven' };
+const OPEN_TIP = 'Press Deal. Whoever picks up the two face-down cards needs 61 of the 120 points.';
 const GLYPH = { c: '♣', s: '♠', h: '♥', d: '♦' };
 const YOU = 0;
 
@@ -346,6 +372,7 @@ const youSeatEl = document.getElementById('youSeat');
 const scoreEl = document.getElementById('score');
 const trickEl = document.getElementById('trick');
 const statusEl = document.getElementById('status');
+const tipTextEl = document.getElementById('tipText');
 const actionsEl = document.getElementById('actions');
 const handEl = document.getElementById('hand');
 const rulesEl = document.getElementById('rules');
@@ -368,6 +395,7 @@ let busy = false;
 let waiter = null;
 let buryPick = new Set();
 let note = 'Deal. You get six cards, and two more sit face down.';
+let tip = OPEN_TIP;
 
 function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 function money(n) {
@@ -384,6 +412,19 @@ function pay(n) {
 function cardFace(card) {
   const red = card.suit === 'h' || card.suit === 'd';
   return `<span class="card ${red ? 'red' : 'blk'} ${S.isTrump(card) ? 'trump' : ''}">${card.rank}${GLYPH[card.suit]}</span>`;
+}
+
+function cardLabel(card, extra) {
+  const pts = S.points(card);
+  const trump = S.isTrump(card) ? ', trump' : '';
+  const tail = extra ? `, ${extra}` : '';
+  const unit = pts === 1 ? 'point' : 'points';
+  return `${RANK_NAME[card.rank]} of ${SUIT_NAME[card.suit]}, ${pts} ${unit}${trump}${tail}`;
+}
+
+function coach(nextNote, nextTip) {
+  note = nextNote;
+  tip = nextTip;
 }
 
 function knownPartner() {
@@ -449,6 +490,7 @@ function render() {
     trickEl.innerHTML = '';
   }
   statusEl.textContent = note;
+  tipTextEl.textContent = tip;
   const yours = S.sortHand(hands[YOU]);
   const led = trick[0] && trick[0].card;
   const legal = waiter && waiter.kind === 'play' ? S.legalPlays(yours, led) : yours;
@@ -458,7 +500,8 @@ function render() {
     const red = card.suit === 'h' || card.suit === 'd';
     const on = buryPick.has(code) ? ' on' : '';
     const disabled = waiter && waiter.kind === 'play' && !legalCodes.has(code);
-    return `<button type="button" class="card ${red ? 'red' : 'blk'} ${S.isTrump(card) ? 'trump' : ''}${on}" data-act="card" data-code="${code}" ${disabled ? 'disabled' : ''}>${card.rank}${GLYPH[card.suit]}</button>`;
+    const extra = buryPick.has(code) ? 'selected to set aside' : (disabled ? 'not legal now' : '');
+    return `<button type="button" class="card ${red ? 'red' : 'blk'} ${S.isTrump(card) ? 'trump' : ''}${on}" data-act="card" data-code="${code}" aria-label="${cardLabel(card, extra)}" ${disabled ? 'disabled' : ''}>${card.rank}${GLYPH[card.suit]}</button>`;
   }).join('');
 }
 
@@ -534,9 +577,14 @@ function removeCard(seat, card) {
 async function bidAround() {
   for (let step = 1; step <= 5; step += 1) {
     const seat = (dealer + step) % 5;
-    note = seat === YOU
-      ? 'Your turn. Pick up the two face-down cards, or pass.'
-      : `${NAMES[seat]} may pick up the two face-down cards, or pass.`;
+    coach(
+      seat === YOU
+        ? 'Your turn. Pick up the two face-down cards, or pass.'
+        : `${NAMES[seat]} may pick up the two face-down cards, or pass.`,
+      seat === YOU
+        ? 'Pick up when you have several trump cards. You set two aside, name an ace you do not hold, and try to reach 61 with that player. Pass if the hand is thin.'
+        : 'Only one player can pick up the blind. If everyone passes, the fewest points wins, but that player must take at least one trick.'
+    );
     render();
     let choice = 'pass';
     if (seat === YOU) {
@@ -553,7 +601,10 @@ async function bidAround() {
 
 async function humanBury() {
   buryPick = new Set();
-  note = 'The two face-down cards are in your hand. Choose two cards to set aside. You still score their points, and you cannot play them.';
+  coach(
+    'The two face-down cards are in your hand. Choose two cards to set aside.',
+    'Tap two cards, then press Set two aside. You still score them. You cannot play them, or call an ace you set aside.'
+  );
   setActions('<button class="btn primary" type="button" data-act="bury" disabled>Set two aside</button>');
   const codes = await ask('bury');
   buried = hands[YOU].filter((card) => codes.includes(S.cardCode(card)));
@@ -567,27 +618,63 @@ async function humanCall() {
     `<button class="btn" type="button" data-act="ace" data-ace="${suit}">Ace of ${SUIT_NAME[suit]}</button>`
   ));
   buttons.push('<button class="btn primary" type="button" data-act="alone">No partner</button>');
-  note = held.size === 3
-    ? 'You already have the ace of clubs, spades, and hearts. Play with no partner.'
-    : 'Name an ace of clubs, spades, or hearts you do not have. That player scores with you. Or play with no partner.';
+  coach(
+    held.size === 3
+      ? 'You already have the ace of clubs, spades, and hearts. Play with no partner.'
+      : 'Name an ace of clubs, spades, or hearts you do not have. That player scores with you. Or play with no partner.',
+    held.size === 3
+      ? 'Press No partner. You need 61 by yourself. If you get there, each other player pays you. If you fall short, you pay each of them.'
+      : 'Press an ace you do not hold. That player scores with you. No partner means you need 61 alone. Making it pays more, and missing it costs more.'
+  );
   setActions(buttons.join(''));
   return ask('call');
 }
 
-function playNote() {
-  if (!trick.length) return 'You lead. Play any card.';
+function playCoach() {
+  if (!trick.length) {
+    return {
+      note: 'You lead. Play any card.',
+      tip: 'Tap a card. In clubs, spades, and hearts the ace beats the ten, and the ten beats the king.'
+    };
+  }
   const led = trick[0].card;
   const who = NAMES[trick[0].seat];
   const has = hands[YOU].some((card) => S.suitKey(card) === S.suitKey(led));
   if (S.isTrump(led)) {
     return has
-      ? `${who} led trump. Play a queen, a jack, or a diamond.`
-      : `${who} led trump. You have none, so play any card.`;
+      ? {
+          note: `${who} led trump. Play a queen, a jack, or a diamond.`,
+          tip: 'Gray cards are not trump. Highest is the queen of clubs, then the other queens, then the jacks, then the diamond ace down to the seven.'
+        }
+      : {
+          note: `${who} led trump. You have none, so play any card.`,
+          tip: 'A club, spade, or heart cannot beat trump. Throw a low card if you want to save an ace or a ten.'
+        };
   }
   const suit = SUIT_NAME[led.suit];
+  const one = suit.slice(0, -1);
   return has
-    ? `${who} led ${suit}. Play a ${suit.slice(0, -1)}. Queens and jacks are trump, not ${suit}.`
-    : `${who} led ${suit}. You have no ${suit.slice(0, -1)}, so play any card.`;
+    ? {
+        note: `${who} led ${suit}. Play a ${one}. Queens and jacks are trump, not ${suit}.`,
+        tip: `Gray cards are trump or another suit, so they cannot follow ${suit}.`
+      }
+    : {
+        note: `${who} led ${suit}. You have no ${one}, so play any card.`,
+        tip: 'You are out of that suit. Play a gold-edged card to try to win the trick, or a low card to save points.'
+      };
+}
+
+function trickTip() {
+  const tricksDone = taken.reduce((sum, pile) => sum + pile.length, 0) / 5;
+  if (leaster) {
+    return tricksDone <= 1
+      ? 'Aces are 11 and tens are 10. Fewer points is better, but a player who takes no tricks cannot win.'
+      : 'Stay low. One trick is enough to qualify. Duck the aces and tens when you can.';
+  }
+  if (tricksDone <= 1) {
+    return 'Aces are 11 and tens are 10. Kings are 4, queens 3, jacks 2. The picking side needs 61.';
+  }
+  return 'The Pickers total has to reach 61. Cards set aside already count for them.';
 }
 
 async function playTrick(leader) {
@@ -596,11 +683,17 @@ async function playTrick(leader) {
   for (let i = 0; i < 5; i += 1) {
     let card;
     if (seat === YOU) {
-      note = playNote();
+      const spoken = playCoach();
+      coach(spoken.note, spoken.tip);
       setActions('');
       card = await ask('play');
     } else {
-      note = `Waiting on ${NAMES[seat]}.`;
+      coach(
+        `Waiting on ${NAMES[seat]}.`,
+        trick.length
+          ? 'The highest card of the led suit is winning, unless someone out of that suit plays trump.'
+          : 'The leader may play any card. Aces and tens are the ones worth winning.'
+      );
       render();
       await sleep(380);
       const ctx = { seat, picker, partner: aceSeen ? partner : null };
@@ -621,7 +714,7 @@ async function playTrick(leader) {
   const winner = S.trickWinner(trick);
   taken[winner.seat].push(...trick.map((play) => play.card));
   const won = S.handPoints(trick.map((play) => play.card));
-  note = `${NAMES[winner.seat]} wins this trick, ${won} points.`;
+  coach(`${NAMES[winner.seat]} wins this trick, ${won} points.`, trickTip());
   trick = [];
   render();
   await sleep(280);
@@ -685,7 +778,10 @@ async function startHand() {
   const dealt = S.deal(dealer);
   hands = dealt.hands;
   blind = dealt.blind;
-  note = `${NAMES[dealer]} deals six cards each, plus two face down.`;
+  coach(
+    `${NAMES[dealer]} deals six cards each, plus two face down.`,
+    'A gold edge means trump: queens, jacks, and every diamond. Aces and tens are the cards worth the most.'
+  );
   setActions('');
   render();
   await sleep(350);
@@ -693,10 +789,18 @@ async function startHand() {
   if (picker == null) {
     leaster = true;
     blindDown = false;
-    note = 'Nobody picked up the two face-down cards. Fewest points wins. Take at least one trick or you cannot win.';
+    coach(
+      'Nobody picked up the two face-down cards. Fewest points wins. Take at least one trick or you cannot win.',
+      'Take one trick so you qualify, then play your lowest cards. The smallest score wins the stake from each other player.'
+    );
     render();
   } else {
-    note = `${NAMES[picker] === 'You' ? 'You pick' : `${NAMES[picker]} picks`} up the two face-down cards.`;
+    coach(
+      `${NAMES[picker] === 'You' ? 'You pick' : `${NAMES[picker]} picks`} up the two face-down cards.`,
+      picker === YOU
+        ? 'Those two cards join your hand. Next you choose two to set aside.'
+        : 'They take both cards, set two aside, then name a partner or play alone.'
+    );
     blindDown = false;
     render();
     if (picker === YOU) {
@@ -717,14 +821,28 @@ async function startHand() {
     }
     if (!alone && holdsAce(hands[YOU], calledAce)) {
       partner = YOU;
-      note = `The named ace is the ace of ${SUIT_NAME[calledAce]}. You have it, so your points and the picker's count together.`;
+      coach(
+        `The named ace is the ace of ${SUIT_NAME[calledAce]}. You have it, so your points and the picker's count together.`,
+        'Play for points with the picker. Take aces and tens when you can. Your tricks and theirs add up.'
+      );
     } else if (alone) {
-      note = picker === YOU
-        ? 'You are playing with no partner. You need 61 points by yourself.'
-        : `${NAMES[picker]} is playing with no partner and needs 61 points alone.`;
+      coach(
+        picker === YOU
+          ? 'You are playing with no partner. You need 61 points by yourself.'
+          : `${NAMES[picker]} is playing with no partner and needs 61 points alone.`,
+        picker === YOU
+          ? 'Every point has to come from you, including the two cards you set aside. Lead trump when you have it.'
+          : 'Take aces and tens. They have no help, so a few big tricks can hold them under 61.'
+      );
     } else {
       const withWhom = picker === YOU ? 'you' : NAMES[picker];
-      note = `${picker === YOU ? 'You' : NAMES[picker]} named the ace of ${SUIT_NAME[calledAce]}. The player who has it scores with ${withWhom}. You see who when that ace is played.`;
+      const youCalled = picker === YOU;
+      coach(
+        `${youCalled ? 'You' : NAMES[picker]} named the ace of ${SUIT_NAME[calledAce]}. The player who has it scores with ${withWhom}. You see who when that ace is played.`,
+        youCalled
+          ? 'Until that ace appears, play as if you are alone. When the partner shows, take points together.'
+          : 'If you hold that ace, you are the partner. If you do not, play against the picker until it appears.'
+      );
     }
     render();
   }
@@ -732,6 +850,7 @@ async function startHand() {
   for (let n = 0; n < 6; n += 1) leader = await playTrick(leader);
   if (leaster) settleLeaster();
   else settleMakers();
+  tip = 'Press Next hand. The deal moves to the next player.';
   dealer = (dealer + 1) % 5;
   busy = false;
   setActions('<button class="btn primary" type="button" data-act="next">Next hand</button>');

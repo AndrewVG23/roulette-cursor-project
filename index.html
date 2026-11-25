@@ -12233,18 +12233,6 @@
     london: '230,210,160', drake: '230,190,120', watertower: '220,200,150', church: '230,200,140',
     onemag: '160,170,200', parktower: '210,200,180', biograph: '240,120,120', zoo: '160,200,150', pier: '240,200,120'
   };
-  const LM_SUBTITLE = {
-    hancock: 'JOHN HANCOCK CENTER · 1,128 FT', aon: '200 E RANDOLPH · 1,136 FT', wtplace: 'MAG MILE · 1976',
-    ninems: 'BLOOMINGDALE\'S · 1989', tribune: 'FLYING BUTTRESSES · 1925', wrigley: 'TERRA COTTA · 1924',
-    marina: 'CORNCOBS · 1964', palmolive: 'LINDBERGH BEACON · 1929', london: 'MICHIGAN AVE BRIDGE · 1923',
-    drake: 'LAKE SHORE DR · 1920', watertower: 'SURVIVED THE FIRE · 1869', church: 'ESTABLISHED 1864',
-    onemag: 'ONE MAGNIFICENT MILE · 1983', parktower: '800 N MICHIGAN · 2000', biograph: 'DILLINGER · 1934',
-    zoo: 'FREE SINCE 1868', pier: 'FERRIS WHEEL · 1916', beach: 'LAKEFRONT TRAIL · CHESS PAVILION', oakbeach: 'WHERE THE MAG MILE MEETS THE LAKE',
-    // Label-keyed overrides where one drawing kind serves several buildings
-    'Holy Name Cathedral': 'STATE & SUPERIOR · 1875', 'Moody Church': 'NORTH & LASALLE · 1925',
-    'Second City': 'PIPER\'S ALLEY · 1959', 'Lincoln Park': 'ZOO · FREE SINCE 1868'
-  };
-
   function drawLandmark(lm, d) {
     const side = lm.side != null ? lm.side : (lm.e > 1.5 ? 1 : -1);
     const lakeKinds = ['pier', 'beach', 'oakbeach'];
@@ -12309,19 +12297,30 @@
       ctx.fillRect(gx - haloR, crown.y - haloR * 0.75, haloR * 2, haloR * 2);
     }
     function lmWinGrid(cx, y0, bw, bh, cols, rows, lit) {
-      const padX = bw * 0.12;
-      const padY = bh * 0.08;
+      const padX = bw * 0.1;
+      const padY = bh * 0.06;
       const cellW = (bw - padX * 2) / cols;
       const cellH = (bh - padY * 2) / rows;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-          const wx = cx - bw * 0.5 + padX + c * cellW + cellW * 0.18;
-          const wy = y0 + padY + r * cellH + cellH * 0.2;
-          const ww = cellW * 0.55;
-          const wh = cellH * 0.52;
-          const on = lit && ((r * 7 + c * 3 + lm.z) % 5 !== 0);
-          ctx.fillStyle = on ? 'rgba(255,228,160,0.55)' : 'rgba(40,50,65,0.85)';
+          const wx = cx - bw * 0.5 + padX + c * cellW + cellW * 0.16;
+          const wy = y0 + padY + r * cellH + cellH * 0.16;
+          const ww = cellW * 0.64;
+          const wh = cellH * 0.6;
+          const key = (r * 7 + c * 3 + Math.floor(lm.z)) % 8;
+          const on = lit && key !== 0 && key !== 5;
+          ctx.fillStyle = '#12161c';
+          ctx.fillRect(wx - 0.6 * s, wy - 0.6 * s, ww + 1.2 * s, wh + 1.2 * s);
+          ctx.fillStyle = on
+            ? (key % 3 === 0 ? 'rgba(255,214,140,0.78)' : 'rgba(176,198,220,0.42)')
+            : 'rgba(18,22,30,0.92)';
           ctx.fillRect(wx, wy, ww, wh);
+          if (on) {
+            ctx.fillStyle = 'rgba(255,248,230,0.35)';
+            ctx.fillRect(wx, wy, ww, Math.max(1, wh * 0.16));
+          }
+          ctx.fillStyle = 'rgba(12,10,8,0.4)';
+          ctx.fillRect(wx, wy + wh * 0.46, ww, Math.max(0.6, 0.5 * s));
         }
       }
     }
@@ -12338,8 +12337,10 @@
     function lmBase(bw) {
       ctx.fillStyle = '#2a2826';
       ctx.fillRect(gx - bw * 0.58, gy - 5 * s, bw * 1.16, 6 * s);
-      ctx.fillStyle = 'rgba(255,210,120,0.12)';
-      ctx.fillRect(gx - bw * 0.52, gy - 4 * s, bw * 1.04, 2 * s);
+      ctx.fillStyle = 'rgba(255,196,110,0.34)';
+      ctx.fillRect(gx - bw * 0.5, gy - 7 * s, bw, 3 * s);
+      ctx.fillStyle = 'rgba(255,210,140,0.1)';
+      ctx.fillRect(gx - bw * 0.7, gy - 1 * s, bw * 1.4, 4 * s);
     }
     function lmRim(cx, y0, bw, bh) {
       if (near < 0.12) return;
@@ -12363,12 +12364,17 @@
       ctx.beginPath();
       ctx.ellipse(cx, y0 + cobH * 0.5, cobW * 0.5, cobH * 0.48, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#d0ccc4';
-      for (let ring = 0; ring < 9; ring++) {
-        const ry = y0 + cobH * 0.12 + ring * cobH * 0.085;
+      ctx.fillStyle = '#b7b3ab';
+      for (let ring = 0; ring < 11; ring++) {
+        const ry = y0 + cobH * 0.1 + ring * cobH * 0.072;
         ctx.beginPath();
-        ctx.ellipse(cx, ry, cobW * 0.46, cobH * 0.045, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, ry, cobW * 0.5, cobH * 0.055, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.fillStyle = '#8e8a84';
+        ctx.beginPath();
+        ctx.ellipse(cx, ry + cobH * 0.02, cobW * 0.42, cobH * 0.02, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#b7b3ab';
       }
       ctx.fillStyle = 'rgba(255,228,160,0.35)';
       for (let b = 0; b < 14; b++) {
@@ -12377,6 +12383,10 @@
         ctx.fillRect(cx - cobW * 0.38, by, cobW * 0.12, cobH * 0.028);
         ctx.fillRect(cx + cobW * 0.26, by, cobW * 0.12, cobH * 0.028);
       }
+      ctx.fillStyle = 'rgba(40,36,32,0.28)';
+      ctx.beginPath();
+      ctx.ellipse(cx + cobW * 0.16, y0 + cobH * 0.5, cobW * 0.2, cobH * 0.46, 0, -Math.PI * 0.5, Math.PI * 0.5);
+      ctx.fill();
       ctx.fillStyle = '#524840';
       ctx.fillRect(cx - cobW * 0.55, y0 + cobH * 0.82, cobW * 1.1, cobH * 0.18);
     }
@@ -12531,8 +12541,8 @@
           const wx = gx - wm * 0.5 + (c + 0.18) * (wm / cols);
           const ww = (wm / cols) * 0.58;
           const key = (r * 11 + c * 5 + Math.floor(lm.z)) % 9;
-          ctx.fillStyle = key === 0 ? 'rgba(255,210,140,0.28)'
-            : key === 3 ? 'rgba(70,90,120,0.55)'
+          ctx.fillStyle = key === 0 ? 'rgba(255,214,150,0.62)'
+            : key === 3 ? 'rgba(90,120,160,0.55)'
             : 'rgba(22,26,34,0.92)';
           ctx.fillRect(wx, ym - cellH * 0.5, ww, cellH);
         }
@@ -12565,8 +12575,8 @@
         ctx.moveTo(r0, y0); ctx.lineTo(l1, y1);
         ctx.stroke();
 
-        // Charcoal exoskeleton X
-        ctx.strokeStyle = '#0a0b0e';
+        // Steel exoskeleton X, light enough to read against the night glass
+        ctx.strokeStyle = '#8b93a1';
         ctx.lineWidth = Math.max(1.8, 2.6 * s);
         ctx.beginPath();
         ctx.moveTo(l0, y0); ctx.lineTo(r1, y1);
@@ -12676,46 +12686,43 @@
         ctx.restore();
       }
     } else if (lm.kind === 'drake') {
+      // Wide Italian palazzo: limestone arches, red brick, green copper roof.
       const top = lmTop(175);
-      const bw = 98 * s;
+      const bw = 108 * s;
       const bh = gy - top.y;
-      lmGlow(gx, top.y, bw, bh, 'rgba(210,180,110,0.3)');
+      lmGlow(gx, top.y, bw, bh, 'rgba(180,90,60,0.22)');
       lmBase(bw);
-      ctx.fillStyle = '#3e3a36';
-      ctx.fillRect(gx - bw * 0.5, top.y, bw, bh);
-      ctx.fillStyle = '#524e48';
-      ctx.fillRect(gx - bw * 0.44, top.y + bh * 0.1, bw * 0.88, bh * 0.24);
-      ctx.fillStyle = '#2a2826';
-      for (let c = 0; c < 9; c++) {
-        ctx.fillRect(gx - bw * 0.4 + c * bw * 0.1, top.y + bh * 0.12, 5 * s, bh * 0.18);
-      }
-      ctx.fillStyle = 'rgba(220,190,110,0.45)';
-      ctx.fillRect(gx - bw * 0.34, top.y + bh * 0.36, bw * 0.68, 10 * s);
-      lmWinGrid(gx, top.y + bh * 0.48, bw * 0.78, bh * 0.42, 8, 3, true);
-      ctx.fillStyle = '#6a6058';
-      ctx.fillRect(gx - 2 * s, top.y - 18 * s, 4 * s, 16 * s);
-      ctx.fillStyle = 'rgba(180,40,40,0.7)';
-      ctx.fillRect(gx - 8 * s, top.y - 14 * s, 16 * s, 8 * s);
-      ctx.strokeStyle = 'rgba(220,190,110,0.35)';
-      ctx.lineWidth = Math.max(1, s);
-      for (let b = 0; b < 5; b++) {
-        const rx = gx - bw * 0.38 + b * bw * 0.18;
+      ctx.fillStyle = '#7a3e32';
+      ctx.fillRect(gx - bw * 0.46, top.y + bh * 0.18, bw * 0.92, bh * 0.56);
+      ctx.fillStyle = '#e4d8c4';
+      ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.72, bw, bh * 0.28);
+      ctx.fillStyle = '#2a2420';
+      for (let a = 0; a < 7; a++) {
+        const ax = gx - bw * 0.42 + a * bw * 0.13;
+        ctx.fillRect(ax, top.y + bh * 0.82, bw * 0.055, bh * 0.14);
         ctx.beginPath();
-        ctx.moveTo(rx, top.y + bh * 0.46);
-        ctx.lineTo(rx, top.y + bh * 0.52);
-        ctx.stroke();
+        ctx.arc(ax + bw * 0.027, top.y + bh * 0.82, bw * 0.028, Math.PI, 0);
+        ctx.fill();
       }
-      for (let c = 0; c < 3; c++) {
-        ctx.fillStyle = 'rgba(255,228,160,0.25)';
-        ctx.fillRect(gx - bw * 0.32 + c * bw * 0.28, top.y + bh * 0.54, 8 * s, 6 * s);
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 8; c++) {
+          ctx.fillStyle = (r + c) % 5 === 0 ? 'rgba(255,220,160,0.55)' : 'rgba(30,36,44,0.75)';
+          ctx.fillRect(gx - bw * 0.4 + c * bw * 0.1, top.y + bh * (0.26 + r * 0.11), bw * 0.04, bh * 0.065);
+        }
       }
-      ctx.fillStyle = '#524e48';
+      ctx.fillStyle = '#efe6d6';
+      ctx.fillRect(gx - bw * 0.46, top.y + bh * 0.7, bw * 0.92, 3 * s);
+      ctx.fillStyle = '#3e6a52';
       ctx.beginPath();
-      ctx.ellipse(gx, top.y + bh * 0.06, bw * 0.12, 8 * s, 0, 0, Math.PI * 2);
+      ctx.moveTo(gx - bw * 0.5, top.y + bh * 0.2);
+      ctx.lineTo(gx - bw * 0.16, top.y + 2 * s);
+      ctx.lineTo(gx + bw * 0.16, top.y + 2 * s);
+      ctx.lineTo(gx + bw * 0.5, top.y + bh * 0.2);
+      ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = 'rgba(220,190,110,0.3)';
-      ctx.fillRect(gx - bw * 0.2, gy - 3 * s, bw * 0.4, 3 * s);
-      lmCornice(gx, top.y + bh * 0.08, bw * 0.9, 6 * s);
+      ctx.fillStyle = '#2f5542';
+      ctx.fillRect(gx - bw * 0.16, top.y, bw * 0.32, 3 * s);
+      lmFlagPole(gx + bw * 0.04, top.y + 4 * s, 14 * s);
     } else if (lm.kind === 'beach' || lm.kind === 'oakbeach') {
       const sandX = side > 0 ? xWorld + 0.42 : xWorld - 0.12;
       const sand = projectWorld(sandX, 0, lm.z, d);
@@ -12795,6 +12802,34 @@
       ctx.lineTo(W - 28, sand.y - sandH * 0.5);
       ctx.closePath();
       ctx.fill();
+      if (lm.kind === 'beach') {
+        // North Avenue beach house: a white ship sitting on the sand.
+        const hx = sand.x + 64 * s;
+        const hy = sand.y - 4 * s;
+        ctx.fillStyle = '#f3f0e8';
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.quadraticCurveTo(hx + 30 * s, hy - 18 * s, hx + 60 * s, hy);
+        ctx.lineTo(hx + 54 * s, hy + 7 * s);
+        ctx.lineTo(hx + 6 * s, hy + 7 * s);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#16324a';
+        for (let w = 0; w < 4; w++) ctx.fillRect(hx + 14 * s + w * 10 * s, hy - 7 * s, 6 * s, 4 * s);
+        ctx.strokeStyle = '#8a8680';
+        ctx.lineWidth = Math.max(1, s);
+        ctx.beginPath();
+        ctx.moveTo(hx + 30 * s, hy - 2 * s);
+        ctx.lineTo(hx + 30 * s, hy - 24 * s);
+        ctx.stroke();
+        ctx.fillStyle = '#c83838';
+        ctx.beginPath();
+        ctx.moveTo(hx + 30 * s, hy - 22 * s);
+        ctx.lineTo(hx + 42 * s, hy - 16 * s);
+        ctx.lineTo(hx + 30 * s, hy - 14 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
     } else if (lm.kind === 'pier') {
       const pier = projectWorld(xWorld + side * 0.42, 0, lm.z, d);
       const pierLen = (W - pier.x) * 0.72;
@@ -12810,7 +12845,14 @@
       }
       const wheelX = pier.x + pierLen * 0.55;
       const wheelY = pier.y - 58 * s;
-      ctx.strokeStyle = 'rgba(200,220,240,0.55)';
+      ctx.strokeStyle = '#d5dbe3';
+      ctx.lineWidth = Math.max(1.4, 1.8 * s);
+      ctx.beginPath();
+      ctx.moveTo(wheelX - 16 * s, pier.y - 6 * s);
+      ctx.lineTo(wheelX, wheelY);
+      ctx.lineTo(wheelX + 16 * s, pier.y - 6 * s);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(220,228,236,0.85)';
       ctx.lineWidth = Math.max(1.5, 2 * s);
       ctx.beginPath();
       ctx.arc(wheelX, wheelY, 28 * s, 0, Math.PI * 2);
@@ -12868,67 +12910,103 @@
       ctx.fillStyle = '#524840';
       ctx.fillRect(pier.x + pierLen * 0.08, pier.y - 18 * s, 6 * s, 14 * s);
     } else if (lm.kind === 'watertower') {
+      // Chicago Water Tower: cream Joliet limestone, crenellations, corner turrets.
       const top = lmTop(105);
-      const bw = 34 * s;
+      const bw = 36 * s;
       const bh = gy - top.y;
-      lmGlow(gx, top.y, bw, bh, 'rgba(180,120,90,0.25)');
-      lmBase(bw * 1.2);
-      ctx.fillStyle = '#5a5248';
-      ctx.fillRect(gx - bw * 0.55, top.y + bh * 0.42, bw * 1.1, bh * 0.58);
-      ctx.fillStyle = '#8a4030';
+      const stone = '#d9c7a2';
+      const shadeSt = '#b7a588';
+      lmGlow(gx, top.y, bw * 1.3, bh, 'rgba(220,190,140,0.2)');
+      lmBase(bw * 1.4);
+      ctx.fillStyle = stone;
+      ctx.fillRect(gx - bw * 0.72, top.y + bh * 0.46, bw * 1.44, bh * 0.54);
+      ctx.fillStyle = shadeSt;
+      for (let m = 0; m < 7; m++) {
+        ctx.fillRect(gx - bw * 0.7 + m * bw * 0.22, top.y + bh * 0.42, bw * 0.1, bh * 0.055);
+      }
+      ctx.fillStyle = '#2c2824';
       ctx.beginPath();
-      ctx.ellipse(gx, top.y + bh * 0.38, 18 * s, 14 * s, 0, 0, Math.PI * 2);
+      ctx.moveTo(gx - bw * 0.08, top.y + bh * 0.78);
+      ctx.lineTo(gx - bw * 0.08, top.y + bh * 0.9);
+      ctx.lineTo(gx + bw * 0.08, top.y + bh * 0.9);
+      ctx.lineTo(gx + bw * 0.08, top.y + bh * 0.78);
+      ctx.quadraticCurveTo(gx, top.y + bh * 0.7, gx - bw * 0.08, top.y + bh * 0.78);
       ctx.fill();
-      ctx.fillStyle = '#6a3028';
-      ctx.fillRect(gx - 14 * s, top.y + bh * 0.28, 28 * s, 8 * s);
-      ctx.strokeStyle = '#e8e4dc';
-      ctx.lineWidth = Math.max(1.2, 1.5 * s);
-      ctx.beginPath();
-      ctx.moveTo(gx - 12 * s, top.y + bh * 0.34);
-      ctx.lineTo(gx + 12 * s, top.y + bh * 0.34);
-      ctx.moveTo(gx, top.y + bh * 0.26);
-      ctx.lineTo(gx, top.y + bh * 0.42);
-      ctx.stroke();
-      ctx.fillStyle = '#e8e4dc';
-      ctx.fillRect(gx - bw * 0.48, top.y + bh * 0.52, bw * 0.96, bh * 0.12);
-      ctx.fillStyle = '#d8d4cc';
-      ctx.fillRect(gx - bw * 0.52, top.y + bh * 0.44, 4 * s, bh * 0.38);
-      ctx.fillRect(gx + bw * 0.48, top.y + bh * 0.44, 4 * s, bh * 0.38);
-      lmWinGrid(gx, top.y + bh * 0.58, bw * 0.82, bh * 0.32, 4, 2, true);
-      lmFireEscape(gx + bw * 0.52, top.y + bh * 0.48, bh * 0.42);
-      ctx.fillStyle = 'rgba(138,64,48,0.35)';
-      for (let band = 0; band < 3; band++) {
-        ctx.fillRect(gx - 16 * s, top.y + bh * (0.3 + band * 0.06), 32 * s, 3 * s);
+      ctx.fillStyle = 'rgba(255,196,120,0.45)';
+      ctx.fillRect(gx - bw * 0.04, top.y + bh * 0.8, bw * 0.08, bh * 0.08);
+      for (const dir of [-1, 1]) {
+        const tx = gx + dir * bw * 0.52;
+        ctx.fillStyle = stone;
+        ctx.fillRect(tx - bw * 0.16, top.y + bh * 0.3, bw * 0.32, bh * 0.7);
+        ctx.fillStyle = shadeSt;
+        for (let c = 0; c < 3; c++) ctx.fillRect(tx - bw * 0.16 + c * bw * 0.12, top.y + bh * 0.26, bw * 0.08, bh * 0.06);
+        ctx.fillStyle = '#3a342c';
+        ctx.fillRect(tx - 1.4 * s, top.y + bh * 0.42, 2.8 * s, bh * 0.14);
+        ctx.beginPath();
+        ctx.arc(tx, top.y + bh * 0.42, 2 * s, Math.PI, 0);
+        ctx.fill();
       }
-      lmRim(gx, top.y, bw * 1.1, bh);
-    } else if (lm.kind === 'onemag') {
-      const top = lmTop(310);
-      const bw = 72 * s;
-      const bh = gy - top.y;
-      lmGlow(gx, top.y, bw, bh, 'rgba(90,130,170,0.28)');
-      lmBase(bw);
-      ctx.fillStyle = '#181c22';
-      ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.04, bw, bh * 0.96);
-      ctx.fillStyle = 'rgba(140,180,210,0.22)';
-      for (let r = 0; r < 12; r++) {
-        ctx.fillRect(gx - bw * 0.46, top.y + r * bh * 0.075, bw * 0.92, 2.5 * s);
-      }
-      ctx.fillStyle = 'rgba(200,230,255,0.35)';
-      ctx.fillRect(gx - bw * 0.08, top.y + bh * 0.02, bw * 0.16, bh * 0.94);
-      ctx.fillStyle = '#2a3038';
-      ctx.fillRect(gx - bw * 0.58, top.y + bh * 0.78, bw * 1.16, bh * 0.22);
-      ctx.fillStyle = 'rgba(140,180,210,0.18)';
+      ctx.fillStyle = stone;
+      ctx.fillRect(gx - bw * 0.26, top.y + bh * 0.1, bw * 0.52, bh * 0.9);
+      ctx.fillStyle = shadeSt;
+      for (let c = 0; c < 4; c++) ctx.fillRect(gx - bw * 0.26 + c * bw * 0.15, top.y + bh * 0.04, bw * 0.09, bh * 0.08);
+      ctx.fillStyle = '#cbb892';
       ctx.beginPath();
-      ctx.moveTo(gx - bw * 0.22, top.y + bh * 0.02);
-      ctx.lineTo(gx, top.y - 8 * s);
-      ctx.lineTo(gx + bw * 0.22, top.y + bh * 0.02);
+      ctx.moveTo(gx - bw * 0.14, top.y + bh * 0.12);
+      ctx.lineTo(gx, top.y);
+      ctx.lineTo(gx + bw * 0.14, top.y + bh * 0.12);
       ctx.closePath();
       ctx.fill();
-      lmWinGrid(gx, top.y + bh * 0.12, bw * 0.7, bh * 0.58, 6, 10, true);
-      lmMullions(gx, top.y + bh * 0.12, bw * 0.7, bh * 0.58, 6);
-      ctx.fillStyle = 'rgba(60,100,140,0.25)';
-      ctx.fillRect(gx - bw * 0.62, gy - 4 * s, bw * 1.24, 4 * s);
-      lmAntenna(gx + bw * 0.38, top.y, 16 * s);
+      ctx.fillStyle = '#2c2824';
+      for (let r = 0; r < 3; r++) {
+        const wy = top.y + bh * (0.24 + r * 0.16);
+        ctx.fillRect(gx - 2 * s, wy, 4 * s, bh * 0.08);
+        ctx.beginPath();
+        ctx.arc(gx, wy, 2.2 * s, Math.PI, 0);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#8c7b62';
+      ctx.fillRect(gx - bw * 0.26, top.y + bh * 0.1, 1.6 * s, bh * 0.88);
+      ctx.fillRect(gx + bw * 0.26 - 1.6 * s, top.y + bh * 0.1, 1.6 * s, bh * 0.88);
+    } else if (lm.kind === 'onemag') {
+      // Three bundled glass shafts, each with a sawtooth crown.
+      const top = lmTop(310);
+      const bh = gy - top.y;
+      const span = 78 * s;
+      lmGlow(gx, top.y, span, bh, 'rgba(90,130,170,0.28)');
+      lmBase(span);
+      const shafts = [
+        { x: -0.28, w: 0.34, h: 0.74 },
+        { x: 0.26, w: 0.3, h: 0.86 },
+        { x: 0.0, w: 0.32, h: 1 }
+      ].sort((a, b) => a.h - b.h);
+      for (const sh of shafts) {
+        const sw = span * sh.w;
+        const shH = bh * sh.h;
+        const sy = gy - shH;
+        const sx = gx + span * sh.x;
+        const glass = ctx.createLinearGradient(sx - sw, sy, sx + sw, gy);
+        glass.addColorStop(0, '#243044');
+        glass.addColorStop(1, '#121820');
+        ctx.fillStyle = glass;
+        ctx.beginPath();
+        ctx.moveTo(sx - sw * 0.5, sy + shH * 0.07);
+        ctx.lineTo(sx - sw * 0.2, sy);
+        ctx.lineTo(sx + sw * 0.2, sy);
+        ctx.lineTo(sx + sw * 0.5, sy + shH * 0.07);
+        ctx.lineTo(sx + sw * 0.5, gy);
+        ctx.lineTo(sx - sw * 0.5, gy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(170,200,230,0.16)';
+        for (let r = 0; r < 7; r++) ctx.fillRect(sx - sw * 0.36, sy + shH * (0.14 + r * 0.1), sw * 0.72, 1.3 * s);
+        ctx.strokeStyle = 'rgba(190,210,230,0.4)';
+        ctx.lineWidth = Math.max(1, s);
+        ctx.beginPath();
+        ctx.moveTo(sx - sw * 0.2, sy);
+        ctx.lineTo(sx + sw * 0.2, sy);
+        ctx.stroke();
+      }
     } else if (lm.kind === 'wrigley') {
       const top = lmTop(210);
       const bw = 58 * s;
@@ -12948,19 +13026,30 @@
       ctx.lineTo(gx + tW * 0.5 + 6 * s, top.y + bh * 0.1);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = '#2a3038';
-      ctx.beginPath();
-      ctx.arc(gx - tW * 0.5 - 6 * s, top.y + bh * 0.24, 7 * s, 0, Math.PI * 2);
-      ctx.arc(gx + tW * 0.5 + 6 * s, top.y + bh * 0.22, 7 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#f0ece4';
-      ctx.lineWidth = Math.max(1, s);
-      ctx.beginPath();
-      ctx.arc(gx - tW * 0.5 - 6 * s, top.y + bh * 0.24, 4 * s, 0, Math.PI * 2);
-      ctx.arc(gx + tW * 0.5 + 6 * s, top.y + bh * 0.22, 4 * s, 0, Math.PI * 2);
-      ctx.stroke();
-      lmClockHands(gx - tW * 0.5 - 6 * s, top.y + bh * 0.24, 4 * s);
-      lmClockHands(gx + tW * 0.5 + 6 * s, top.y + bh * 0.22, 4 * s);
+      const clocks = [
+        [gx - tW * 0.5 - 6 * s, top.y + bh * 0.16],
+        [gx + tW * 0.5 + 6 * s, top.y + bh * 0.14]
+      ];
+      for (const [cx, cy] of clocks) {
+        ctx.fillStyle = '#c4a15a';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 11 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f7f3ea';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 8 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1c2430';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 6.2 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#f4efe4';
+        ctx.lineWidth = Math.max(1, s);
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5 * s, 0, Math.PI * 2);
+        ctx.stroke();
+        lmClockHands(cx, cy, 4.6 * s);
+      }
       ctx.fillStyle = '#c8c4bc';
       ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.72, bw, bh * 0.28);
       for (let c = 0; c < 5; c++) {
@@ -12984,21 +13073,45 @@
       const bh = gy - top.y;
       lmGlow(gx, top.y, bw, bh, 'rgba(120,110,100,0.22)');
       lmBase(bw);
-      ctx.fillStyle = '#3e3a36';
-      ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.16, bw, bh * 0.84);
-      ctx.fillStyle = '#524e48';
-      ctx.fillRect(gx - bw * 0.44, top.y - 2 * s, bw * 0.88, bh * 0.24);
-      ctx.fillStyle = '#2e2c28';
-      for (let c = 0; c < 7; c++) {
-        const sx = gx - bw * 0.36 + c * bw * 0.12;
-        ctx.fillRect(sx, top.y - 10 * s, 5 * s, 14 * s);
+      ctx.fillStyle = '#6e675e';
+      ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.22, bw, bh * 0.78);
+      ctx.fillStyle = '#8a8174';
+      ctx.fillRect(gx - bw * 0.22, top.y + bh * 0.04, bw * 0.44, bh * 0.22);
+      ctx.fillStyle = '#cfc4b2';
+      for (let p = 0; p < 5; p++) {
+        const px = gx - bw * 0.16 + p * bw * 0.08;
+        ctx.fillRect(px, top.y + bh * 0.02, 2 * s, bh * 0.08);
         ctx.beginPath();
-        ctx.moveTo(sx - 3 * s, top.y - 10 * s);
-        ctx.lineTo(sx + 2.5 * s, top.y - 18 * s);
-        ctx.lineTo(sx + 8 * s, top.y - 10 * s);
+        ctx.moveTo(px - 1.5 * s, top.y + bh * 0.02);
+        ctx.lineTo(px + s, top.y - 4 * s);
+        ctx.lineTo(px + 3.5 * s, top.y + bh * 0.02);
         ctx.closePath();
         ctx.fill();
       }
+      ctx.fillStyle = '#4e4842';
+      for (const dir of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(gx + dir * bw * 0.46, top.y + bh * 0.28);
+        ctx.lineTo(gx + dir * bw * 0.16, top.y + bh * 0.06);
+        ctx.lineTo(gx + dir * bw * 0.1, top.y + bh * 0.1);
+        ctx.lineTo(gx + dir * bw * 0.36, top.y + bh * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillRect(gx + dir * bw * 0.4, top.y + bh * 0.16, 4 * s, bh * 0.14);
+        ctx.beginPath();
+        ctx.moveTo(gx + dir * bw * 0.38, top.y + bh * 0.16);
+        ctx.lineTo(gx + dir * bw * 0.44, top.y + bh * 0.08);
+        ctx.lineTo(gx + dir * bw * 0.5, top.y + bh * 0.16);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = '#3e3a36';
+      ctx.beginPath();
+      ctx.moveTo(gx - bw * 0.08, top.y + bh * 0.04);
+      ctx.lineTo(gx, top.y - 10 * s);
+      ctx.lineTo(gx + bw * 0.08, top.y + bh * 0.04);
+      ctx.closePath();
+      ctx.fill();
       for (let b = 0; b < 4; b++) {
         ctx.fillRect(gx - bw * 0.46 + b * bw * 0.28, top.y + bh * 0.18, 4 * s, bh * 0.72);
       }
@@ -13016,19 +13129,18 @@
       ctx.lineTo(gx + bw * 0.14, top.y + bh * 0.16);
       ctx.closePath();
       ctx.fill();
-      lmAntenna(gx, top.y - 2 * s, 20 * s);
       lmRim(gx, top.y, bw, bh);
     } else if (lm.kind === 'wtplace') {
       const top = lmTop(330);
       const bw = 78 * s;
       const bh = gy - top.y;
-      lmGlow(gx, top.y, bw, bh, 'rgba(100,150,190,0.28)');
+      lmGlow(gx, top.y, bw, bh, 'rgba(220,210,190,0.22)');
       lmBase(bw * 1.15);
-      ctx.fillStyle = '#2e3844';
+      ctx.fillStyle = '#e4ddd2';
       ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.06, bw, bh * 0.94);
-      ctx.fillStyle = 'rgba(130,175,210,0.32)';
+      ctx.fillStyle = 'rgba(90,80,70,0.28)';
       for (let r = 0; r < 13; r++) {
-        ctx.fillRect(gx - bw * 0.44, top.y + r * bh * 0.068, bw * 0.88, 2.5 * s);
+        ctx.fillRect(gx - bw * 0.48, top.y + bh * 0.08 + r * bh * 0.064, bw * 0.96, 2.2 * s);
       }
       ctx.fillStyle = '#424850';
       ctx.fillRect(gx - bw * 0.62, top.y + bh * 0.68, bw * 1.24, bh * 0.32);
@@ -13056,55 +13168,75 @@
       }
       lmCornice(gx, top.y + bh * 0.04, bw * 0.85, 5 * s);
     } else if (lm.kind === 'ninems') {
+      // Wedding cake, widest at the street, lantern cupola on top.
       const top = lmTop(320);
       const bh = gy - top.y;
-      const tiers = [1, 0.86, 0.7, 0.54, 0.38];
-      lmGlow(gx, top.y, 88 * s, bh, 'rgba(230,228,220,0.2)');
-      lmBase(88 * s);
-      ctx.fillStyle = '#eceae4';
-      let yOff = 0;
-      for (let i = 0; i < tiers.length; i++) {
-        const tw = 88 * s * tiers[i];
-        const th = bh * (i === 0 ? 0.24 : 0.16);
-        ctx.fillRect(gx - tw * 0.5, top.y + yOff, tw, th);
-        ctx.fillStyle = 'rgba(180,190,200,0.25)';
-        ctx.fillRect(gx - tw * 0.44, top.y + yOff + th * 0.15, tw * 0.88, 2 * s);
-        ctx.fillStyle = '#eceae4';
-        yOff += th;
-        if (i > 0) {
-          ctx.fillStyle = 'rgba(160,170,180,0.2)';
-          ctx.fillRect(gx - tw * 0.5 + 2 * s, top.y + yOff - th * 0.08, tw - 4 * s, 2 * s);
-          ctx.fillStyle = '#eceae4';
+      const baseW = 90 * s;
+      lmGlow(gx, top.y, baseW, bh, 'rgba(230,228,220,0.22)');
+      lmBase(baseW);
+      const steps = [
+        { w: 1, h: 0.32 },
+        { w: 0.76, h: 0.18 },
+        { w: 0.56, h: 0.15 },
+        { w: 0.38, h: 0.12 }
+      ];
+      let yCursor = gy;
+      for (let i = 0; i < steps.length; i++) {
+        const tw = baseW * steps[i].w;
+        const th = bh * steps[i].h;
+        yCursor -= th;
+        ctx.fillStyle = i % 2 ? '#ddd6ca' : '#e7e2d8';
+        ctx.fillRect(gx - tw * 0.5, yCursor, tw, th);
+        ctx.fillStyle = 'rgba(90,80,70,0.35)';
+        ctx.fillRect(gx - tw * 0.5, yCursor, tw, 2.2 * s);
+        const cols = 4 + (steps.length - 1 - i);
+        for (let c = 0; c < cols; c++) {
+          ctx.fillStyle = (c + i) % 4 === 0 ? 'rgba(255,220,160,0.5)' : 'rgba(40,48,58,0.55)';
+          ctx.fillRect(gx - tw * 0.4 + c * (tw * 0.8 / cols), yCursor + th * 0.32, Math.max(2, tw * 0.05), th * 0.36);
         }
       }
-      ctx.fillStyle = 'rgba(200,210,220,0.15)';
-      ctx.fillRect(gx - 4 * s, top.y + bh * 0.05, 8 * s, bh * 0.72);
-      lmWinGrid(gx, top.y + bh * 0.08, 72 * s, bh * 0.55, 5, 8, true);
-      ctx.fillStyle = 'rgba(180,190,200,0.2)';
-      let tierY = top.y;
-      for (let i = 1; i < tiers.length; i++) {
-        tierY += bh * (i === 1 ? 0.24 : 0.16);
-        ctx.fillRect(gx - 88 * s * tiers[i] * 0.44, tierY - 3 * s, 88 * s * tiers[i] * 0.88, 2 * s);
+      const lanternW = baseW * 0.22;
+      const lanternH = bh * 0.16;
+      const ly = yCursor - lanternH;
+      ctx.fillStyle = '#d9d3c8';
+      ctx.fillRect(gx - lanternW * 0.5, ly + lanternH * 0.2, lanternW, lanternH * 0.8);
+      ctx.fillStyle = '#1c2430';
+      for (let a = 0; a < 3; a++) {
+        const ax = gx - lanternW * 0.28 + a * lanternW * 0.28;
+        ctx.fillRect(ax - 1.6 * s, ly + lanternH * 0.42, 3.2 * s, lanternH * 0.36);
+        ctx.beginPath();
+        ctx.arc(ax, ly + lanternH * 0.42, 1.8 * s, Math.PI, 0);
+        ctx.fill();
       }
-      lmAntenna(gx, top.y - 4 * s, 14 * s);
+      ctx.fillStyle = '#8a8680';
+      ctx.beginPath();
+      ctx.moveTo(gx - lanternW * 0.66, ly + lanternH * 0.2);
+      ctx.lineTo(gx, top.y);
+      ctx.lineTo(gx + lanternW * 0.66, ly + lanternH * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#5c5854';
+      ctx.fillRect(gx - s, top.y - 6 * s, 2 * s, 8 * s);
     } else if (lm.kind === 'palmolive') {
       const top = lmTop(235);
       const bw = 54 * s;
       const bh = gy - top.y;
       lmGlow(gx, top.y, bw, bh, 'rgba(255,210,80,0.35)');
       lmBase(bw);
-      ctx.fillStyle = '#403e3a';
+      ctx.fillStyle = '#d9d2c4';
       ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.22, bw, bh * 0.78);
-      ctx.fillRect(gx - bw * 0.4, top.y + bh * 0.1, bw * 0.8, bh * 0.16);
+      ctx.fillStyle = '#cfc6b6';
+      ctx.fillRect(gx - bw * 0.4, top.y + bh * 0.12, bw * 0.8, bh * 0.12);
+      ctx.fillStyle = '#8a8680';
+      ctx.fillRect(gx - 1.2 * s, top.y - 22 * s, 2.4 * s, 24 * s);
+      const beaconY = top.y - 24 * s;
       ctx.fillStyle = '#d4a017';
-      ctx.fillRect(gx - bw * 0.16, top.y - 10 * s, bw * 0.32, 14 * s);
-      ctx.fillStyle = 'rgba(255,230,120,0.65)';
+      ctx.fillRect(gx - 4 * s, beaconY - 3 * s, 8 * s, 7 * s);
+      ctx.fillStyle = 'rgba(255,230,120,0.9)';
       ctx.beginPath();
-      ctx.arc(gx, top.y - 4 * s, 12 * s, 0, Math.PI * 2);
+      ctx.arc(gx, beaconY, 3.2 * s, 0, Math.PI * 2);
       ctx.fill();
-      lmBeaconRays(gx, top.y - 4 * s, 22 * s);
-      ctx.fillStyle = '#889098';
-      ctx.fillRect(gx - 10 * s, top.y - 8 * s, 20 * s, 3 * s);
+      lmBeaconRays(gx, beaconY, 28 * s);
       ctx.fillStyle = '#2a2826';
       for (let step = 0; step < 5; step++) {
         ctx.fillRect(gx - bw * 0.5 + step * bw * 0.22, top.y + bh * 0.24, bw * 0.16, 4 * s);
@@ -13120,152 +13252,181 @@
         ctx.fill();
       }
     } else if (lm.kind === 'parktower') {
+      // Bowed glass shaft, open lantern crown, thin spire, wider hotel podium.
       const top = lmTop(360);
-      const bw = 68 * s;
+      const bw = 58 * s;
       const bh = gy - top.y;
-      lmGlow(gx, top.y, bw, bh, 'rgba(100,120,150,0.25)');
-      lmBase(bw);
-      ctx.fillStyle = '#2a2e36';
-      ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.14, bw, bh * 0.86);
-      ctx.fillStyle = '#1e2228';
+      lmGlow(gx, top.y, bw, bh, 'rgba(140,160,190,0.22)');
+      ctx.fillStyle = '#3a342e';
+      ctx.fillRect(gx - bw * 0.72, top.y + bh * 0.78, bw * 1.44, bh * 0.22);
+      ctx.fillStyle = 'rgba(255,200,120,0.35)';
+      for (let c = 0; c < 6; c++) ctx.fillRect(gx - bw * 0.58 + c * bw * 0.22, top.y + bh * 0.84, bw * 0.08, bh * 0.07);
+      const glass = ctx.createLinearGradient(gx - bw, top.y, gx + bw, gy);
+      glass.addColorStop(0, '#1a2430');
+      glass.addColorStop(0.5, '#314358');
+      glass.addColorStop(1, '#141a22');
+      ctx.fillStyle = glass;
       ctx.beginPath();
-      ctx.moveTo(gx - bw * 0.5, top.y + bh * 0.14);
-      ctx.lineTo(gx, top.y - 22 * s);
-      ctx.lineTo(gx + bw * 0.5, top.y + bh * 0.14);
+      ctx.moveTo(gx - bw * 0.4, top.y + bh * 0.16);
+      ctx.quadraticCurveTo(gx, top.y + bh * 0.11, gx + bw * 0.4, top.y + bh * 0.16);
+      ctx.lineTo(gx + bw * 0.5, top.y + bh * 0.78);
+      ctx.quadraticCurveTo(gx, top.y + bh * 0.84, gx - bw * 0.5, top.y + bh * 0.78);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = 'rgba(160,180,200,0.35)';
-      ctx.lineWidth = Math.max(1, s);
+      ctx.strokeStyle = 'rgba(180,200,220,0.3)';
+      ctx.lineWidth = Math.max(1, 0.8 * s);
+      for (let c = 0; c < 6; c++) {
+        const t = c / 5;
+        ctx.beginPath();
+        ctx.moveTo(gx - bw * 0.36 + t * bw * 0.72, top.y + bh * 0.18);
+        ctx.lineTo(gx - bw * 0.46 + t * bw * 0.92, top.y + bh * 0.76);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#10161e';
+      ctx.fillRect(gx - bw * 0.26, top.y + bh * 0.05, bw * 0.52, bh * 0.11);
+      ctx.fillStyle = 'rgba(200,220,240,0.28)';
+      for (let v = 0; v < 4; v++) ctx.fillRect(gx - bw * 0.18 + v * bw * 0.11, top.y + bh * 0.07, 1.6 * s, bh * 0.07);
+      ctx.strokeStyle = '#d0d4dc';
+      ctx.lineWidth = Math.max(1, 1.2 * s);
       ctx.beginPath();
-      ctx.moveTo(gx - bw * 0.5, top.y + bh * 0.14);
-      ctx.lineTo(gx, top.y - 22 * s);
-      ctx.lineTo(gx + bw * 0.5, top.y + bh * 0.14);
+      ctx.moveTo(gx, top.y + bh * 0.05);
+      ctx.lineTo(gx, top.y);
       ctx.stroke();
-      lmWinGrid(gx, top.y + bh * 0.22, bw * 0.78, bh * 0.62, 5, 10, true);
-      ctx.fillStyle = 'rgba(140,170,200,0.15)';
+      ctx.fillStyle = 'rgba(255,80,60,0.85)';
       ctx.beginPath();
-      ctx.moveTo(gx - bw * 0.35, top.y + bh * 0.2);
-      ctx.lineTo(gx, top.y - 18 * s);
-      ctx.lineTo(gx + bw * 0.35, top.y + bh * 0.2);
-      ctx.closePath();
+      ctx.arc(gx, top.y, 2 * s, 0, Math.PI * 2);
       ctx.fill();
-      lmMullions(gx, top.y + bh * 0.22, bw * 0.78, bh * 0.62, 5);
     } else if (lm.kind === 'church') {
       const top = lmTop(142);
       const bw = 78 * s;
       const bh = gy - top.y;
-      lmGlow(gx, top.y, bw, bh, 'rgba(180,140,100,0.18)');
+      const moody = lm.label === 'Moody Church';
+      lmGlow(gx, top.y, bw, bh, 'rgba(180,160,120,0.18)');
       lmBase(bw);
-      ctx.fillStyle = '#5a4a40';
-      ctx.fillRect(gx - bw * 0.38, top.y + bh * 0.32, bw * 0.76, bh * 0.68);
-      ctx.fillStyle = '#4a4038';
+      if (moody) {
+        ctx.fillStyle = '#6a5a4c';
+        ctx.fillRect(gx - bw * 0.28, top.y + bh * 0.22, bw * 0.56, bh * 0.78);
+        ctx.fillStyle = '#d8d0c4';
+        ctx.fillRect(gx - bw * 0.46, top.y + bh * 0.62, bw * 0.92, bh * 0.38);
+        ctx.fillStyle = '#2f5542';
+        ctx.beginPath();
+        ctx.moveTo(gx - bw * 0.32, top.y + bh * 0.24);
+        ctx.lineTo(gx, top.y + 2 * s);
+        ctx.lineTo(gx + bw * 0.32, top.y + bh * 0.24);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#1c2430';
+        for (let a = 0; a < 2; a++) {
+          const ax = gx - bw * 0.1 + a * bw * 0.16;
+          ctx.fillRect(ax, top.y + bh * 0.34, bw * 0.06, bh * 0.1);
+          ctx.beginPath();
+          ctx.arc(ax + bw * 0.03, top.y + bh * 0.34, bw * 0.03, Math.PI, 0);
+          ctx.fill();
+        }
+      } else {
+        ctx.fillStyle = '#d9d0c2';
+        ctx.fillRect(gx - bw * 0.34, top.y + bh * 0.38, bw * 0.68, bh * 0.62);
+        ctx.fillStyle = '#c4b8a4';
+        for (const dir of [-1, 1]) {
+          const tx = gx + dir * bw * 0.3;
+          ctx.fillRect(tx - bw * 0.1, top.y + bh * 0.16, bw * 0.2, bh * 0.84);
+          ctx.beginPath();
+          ctx.moveTo(tx - bw * 0.12, top.y + bh * 0.16);
+          ctx.lineTo(tx, top.y);
+          ctx.lineTo(tx + bw * 0.12, top.y + bh * 0.16);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.fillStyle = '#2c2824';
+        ctx.beginPath();
+        ctx.arc(gx, top.y + bh * 0.5, 7 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#efe6d6';
+        ctx.lineWidth = Math.max(1, s);
+        ctx.beginPath();
+        ctx.arc(gx, top.y + bh * 0.5, 4 * s, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#3a342c';
+        ctx.fillRect(gx - bw * 0.06, top.y + bh * 0.78, bw * 0.12, bh * 0.22);
+      }
+    } else if (lm.kind === 'aon') {
+      // Pale marble slab. Vertical channels, flat roof, no spire.
+      const top = lmTop(520);
+      const bw = 52 * s;
+      const bh = gy - top.y;
+      lmGlow(gx, top.y, bw, bh, 'rgba(220,224,230,0.3)');
+      lmBase(bw * 1.15);
+      const slab = ctx.createLinearGradient(gx - bw * 0.5, top.y, gx + bw * 0.5, gy);
+      slab.addColorStop(0, '#f4f1ea');
+      slab.addColorStop(0.45, '#e4e0d8');
+      slab.addColorStop(1, '#c8c4bc');
+      ctx.fillStyle = slab;
+      ctx.fillRect(gx - bw * 0.5, top.y, bw, bh);
+      for (let c = 0; c < 9; c++) {
+        ctx.fillStyle = c % 2 ? 'rgba(28,34,46,0.55)' : 'rgba(255,252,246,0.35)';
+        ctx.fillRect(gx - bw * 0.46 + c * (bw * 0.92 / 9), top.y + 2 * s, bw * 0.045, bh - 3 * s);
+      }
+      for (let i = 0; i < 16; i++) {
+        ctx.fillStyle = 'rgba(255,214,150,0.5)';
+        ctx.fillRect(
+          gx - bw * 0.38 + (i % 7) * (bw * 0.11),
+          top.y + bh * (0.08 + (i % 11) * 0.07),
+          bw * 0.03,
+          Math.max(1, bh * 0.012)
+        );
+      }
+      ctx.fillStyle = '#b7b3ab';
+      ctx.fillRect(gx - bw * 0.52, top.y - 2 * s, bw * 1.04, 3 * s);
+      ctx.fillStyle = '#a8a49c';
       ctx.beginPath();
-      ctx.moveTo(gx - bw * 0.3, top.y + bh * 0.32);
-      ctx.lineTo(gx, top.y - 6 * s);
-      ctx.lineTo(gx + bw * 0.3, top.y + bh * 0.32);
+      ctx.moveTo(gx + bw * 0.5, top.y);
+      ctx.lineTo(gx + bw * 0.5 + 7 * s, top.y + 5 * s);
+      ctx.lineTo(gx + bw * 0.5 + 7 * s, gy);
+      ctx.lineTo(gx + bw * 0.5, gy);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = '#6a5850';
-      ctx.fillRect(gx - 4 * s, top.y + bh * 0.02, 8 * s, 22 * s);
-      ctx.fillStyle = 'rgba(255,180,80,0.35)';
-      ctx.fillRect(gx - bw * 0.22, top.y + bh * 0.48, 8 * s, 14 * s);
-      ctx.fillRect(gx + bw * 0.14, top.y + bh * 0.48, 8 * s, 14 * s);
-      ctx.fillRect(gx - 8 * s, top.y + bh * 0.62, 16 * s, 10 * s);
-      ctx.fillStyle = '#889098';
-      ctx.fillRect(gx - 2 * s, top.y - 10 * s, 4 * s, 8 * s);
-      ctx.fillStyle = 'rgba(255,180,80,0.25)';
+    } else if (lm.kind === 'london') {
+      // Cream stone corner block, clock drum, ribbed dome.
+      const top = lmTop(195);
+      const bw = 80 * s;
+      const bh = gy - top.y;
+      lmGlow(gx, top.y, bw, bh, 'rgba(230,210,170,0.22)');
+      lmBase(bw);
+      ctx.fillStyle = '#e6dcc8';
+      ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.3, bw, bh * 0.7);
+      ctx.fillStyle = '#d4c8b0';
+      for (let c = 0; c < 6; c++) ctx.fillRect(gx - bw * 0.44 + c * bw * 0.16, top.y + bh * 0.36, 2.4 * s, bh * 0.48);
+      lmWinGrid(gx, top.y + bh * 0.42, bw * 0.68, bh * 0.38, 5, 5, true);
+      ctx.fillStyle = '#cbbfa6';
+      ctx.fillRect(gx - bw * 0.54, top.y + bh * 0.27, bw * 1.08, 4 * s);
+      const drumW = bw * 0.42;
+      ctx.fillStyle = '#efe4d0';
+      ctx.fillRect(gx - drumW * 0.5, top.y + bh * 0.1, drumW, bh * 0.18);
+      ctx.fillStyle = '#1c2430';
       ctx.beginPath();
-      ctx.arc(gx, top.y + bh * 0.42, 10 * s, 0, Math.PI * 2);
+      ctx.arc(gx, top.y + bh * 0.18, 6.5 * s, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(200,190,180,0.35)';
+      ctx.strokeStyle = '#f4efe4';
       ctx.lineWidth = Math.max(1, s);
-      for (let p = 0; p < 8; p++) {
-        const ang = (p / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(gx, top.y + bh * 0.18, 4 * s, 0, Math.PI * 2);
+      ctx.stroke();
+      lmClockHands(gx, top.y + bh * 0.18, 4 * s);
+      ctx.fillStyle = '#d8c7a4';
+      ctx.beginPath();
+      ctx.ellipse(gx, top.y + bh * 0.1, drumW * 0.58, bh * 0.1, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(90,70,50,0.4)';
+      for (let rib = -2; rib <= 2; rib++) {
         ctx.beginPath();
-        ctx.moveTo(gx + Math.cos(ang) * 4 * s, top.y + bh * 0.42 + Math.sin(ang) * 4 * s);
-        ctx.lineTo(gx + Math.cos(ang) * 9 * s, top.y + bh * 0.42 + Math.sin(ang) * 9 * s);
+        ctx.moveTo(gx + rib * drumW * 0.12, top.y + bh * 0.1);
+        ctx.quadraticCurveTo(gx + rib * drumW * 0.04, top.y + bh * 0.02, gx, top.y);
         ctx.stroke();
       }
-      ctx.fillStyle = '#4a4038';
-      for (let bt = 0; bt < 2; bt++) {
-        ctx.fillRect(gx - bw * 0.42 + bt * bw * 0.74, top.y + bh * 0.36, 6 * s, bh * 0.58);
-      }
-      ctx.fillStyle = 'rgba(80,70,60,0.4)';
-      ctx.fillRect(gx - bw * 0.22, gy - 3 * s, bw * 0.44, 3 * s);
-    } else if (lm.kind === 'aon') {
-      const top = lmTop(520);
-      const bw = 58 * s;
-      const bh = gy - top.y;
-      lmGlow(gx, top.y, bw, bh, 'rgba(60,80,110,0.32)');
-      lmBase(bw);
-      ctx.fillStyle = '#0e1218';
-      ctx.fillRect(gx - bw * 0.5, top.y, bw, bh);
-      ctx.fillStyle = 'rgba(210,220,235,0.18)';
-      for (let r = 0; r < 16; r++) {
-        ctx.fillRect(gx - bw * 0.44, top.y + r * bh * 0.058, bw * 0.88, 1.8 * s);
-      }
-      ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      ctx.fillRect(gx - bw * 0.04, top.y - 22 * s, bw * 0.08, bh + 22 * s);
-      ctx.strokeStyle = 'rgba(180,190,210,0.25)';
-      ctx.lineWidth = Math.max(1, s);
+      ctx.fillStyle = '#8a7048';
       ctx.beginPath();
-      ctx.moveTo(gx - bw * 0.5, top.y + bh * 0.15);
-      ctx.lineTo(gx - bw * 0.42, top.y);
-      ctx.moveTo(gx + bw * 0.5, top.y + bh * 0.15);
-      ctx.lineTo(gx + bw * 0.42, top.y);
-      ctx.stroke();
-      ctx.fillStyle = '#889098';
-      ctx.fillRect(gx - bw * 0.06, top.y - 28 * s, bw * 0.12, 8 * s);
-      ctx.fillStyle = 'rgba(255,80,60,0.7)';
-      ctx.beginPath();
-      ctx.arc(gx, top.y - 30 * s, 2.5 * s, 0, Math.PI * 2);
+      ctx.arc(gx, top.y, 2.4 * s, 0, Math.PI * 2);
       ctx.fill();
-      lmWinGrid(gx, top.y + bh * 0.08, bw * 0.75, bh * 0.78, 4, 14, true);
-      ctx.fillStyle = 'rgba(210,220,235,0.12)';
-      ctx.fillRect(gx - bw * 0.62, top.y + bh * 0.82, bw * 1.24, bh * 0.08);
-      ctx.fillRect(gx - bw * 0.58, top.y + bh * 0.9, bw * 1.16, bh * 0.06);
-      lmRim(gx, top.y, bw, bh);
-    } else if (lm.kind === 'london') {
-      const top = lmTop(195);
-      const bw = 82 * s;
-      const bh = gy - top.y;
-      lmGlow(gx, top.y, bw, bh, 'rgba(120,160,130,0.25)');
-      lmBase(bw);
-      ctx.fillStyle = '#3a4038';
-      ctx.fillRect(gx - bw * 0.5, top.y + bh * 0.08, bw, bh * 0.92);
-      ctx.fillStyle = '#4a5548';
-      ctx.fillRect(gx - bw * 0.44, top.y + bh * 0.12, bw * 0.88, bh * 0.18);
-      ctx.fillStyle = '#5a6858';
-      ctx.beginPath();
-      ctx.moveTo(gx - bw * 0.38, top.y + bh * 0.12);
-      ctx.lineTo(gx, top.y - 18 * s);
-      ctx.lineTo(gx + bw * 0.38, top.y + bh * 0.12);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#6a7868';
-      ctx.fillRect(gx - bw * 0.12, top.y - 24 * s, bw * 0.24, 10 * s);
-      ctx.fillStyle = '#2a3038';
-      ctx.beginPath();
-      ctx.arc(gx, top.y + bh * 0.22, 9 * s, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#e8e4dc';
-      ctx.lineWidth = Math.max(1, s);
-      ctx.beginPath();
-      ctx.arc(gx, top.y + bh * 0.22, 5 * s, 0, Math.PI * 2);
-      ctx.stroke();
-      lmClockHands(gx, top.y + bh * 0.22, 5 * s);
-      ctx.fillStyle = 'rgba(100,140,110,0.35)';
-      ctx.fillRect(gx - bw * 0.14, top.y - 22 * s, bw * 0.28, 6 * s);
-      for (let c = 0; c < 7; c++) {
-        ctx.fillStyle = '#2a2826';
-        ctx.fillRect(gx - bw * 0.4 + c * bw * 0.12, top.y + bh * 0.38, 5 * s, bh * 0.48);
-      }
-      lmWinGrid(gx, top.y + bh * 0.42, bw * 0.62, bh * 0.42, 5, 4, true);
-      ctx.fillStyle = 'rgba(210,220,230,0.15)';
-      for (let course = 0; course < 5; course++) {
-        ctx.fillRect(gx - bw * 0.48, top.y + bh * (0.14 + course * 0.08), bw * 0.96, 2 * s);
-      }
-      lmRim(gx, top.y, bw, bh);
     } else if (lm.kind === 'marina') {
       const top = lmTop(280);
       const bw = 92 * s;
@@ -13293,6 +13454,25 @@
       ctx.fillRect(gx - bw * 0.14, top.y + bh * 0.62, bw * 0.28, 8 * s);
       lmAntenna(gx - bw * 0.22, top.y + bh * 0.04, 10 * s);
       lmAntenna(gx + bw * 0.22, top.y + bh * 0.02, 12 * s);
+    } else if (lm.kind === 'biograph' && lm.label === 'Second City') {
+      const top = lmTop(128);
+      const bw = 72 * s;
+      const bh = gy - top.y;
+      lmGlow(gx, top.y, bw, bh, 'rgba(160,50,40,0.16)');
+      lmBase(bw);
+      ctx.fillStyle = '#7a3030';
+      ctx.fillRect(gx - bw * 0.48, top.y + bh * 0.28, bw * 0.96, bh * 0.72);
+      ctx.fillStyle = 'rgba(40,20,18,0.35)';
+      for (let r = 0; r < 8; r++) ctx.fillRect(gx - bw * 0.48, top.y + bh * (0.32 + r * 0.08), bw * 0.96, 1 * s);
+      ctx.fillStyle = '#141210';
+      ctx.fillRect(gx - bw * 0.42, top.y + bh * 0.58, bw * 0.84, bh * 0.08);
+      ctx.fillStyle = 'rgba(255,220,160,0.45)';
+      ctx.fillRect(gx - bw * 0.16, top.y + bh * 0.7, bw * 0.14, bh * 0.22);
+      ctx.fillStyle = '#1c2430';
+      ctx.fillRect(gx + bw * 0.08, top.y + bh * 0.4, bw * 0.16, bh * 0.14);
+      ctx.fillRect(gx - bw * 0.28, top.y + bh * 0.4, bw * 0.16, bh * 0.14);
+      ctx.fillStyle = '#2a2420';
+      ctx.fillRect(gx + bw * 0.34, top.y + bh * 0.34, bw * 0.1, bh * 0.66);
     } else if (lm.kind === 'biograph') {
       const top = lmTop(128);
       const bw = 88 * s;
@@ -13395,85 +13575,6 @@
       lmLakeReflect(gx, gy, tbw, tbh);
     }
     ctx.restore();
-
-    // Nameplate: fades in once the landmark dominates the view, then drops
-    // away as it slides past the windshield.
-    const plateA = Math.min(1, Math.max(0, (heroT - 0.28) / 0.3))
-      * Math.min(1, Math.max(0, (ground.relZ - 140) / 90)) * fade;
-    if (plateA > 0.02 && lm.label) {
-      const crown = lmTop(roofH);
-      (d.lmLabelQueue || (d.lmLabelQueue = [])).push({
-        lm, gx, s, side, heroT, plateA,
-        anchorY: Math.max(crown.y, topClip + 6),
-        // Prominence: how dominant it is now, weighted toward the icons
-        score: plateA * (0.6 + roofH / 500) + ((d.lmLabelActive || []).includes(lm.label) ? 0.25 : 0)
-      });
-    }
-  }
-
-  // Nameplates for the one or two landmarks that dominate the view, drawn
-  // over the whole street scene so facades never paint across them.
-  function drawLandmarkLabels(d) {
-    const queue = d.lmLabelQueue || [];
-    d.lmLabelQueue = [];
-    if (!queue.length) { d.lmLabelActive = []; return; }
-    queue.sort((a, b) => b.score - a.score);
-    const picks = queue.slice(0, 2);
-    d.lmLabelActive = picks.map((p) => p.lm.label);
-    const boxes = [];
-    const overlaps = (bx) => boxes.some((o) => bx.x < o.x + o.w && bx.x + bx.w > o.x && bx.y < o.y + o.h && bx.y + bx.h > o.y);
-    for (const p of picks) {
-      const { lm, gx, s, side, heroT, plateA, anchorY } = p;
-      const fs = Math.max(10, Math.min(15, 9 + 6 * heroT));
-      ctx.save();
-      ctx.font = `600 ${fs}px "General Sans", sans-serif`;
-      if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
-      const text = lm.label.toUpperCase();
-      const tw = ctx.measureText(text).width;
-      const sub = LM_SUBTITLE[lm.label] || LM_SUBTITLE[lm.kind];
-      const boxH = fs + 10 + (sub ? fs * 0.8 : 0);
-      // Beside the crown on the road side, under the HUD band; step down
-      // if the other nameplate already sits there.
-      const toCenter = side > 0 ? -1 : 1;
-      let lx = gx + toCenter * (52 * s + tw * 0.5 + 18);
-      lx = Math.max(tw * 0.5 + 10, Math.min(W - tw * 0.5 - 10, lx));
-      let ly = Math.max(H * 0.235 + fs, Math.min(H * 0.43, anchorY + fs * 0.6));
-      let box = { x: lx - tw * 0.5 - 8, y: ly - fs - 2, w: tw + 16, h: boxH };
-      for (let tries = 0; tries < 4 && overlaps(box); tries++) {
-        ly += boxH + 6;
-        box = { x: lx - tw * 0.5 - 8, y: ly - fs - 2, w: tw + 16, h: boxH };
-      }
-      boxes.push(box);
-      ctx.globalAlpha = plateA;
-      const leadX = lx - toCenter * (tw * 0.5 + 8);
-      const dotY = Math.min(anchorY + 4, H * 0.5);
-      ctx.strokeStyle = 'rgba(235,225,200,0.55)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(gx, dotY);
-      ctx.lineTo(leadX, ly - fs * 0.35);
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(235,225,200,0.75)';
-      ctx.beginPath();
-      ctx.arc(gx, dotY, 1.8, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = 'rgba(8,10,16,0.62)';
-      ctx.fillRect(box.x, box.y, box.w, box.h);
-      ctx.fillStyle = 'rgba(14,16,22,0.9)';
-      ctx.fillText(text, lx + 1, ly + 1);
-      ctx.fillStyle = '#f1e6c8';
-      ctx.fillText(text, lx, ly);
-      if (sub && heroT > 0.6) {
-        ctx.globalAlpha = plateA * Math.min(1, (heroT - 0.6) / 0.25);
-        ctx.font = `500 ${Math.max(8, fs * 0.68)}px "General Sans", sans-serif`;
-        if ('letterSpacing' in ctx) ctx.letterSpacing = '1px';
-        ctx.fillStyle = 'rgba(200,190,160,0.85)';
-        ctx.fillText(sub, lx, ly + fs * 0.85);
-      }
-      ctx.restore();
-    }
   }
 
   function drawBuilding(b, d) {
@@ -15693,7 +15794,6 @@
     // City blocks and landmarks in one far → near pass so a tower set back
     // behind the lot line is occluded by the greystones in front of it.
     // Landmark depth folds in its real setback (~1.9 z per metre).
-    d.lmLabelQueue = [];
     const facadeDepth = (f) => routeSignedDist(d.z, f.z, pathLen) + (f.lm ? (f.setback || 0) * 1.9 : 0);
     const facades = [
       ...d.buildings,
@@ -15714,7 +15814,6 @@
     // Mast-arm signals after facades so buildings don't paint over / clip them
     const sigs = [...(d.signals || [])].sort(byRouteDist);
     for (const sig of sigs) drawTrafficSignal(sig, d);
-    drawLandmarkLabels(d);
 
     // Traffic on the road plane — absolute Z, not loop-wrapped
     const cars = [...d.traffic].sort((a, b) => b.z - a.z);
