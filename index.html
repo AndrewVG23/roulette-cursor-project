@@ -1038,8 +1038,29 @@
       text-transform: none;
       color: rgba(232, 220, 192, 0.7);
     }
-    .freestyle-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .freestyle-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      margin-top: auto;
+      padding-top: 12px;
+      background: linear-gradient(180deg, rgba(8, 10, 12, 0), rgba(8, 10, 12, 0.96) 36%);
+    }
     .freestyle-actions > button { min-height: 44px; }
+    .freestyle-share-note {
+      flex: 1 1 100%;
+      margin: 0;
+      min-height: 1.25em;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+      color: #e8c878;
+    }
     .freestyle-translate[aria-pressed="true"] {
       background: rgba(238, 194, 97, 0.2);
       color: #f4dfa0;
@@ -1365,6 +1386,15 @@
       pointer-events: none;
       z-index: 4;
       box-sizing: border-box;
+      overflow: hidden;
+    }
+    .panel-inner.drive-phase.phone-open .map-nav.is-grid {
+      display: grid !important;
+      grid-auto-flow: column;
+      grid-template-rows: repeat(var(--dest-rows, 4), var(--dest-h, 32px));
+      grid-template-columns: max-content max-content;
+      justify-content: start;
+      align-content: center;
     }
     .map-dest {
       position: relative;
@@ -1405,17 +1435,24 @@
     }
     .map-dest:disabled { opacity: 0.35; pointer-events: none; }
     @media (hover: hover) and (pointer: fine) and (min-width: 521px) {
-      .map-nav { gap: 5px; justify-content: flex-start; }
+      .map-nav { gap: 6px; justify-content: center; }
       .map-dest {
-        min-width: 118px;
-        padding: 6px 12px 5px;
-        border-radius: 10px;
-        border-width: 2px;
-        gap: 8px;
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+        min-width: 112px;
+        height: var(--dest-h, 32px);
+        min-height: 0;
+        padding: 0 10px;
+        border-radius: 8px;
+        border-width: 1.5px;
+        gap: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       }
-      .map-dest-icon svg { width: 26px; height: 26px; }
-      .map-dest-label { font-size: 12px; letter-spacing: 0.08em; }
+      .map-dest-icon svg {
+        width: 16px;
+        height: 16px;
+        max-width: calc(var(--dest-h, 32px) - 8px);
+        max-height: calc(var(--dest-h, 32px) - 8px);
+      }
+      .map-dest-label { font-size: 11px; letter-spacing: 0.07em; }
       .map-dest.active {
         box-shadow: 0 0 0 2px var(--dest-color, #e8a040), 0 6px 16px rgba(0, 0, 0, 0.45);
       }
@@ -1823,6 +1860,8 @@
             <ol class="freestyle-lines" id="freestyleLines"></ol>
             <div class="freestyle-actions">
               <button type="button" id="freestyleTranslate" class="freestyle-translate" aria-pressed="false">Show translation</button>
+              <button type="button" id="freestyleCopy">Copy bar</button>
+              <button type="button" id="freestyleCard">Share card</button>
               <button type="button" id="freestyleNext">Next bar</button>
               <button type="button" id="freestyleClose">Back to the drive</button>
               <div class="spin-speed" role="group" aria-label="Spin speed">
@@ -1830,6 +1869,7 @@
                 <span class="spin-speed-label">1×</span>
                 <button type="button" data-spin="faster" aria-label="Speed the spin">+</button>
               </div>
+              <p class="freestyle-share-note" id="freestyleShareNote" aria-live="polite"></p>
             </div>
           </div>
         </div>
@@ -3146,6 +3186,9 @@
   const freestyleSheet = freestylePanel?.querySelector('.freestyle-sheet');
   const freestyleTitleGlossEl = document.getElementById('freestyleTitleGloss');
   const freestyleTranslateBtn = document.getElementById('freestyleTranslate');
+  const freestyleCopyBtn = document.getElementById('freestyleCopy');
+  const freestyleCardBtn = document.getElementById('freestyleCard');
+  const freestyleShareNote = document.getElementById('freestyleShareNote');
   const freestylePausedEl = document.getElementById('freestylePaused');
   let freestylePausedDrive = false;
   const PHONE_TITLES = [
@@ -4715,6 +4758,7 @@
       if (key === phoneRhymeLastKey) continue;
       phoneRhymeLastKey = key;
       phoneRhymeCurrent = { scheme, title, words, letters: SCHEME_LETTERS[scheme] || [] };
+      if (freestyleShareNote) freestyleShareNote.textContent = '';
       setPhoneRhymeWords(words, title);
       renderFreestyle();
       return;
@@ -4725,14 +4769,27 @@
     en: {
       open: 'Freestyle', next: 'Next bar', close: 'Back to the drive', kicker: 'Freestyle',
       slower: 'Slow the spin', faster: 'Speed the spin', paused: 'Paused',
-      showTranslation: 'Show translation', hideTranslation: 'Hide translation'
+      showTranslation: 'Show translation', hideTranslation: 'Hide translation',
+      copy: 'Copy bar', card: 'Share card',
+      noteCopied: 'Copied.', noteShared: 'Shared.', noteSaved: 'Card saved.',
+      notePaid: '{money} on the phone.',
+      noteCap: 'The phone already paid for three shares today.',
+      noteAbort: 'Not sent.', noteFail: 'Could not copy that.'
     },
     es: {
       open: 'Freestyle', next: 'Siguiente', close: 'Volver a manejar', kicker: 'Freestyle',
       slower: 'Más lento', faster: 'Más rápido', paused: 'En pausa',
-      showTranslation: 'Ver traducción', hideTranslation: 'Ocultar traducción'
+      showTranslation: 'Ver traducción', hideTranslation: 'Ocultar traducción',
+      copy: 'Copiar', card: 'Compartir',
+      noteCopied: 'Copiado.', noteShared: 'Enviado.', noteSaved: 'Tarjeta guardada.',
+      notePaid: '{money} en el teléfono.',
+      noteCap: 'El teléfono ya pagó tres veces hoy.',
+      noteAbort: 'No se envió.', noteFail: 'No se pudo copiar.'
     }
   };
+  const SHARE_PAY_BASE = 120;
+  const SHARE_PAY_CAP = 3;
+  const SHARE_PAY_KEY = 'cfc-share-pay';
 
   function rhymeGloss(kind, text) {
     const book = window.RHYME_GLOSS;
@@ -4785,6 +4842,7 @@
       freestyleTranslateBtn.textContent = phoneRhymeTranslate ? copy.hideTranslation : copy.showTranslation;
       freestyleTranslateBtn.setAttribute('aria-pressed', String(phoneRhymeTranslate));
     }
+    paintShareButtons();
     for (const btn of document.querySelectorAll('.lang-switch button')) {
       btn.setAttribute('aria-pressed', String(btn.dataset.lang === phoneRhymeLang));
     }
@@ -4816,6 +4874,230 @@
         li.append(letter, text);
         return li;
       }));
+    }
+  }
+
+  function shareDayKey() {
+    const now = new Date();
+    return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+  }
+
+  function readSharePay() {
+    const today = shareDayKey();
+    try {
+      const saved = JSON.parse(localStorage.getItem(SHARE_PAY_KEY) || 'null');
+      if (saved && saved.day === today && Array.isArray(saved.keys)) {
+        return { day: today, keys: saved.keys.slice(0, SHARE_PAY_CAP) };
+      }
+    } catch (_) { /* ignore */ }
+    return { day: today, keys: [] };
+  }
+
+  function writeSharePay(state) {
+    try { localStorage.setItem(SHARE_PAY_KEY, JSON.stringify(state)); } catch (_) { /* ignore */ }
+  }
+
+  function barShareKey() {
+    const bar = phoneRhymeCurrent || {};
+    return `${phoneRhymeLang}|${bar.title || ''}|${(bar.words || []).join('|')}`;
+  }
+
+  function sharePayAmount() {
+    return window.Wallet ? Wallet.goldScaled(SHARE_PAY_BASE) : SHARE_PAY_BASE;
+  }
+
+  function sharePayOpen() {
+    const bar = phoneRhymeCurrent || {};
+    if (!bar.title || !(bar.words || []).length) return false;
+    const paid = readSharePay();
+    if (paid.keys.includes(barShareKey())) return false;
+    return paid.keys.length < SHARE_PAY_CAP;
+  }
+
+  function paintShareButtons() {
+    const copy = FREESTYLE_COPY[phoneRhymeLang] || FREESTYLE_COPY.en;
+    const ready = !!(phoneRhymeCurrent.title && phoneRhymeCurrent.words?.length);
+    const money = window.Wallet ? Wallet.format(sharePayAmount()) : `$${sharePayAmount()}`;
+    const extra = sharePayOpen() ? ` · +${money}` : '';
+    if (freestyleCopyBtn) {
+      freestyleCopyBtn.textContent = copy.copy + extra;
+      freestyleCopyBtn.disabled = !ready;
+    }
+    if (freestyleCardBtn) {
+      freestyleCardBtn.textContent = copy.card + extra;
+      freestyleCardBtn.disabled = !ready;
+    }
+  }
+
+  function barShareText() {
+    const bar = phoneRhymeCurrent || {};
+    const words = (bar.words || []).filter(Boolean);
+    const purse = window.Wallet ? Wallet.format(Wallet.netWorth()) : '';
+    return [bar.title || 'Night drive', '', ...words, '', purse, 'https://cashforcopper.us'].join('\n');
+  }
+
+  function shareResultNote(kind, pay) {
+    const copy = FREESTYLE_COPY[phoneRhymeLang] || FREESTYLE_COPY.en;
+    if (pay.why === 'paid') return copy.notePaid.replace('{money}', window.Wallet ? Wallet.format(pay.amount) : `$${pay.amount}`);
+    if (pay.why === 'cap') return `${copy[kind]} ${copy.noteCap}`;
+    return copy[kind] || '';
+  }
+
+  function takeSharePay() {
+    const paid = readSharePay();
+    const key = barShareKey();
+    if (paid.keys.includes(key)) return { amount: 0, why: 'repeat' };
+    if (paid.keys.length >= SHARE_PAY_CAP) return { amount: 0, why: 'cap' };
+    const amount = sharePayAmount();
+    if (window.Wallet) Wallet.add(amount);
+    paid.keys.push(key);
+    writeSharePay(paid);
+    return { amount, why: 'paid' };
+  }
+
+  async function writeClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.left = '-9999px';
+    document.body.appendChild(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    if (!ok) throw new Error('copy');
+  }
+
+  function shareCardCanvas(drive) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1350;
+    const g = canvas.getContext('2d');
+    const sky = g.createLinearGradient(0, 0, 0, 760);
+    sky.addColorStop(0, '#121a28');
+    sky.addColorStop(1, '#07090d');
+    g.fillStyle = sky;
+    g.fillRect(0, 0, 1080, 1350);
+    g.fillStyle = '#050608';
+    g.fillRect(0, 760, 1080, 590);
+    if (drive) {
+      g.save();
+      g.beginPath();
+      g.rect(48, 48, 984, 620);
+      g.clip();
+      const scale = Math.max(984 / drive.width, 620 / drive.height);
+      const dw = drive.width * scale;
+      const dh = drive.height * scale;
+      g.drawImage(drive, 48 + (984 - dw) / 2, 48 + (620 - dh) / 2, dw, dh);
+      g.restore();
+    } else {
+      g.fillStyle = '#1b2433';
+      const roofs = [180, 260, 140, 320, 210, 280, 160, 240];
+      roofs.forEach((h, i) => {
+        const x = 70 + i * 120;
+        g.fillRect(x, 760 - h, 90, h);
+        g.fillStyle = i % 2 ? '#c6a15a' : '#8fd0c8';
+        g.fillRect(x + 28, 760 - h - 18, 8, 18);
+        g.fillStyle = '#1b2433';
+      });
+    }
+    g.strokeStyle = '#d4b36a';
+    g.lineWidth = 3;
+    g.strokeRect(36, 36, 1008, 1278);
+    const bar = phoneRhymeCurrent || {};
+    const words = (bar.words || []).filter(Boolean);
+    g.fillStyle = '#d4b36a';
+    g.font = '600 28px "General Sans", "Avenir Next", sans-serif';
+    g.textAlign = 'center';
+    g.fillText('NIGHT DRIVE', 540, drive ? 740 : 220);
+    const title = String(bar.title || '').trim().split(/\s+/).filter(Boolean);
+    g.fillStyle = '#f4efe4';
+    g.font = '700 78px Zodiak, Georgia, serif';
+    let y = drive ? 840 : 360;
+    g.fillText(title[0] || '', 540, y);
+    if (title.length > 1) {
+      y += 86;
+      g.fillText(title.slice(1).join(' '), 540, y);
+    }
+    g.font = '600 54px "General Sans", "Avenir Next", sans-serif';
+    y += 110;
+    words.forEach((word) => {
+      g.fillText(word, 540, y);
+      y += 72;
+    });
+    const purse = window.Wallet ? Wallet.format(Wallet.netWorth()) : '';
+    g.fillStyle = '#e8c878';
+    g.font = '700 42px "General Sans", "Avenir Next", sans-serif';
+    g.fillText(purse, 540, 1220);
+    g.fillStyle = '#9aa3ae';
+    g.font = '600 28px "General Sans", "Avenir Next", sans-serif';
+    g.fillText('cashforcopper.us', 540, 1280);
+    return canvas;
+  }
+
+  function canvasToPng(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('card'))), 'image/png');
+    });
+  }
+
+  async function buildShareCard() {
+    const game = document.getElementById('game');
+    if (game && game.width) {
+      try { return await canvasToPng(shareCardCanvas(game)); }
+      catch (_) { /* the drive canvas is tainted; the card still stands without it */ }
+    }
+    return canvasToPng(shareCardCanvas(null));
+  }
+
+  async function finishShare(kind) {
+    const pay = takeSharePay();
+    if (freestyleShareNote) freestyleShareNote.textContent = shareResultNote(kind, pay);
+    paintShareButtons();
+  }
+
+  async function copyBar() {
+    const copy = FREESTYLE_COPY[phoneRhymeLang] || FREESTYLE_COPY.en;
+    try {
+      await writeClipboard(barShareText());
+      await finishShare('noteCopied');
+    } catch (err) {
+      if (freestyleShareNote) {
+        freestyleShareNote.textContent = err && err.name === 'AbortError' ? copy.noteAbort : copy.noteFail;
+      }
+    }
+  }
+
+  async function shareCard() {
+    const copy = FREESTYLE_COPY[phoneRhymeLang] || FREESTYLE_COPY.en;
+    try {
+      const blob = await buildShareCard();
+      const file = new File([blob], 'cash-for-copper.png', { type: 'image/png' });
+      const text = barShareText();
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text, title: 'Night drive · cashforcopper.us' });
+        await finishShare('noteShared');
+        return;
+      }
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'cash-for-copper.png';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 4000);
+      try { await writeClipboard(text); } catch (_) { /* the card is already saved */ }
+      await finishShare('noteSaved');
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        if (freestyleShareNote) freestyleShareNote.textContent = copy.noteAbort;
+        return;
+      }
+      if (freestyleShareNote) freestyleShareNote.textContent = copy.noteFail;
     }
   }
 
@@ -5471,23 +5753,28 @@
     const { mx, my, mapW, mapH } = getMapRect();
     const { sx } = boardScale();
     const view = canvas?.getBoundingClientRect();
-    const gap = desktopMapHud() ? 10 * sx : 6;
+    const gap = desktopMapHud() ? 16 * sx : 6;
     mapNav.style.left = `${((mx + mapW + gap) / W) * 100}%`;
     mapNav.style.top = 'auto';
     if (desktopMapHud() && view) {
       const cssLeft = ((mx + mapW + gap) / W) * view.width;
-      mapNav.style.maxWidth = `${Math.max(118, view.width * 0.48 - cssLeft)}px`;
+      mapNav.style.maxWidth = `${Math.max(240, view.width * 0.5 - cssLeft)}px`;
       mapNav.style.top = `${(my / H) * 100}%`;
       mapNav.style.bottom = 'auto';
-      mapNav.style.maxHeight = `${(mapH / H) * 100}%`;
-      mapNav.style.overflowY = 'auto';
-      mapNav.style.pointerEvents = 'auto';
+      mapNav.style.pointerEvents = 'none';
     } else {
+      mapNav.classList.remove('is-grid');
       mapNav.style.maxWidth = '';
       mapNav.style.top = 'auto';
+      mapNav.style.height = '';
       mapNav.style.maxHeight = '';
-      mapNav.style.overflowY = '';
+      mapNav.style.padding = '';
+      mapNav.style.gap = '';
+      mapNav.style.removeProperty('--dest-h');
+      mapNav.style.removeProperty('--dest-rows');
+      mapNav.style.overflow = '';
       mapNav.style.pointerEvents = '';
+      mapNav.style.justifyContent = '';
       const bottomPct = ((H - my - mapH) / H) * 100;
       mapNav.style.bottom = coarsePointer()
         ? `max(${bottomPct}%, calc(72px + env(safe-area-inset-bottom, 0px)))`
@@ -5504,6 +5791,40 @@
       btn.disabled = taken.has(ex.id);
       btn.classList.toggle('active', d.navTarget === ex.id);
     }
+    if (desktopMapHud() && view) fitDestList(view, mapH);
+  }
+
+  // Keep every stop on screen. The stack stays short, and leftover room
+  // in the map's band is empty space rather than a scrollbar.
+  function fitDestList(view, mapH) {
+    const n = Math.max(1, [...mapNav.querySelectorAll('.map-dest')].filter((b) => !b.hidden).length);
+    const cssH = (mapH / H) * view.height;
+    const cap = 32;
+    let margin = 8;
+    let gap = 6;
+    const oneCol = n * cap + gap * (n - 1) + margin * 2 + 16;
+    let columns = cssH < oneCol ? 2 : 1;
+    let rows = columns === 1 ? n : Math.ceil(n / 2);
+    let room = cssH - margin * 2 - gap * (rows - 1);
+    let h = Math.floor(room / rows);
+    if (h < 24) {
+      margin = 4;
+      gap = 4;
+      room = cssH - margin * 2 - gap * (rows - 1);
+      h = Math.floor(room / rows);
+    }
+    h = Math.min(cap, Math.max(1, h));
+    mapNav.classList.toggle('is-grid', columns === 2);
+    mapNav.style.setProperty('--dest-rows', String(rows));
+    mapNav.style.setProperty('--dest-h', `${h}px`);
+    mapNav.style.gap = `${gap}px`;
+    mapNav.style.padding = `${margin}px 0`;
+    mapNav.style.height = `${Math.round(cssH)}px`;
+    mapNav.style.maxHeight = `${Math.round(cssH)}px`;
+    mapNav.style.overflow = 'hidden';
+    mapNav.style.justifyContent = columns === 2 ? 'start' : 'center';
+    mapNav.style.alignContent = 'center';
+    mapNav.style.boxSizing = 'border-box';
   }
 
   function hideMapNav() {
@@ -16216,6 +16537,14 @@
   freestyleTranslateBtn?.addEventListener('click', (e) => {
     e.stopPropagation();
     setRhymeTranslate(!phoneRhymeTranslate);
+  });
+  freestyleCopyBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    copyBar();
+  });
+  freestyleCardBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    shareCard();
   });
   freestylePanel?.addEventListener('click', (e) => {
     if (e.target === freestylePanel) closeFreestyle();
