@@ -4772,8 +4772,8 @@
       showTranslation: 'Show translation', hideTranslation: 'Hide translation',
       copy: 'Copy bar', card: 'Share card',
       noteCopied: 'Copied.', noteShared: 'Shared.', noteSaved: 'Card saved.',
-      notePaid: '{money} on the phone.',
-      noteCap: 'The phone already paid for three shares today.',
+      notePaid: '{money} cash.',
+      noteCap: 'Cash already paid for three shares today.',
       noteAbort: 'Not sent.', noteFail: 'Could not copy that.'
     },
     es: {
@@ -4782,12 +4782,12 @@
       showTranslation: 'Ver traducción', hideTranslation: 'Ocultar traducción',
       copy: 'Copiar', card: 'Compartir',
       noteCopied: 'Copiado.', noteShared: 'Enviado.', noteSaved: 'Tarjeta guardada.',
-      notePaid: '{money} en el teléfono.',
-      noteCap: 'El teléfono ya pagó tres veces hoy.',
+      notePaid: '{money} en efectivo.',
+      noteCap: 'El efectivo ya pagó tres veces hoy.',
       noteAbort: 'No se envió.', noteFail: 'No se pudo copiar.'
     }
   };
-  const SHARE_PAY_BASE = 120;
+  const SHARE_PAY_BASE = 1000;
   const SHARE_PAY_CAP = 3;
   const SHARE_PAY_KEY = 'cfc-share-pay';
 
@@ -4903,7 +4903,7 @@
   }
 
   function sharePayAmount() {
-    return window.Wallet ? Wallet.goldScaled(SHARE_PAY_BASE) : SHARE_PAY_BASE;
+    return SHARE_PAY_BASE;
   }
 
   function sharePayOpen() {
@@ -4949,7 +4949,7 @@
     if (paid.keys.includes(key)) return { amount: 0, why: 'repeat' };
     if (paid.keys.length >= SHARE_PAY_CAP) return { amount: 0, why: 'cap' };
     const amount = sharePayAmount();
-    if (window.Wallet) Wallet.add(amount);
+    if (window.Wallet) Wallet.addCash(amount);
     paid.keys.push(key);
     writeSharePay(paid);
     return { amount, why: 'paid' };
