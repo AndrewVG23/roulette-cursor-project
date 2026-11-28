@@ -70,10 +70,9 @@
   let scorePostTimer = null;
   let scorePostChain = Promise.resolve();
   let boardOffline = false;
-  let scoreBaseline = null;
   let offerTimer = null;
   let offerNotedFor = null;
-  const OFFER_KEY = 'c4c-offer-floor';
+  const OFFER_DISMISS_KEY = 'c4c-offer-dismissed';
 
   function clampFuel(gallons) {
     return Math.max(0, Math.min(GAS_TANK_GAL, Number(gallons) || 0));
@@ -818,8 +817,18 @@
       chip.setAttribute('aria-label', chip.textContent);
     }
     paintBoardLead();
-    if (boardPlayer) hideScoreOffer();
+    if (hasPostedScore()) hideScoreOffer();
+    else maybeOfferFromPurse();
     placeBoardChip();
+  }
+
+  function hasPostedScore() {
+    return !!(boardPlayer && boardPlayer.best != null);
+  }
+
+  function offerDismissedThisVisit() {
+    try { return sessionStorage.getItem(OFFER_DISMISS_KEY) === '1'; }
+    catch (_) { return false; }
   }
 
   function purseWorthPosting() {
@@ -843,23 +852,6 @@
       : 'An account is optional. Create one when you want this purse on the board.';
   }
 
-  function offerFloor() {
-    try {
-      const raw = localStorage.getItem(OFFER_KEY);
-      if (raw == null || raw === '') return null;
-      const saved = Number(raw);
-      return Number.isFinite(saved) ? saved : null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  function playingDrive() {
-    const game = document.getElementById('game');
-    const overlay = document.getElementById('overlay');
-    return !!(game && overlay && overlay.hidden);
-  }
-
   function hideScoreOffer() {
     const offer = document.getElementById('scoreOffer');
     if (offer) offer.hidden = true;
@@ -868,7 +860,7 @@
   }
 
   function dismissScoreOffer() {
-    try { localStorage.setItem(OFFER_KEY, String(netWorth())); } catch (_) { /* private mode */ }
+    try { sessionStorage.setItem(OFFER_DISMISS_KEY, '1'); } catch (_) { /* private mode */ }
     noteInsight('offer_dismiss');
     hideScoreOffer();
   }
@@ -898,11 +890,9 @@
   }
 
   function showScoreOffer() {
-    if (boardPlayer || playingDrive()) return;
+    if (hasPostedScore() || offerDismissedThisVisit()) return;
     const worth = netWorth();
-    const floor = offerFloor();
-    if (floor != null ? worth <= floor : (scoreBaseline == null || worth === scoreBaseline)) return;
-    const sentence = `${fmt.format(worth)} net worth is on this phone. Posting it is optional.`;
+    const sentence = `${fmt.format(worth)} is on this phone and not on the board. Posting it is optional.`;
     const runOffer = document.getElementById('runOffer');
     const runPurse = document.getElementById('runPurse');
     const overlay = document.getElementById('overlay');
@@ -919,7 +909,6 @@
       }
       return;
     }
-    if (runOffer) return;
     const offer = document.getElementById('scoreOffer');
     const text = document.getElementById('scoreOfferText');
     if (!offer || !text) return;
@@ -1371,7 +1360,6 @@
 
   migrateTips();
   persist();
-  scoreBaseline = netWorth();
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mountHud);
